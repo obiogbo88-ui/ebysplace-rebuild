@@ -31,18 +31,21 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-primary/20 bg-[#171009]/82 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-[#d8bd74]/55 bg-[#f5ead7]/92 shadow-[0_10px_36px_rgba(66,42,18,.12)] backdrop-blur-xl">
       <div className="container flex h-24 items-center justify-between gap-4">
         <Link
           href="/"
-          className="flex items-center gap-3"
+          className="flex items-center gap-3 py-1"
           aria-label="Eby’s Place home"
         >
           <img
             src={LOGO_SRC}
             alt="Eby’s Place"
-            className="h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_24px_rgba(245,221,156,.58)] sm:h-20"
+            className="h-20 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)] [filter:brightness(.55)_sepia(1)_saturate(1.35)] sm:h-24"
           />
+          <span className="hidden text-xl font-extrabold uppercase tracking-[0.16em] text-[#2a1a0b] sm:inline-block">
+            Eby’s Place
+          </span>
         </Link>
 
         <nav
@@ -65,7 +68,7 @@ export function SiteHeader() {
           </Link>
           <button
             type="button"
-            className="rounded-full border border-primary/30 bg-black/60 p-3 text-primary"
+            className="rounded-full border border-[#c8a95a]/45 bg-[#2a1a0b]/90 p-3 text-[#f7e3a3]"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(value => !value)}
@@ -81,14 +84,14 @@ export function SiteHeader() {
 
       {menuOpen ? (
         <nav
-          className="border-t border-primary/15 bg-[#171009]/95 px-5 py-5 lg:hidden"
+          className="border-t border-[#d8bd74]/45 bg-[#f5ead7]/98 px-5 py-5 shadow-[0_18px_45px_rgba(66,42,18,.14)] lg:hidden"
           aria-label="Mobile navigation"
         >
           <div className="container grid gap-3 p-0">
             {navLinks.map(item => (
               <Link
                 key={item.href}
-                className="rounded-2xl border border-primary/10 px-4 py-3 text-sm font-semibold text-white/80 transition hover:border-primary/50 hover:text-primary"
+                className="rounded-2xl border border-[#d8bd74]/35 bg-white/45 px-4 py-3 text-sm font-semibold text-[#2a1a0b] transition hover:border-[#b9933e] hover:text-[#8a641e]"
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
               >
@@ -111,29 +114,34 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-primary/20 bg-black/80 py-12">
+    <footer className="border-t border-[#d8bd74]/45 bg-[#f5ead7] py-12 text-[#2a1a0b]">
       <div className="container grid gap-8 md:grid-cols-4">
         <div>
-          <img
-            src={LOGO_SRC}
-            alt="Eby’s Place"
-            className="h-20 w-auto object-contain mix-blend-screen drop-shadow-[0_0_24px_rgba(245,221,156,.48)]"
-          />
-          <p className="mt-3 text-sm text-white/65">
+          <div className="flex items-center gap-4">
+            <img
+              src={LOGO_SRC}
+              alt="Eby’s Place"
+              className="h-28 w-auto object-contain drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] [filter:brightness(.55)_sepia(1)_saturate(1.35)] sm:h-32"
+            />
+            <span className="text-2xl font-extrabold uppercase tracking-[0.14em] text-[#2a1a0b]">
+              Eby’s Place
+            </span>
+          </div>
+          <p className="mt-3 text-sm font-medium text-[#4f3720]">
             Zero pain. Zero trauma. Just perfection. Luxury pain-free braiding
             in Somerset, UK.
           </p>
         </div>
         <div>
           <h4 className="font-bold text-primary">Visit</h4>
-          <p className="mt-3 text-sm text-white/65">
+          <p className="mt-3 text-sm font-medium text-[#4f3720]">
             Book protective styles, shop aftercare, try AI previews, and connect
             to the Kouvia braider platform.
           </p>
         </div>
         <div>
           <h4 className="font-bold text-primary">Quick Links</h4>
-          <div className="mt-3 grid gap-2 text-sm text-white/70">
+          <div className="mt-3 grid gap-2 text-sm font-semibold text-[#4f3720]">
             <Link href="/services">Services & Pricing</Link>
             <Link href="/booking">Book Appointment</Link>
             <Link href="/shop">Shop</Link>
@@ -143,7 +151,7 @@ export function SiteFooter() {
         </div>
         <div>
           <h4 className="font-bold text-primary">Luxury Care Promise</h4>
-          <p className="mt-3 text-sm text-white/65">
+          <p className="mt-3 text-sm font-medium text-[#4f3720]">
             Zero tension. Maximum longevity. Total comfort for clients who want
             beautiful braids without scalp trauma.
           </p>
@@ -176,24 +184,17 @@ export default function Home() {
               poster="/manus-storage/ebysplace_service_knotless_braids_7dbbea62.png"
               aria-label="Eby’s Place landing video"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(18,13,8,.86),rgba(18,13,8,.54)_48%,rgba(18,13,8,.2)),linear-gradient(180deg,rgba(18,13,8,.18),rgba(18,13,8,.78))]" />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.34)_45%,rgba(247,238,222,.08)),linear-gradient(180deg,rgba(247,238,222,.06),rgba(20,12,5,.72))]" />
             <div className="container relative z-10 py-20 md:py-28">
               <div className="max-w-3xl py-5 [text-shadow:0_3px_22px_rgba(0,0,0,.88)] sm:py-8 md:py-10">
-                <div className="mb-6 inline-flex rounded-full bg-[radial-gradient(circle,rgba(245,221,156,.22),rgba(245,221,156,.07)_42%,transparent_72%)] p-2">
-                  <img
-                    src={LOGO_SRC}
-                    alt="Eby’s Place luxury pain-free braiding"
-                    className="h-32 w-auto object-contain mix-blend-screen drop-shadow-[0_0_42px_rgba(245,221,156,.68)] sm:h-40"
-                  />
-                </div>
-                <span className="pill inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 leading-6">
+                <span className="pill inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 leading-6 bg-[#26180a]/78 text-[#f7dda0] shadow-[0_12px_30px_rgba(0,0,0,.25)]">
                   <Crown className="h-4 w-4 shrink-0" /> <span>Zero pain. Zero trauma. Just perfection.</span>
                 </span>
                 <h1 className="serif mt-7 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl">
                   Luxury Pain-Free Braiding in <br className="sm:hidden" />
                   <span className="gold-text">Somerset, UK</span>
                 </h1>
-                <p className="mt-7 max-w-2xl text-base leading-8 text-white/82 sm:text-lg">
+                <p className="mt-7 max-w-2xl text-base font-medium leading-8 text-white sm:text-lg">
                   You do not fear bad braids. You fear the pain after: the
                   headaches, the tight edges, the thinning hairlines, and the
                   uncomfortable first nights. Eby’s Place is built for clients who
@@ -204,7 +205,7 @@ export default function Home() {
                   <Link className="btn-gold" href="/booking">
                     <CalendarDays className="mr-2 h-5 w-5" /> Book with £20 deposit
                   </Link>
-                  <Link className="btn-dark bg-[#171009]/70 shadow-[0_16px_45px_rgba(0,0,0,.38)]" href="/ai-try-on">
+                  <Link className="btn-dark bg-[#171009]/82 shadow-[0_16px_45px_rgba(0,0,0,.38)]" href="/ai-try-on">
                     <Wand2 className="mr-2 h-5 w-5" /> Try a braid style
                   </Link>
                 </div>

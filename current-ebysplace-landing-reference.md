@@ -1,0 +1,5 @@
+# Current Eby’s Place Landing Reference
+
+The live Eby’s Place landing page uses a much lighter hero image treatment than the rebuild’s current dark-gold overlay. The background is a soft cream/beige photographic hero with a subtle dark gradient concentrated near the lower copy area. The top navigation sits directly over the image with dark text, and the logo appears as a broad text wordmark in the top-left rather than a small icon-only treatment.
+
+The live hero copy is high contrast: a large white serif headline reads “Zero pain. Zero trauma.” followed by an italic gold “Just perfection.” The supporting eyebrow is small uppercase text. The main CTA is a dark rounded button with light text. For the requested rebuild change, the existing page structure should remain, but the hero should feel lighter overall, remove the duplicated logo sitting inside the hero-photo copy area, broaden the header/footer logo treatments, and ensure any write-up over image or light surfaces has deliberate contrast.

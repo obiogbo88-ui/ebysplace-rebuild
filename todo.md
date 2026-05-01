@@ -72,3 +72,6 @@
 - [x] Verify whether the AI Try-On feature is usable now and fix any blocking issue found in the upload/style/generation flow
 
 - [x] Fix AI Try-On image-reading failures for prepared customer photos, including HEIC/iPhone conversion support, signed image URLs for generation, high-contrast readable errors, tests, build, and health verification
+- [x] Remove the logo overlay from the landing page hero photo while preserving the existing landing structure
+- [x] Broaden/enlarge the remaining top and lower Eby’s Place logo treatments for stronger readability
+- [x] Shift the current Eby’s Place landing look to a lighter background and increase write-up contrast/readability
