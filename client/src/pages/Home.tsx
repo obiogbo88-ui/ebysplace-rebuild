@@ -92,7 +92,7 @@ export function SiteHeader() {
             {navLinks.map(item => (
               <Link
                 key={item.href}
-                className="rounded-2xl border border-primary/10 px-4 py-3 text-sm font-semibold text-white/80 transition hover:border-primary/50 hover:text-primary"
+                className="rounded-2xl border border-primary/15 bg-[#fff8e8]/70 px-4 py-3 text-sm font-semibold text-[#24180d]/85 transition hover:border-primary/50 hover:text-primary"
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
               >
@@ -123,21 +123,21 @@ export function SiteFooter() {
             alt="Eby’s Place"
             className="h-20 w-auto object-contain mix-blend-screen drop-shadow-[0_0_26px_rgba(245,221,156,.68)] contrast-125 saturate-125"
           />
-          <p className="mt-3 text-sm text-white/65">
+          <p className="mt-3 text-sm text-[#24180d]/70">
             Zero pain. Zero trauma. Just perfection. Luxury pain-free braiding
             in Somerset, UK.
           </p>
         </div>
         <div>
           <h4 className="font-bold text-primary">Visit</h4>
-          <p className="mt-3 text-sm text-white/65">
+          <p className="mt-3 text-sm text-[#24180d]/70">
             Book your pain-free appointment, browse styles, and shop products
             between visits.
           </p>
         </div>
         <div>
           <h4 className="font-bold text-primary">Quick Links</h4>
-          <div className="mt-3 grid gap-2 text-sm text-white/70">
+          <div className="mt-3 grid gap-2 text-sm text-[#24180d]/75">
             <Link href="/services">Services & Pricing</Link>
             <Link href="/booking">Book Appointment</Link>
             <Link href="/shop">Shop</Link>
@@ -147,7 +147,7 @@ export function SiteFooter() {
         </div>
         <div>
           <h4 className="font-bold text-primary">Pain-Free Guarantee</h4>
-          <p className="mt-3 text-sm text-white/65">
+          <p className="mt-3 text-sm text-[#24180d]/70">
             If your braids feel excessively tight within 48 hours, Eby’s Place
             will fix it with care.
           </p>

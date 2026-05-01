@@ -81,3 +81,10 @@
 - [x] Add a current-site-style moving reviews strip that scrolls approved reviews across the screen from end to end
 - [x] Add a shareable public review form link customers can use directly to submit a review
 - [x] Re-run automated verification and save a new checkpoint for the reviews carousel and shareable review form updates
+
+- [x] Fix remaining white-font write-ups that are unreadable on the light Eby’s Place background
+- [x] Re-run automated verification and save a new checkpoint for the white-font contrast fix
+
+- [x] Fix menu list items that still appear white against the light header/menu background
+- [x] Fix footer write-ups and links that still appear white against the light footer background
+- [x] Re-run automated verification and save a new checkpoint for the targeted menu and footer contrast fix

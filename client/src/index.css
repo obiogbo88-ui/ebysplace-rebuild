@@ -179,3 +179,95 @@
     width: auto;
   }
 }
+
+/* Final light-theme contrast fix: remap leftover white utility text in cards, footer, header mobile menu, and light dialog surfaces while preserving the dark hero video copy. */
+.luxury-shell header .text-white,
+.luxury-shell footer .text-white,
+.luxury-shell .lux-card .text-white,
+.luxury-shell .review-marquee-card .text-white {
+  color: #24180d !important;
+}
+
+.luxury-shell header .text-white\/80,
+.luxury-shell footer .text-white\/80,
+.luxury-shell .lux-card .text-white\/80 { color: rgba(36, 24, 13, .80) !important; }
+.luxury-shell header .text-white\/75,
+.luxury-shell footer .text-white\/75,
+.luxury-shell .lux-card .text-white\/75 { color: rgba(36, 24, 13, .75) !important; }
+.luxury-shell header .text-white\/70,
+.luxury-shell footer .text-white\/70,
+.luxury-shell .lux-card .text-white\/70 { color: rgba(36, 24, 13, .70) !important; }
+.luxury-shell header .text-white\/68,
+.luxury-shell footer .text-white\/68,
+.luxury-shell .lux-card .text-white\/68 { color: rgba(36, 24, 13, .68) !important; }
+.luxury-shell header .text-white\/65,
+.luxury-shell footer .text-white\/65,
+.luxury-shell .lux-card .text-white\/65 { color: rgba(36, 24, 13, .65) !important; }
+.luxury-shell header .text-white\/62,
+.luxury-shell footer .text-white\/62,
+.luxury-shell .lux-card .text-white\/62 { color: rgba(36, 24, 13, .62) !important; }
+.luxury-shell header .text-white\/60,
+.luxury-shell footer .text-white\/60,
+.luxury-shell .lux-card .text-white\/60 { color: rgba(36, 24, 13, .60) !important; }
+.luxury-shell header .text-white\/55,
+.luxury-shell footer .text-white\/55,
+.luxury-shell .lux-card .text-white\/55 { color: rgba(36, 24, 13, .55) !important; }
+.luxury-shell header .text-white\/50,
+.luxury-shell footer .text-white\/50,
+.luxury-shell .lux-card .text-white\/50 { color: rgba(36, 24, 13, .50) !important; }
+.luxury-shell header .text-white\/45,
+.luxury-shell footer .text-white\/45,
+.luxury-shell .lux-card .text-white\/45 { color: rgba(36, 24, 13, .45) !important; }
+.luxury-shell header .text-white\/40,
+.luxury-shell footer .text-white\/40,
+.luxury-shell .lux-card .text-white\/40 { color: rgba(36, 24, 13, .40) !important; }
+.luxury-shell header .text-white\/35,
+.luxury-shell footer .text-white\/35,
+.luxury-shell .lux-card .text-white\/35 { color: rgba(36, 24, 13, .35) !important; }
+
+.luxury-shell header .hover\:text-primary:hover,
+.luxury-shell footer a:hover,
+.luxury-shell .lux-card a:hover {
+  color: #8a642e !important;
+}
+
+.luxury-shell header .border-white\/10,
+.luxury-shell footer .border-white\/10,
+.luxury-shell .lux-card .border-white\/10 {
+  border-color: rgba(122, 84, 36, .18) !important;
+}
+
+/* Broad safety net for any remaining public/admin write-up text using legacy white utilities on the light theme. */
+.luxury-shell .text-white { color: #24180d !important; }
+.luxury-shell .text-white\/82 { color: rgba(36, 24, 13, .82) !important; }
+.luxury-shell .text-white\/80 { color: rgba(36, 24, 13, .80) !important; }
+.luxury-shell .text-white\/78 { color: rgba(36, 24, 13, .78) !important; }
+.luxury-shell .text-white\/75 { color: rgba(36, 24, 13, .75) !important; }
+.luxury-shell .text-white\/72 { color: rgba(36, 24, 13, .72) !important; }
+.luxury-shell .text-white\/70 { color: rgba(36, 24, 13, .70) !important; }
+.luxury-shell .text-white\/68 { color: rgba(36, 24, 13, .68) !important; }
+.luxury-shell .text-white\/66 { color: rgba(36, 24, 13, .66) !important; }
+.luxury-shell .text-white\/65 { color: rgba(36, 24, 13, .65) !important; }
+.luxury-shell .text-white\/62 { color: rgba(36, 24, 13, .62) !important; }
+.luxury-shell .text-white\/60 { color: rgba(36, 24, 13, .60) !important; }
+.luxury-shell .text-white\/55 { color: rgba(36, 24, 13, .55) !important; }
+.luxury-shell .text-white\/50 { color: rgba(36, 24, 13, .50) !important; }
+.luxury-shell .text-white\/45 { color: rgba(36, 24, 13, .45) !important; }
+.luxury-shell .text-white\/40 { color: rgba(36, 24, 13, .40) !important; }
+.luxury-shell .text-white\/35 { color: rgba(36, 24, 13, .35) !important; }
+
+.luxury-shell .hero-video-reference,
+.luxury-shell .hero-video-reference h1,
+.luxury-shell .hero-video-reference .text-white,
+.luxury-shell .hero-video-reference .text-white\/82,
+.luxury-shell .hero-video-reference .text-white\/80,
+.luxury-shell .hero-video-reference .text-white\/75,
+.luxury-shell .hero-video-reference .text-white\/70,
+.luxury-shell .hero-video-reference .text-white\/68,
+.luxury-shell .hero-video-reference .text-white\/65,
+.luxury-shell .hero-video-reference .text-white\/60,
+.luxury-shell .hero-video-reference .text-white\/55,
+.luxury-shell .hero-video-reference .text-white\/50 {
+  color: #fff8e8 !important;
+}
+.luxury-shell .hero-video-reference .text-white\/82 { color: rgba(255, 255, 255, .84) !important; }
