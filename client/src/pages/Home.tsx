@@ -31,7 +31,7 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-primary/20 bg-[#171009]/82 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-primary/12 bg-[#090806]/58 backdrop-blur-md">
       <div className="container flex h-20 items-center justify-between gap-4">
         <Link
           href="/"
@@ -41,10 +41,10 @@ export function SiteHeader() {
           <img
             src={LOGO_SRC}
             alt="Eby’s Place"
-            className="h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_28px_rgba(245,221,156,.78)] contrast-125 saturate-125 sm:h-20"
+            className="h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_22px_rgba(246,224,178,.62)] contrast-125 saturate-125 sm:h-20"
           />
-          <span className="serif hidden text-2xl font-black leading-none tracking-wide text-primary drop-shadow-[0_0_18px_rgba(245,221,156,.55)] min-[420px]:block sm:text-3xl">
-            Eby’s Place
+          <span className="serif hidden text-2xl font-black leading-none tracking-wide text-primary drop-shadow-[0_0_14px_rgba(246,224,178,.45)] min-[420px]:block sm:text-3xl">
+            EBY’S PLACE
           </span>
         </Link>
 
@@ -68,7 +68,7 @@ export function SiteHeader() {
           </Link>
           <button
             type="button"
-            className="rounded-full border border-primary/30 bg-black/60 p-3 text-primary"
+            className="rounded-full border border-primary/25 bg-black/45 p-3 text-primary"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(value => !value)}
@@ -84,7 +84,7 @@ export function SiteHeader() {
 
       {menuOpen ? (
         <nav
-          className="border-t border-primary/15 bg-[#171009]/95 px-5 py-5 lg:hidden"
+          className="border-t border-primary/12 bg-[#090806]/95 px-5 py-5 lg:hidden"
           aria-label="Mobile navigation"
         >
           <div className="container grid gap-3 p-0">
@@ -130,8 +130,8 @@ export function SiteFooter() {
         <div>
           <h4 className="font-bold text-primary">Visit</h4>
           <p className="mt-3 text-sm text-white/65">
-            Book protective styles, shop aftercare, try AI previews, and connect
-            to the Kouvia braider platform.
+            Book your pain-free appointment, browse styles, and shop products
+            between visits.
           </p>
         </div>
         <div>
@@ -145,10 +145,10 @@ export function SiteFooter() {
           </div>
         </div>
         <div>
-          <h4 className="font-bold text-primary">Luxury Care Promise</h4>
+          <h4 className="font-bold text-primary">Pain-Free Guarantee</h4>
           <p className="mt-3 text-sm text-white/65">
-            Zero tension. Maximum longevity. Total comfort for clients who want
-            beautiful braids without scalp trauma.
+            If your braids feel excessively tight within 48 hours, Eby’s Place
+            will fix it with care.
           </p>
         </div>
       </div>
@@ -232,23 +232,21 @@ export default function Home() {
             <div className="lux-card">
               <ShieldCheck className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
-                Professional structure
+                Structured scheduling
               </h2>
               <p className="mt-3 text-white/65">
-                Clear service categories, booking deposits, delivery details,
-                reviews, gallery images, and admin oversight support a scalable
-                salon operation.
+                No delays. No guesswork. Your appointment time is respected
+                from booking through finish.
               </p>
             </div>
             <div className="lux-card">
               <Sparkles className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
-                Modern automation
+                Style preview
               </h2>
               <p className="mt-3 text-white/65">
-                AI hairstyle previews, live content systems, customer reviews,
-                ecommerce, analytics, and Kouvia SaaS handoff are part of the
-                platform.
+                Try braid inspiration before booking, then choose the service
+                that feels right for you.
               </p>
             </div>
           </div>
@@ -303,15 +301,14 @@ export default function Home() {
           <div className="container grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
             <div>
               <p className="pill w-fit">
-                <ShoppingBag className="mr-2 inline h-4 w-4" /> Shop preview
+                <ShoppingBag className="mr-2 inline h-4 w-4" /> The Collection
               </p>
               <h2 className="serif mt-4 text-5xl font-bold">
-                Aftercare with a premium finish.
+                What you use between appointments matters more.
               </h2>
               <p className="mt-4 text-white/65">
-                Sell braid care, accessories, and hair products with stock
-                badges, colour variants, cart capture, delivery details, and
-                order management.
+                Selected braid care, accessories, and hair products shipped
+                directly to your door.
               </p>
               <Link className="btn-gold mt-7" href="/shop">
                 Shop products
@@ -332,9 +329,9 @@ export default function Home() {
 
         <section className="section-pad">
           <div className="container">
-            <p className="pill w-fit">Live testimonials</p>
+            <p className="pill w-fit">The Inner Circle</p>
             <h2 className="serif mt-4 text-5xl font-bold">
-              Customer confidence, moderated by admin.
+              What Our Clients Say
             </h2>
             <div className="mt-10 grid gap-5 md:grid-cols-3">
               {(reviews as any[]).slice(0, 3).map(r => (
@@ -355,8 +352,7 @@ export default function Home() {
                 Join the Eby’s Place list.
               </h2>
               <p className="mt-3 text-white/65">
-                Get style openings, product drops, and premium braid care
-                guidance.
+                Get appointment openings and product updates from Eby’s Place.
               </p>
             </div>
             <form

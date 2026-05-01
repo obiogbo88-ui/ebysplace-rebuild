@@ -70,3 +70,7 @@
 - [x] Enlarge and embolden the Eby’s Place logo so it is readable in the header, hero, and key branded areas
 - [x] Remove the shaded overlay treatment from the “Luxury Pain-Free Braiding” hero write-up card while preserving text readability
 - [x] Verify whether the AI Try-On feature is usable now and fix any blocking issue found in the upload/style/generation flow
+
+- [x] Remove suggestive or overly promotional write-ups around aftercare/premium wording and reviews where they do not match the current Eby’s Place tone
+- [x] Realign the affected sections with the current Eby’s Place colours, style, spacing, and design treatment
+- [x] Re-run automated verification and save a new checkpoint for the copy and style cleanup
