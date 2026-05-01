@@ -113,3 +113,22 @@
 - [x] Move “Beauty in every strand” to the footer in the current Eby’s Place website style
 - [x] Replace any written Eby’s Place brand text in the requested areas with the enlarged logo only
 - [x] Preserve all booking, shop, AI Try-On, admin, payment, notification, navigation, and other site functionality while applying these visual-only updates
+- [x] Add admin control for shop product prices without changing unrelated shop behavior or styling
+- [x] Add admin control for service prices without changing booking flow, service content, or styling
+- [x] Preserve all other website content, styling, booking, AI Try-On, payments, notifications, navigation, and public flows while adding admin price controls
+- [x] Add frontend validation for admin product and service price fields so blank or invalid prices do not submit
+- [x] Add focused regression coverage for admin product-price and service-price controls plus unchanged public shop, booking, and service views
+- [x] Run tests, production build, and health checks after the admin price-control change
+- [x] Add all existing website braiding styles to the AI Try-On style choices without changing unrelated AI Try-On behaviour
+- [x] Preserve all other website content, styling, booking, shop, admin, payments, notifications, navigation, and public flows while adding AI Try-On braiding styles
+- [x] Add focused regression assertions for unchanged public Services page/view alongside the new admin price-control coverage
+- [x] Add broader source-backed regression coverage for unaffected booking, payment, notification, navigation, admin, and public flows impacted by the admin price-control and AI Try-On style updates
+- [x] Re-run tests, production build, and health checks after the added preservation regression coverage
+- [x] Confirm automated phone notifications should use both WhatsApp and SMS
+- [ ] Confirm which events should trigger phone notifications, such as bookings, payments, orders, reviews, contact forms, AI Try-On requests, and admin alerts
+- [ ] Add automated phone notification integration only for confirmed events without changing unrelated website behavior
+- [ ] Add focused tests and validation for automated phone notifications and unchanged existing notification flows
+- [ ] Keep SMS and WhatsApp phone-notification automation paused until the user explicitly resumes it with valid sender details
+- [ ] Do not change any unrelated site content, styling, booking, shop, admin, AI Try-On, payment, navigation, or existing notification behavior while the phone-notification work is paused
+- [x] Add the Eby’s Place write-up at the top with the smallest possible homepage content change
+- [x] Preserve all unrelated content, styling, booking, shop, admin, AI Try-On, payment, navigation, and notification behavior while adding the top write-up

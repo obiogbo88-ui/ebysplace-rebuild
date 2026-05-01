@@ -6,10 +6,20 @@ import { SiteFooter, SiteHeader } from "./Home";
 
 const styles = [
   "Knotless Braids",
-  "Boho Goddess Braids",
-  "Senegalese Twists",
-  "Invisible Locs",
+  "Box Braids",
+  "Goddess Braids",
   "Fulani Braids",
+  "Cornrows",
+  "Stitch Braids",
+  "Lemonade Braids",
+  "Boho Braids",
+  "Tribal Braids",
+  "Senegalese Twists",
+  "Passion Twists",
+  "Faux Locs",
+  "Butterfly Locs",
+  "Starter Locs",
+  "Kids Braids",
   "Kids Cornrows",
 ];
 

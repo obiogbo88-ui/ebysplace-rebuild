@@ -15,6 +15,10 @@ describe("strict visual-only change regression coverage", () => {
     expect(routersSource).toContain("createDepositCheckout: publicProcedure");
     expect(routersSource).toContain("deposit_type: \"non_refundable_20_gbp\"");
     expect(routersSource).toContain("products: publicProcedure.query(() => db.listProducts())");
+    expect(routersSource).toContain("services: publicProcedure.input");
+    expect(routersSource).toContain("db.listServices(input?.category)");
+    expect(routersSource).toContain("createOrder: publicProcedure.input(orderInput)");
+    expect(routersSource).toContain("const order = await db.createOrderWithItems(input)");
     expect(routersSource).toContain("uploadTryOnPhoto: publicProcedure");
     expect(routersSource).toContain("generateTryOn: publicProcedure");
     expect(routersSource).toContain("summary: adminProcedure.query(() => db.adminSummary())");
@@ -29,21 +33,30 @@ describe("strict visual-only change regression coverage", () => {
     const appSource = source("client/src/App.tsx");
     const homeSource = source("client/src/pages/Home.tsx");
     const bookingSource = source("client/src/pages/Booking.tsx");
+    const servicesSource = source("client/src/pages/Services.tsx");
     const shopSource = source("client/src/pages/Shop.tsx");
     const tryOnSource = source("client/src/pages/TryOn.tsx");
     const adminSource = source("client/src/pages/Admin.tsx");
 
     expect(appSource).toContain("window.scrollTo({ top: 0, left: 0, behavior: \"auto\" })");
+    expect(appSource).toContain("import Services from \"./pages/Services\";");
+    expect(appSource).toContain("<Route path=\"/services\" component={Services} />");
     expect(appSource).toContain("<Route path=\"/booking\" component={Booking} />");
     expect(appSource).toContain("<Route path=\"/shop\" component={Shop} />");
     expect(appSource).toContain("<Route path=\"/ai-try-on\" component={TryOn} />");
     expect(appSource).toContain("<Route path=\"/admin\" component={Admin} />");
+    expect(homeSource).toContain("href=\"/services\"");
     expect(homeSource).toContain("href=\"/booking\"");
     expect(homeSource).toContain("href=\"/shop\"");
     expect(homeSource).toContain("href=\"/ai-try-on\"");
     expect(bookingSource).toContain("trpc.public.createBooking.useMutation()");
     expect(bookingSource).toContain("trpc.public.createDepositCheckout.useMutation()");
     expect(bookingSource).toContain("window.open(session.checkoutUrl");
+    expect(servicesSource).toContain("trpc.public.services.useQuery({ category })");
+    expect(servicesSource).toContain("<SiteHeader />");
+    expect(servicesSource).toContain("<SiteFooter />");
+    expect(servicesSource).toContain("Services & pricing");
+    expect(servicesSource).toContain("Book This Style");
     expect(shopSource).toContain("trpc.public.products.useQuery()");
     expect(shopSource).toContain("Add ${readableColourLabel(selectedVariant)} to bag");
     expect(shopSource).toContain("trpc.public.createOrder.useMutation()");
@@ -51,5 +64,55 @@ describe("strict visual-only change regression coverage", () => {
     expect(tryOnSource).toContain("trpc.public.generateTryOn.useMutation()");
     expect(adminSource).toContain("trpc.admin.summary.useQuery");
     expect(adminSource).toContain("trpc.admin.lists.useQuery");
+  });
+
+  it("keeps admin product and service prices explicitly editable with validation", () => {
+    const adminSource = source("client/src/pages/Admin.tsx");
+    const routersSource = source("server/routers.ts");
+    const dbSource = source("server/db.ts");
+
+    expect(adminSource).toContain("Shop price (£)");
+    expect(adminSource).toContain("id={`product-price-${product.id}`}");
+    expect(adminSource).toContain("Save product price & SEO");
+    expect(adminSource).toContain("Service price (£)");
+    expect(adminSource).toContain("id={`price-${service.id}`}");
+    expect(adminSource).toContain("Save service price");
+    expect(adminSource).toContain("readAdminPrice");
+    expect(adminSource).toContain("must be a valid price of 0 or more");
+    expect(adminSource).toContain("updateProduct.mutate({ id: product.id");
+    expect(adminSource).toContain("updateService.mutate({ id: service.id");
+    expect(routersSource).toContain("updateService: adminProcedure.input");
+    expect(routersSource).toContain("priceFrom: z.string().regex");
+    expect(routersSource).toContain("updateProduct: adminProcedure.input");
+    expect(routersSource).toContain("price: z.string().regex");
+    expect(dbSource).toContain("export async function updateService");
+    expect(dbSource).toContain("export async function updateProduct");
+  });
+
+  it("offers all current website braiding-related styles in AI Try-On without changing the generation flow", () => {
+    const tryOnSource = source("client/src/pages/TryOn.tsx");
+    const websiteStyles = [
+      "Knotless Braids",
+      "Box Braids",
+      "Goddess Braids",
+      "Fulani Braids",
+      "Cornrows",
+      "Stitch Braids",
+      "Lemonade Braids",
+      "Boho Braids",
+      "Tribal Braids",
+      "Senegalese Twists",
+      "Passion Twists",
+      "Faux Locs",
+      "Butterfly Locs",
+      "Starter Locs",
+      "Kids Braids",
+      "Kids Cornrows",
+    ];
+
+    websiteStyles.forEach((style) => expect(tryOnSource).toContain(`\"${style}\"`));
+    expect(tryOnSource).toContain("trpc.public.uploadTryOnPhoto.useMutation()");
+    expect(tryOnSource).toContain("trpc.public.generateTryOn.useMutation()");
+    expect(tryOnSource).toContain("Preview braid styles while preserving your face.");
   });
 });

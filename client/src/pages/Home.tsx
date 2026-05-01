@@ -204,6 +204,11 @@ export default function Home() {
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.34)_45%,rgba(247,238,222,.08)),linear-gradient(180deg,rgba(247,238,222,.06),rgba(20,12,5,.72))]" />
             <div className="container relative z-10 py-20 md:py-28">
               <div className="max-w-3xl py-5 [text-shadow:0_3px_22px_rgba(0,0,0,.88)] sm:py-8 md:py-10">
+                <p className="mb-6 max-w-2xl text-sm font-semibold uppercase tracking-[0.28em] text-[#fff4cf] sm:text-base" data-home-top-writeup="ebys-place">
+                  Eby’s Place brings luxury pain-free braiding, protective styling,
+                  aftercare, and confidence-led beauty together in one calm Somerset
+                  salon experience.
+                </p>
                 <ul className="hero-slogan-list max-w-[20rem] list-none space-y-0 p-0 lg:max-w-[30rem]" aria-label="Eby’s Place pain-free promise" data-placement="lower-left-side-away-from-model-face">
                   <li>Zero pain.</li>
                   <li>Zero trauma.</li>

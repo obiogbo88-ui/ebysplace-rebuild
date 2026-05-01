@@ -105,6 +105,16 @@ export default function Admin() {
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const data = (lists.data || {}) as AdminListData;
 
+  function readAdminPrice(inputId: string, label: string) {
+    const rawValue = (document.getElementById(inputId) as HTMLInputElement).value;
+    const numericValue = Number(rawValue);
+    if (!rawValue.trim() || !Number.isFinite(numericValue) || numericValue < 0) {
+      toast.error(`${label} must be a valid price of 0 or more.`);
+      return null;
+    }
+    return numericValue.toFixed(2);
+  }
+
   async function handleServiceImageUpload(service: any, file?: File) {
     if (!file) return;
     try {
@@ -239,8 +249,8 @@ export default function Admin() {
 
         <section className="mt-8 grid gap-8 lg:grid-cols-2">
           <div id="products" className="lux-card">
-            <h2 className="serif text-3xl font-bold"><Package className="mr-2 inline text-primary" />Products, stock & SEO</h2>
-            <p className="mt-2 text-sm text-white/65">Edit product names, search-friendly slugs, SEO titles, and meta descriptions here. Changes refresh the admin dashboard and public shop after saving.</p>
+            <h2 className="serif text-3xl font-bold"><Package className="mr-2 inline text-primary" />Products, prices, stock & SEO</h2>
+            <p className="mt-2 text-sm text-white/65">Edit product names, prices, search-friendly slugs, SEO titles, and meta descriptions here. Changes refresh the admin dashboard and public shop after saving.</p>
             <div className="mt-5 grid gap-4">
               {(data.products || []).map((product: any) => (
                 <div className="rounded-2xl border border-white/10 p-4" key={product.id}>
@@ -250,6 +260,7 @@ export default function Admin() {
                   </div>
                   <div className="mt-4 grid gap-3">
                     <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Product name<input defaultValue={product.name} id={`product-name-${product.id}`} /></label>
+                    <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Shop price (£)<input type="number" min="0" step="0.01" defaultValue={product.price} id={`product-price-${product.id}`} /></label>
                     <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">SEO slug<input defaultValue={product.slug} id={`product-slug-${product.id}`} placeholder="premium-braiding-hair" /></label>
                     <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">SEO page title<input defaultValue={product.seoTitle || `${product.name} | Eby’s Place`} id={`product-seo-title-${product.id}`} /></label>
                     <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">SEO meta description<textarea defaultValue={product.seoDescription || product.description} id={`product-seo-description-${product.id}`} rows={3} /></label>
@@ -271,7 +282,7 @@ export default function Admin() {
                         ))}
                       </div>
                     </div>
-                    <button className="btn-gold py-2" onClick={() => updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value })}>Save product SEO</button>
+                    <button className="btn-gold py-2" onClick={() => { const price = readAdminPrice(`product-price-${product.id}`, "Shop price"); if (!price) return; updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, price, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value }); }}>Save product price & SEO</button>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                     <input type="number" min={0} defaultValue={product.stockQuantity} id={`stock-${product.id}`} />
@@ -284,8 +295,8 @@ export default function Admin() {
           </div>
 
           <div id="services" className="lux-card">
-            <h2 className="serif text-3xl font-bold"><Scissors className="mr-2 inline text-primary" />Services editor</h2>
-            <p className="mt-2 text-sm text-white/55">Upload a model image for each exact service name, or paste a storage URL manually.</p>
+            <h2 className="serif text-3xl font-bold"><Scissors className="mr-2 inline text-primary" />Services prices editor</h2>
+            <p className="mt-2 text-sm text-white/55">Edit service prices and duration, upload a model image for each exact service name, or paste a storage URL manually.</p>
             <div className="mt-5 grid gap-4">
               {(data.services || []).map((service: any) => (
                 <div className="rounded-2xl border border-white/10 p-4" key={service.id}>
@@ -296,9 +307,9 @@ export default function Admin() {
                     <div>
                       <div className="flex justify-between gap-3"><span>{service.name}<small className="block text-white/45">{service.category} · {service.duration}</small></span><b>£{service.priceFrom}</b></div>
                       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                        <input defaultValue={service.priceFrom} id={`price-${service.id}`} />
-                        <input defaultValue={service.duration} id={`duration-${service.id}`} />
-                        <button className="btn-dark py-2" onClick={() => updateService.mutate({ id: service.id, priceFrom: (document.getElementById(`price-${service.id}`) as HTMLInputElement).value, duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value, imageUrl: (document.getElementById(`service-image-${service.id}`) as HTMLInputElement).value })}>Save service</button>
+                        <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Service price (£)<input type="number" min="0" step="0.01" defaultValue={service.priceFrom} id={`price-${service.id}`} /></label>
+                        <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Duration<input defaultValue={service.duration} id={`duration-${service.id}`} /></label>
+                        <button className="btn-dark py-2" onClick={() => { const priceFrom = readAdminPrice(`price-${service.id}`, "Service price"); if (!priceFrom) return; updateService.mutate({ id: service.id, priceFrom, duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value, imageUrl: (document.getElementById(`service-image-${service.id}`) as HTMLInputElement).value }); }}>Save service price</button>
                       </div>
                       <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
                         <input id={`service-image-${service.id}`} defaultValue={service.imageUrl || ""} placeholder="Service image URL" />

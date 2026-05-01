@@ -35,6 +35,12 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(cssSource).toContain(".hero-slogan-list li:last-child");
   });
 
+  it("places the concise Eby’s Place write-up at the top of the homepage hero", () => {
+    expect(homeSource).toContain('data-home-top-writeup="ebys-place"');
+    expect(homeSource).toContain("Eby’s Place brings luxury pain-free braiding, protective styling,");
+    expect(homeSource.indexOf('data-home-top-writeup="ebys-place"')).toBeLessThan(homeSource.indexOf("hero-slogan-list"));
+  });
+
   it("uses enlarged clickable logo-only branding in the requested header and footer areas", () => {
     expect(homeSource).toContain('href="/"');
     expect(homeSource).toContain("h-24 w-auto");
