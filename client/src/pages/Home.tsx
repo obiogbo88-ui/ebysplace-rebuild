@@ -43,7 +43,7 @@ export function SiteHeader() {
           <img
             src={HEADER_LOGO_SRC}
             alt="Eby’s Place"
-            className="h-24 w-[16rem] object-contain mix-blend-multiply sm:h-28 sm:w-[22rem] lg:h-24 lg:w-[18rem] xl:w-[20rem]"
+            className="h-20 w-[14rem] object-contain mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]"
           />
         </Link>
 
@@ -120,7 +120,7 @@ export function SiteFooter() {
             <img
               src={HEADER_LOGO_SRC}
               alt="Eby’s Place"
-              className="h-36 w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-40"
+              className="h-[7.5rem] w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-[8.5rem]"
             />
           </div>
           <p className="mt-3 text-sm font-medium text-[#4f3720]">

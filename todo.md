@@ -153,3 +153,5 @@
 - [x] Do not tamper with any other content, styling, layout, navigation, booking, shop, admin, AI Try-On, payment, notification, or other functionality while applying this logo-only update
 - [x] Change only the AI Try-On pop-up message text colour from white to black
 - [x] Do not tamper with any other content, styling, layout, navigation, booking, shop, admin, logo, payment, notification, or other functionality while applying the AI Try-On pop-up text-colour update
+- [x] Reduce only the upper header logo and lower logo moderately while keeping both readable
+- [x] Do not tamper with any other content, styling, layout, navigation, booking, shop, admin, AI Try-On, payment, notification, or other functionality while applying the logo-only size reduction

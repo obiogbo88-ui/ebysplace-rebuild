@@ -52,11 +52,13 @@ describe("Eby’s Place landing page visual refinements", () => {
   it("uses the supplied stretched and blended clickable top logo while matching the lower logo colour", () => {
     expect(homeSource).toContain('href="/"');
     expect(homeSource).toContain("src={HEADER_LOGO_SRC}");
-    expect(homeSource).toContain("h-24 w-[16rem] object-contain mix-blend-multiply sm:h-28 sm:w-[22rem] lg:h-24 lg:w-[18rem] xl:w-[20rem]");
+    expect(homeSource).toContain("h-20 w-[14rem] object-contain mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]");
+    expect(homeSource).not.toContain("h-24 w-[16rem] object-contain mix-blend-multiply sm:h-28 sm:w-[22rem] lg:h-24 lg:w-[18rem] xl:w-[20rem]");
     expect(homeSource).not.toContain("h-52 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
+    expect(homeSource).not.toContain("h-36 w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-40");
     expect(homeSource).not.toContain("sm:h-56 lg:h-60");
     expect(homeSource).not.toContain("translate-y-8");
-    expect(homeSource).toContain("h-36 w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-40");
+    expect(homeSource).toContain("h-[7.5rem] w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-[8.5rem]");
     expect(homeSource).toContain("src={HEADER_LOGO_SRC}");
     expect(homeSource).toContain("alt=\"Eby’s Place\"");
     expect(homeSource).not.toContain("text-base font-extrabold uppercase tracking-[0.14em]");
