@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { MovingReviewStrip } from "@/components/ReviewWidgets";
 import { trpc } from "@/lib/trpc";
 import {
   CalendarDays,
@@ -31,7 +32,7 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-primary/12 bg-[#090806]/58 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-primary/20 bg-[#fbf6ea]/90 shadow-[0_12px_36px_rgba(74,45,18,.08)] backdrop-blur-md">
       <div className="container flex h-20 items-center justify-between gap-4">
         <Link
           href="/"
@@ -68,7 +69,7 @@ export function SiteHeader() {
           </Link>
           <button
             type="button"
-            className="rounded-full border border-primary/25 bg-black/45 p-3 text-primary"
+            className="rounded-full border border-primary/25 bg-[#fff8e8]/80 p-3 text-primary shadow-sm"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(value => !value)}
@@ -84,7 +85,7 @@ export function SiteHeader() {
 
       {menuOpen ? (
         <nav
-          className="border-t border-primary/12 bg-[#090806]/95 px-5 py-5 lg:hidden"
+          className="border-t border-primary/18 bg-[#fbf6ea]/96 px-5 py-5 lg:hidden"
           aria-label="Mobile navigation"
         >
           <div className="container grid gap-3 p-0">
@@ -114,7 +115,7 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-primary/20 bg-black/80 py-12">
+    <footer className="border-t border-primary/20 bg-[#fbf6ea]/92 py-12">
       <div className="container grid gap-8 md:grid-cols-4">
         <div>
           <img
@@ -333,14 +334,14 @@ export default function Home() {
             <h2 className="serif mt-4 text-5xl font-bold">
               What Our Clients Say
             </h2>
-            <div className="mt-10 grid gap-5 md:grid-cols-3">
-              {(reviews as any[]).slice(0, 3).map(r => (
-                <blockquote className="lux-card" key={r.id ?? r.customerName}>
-                  <div className="text-primary">★★★★★</div>
-                  <p className="mt-4 text-white/70">“{r.reviewText}”</p>
-                  <footer className="mt-5 font-bold">{r.customerName}</footer>
-                </blockquote>
-              ))}
+            <MovingReviewStrip reviews={reviews as any[]} />
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link className="btn-gold" href="/leave-review">
+                Leave a review
+              </Link>
+              <Link className="btn-dark" href="/reviews">
+                Read reviews
+              </Link>
             </div>
           </div>
         </section>

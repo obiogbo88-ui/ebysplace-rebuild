@@ -221,6 +221,23 @@ describe("Eby’s Place platform business rules", () => {
     }
   });
 
+  it("lists approved reviews and accepts public review submissions for moderation", async () => {
+    const caller = appRouter.createCaller(publicContext());
+
+    const approvedReviews = await caller.public.reviews();
+    expect(approvedReviews.length).toBeGreaterThanOrEqual(3);
+    expect(approvedReviews.every((review) => review.status === "approved")).toBe(true);
+
+    const submitted = await caller.public.submitReview({
+      customerName: "Review Client",
+      rating: 5,
+      reviewText: "Eby’s Place gave me a lovely appointment experience.",
+    });
+
+    expect(submitted.status).toBe("pending");
+    expect(submitted.id).toBeGreaterThan(0);
+  });
+
   it("uses a signed absolute storage URL when generating AI Try-On previews from uploaded customer photos", async () => {
     const caller = appRouter.createCaller(publicContext());
 

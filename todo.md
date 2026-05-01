@@ -74,3 +74,10 @@
 - [x] Remove suggestive or overly promotional write-ups around aftercare/premium wording and reviews where they do not match the current Eby’s Place tone
 - [x] Realign the affected sections with the current Eby’s Place colours, style, spacing, and design treatment
 - [x] Re-run automated verification and save a new checkpoint for the copy and style cleanup
+
+- [x] Lighten the website background and section treatments to better match the current Eby’s Place site while preserving gold branding and readability
+- [x] Re-run automated verification and save a new checkpoint for the lighter background refinement
+
+- [x] Add a current-site-style moving reviews strip that scrolls approved reviews across the screen from end to end
+- [x] Add a shareable public review form link customers can use directly to submit a review
+- [x] Re-run automated verification and save a new checkpoint for the reviews carousel and shareable review form updates
