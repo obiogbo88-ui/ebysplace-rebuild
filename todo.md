@@ -132,3 +132,5 @@
 - [ ] Do not change any unrelated site content, styling, booking, shop, admin, AI Try-On, payment, navigation, or existing notification behavior while the phone-notification work is paused
 - [x] Add the Eby’s Place write-up at the top with the smallest possible homepage content change
 - [x] Preserve all unrelated content, styling, booking, shop, admin, AI Try-On, payment, navigation, and notification behavior while adding the top write-up
+- [x] Remove only the newly added top hero write-up from the homepage
+- [x] Add the text “EBYSPLACE” between the top logo and Book button without changing any other content, styling, navigation, booking, shop, admin, AI Try-On, payment, or notification behavior
