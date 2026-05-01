@@ -138,3 +138,7 @@
 - [x] Preserve all other content, layout flow, navigation, booking, shop, admin, AI Try-On, payment, and notification behavior while enlarging the top logo
 - [x] Enlarge only the top header logo to match the size of the larger logo below
 - [x] Do not change any other content, styling, layout flow, navigation, booking, shop, admin, AI Try-On, payment, or notification behavior while matching the top logo size
+- [x] Enlarge only the top header logo further so it is clearly readable and visually matches the larger lower logo
+- [x] Do not tamper with any other content, styling, layout flow, navigation, booking, shop, admin, AI Try-On, payment, or notification behavior while enlarging the top logo further
+- [x] Remove the added top-logo transform and use only top-logo size classes for the final enlargement
+- [x] Revalidate that no unrelated content, styling, layout flow, navigation, booking, shop, admin, AI Try-On, payment, or notification behavior was changed by the corrected logo-only adjustment
