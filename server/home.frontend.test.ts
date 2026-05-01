@@ -24,20 +24,27 @@ const policiesSource = readFileSync(
 );
 
 describe("Eby’s Place landing page visual refinements", () => {
-  it("keeps the hero photo free of the duplicated logo overlay and places the slogans in the homepage hero", () => {
+  it("keeps the hero photo free of brand-card overlays and places the pain-free promise as a styled list", () => {
     expect(homeSource).not.toContain("Eby’s Place luxury pain-free braiding");
-    expect(homeSource).toContain("Beauty in every strand");
-    expect(homeSource).toContain("Zero pain. Zero trauma. Just perfection.");
-    expect(homeSource.indexOf("Beauty in every strand")).toBeLessThan(homeSource.indexOf("Luxury Pain-Free Braiding"));
+    expect(homeSource).not.toContain("rounded-[2rem] border border-[#f0d889]/55 bg-[#f7eede]/82");
+    expect(homeSource).toContain("hero-slogan-list");
+    expect(homeSource).toContain("data-placement=\"lower-left-side-away-from-model-face\"");
+    expect(homeSource).toContain("<li>Zero pain.</li>");
+    expect(homeSource).toContain("<li>Zero trauma.</li>");
+    expect(homeSource).toContain("<li>Just perfection.</li>");
+    expect(cssSource).toContain(".hero-slogan-list li:last-child");
   });
 
-  it("uses a larger clickable logo without written header brand text or the old top slogan", () => {
+  it("uses enlarged clickable logo-only branding in the requested header and footer areas", () => {
     expect(homeSource).toContain('href="/"');
-    expect(homeSource).toContain("sm:h-24");
-    expect(homeSource).toContain("sm:h-32");
+    expect(homeSource).toContain("h-24 w-auto");
+    expect(homeSource).toContain("sm:h-28");
+    expect(homeSource).toContain("h-36 w-auto");
+    expect(homeSource).toContain("sm:h-40");
     expect(homeSource).toContain("alt=\"Eby’s Place\"");
     expect(homeSource).not.toContain("text-base font-extrabold uppercase tracking-[0.14em]");
     expect(homeSource).not.toContain("mt-1 max-w-[13rem]");
+    expect(homeSource).not.toContain("<span className=\"text-2xl font-extrabold uppercase tracking-[0.14em] text-[#2a1a0b]\">");
     expect(homeSource).toContain("[filter:brightness(.55)_sepia(1)_saturate(1.35)]");
   });
 
@@ -46,6 +53,16 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("rgba(247,238,222,.72)");
     expect(cssSource).toContain("text-[#2a1a0b]/82");
     expect(homeSource).toContain("text-white sm:text-lg");
+  });
+
+  it("adds the requested WhatsApp shortcut and moves the beauty slogan to the footer", () => {
+    expect(homeSource).toContain('href="https://wa.me/447864585110"');
+    expect(homeSource).toContain("Chat with Eby’s Place on WhatsApp");
+    expect(homeSource).toContain("MessageCircle");
+    expect(homeSource).toContain("bg-[#25D366]");
+    expect(homeSource).toContain("Beauty in every strand");
+    expect(homeSource.lastIndexOf("Beauty in every strand")).toBeGreaterThan(homeSource.indexOf("export function SiteFooter"));
+    expect(homeSource.indexOf("Beauty in every strand")).toBe(homeSource.lastIndexOf("Beauty in every strand"));
   });
 
   it("adds a backend-managed final About Us story section with a small side CEO portrait", () => {

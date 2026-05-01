@@ -10,11 +10,12 @@ import {
   ShoppingBag,
   Sparkles,
   Wand2,
+  MessageCircle,
   X,
 } from "lucide-react";
 import { useState } from "react";
 
-const LOGO_SRC = "/manus-storage/ebysplace-logo-gold-transparent_bde2c104.png";
+const LOGO_SRC = "/manus-storage/ebysplace-logo-gold-cropped_721223da.png";
 const LANDING_VIDEO_SRC = "/manus-storage/ebysplace_header_video_64d5fea4.mp4";
 
 const navLinks = [
@@ -32,16 +33,16 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#d8bd74]/55 bg-[#f5ead7]/92 shadow-[0_10px_36px_rgba(66,42,18,.12)] backdrop-blur-xl">
-      <div className="container flex h-24 items-center justify-between gap-4">
+      <div className="container flex h-28 items-center justify-between gap-4">
         <Link
           href="/"
-          className="flex items-center py-1"
+            className="flex items-center py-1"
           aria-label="Eby’s Place home"
         >
           <img
             src={LOGO_SRC}
             alt="Eby’s Place"
-            className="h-20 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)] [filter:brightness(.55)_sepia(1)_saturate(1.35)] sm:h-24"
+            className="h-24 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)] [filter:brightness(.55)_sepia(1)_saturate(1.35)] sm:h-28"
           />
         </Link>
 
@@ -118,15 +119,11 @@ export function SiteFooter() {
             <img
               src={LOGO_SRC}
               alt="Eby’s Place"
-              className="h-28 w-auto object-contain drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] [filter:brightness(.55)_sepia(1)_saturate(1.35)] sm:h-32"
+              className="h-36 w-auto object-contain drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] [filter:brightness(.55)_sepia(1)_saturate(1.35)] sm:h-40"
             />
-            <span className="text-2xl font-extrabold uppercase tracking-[0.14em] text-[#2a1a0b]">
-              Eby’s Place
-            </span>
           </div>
           <p className="mt-3 text-sm font-medium text-[#4f3720]">
-            Zero pain. Zero trauma. Just perfection. Luxury pain-free braiding
-            in Somerset, UK.
+            Luxury pain-free braiding in Somerset, UK.
           </p>
         </div>
         <div>
@@ -162,6 +159,11 @@ export function SiteFooter() {
             beautiful braids without scalp trauma.
           </p>
         </div>
+      </div>
+      <div className="container mt-12 border-t border-[#d8bd74]/40 pt-8">
+        <p className="serif max-w-5xl text-5xl font-bold uppercase leading-none tracking-[-0.05em] text-[#24170d] sm:text-7xl md:text-8xl">
+          Beauty in every strand
+        </p>
       </div>
     </footer>
   );
@@ -202,14 +204,11 @@ export default function Home() {
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.34)_45%,rgba(247,238,222,.08)),linear-gradient(180deg,rgba(247,238,222,.06),rgba(20,12,5,.72))]" />
             <div className="container relative z-10 py-20 md:py-28">
               <div className="max-w-3xl py-5 [text-shadow:0_3px_22px_rgba(0,0,0,.88)] sm:py-8 md:py-10">
-                <div className="inline-flex max-w-full flex-col gap-1 rounded-[2rem] border border-[#f0d889]/55 bg-[#f7eede]/82 px-5 py-3 text-[#4a3014] shadow-[0_20px_55px_rgba(42,26,11,.22)] backdrop-blur-md sm:px-6">
-                  <span className="text-xs font-extrabold uppercase tracking-[0.28em] text-[#8a641e]">
-                    Beauty in every strand
-                  </span>
-                  <span className="serif text-lg font-bold leading-snug text-[#2a1a0b] sm:text-2xl">
-                    Zero pain. Zero trauma. Just perfection.
-                  </span>
-                </div>
+                <ul className="hero-slogan-list max-w-[20rem] list-none space-y-0 p-0 lg:max-w-[30rem]" aria-label="Eby’s Place pain-free promise" data-placement="lower-left-side-away-from-model-face">
+                  <li>Zero pain.</li>
+                  <li>Zero trauma.</li>
+                  <li>Just perfection.</li>
+                </ul>
                 <h1 className="serif mt-7 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl">
                   Luxury Pain-Free Braiding in <br className="sm:hidden" />
                   <span className="gold-text">Somerset, UK</span>
@@ -439,6 +438,15 @@ export default function Home() {
           </div>
         </section>
       </main>
+      <a
+        href="https://wa.me/447864585110"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-5 right-5 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_16px_38px_rgba(37,211,102,.36)] transition hover:-translate-y-1 hover:shadow-[0_20px_46px_rgba(37,211,102,.48)] focus:outline-none focus:ring-4 focus:ring-[#25D366]/35"
+        aria-label="Chat with Eby’s Place on WhatsApp"
+      >
+        <MessageCircle className="h-7 w-7" aria-hidden="true" />
+      </a>
       <SiteFooter />
     </div>
   );

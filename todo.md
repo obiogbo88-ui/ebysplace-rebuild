@@ -107,3 +107,9 @@
 - [x] Ensure clicking the header logo returns visitors to the homepage without changing any other navigation or flows
 - [x] Add focused regression evidence for unchanged key flows/content after the header/policy/slogan edits, covering booking, shop, AI try-on, admin, notifications, and unchanged navigation areas
 
+- [x] Add a WhatsApp shortcut button connected to 07864585110 without changing existing flows
+- [x] Remove the hero slogan card from the model’s face and place “Zero pain. Zero trauma. Just perfection.” beside the model without covering her face
+- [x] Format “Zero pain. Zero trauma. Just perfection.” as a list matching the current Eby’s Place website style as closely as possible
+- [x] Move “Beauty in every strand” to the footer in the current Eby’s Place website style
+- [x] Replace any written Eby’s Place brand text in the requested areas with the enlarged logo only
+- [x] Preserve all booking, shop, AI Try-On, admin, payment, notification, navigation, and other site functionality while applying these visual-only updates

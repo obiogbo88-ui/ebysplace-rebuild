@@ -58,7 +58,10 @@
 .media-portrait img,
 .media-portrait video { width: 100%; height: 100%; object-fit: cover; }
 .hero-video-reference { min-height: calc(100vh - 5rem); }
-@media (max-width: 767px) { .hero-video-reference { min-height: calc(100svh - 5rem); } }
+.hero-slogan-list { font-family: 'Cormorant Garamond', Georgia, serif; line-height: .86; letter-spacing: -.035em; }
+.hero-slogan-list li { font-size: clamp(3rem, 7vw, 6rem); font-weight: 700; color: #fff8ed; text-shadow: 0 6px 26px rgba(0,0,0,.72); }
+.hero-slogan-list li:last-child { color: #d9bd76; font-style: italic; font-weight: 600; letter-spacing: -.055em; }
+@media (max-width: 767px) { .hero-video-reference { min-height: calc(100svh - 5rem); } .hero-slogan-list li { font-size: clamp(2.7rem, 14vw, 4.5rem); } }
 
 .lux-card .text-white,
 .lux-card .text-white\/45,
