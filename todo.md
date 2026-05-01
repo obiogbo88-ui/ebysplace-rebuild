@@ -66,9 +66,9 @@
 - [x] Run and document explicit final responsive verification across home, services, booking, gallery, and admin at mobile, tablet, and desktop breakpoints after the last asset and UI changes
 - [x] Match the homepage video block dimensions, service image dimensions, gallery image dimensions, and admin upload preview dimensions to the current Eby’s Place website as closely as possible while preserving responsive behaviour
 - [x] Make the overall website background a bit lighter while preserving the Eby’s Place black-and-gold brand feel and readable contrast
-- [ ] Make selecting a booking style advance the customer through a clear staged flow until deposit payment
-- [ ] Enlarge and embolden the Eby’s Place logo so it is readable in the header, hero, and key branded areas
-- [ ] Remove the shaded overlay treatment from the “Luxury Pain-Free Braiding” hero write-up card while preserving text readability
+- [x] Make selecting a booking style advance the customer through a clear staged flow until deposit payment
+- [x] Enlarge and embolden the Eby’s Place logo so it is readable in the header, hero, and key branded areas
+- [x] Remove the shaded overlay treatment from the “Luxury Pain-Free Braiding” hero write-up card while preserving text readability
 - [x] Verify whether the AI Try-On feature is usable now and fix any blocking issue found in the upload/style/generation flow
 
 - [x] Fix AI Try-On image-reading failures for prepared customer photos, including HEIC/iPhone conversion support, signed image URLs for generation, high-contrast readable errors, tests, build, and health verification
