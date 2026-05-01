@@ -261,41 +261,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="section-pad bg-[#fbf3e6] text-[#2f2014]">
-          <div className="container grid items-center gap-10 lg:grid-cols-[1fr_.9fr]">
-            <div className="relative order-2 overflow-hidden rounded-[2rem] border border-[#d8bd74]/45 bg-[#fffaf1] p-4 shadow-[0_28px_70px_rgba(66,42,18,.16)] lg:order-1">
-              {aboutSection.imageUrl ? (
-                <img className="aspect-[4/5] w-full rounded-[1.5rem] object-cover" src={aboutSection.imageUrl} alt="Founder or CEO of Eby’s Place" />
-              ) : (
-                <div className="flex aspect-[4/5] w-full flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[#c8a95a]/70 bg-[#f5ead7] p-8 text-center">
-                  <Crown className="h-12 w-12 text-[#9f7a22]" />
-                  <p className="mt-5 text-sm font-bold uppercase tracking-[.3em] text-[#8a5f1c]">CEO portrait space</p>
-                  <p className="mt-3 max-w-xs text-sm font-semibold leading-relaxed text-[#4f3720]">Upload the founder image from the admin dashboard to complete this About Us story panel.</p>
-                </div>
-              )}
-              <div className="absolute bottom-8 left-8 right-8 rounded-2xl border border-white/70 bg-white/88 p-4 shadow-lg backdrop-blur">
-                <p className="text-xs font-black uppercase tracking-[.28em] text-[#9f7a22]">Luxury braid care</p>
-                <p className="mt-1 text-sm font-semibold text-[#4f3720]">Built from skill, patience, and protective styling expertise.</p>
-              </div>
-            </div>
-            <div className="order-1 lg:order-2">
-              <p className="pill w-fit border-[#d8bd74]/70 bg-white text-[#6b4618]">{aboutSection.eyebrow || "About Eby’s Place"}</p>
-              <h2 className="serif mt-5 text-4xl font-bold leading-tight text-[#2f2014] md:text-6xl">{aboutSection.title || "From Passion to Power"}</h2>
-              <div className="mt-5 h-1 w-24 rounded-full bg-[#c8a95a]" />
-              <p className="mt-6 text-base font-semibold leading-8 text-[#4f3720] md:text-lg">{aboutSection.body}</p>
-              <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                {[["Gentle", "low-tension styling"], ["Premium", "clean salon finish"], ["Protected", "hairline-first care"]].map(([label, detail]) => (
-                  <div className="rounded-2xl border border-[#d8bd74]/50 bg-white p-4 shadow-sm" key={label}>
-                    <b className="serif text-2xl text-[#9f7a22]">{label}</b>
-                    <p className="mt-1 text-sm font-semibold text-[#5c4228]">{detail}</p>
-                  </div>
-                ))}
-              </div>
-              {aboutSection.ctaHref && <Link className="btn-gold mt-8" href={aboutSection.ctaHref}>{aboutSection.ctaLabel || "Explore Eby’s Place"}</Link>}
-            </div>
-          </div>
-        </section>
-
         <section className="section-pad">
           <div className="container">
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -372,18 +337,20 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="section-pad">
+        <section className="section-pad overflow-hidden bg-[#efe0c7]/78 text-[#24170d]">
           <div className="container">
-            <p className="pill w-fit">Live testimonials</p>
-            <h2 className="serif mt-4 text-4xl font-bold leading-tight md:text-5xl">
+            <p className="pill w-fit border-[#d8bd74]/70 bg-white text-[#5b3a12]">Live testimonials</p>
+            <h2 className="serif mt-4 text-4xl font-bold leading-tight text-[#24170d] md:text-5xl">
               Customer confidence, moderated by admin.
             </h2>
-            <div className="mt-10 grid gap-5 md:grid-cols-3">
-              {(reviews as any[]).slice(0, 3).map(r => (
-                <blockquote className="lux-card" key={r.id ?? r.customerName}>
+          </div>
+          <div className="review-marquee mt-10" aria-label="Moving Eby’s Place customer reviews">
+            <div className="review-marquee-track">
+              {[...(reviews as any[]).slice(0, 6), ...(reviews as any[]).slice(0, 6)].map((r, index) => (
+                <blockquote className="lux-card review-marquee-card" key={`${r.id ?? r.customerName}-${index}`}>
                   <div className="text-primary">★★★★★</div>
-                  <p className="mt-4 text-white/70">“{r.reviewText}”</p>
-                  <footer className="mt-5 font-bold">{r.customerName}</footer>
+                  <p className="mt-4 text-sm font-semibold leading-7 text-[#3a2615]">“{r.reviewText}”</p>
+                  <footer className="mt-5 font-black text-[#24170d]">{r.customerName}</footer>
                 </blockquote>
               ))}
             </div>
@@ -420,6 +387,44 @@ export default function Home() {
                 Sign up
               </button>
             </form>
+          </div>
+        </section>
+
+        <section className="section-pad bg-[#f3e7d2] text-[#24170d]">
+          <div className="container">
+            <div className="rounded-[2rem] border border-[#d2b164]/55 bg-[#fbf2e3]/94 p-5 shadow-[0_24px_70px_rgba(74,48,20,.16)] sm:p-7 lg:p-9">
+              <div className="grid items-center gap-7 lg:grid-cols-[minmax(0,1fr)_13rem]">
+                <div className="min-w-0">
+                  <p className="pill w-fit border-[#d8bd74]/70 bg-white text-[#5b3a12]">{aboutSection.eyebrow || "About Eby’s Place"}</p>
+                  <h2 className="serif mt-5 text-4xl font-bold leading-tight text-[#24170d] md:text-6xl">{aboutSection.title || "From Passion to Power"}</h2>
+                  <div className="mt-5 h-1 w-24 rounded-full bg-[#b88b2d]" />
+                  <p className="mt-6 max-w-3xl text-base font-semibold leading-8 text-[#3a2615] md:text-lg">{aboutSection.body}</p>
+                  <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                    {[["Gentle", "low-tension styling"], ["Premium", "clean salon finish"], ["Protected", "hairline-first care"]].map(([label, detail]) => (
+                      <div className="rounded-2xl border border-[#d8bd74]/55 bg-white/86 p-4 shadow-sm" key={label}>
+                        <b className="serif text-2xl text-[#7d571b]">{label}</b>
+                        <p className="mt-1 text-sm font-semibold text-[#442d18]">{detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {aboutSection.ctaHref && <Link className="btn-gold mt-8" href={aboutSection.ctaHref}>{aboutSection.ctaLabel || "Explore Eby’s Place"}</Link>}
+                </div>
+                <aside className="justify-self-start lg:justify-self-end" aria-label="Eby’s Place CEO portrait">
+                  <div className="relative w-36 overflow-hidden rounded-[1.5rem] border border-[#d8bd74]/70 bg-[#efe0c7] p-2 shadow-[0_18px_48px_rgba(74,48,20,.2)] sm:w-44 lg:w-52">
+                    {aboutSection.imageUrl ? (
+                      <img className="aspect-[4/5] w-full rounded-[1.15rem] object-cover" src={aboutSection.imageUrl} alt="Founder or CEO of Eby’s Place" />
+                    ) : (
+                      <div className="flex aspect-[4/5] w-full flex-col items-center justify-center rounded-[1.15rem] border border-dashed border-[#b88b2d]/75 bg-[#f7eddc] p-4 text-center">
+                        <Crown className="h-8 w-8 text-[#8a641e]" />
+                        <p className="mt-3 text-[0.68rem] font-black uppercase tracking-[.22em] text-[#6f4b16]">CEO portrait</p>
+                        <p className="mt-2 text-xs font-semibold leading-relaxed text-[#3a2615]">Upload from admin.</p>
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-3 max-w-44 text-xs font-bold uppercase tracking-[.2em] text-[#6f4b16]">Luxury braid care</p>
+                </aside>
+              </div>
+            </div>
           </div>
         </section>
       </main>

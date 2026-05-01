@@ -64,8 +64,11 @@ describe("product SEO administration and responsive page safeguards", () => {
     const routerSource = readSource("server/routers.ts");
 
     expect(homeSource).toContain("From Passion to Power");
-    expect(homeSource).toContain("CEO portrait space");
-    expect(homeSource).toContain("lg:grid-cols-[1fr_.9fr]");
+    expect(homeSource).toContain("Eby’s Place CEO portrait");
+    expect(homeSource).toContain("lg:grid-cols-[minmax(0,1fr)_13rem]");
+    expect(homeSource).toContain("sm:w-44 lg:w-52");
+    expect(homeSource.indexOf("Join the Eby’s Place list.")).toBeLessThan(homeSource.lastIndexOf("From Passion to Power"));
+    expect(homeSource).toContain("review-marquee-track");
     expect(homeSource).toContain("md:text-6xl");
     expect(adminSource).toContain("Upload About Us CEO image");
     expect(adminSource).toContain("CEO / founder image URL");

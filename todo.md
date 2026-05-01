@@ -86,3 +86,9 @@
 - [x] Add concise About Us copy that tells the Eby’s Place story from passion to power
 - [x] Leave a dedicated CEO image space in About Us that can be uploaded and managed from the admin dashboard/backend
 - [x] Ensure the About Us section and CEO image upload workflow are responsive on mobile and desktop
+- [x] Make the About Us CEO image a small side portrait rather than a large image block
+- [x] Move the About Us section to the final homepage section near the bottom of the page
+- [x] Make the review strip move continuously from one end to the other
+- [x] Adjust the background colour to match the current ebysplace.com brand background more closely
+- [x] Improve font contrast/readability across public pages and admin without changing automation or flows
+- [x] Re-verify mobile and desktop responsiveness across public pages and the admin dashboard after visual-only changes

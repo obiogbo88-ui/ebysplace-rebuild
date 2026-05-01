@@ -35,11 +35,14 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("text-white sm:text-lg");
   });
 
-  it("adds a backend-managed About Us story section with CEO image space", () => {
+  it("adds a backend-managed final About Us story section with a small side CEO portrait", () => {
     expect(homeSource).toContain("websiteSections.useQuery");
     expect(homeSource).toContain("about_us");
     expect(homeSource).toContain("From Passion to Power");
-    expect(homeSource).toContain("CEO portrait space");
+    expect(homeSource).toContain("Eby’s Place CEO portrait");
+    expect(homeSource).toContain("lg:grid-cols-[minmax(0,1fr)_13rem]");
+    expect(homeSource.indexOf("Join the Eby’s Place list.")).toBeLessThan(homeSource.lastIndexOf("From Passion to Power"));
+    expect(homeSource).toContain("review-marquee-track");
     expect(adminSource).toContain("Upload About Us CEO image");
     expect(adminSource).toContain("uploadWebsiteSectionImage");
   });
