@@ -1,0 +1,5 @@
+# Current Eby’s Place Reference Dimension Notes
+
+The current public Eby’s Place homepage uses a **full viewport hero video**. At a 1280 × 1100 browser viewport, the hero section and video measured approximately **1274 px wide × 1100 px high**, with `object-cover` and full-bleed positioning. This means the rebuilt homepage should not use a small framed video card if the goal is to match the current Eby’s Place experience; it should use a tall, full-bleed or hero-scale video treatment.
+
+The current public Services page uses tall portrait service cards. At a 1280 px desktop viewport, visible service cards measured approximately **393 px wide × 500 px high**, and the image inside each card measured approximately **391 px wide × 498 px high**. This is an aspect ratio of about **0.785**, equivalent to a tall portrait card close to **4:5**. The rebuilt Services, homepage service previews, gallery cards, and upload previews should therefore use a consistent 4:5 portrait media frame rather than wide landscape frames.

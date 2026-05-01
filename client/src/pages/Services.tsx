@@ -74,7 +74,7 @@ export default function Services() {
           ))}
         </div>
 
-        <section className="mt-10 rounded-[2rem] border border-primary/25 bg-black/30 p-6 md:p-8">
+        <section className="mt-10 rounded-[2rem] border border-primary/25 bg-white/[0.045] p-6 md:p-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-sm font-bold uppercase tracking-[.24em] text-primary">
@@ -111,12 +111,13 @@ export default function Services() {
                   key={service.id ?? service.slug}
                 >
                   {service.imageUrl ? (
-                    <img
-                      src={service.imageUrl}
-                      alt={`${service.name} hairstyle by Eby’s Place`}
-                      className="h-64 w-full object-cover"
-                      loading="lazy"
-                    />
+                    <div className="media-portrait overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
+                      <img
+                        src={service.imageUrl}
+                        alt={`${service.name} hairstyle by Eby’s Place`}
+                        loading="lazy"
+                      />
+                    </div>
                   ) : null}
                   <div className="flex flex-1 flex-col p-6">
                     <span className="pill w-fit text-xs">
@@ -125,7 +126,7 @@ export default function Services() {
                     <h3 className="serif mt-4 text-3xl font-bold">
                       {service.name}
                     </h3>
-                  <p className="mt-3 flex-1 text-white/65">
+                    <p className="mt-3 flex-1 text-white/68">
                     {service.description}
                   </p>
                   <div className="mt-6 grid gap-3 border-t border-white/10 pt-5 sm:grid-cols-2">

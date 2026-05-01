@@ -64,3 +64,5 @@
 
 - [x] Run a full final test pass after all requested branding, media, upload, Stripe, and notification work is complete, including automated tests, TypeScript/build checks, server health, and responsive/status validation
 - [x] Run and document explicit final responsive verification across home, services, booking, gallery, and admin at mobile, tablet, and desktop breakpoints after the last asset and UI changes
+- [x] Match the homepage video block dimensions, service image dimensions, gallery image dimensions, and admin upload preview dimensions to the current Eby’s Place website as closely as possible while preserving responsive behaviour
+- [x] Make the overall website background a bit lighter while preserving the Eby’s Place black-and-gold brand feel and readable contrast

@@ -31,7 +31,7 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-primary/20 bg-black/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-primary/20 bg-[#171009]/82 backdrop-blur-xl">
       <div className="container flex h-20 items-center justify-between gap-4">
         <Link
           href="/"
@@ -81,7 +81,7 @@ export function SiteHeader() {
 
       {menuOpen ? (
         <nav
-          className="border-t border-primary/15 bg-black/95 px-5 py-5 lg:hidden"
+          className="border-t border-primary/15 bg-[#171009]/95 px-5 py-5 lg:hidden"
           aria-label="Mobile navigation"
         >
           <div className="container grid gap-3 p-0">
@@ -164,93 +164,56 @@ export default function Home() {
     <div className="luxury-shell">
       <SiteHeader />
       <main>
-        <section className="container grid min-h-[720px] items-center gap-10 py-16 md:py-20 lg:grid-cols-[1.02fr_.98fr]">
-          <div>
-            <div className="mb-7 inline-flex rounded-full bg-[radial-gradient(circle,rgba(245,221,156,.22),rgba(245,221,156,.07)_42%,transparent_72%)] p-2">
-              <img
-                src={LOGO_SRC}
-                alt="Eby’s Place luxury pain-free braiding"
-                className="h-24 w-auto object-contain mix-blend-screen drop-shadow-[0_0_34px_rgba(245,221,156,.52)] sm:h-28"
-              />
-            </div>
-            <span className="pill inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 leading-6">
-              <Crown className="h-4 w-4 shrink-0" /> <span>Zero pain. Zero trauma. Just perfection.</span>
-            </span>
-            <h1 className="serif mt-7 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl">
-              Luxury Pain-Free Braiding in <br className="sm:hidden" />
-              <span className="gold-text">Somerset, UK</span>
-            </h1>
-            <p className="mt-7 max-w-2xl text-base leading-8 text-white/76 sm:text-lg">
-              You do not fear bad braids. You fear the pain after: the
-              headaches, the tight edges, the thinning hairlines, and the
-              uncomfortable first nights. Eby’s Place is built for clients who
-              want beautiful, long-lasting protective styling without
-              sacrificing comfort, confidence, or scalp health.
-            </p>
-            <div className="mt-9 flex flex-wrap gap-4">
-              <Link className="btn-gold" href="/booking">
-                <CalendarDays className="mr-2 h-5 w-5" /> Book with £20 deposit
-              </Link>
-              <Link className="btn-dark" href="/ai-try-on">
-                <Wand2 className="mr-2 h-5 w-5" /> Try a braid style
-              </Link>
-            </div>
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              <div className="lux-card p-4">
-                <b className="text-primary">Zero tension</b>
-                <p className="text-sm text-white/60">
-                  Gentle, scalp-conscious technique.
-                </p>
-              </div>
-              <div className="lux-card p-4">
-                <b className="text-primary">Maximum longevity</b>
-                <p className="text-sm text-white/60">
-                  Neat styles designed to last.
-                </p>
-              </div>
-              <div className="lux-card p-4">
-                <b className="text-primary">Total comfort</b>
-                <p className="text-sm text-white/60">
-                  A luxury experience from booking to aftercare.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="lux-card relative overflow-hidden p-3 sm:p-4">
-            <div
-              className="relative min-h-[390px] w-full overflow-hidden rounded-[1.2rem] border border-primary/25 bg-black text-center sm:min-h-[520px]"
+        <section className="relative isolate overflow-hidden">
+          <div className="hero-video-reference relative flex items-center">
+            <video
+              className="absolute inset-0 h-full w-full object-cover"
+              src={LANDING_VIDEO_SRC}
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster="/manus-storage/ebysplace_service_knotless_braids_7dbbea62.png"
               aria-label="Eby’s Place landing video"
-            >
-              <video
-                className="absolute inset-0 h-full w-full object-cover opacity-90"
-                src={LANDING_VIDEO_SRC}
-                autoPlay
-                muted
-                loop
-                playsInline
-                poster="/manus-storage/ebysplace_service_knotless_braids_7dbbea62.png"
-              />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_16%,rgba(245,221,156,.2),transparent_28%),linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.64)_72%,rgba(0,0,0,.9))]" />
-              <div className="absolute left-4 top-4 rounded-full bg-black/45 px-3 py-2 text-[10px] font-bold uppercase tracking-[.18em] text-primary backdrop-blur sm:left-8 sm:top-8 sm:px-4 sm:text-xs sm:tracking-[.22em]">
-                Current Eby’s Place video
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(18,13,8,.86),rgba(18,13,8,.54)_48%,rgba(18,13,8,.2)),linear-gradient(180deg,rgba(18,13,8,.18),rgba(18,13,8,.78))]" />
+            <div className="container relative z-10 py-20 md:py-28">
+              <div className="max-w-3xl rounded-[2rem] border border-primary/24 bg-[#171009]/58 p-5 shadow-[0_30px_100px_rgba(0,0,0,.34)] backdrop-blur-sm sm:p-8 md:p-10">
+                <div className="mb-6 inline-flex rounded-full bg-[radial-gradient(circle,rgba(245,221,156,.22),rgba(245,221,156,.07)_42%,transparent_72%)] p-2">
+                  <img
+                    src={LOGO_SRC}
+                    alt="Eby’s Place luxury pain-free braiding"
+                    className="h-24 w-auto object-contain mix-blend-screen drop-shadow-[0_0_34px_rgba(245,221,156,.52)] sm:h-28"
+                  />
+                </div>
+                <span className="pill inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 leading-6">
+                  <Crown className="h-4 w-4 shrink-0" /> <span>Zero pain. Zero trauma. Just perfection.</span>
+                </span>
+                <h1 className="serif mt-7 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl">
+                  Luxury Pain-Free Braiding in <br className="sm:hidden" />
+                  <span className="gold-text">Somerset, UK</span>
+                </h1>
+                <p className="mt-7 max-w-2xl text-base leading-8 text-white/82 sm:text-lg">
+                  You do not fear bad braids. You fear the pain after: the
+                  headaches, the tight edges, the thinning hairlines, and the
+                  uncomfortable first nights. Eby’s Place is built for clients who
+                  want beautiful, long-lasting protective styling without
+                  sacrificing comfort, confidence, or scalp health.
+                </p>
+                <div className="mt-9 flex flex-wrap gap-4">
+                  <Link className="btn-gold" href="/booking">
+                    <CalendarDays className="mr-2 h-5 w-5" /> Book with £20 deposit
+                  </Link>
+                  <Link className="btn-dark bg-[#171009]/55" href="/ai-try-on">
+                    <Wand2 className="mr-2 h-5 w-5" /> Try a braid style
+                  </Link>
+                </div>
               </div>
-              <div className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border border-primary/35 bg-black/55 text-primary shadow-[0_0_40px_rgba(245,221,156,.2)] backdrop-blur sm:right-8 sm:top-8 sm:h-14 sm:w-14">
-                <Play className="h-5 w-5 fill-current" />
-              </div>
-            </div>
-            <div className="absolute bottom-5 left-5 right-5 rounded-3xl border border-primary/30 bg-black/75 p-4 backdrop-blur sm:bottom-8 sm:left-8 sm:right-8 sm:p-5">
-              <p className="text-sm uppercase tracking-[.25em] text-primary">
-                Eby’s Place experience
-              </p>
-              <h3 className="serif text-2xl font-bold sm:text-3xl">
-                Elegant, clean, professional, beauty-focused.
-              </h3>
             </div>
           </div>
         </section>
 
-        <section className="section-pad bg-black/25">
+        <section className="section-pad bg-white/[0.045]">
           <div className="container grid gap-6 md:grid-cols-3">
             <div className="lux-card">
               <Heart className="text-primary" />
@@ -303,26 +266,37 @@ export default function Home() {
             </div>
             <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
               {(styles as any[]).map(s => (
-                <div className="lux-card" key={s.id ?? s.slug}>
-                  <span className="text-xs font-bold uppercase tracking-[.22em] text-primary">
-                    {s.badge}
-                  </span>
-                  <h3 className="serif mt-4 text-3xl font-bold">{s.name}</h3>
-                  <p className="mt-3 text-sm text-white/60">{s.description}</p>
-                  <div className="mt-5 flex justify-between text-sm">
-                    <span>{s.duration}</span>
-                    <b className="text-primary">From £{s.priceFrom}</b>
+                <article className="lux-card flex flex-col overflow-hidden p-0" key={s.id ?? s.slug}>
+                  {s.imageUrl ? (
+                    <div className="media-portrait overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
+                      <img
+                        src={s.imageUrl}
+                        alt={`${s.name} hairstyle by Eby’s Place`}
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null}
+                  <div className="flex flex-1 flex-col p-6">
+                    <span className="text-xs font-bold uppercase tracking-[.22em] text-primary">
+                      {s.badge}
+                    </span>
+                    <h3 className="serif mt-4 text-3xl font-bold">{s.name}</h3>
+                    <p className="mt-3 flex-1 text-sm text-white/66">{s.description}</p>
+                    <div className="mt-5 flex justify-between text-sm">
+                      <span>{s.duration}</span>
+                      <b className="text-primary">From £{s.priceFrom}</b>
+                    </div>
+                    <Link className="btn-gold mt-5 w-full" href="/booking">
+                      Book This Style
+                    </Link>
                   </div>
-                  <Link className="btn-gold mt-5 w-full" href="/booking">
-                    Book This Style
-                  </Link>
-                </div>
+                </article>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="section-pad bg-black/30">
+        <section className="section-pad bg-white/[0.04]">
           <div className="container grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
             <div>
               <p className="pill w-fit">

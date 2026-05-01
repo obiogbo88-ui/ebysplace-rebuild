@@ -241,9 +241,9 @@ export default function Admin() {
             <div className="mt-5 grid gap-4">
               {(data.services || []).map((service: any) => (
                 <div className="rounded-2xl border border-white/10 p-4" key={service.id}>
-                  <div className="grid gap-4 md:grid-cols-[96px_1fr]">
-                    <div className="h-24 overflow-hidden rounded-2xl border border-primary/20 bg-black/30">
-                      {service.imageUrl ? <img src={service.imageUrl} alt={service.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-white/35">No image</div>}
+                  <div className="grid gap-4 md:grid-cols-[128px_1fr]">
+                    <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]">
+                      {service.imageUrl ? <img src={service.imageUrl} alt={service.name} /> : <div className="flex h-full items-center justify-center text-xs text-white/35">No image</div>}
                     </div>
                     <div>
                       <div className="flex justify-between gap-3"><span>{service.name}<small className="block text-white/45">{service.category} · {service.duration}</small></span><b>£{service.priceFrom}</b></div>
@@ -282,7 +282,7 @@ export default function Admin() {
                 <input className="sr-only" type="file" accept="image/*" disabled={uploadGalleryImage.isPending} onChange={(event) => handleGalleryImageUpload(event.target.files?.[0])} />
               </label>
               <input required placeholder="S3 image URL" value={gallery.imageUrl} onChange={(event) => setGallery({ ...gallery, imageUrl: event.target.value })} />
-              {gallery.imageUrl && <img src={gallery.imageUrl} alt="Gallery preview" className="h-36 w-full rounded-2xl object-cover" />}
+              {gallery.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={gallery.imageUrl} alt="Gallery preview" /></div>}
               <input required placeholder="Alt text" value={gallery.altText} onChange={(event) => setGallery({ ...gallery, altText: event.target.value })} />
               <button className="btn-gold" disabled={addGallery.isPending}>{addGallery.isPending ? "Saving…" : "Add image"}</button>
             </form>
