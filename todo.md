@@ -136,3 +136,5 @@
 - [x] Add the text “EBYSPLACE” between the top logo and Book button without changing any other content, styling, navigation, booking, shop, admin, AI Try-On, payment, or notification behavior
 - [x] Enlarge only the top header logo so it is more visible and readable
 - [x] Preserve all other content, layout flow, navigation, booking, shop, admin, AI Try-On, payment, and notification behavior while enlarging the top logo
+- [x] Enlarge only the top header logo to match the size of the larger logo below
+- [x] Do not change any other content, styling, layout flow, navigation, booking, shop, admin, AI Try-On, payment, or notification behavior while matching the top logo size
