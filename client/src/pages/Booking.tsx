@@ -153,7 +153,7 @@ export default function Booking() {
 
         <form onSubmit={submit} className="lux-card mt-8 grid gap-6">
           {step === 0 ? (
-            <section className="grid gap-5">
+            <section className="booking-style-panel grid gap-5">
               <div>
                 <h2 className="serif text-3xl font-bold text-primary">
                   Choose your style
@@ -165,6 +165,7 @@ export default function Booking() {
               <label>
                 Service
                 <select
+                  className="booking-style-select"
                   value={form.serviceName}
                   onChange={event => {
                     set("serviceName", event.target.value);
@@ -184,7 +185,7 @@ export default function Booking() {
                 </select>
               </label>
               {selectedService ? (
-                <div className="rounded-3xl border border-primary/25 bg-primary/10 p-5 text-white/78">
+                <div className="booking-selected-service rounded-3xl border border-primary/25 bg-primary/10 p-5 text-[#3a2615]">
                   <strong className="text-primary">Selected:</strong>{" "}
                   {selectedService.name} from £{selectedService.priceFrom}. You can
                   change this before payment.

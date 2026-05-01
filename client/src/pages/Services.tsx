@@ -29,29 +29,21 @@ export default function Services() {
       <SiteHeader />
       <main className="container section-pad">
         <p className="pill w-fit">Services & pricing</p>
-        <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_.72fr] lg:items-end">
-          <div>
-            <h1 className="serif text-4xl font-bold leading-tight sm:text-5xl md:text-7xl">
-              Full Eby’s Place{" "}
-              <span className="gold-text">braiding catalogue.</span>
-            </h1>
-            <p className="mt-5 max-w-3xl text-lg leading-8 text-white/68">
-              Choose from the full Somerset, UK service menu. Every booking
-              clearly presents the £20 non-refundable Stripe deposit before
-              checkout, and every style is framed around comfort, longevity, and
-              scalp respect.
-            </p>
-          </div>
-          <div className="lux-card bg-black/35">
-            <Sparkles className="text-primary" />
-            <h2 className="serif mt-3 text-3xl font-bold">
-              Zero pain. Zero trauma. Just perfection.
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-white/65">
-              Prices are listed as starting prices because length, size, hair
-              density, and add-ons may affect the final appointment quote.
-            </p>
-          </div>
+        <div className="mt-4 max-w-4xl">
+          <h1 className="serif text-4xl font-bold leading-tight sm:text-5xl md:text-7xl">
+            Full Eby’s Place{" "}
+            <span className="gold-text">braiding catalogue.</span>
+          </h1>
+          <p className="mt-5 max-w-3xl text-lg leading-8 text-white/68">
+            Choose from the full Somerset, UK service menu. Every booking
+            clearly presents the £20 non-refundable Stripe deposit before
+            checkout, and every style is framed around comfort, longevity, and
+            scalp respect.
+          </p>
+          <p className="mt-4 max-w-3xl text-sm font-semibold leading-6 text-[#5a3d1e]">
+            Prices are listed as starting prices because length, size, hair
+            density, and add-ons may affect the final appointment quote.
+          </p>
         </div>
 
         <div

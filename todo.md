@@ -92,3 +92,10 @@
 - [x] Adjust the background colour to match the current ebysplace.com brand background more closely
 - [x] Improve font contrast/readability across public pages and admin without changing automation or flows
 - [x] Re-verify mobile and desktop responsiveness across public pages and the admin dashboard after visual-only changes
+- [x] Move “Zero pain. Zero trauma. Just perfection.” out of the hero card and place it under Eby’s Place in the header
+- [x] Replace hard-to-read white text on affected pages with readable high-contrast font colours only
+- [x] Fix the mobile “Choose your style” booking panel so selected-service text fits on screen and remains readable
+- [x] Validate tests/build/status after these visual-only fixes without changing automation or flows
+- [x] Make site buttons and footer links open target pages from the top without changing destination flows
+- [x] Add concise UK-oriented policy links/pages in the footer, including shopping and returns policies
+- [x] Keep all other website content, automation, AI, booking, payment, admin, and notification flows unchanged while applying these requested changes

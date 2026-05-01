@@ -60,24 +60,35 @@
 .hero-video-reference { min-height: calc(100vh - 5rem); }
 @media (max-width: 767px) { .hero-video-reference { min-height: calc(100svh - 5rem); } }
 
+.lux-card .text-white,
 .lux-card .text-white\/45,
 .lux-card .text-white\/55,
 .lux-card .text-white\/58,
 .lux-card .text-white\/60,
 .lux-card .text-white\/65,
 .lux-card .text-white\/66,
+.lux-card .text-white\/68,
 .lux-card .text-white\/70,
 .lux-card .text-white\/72,
+.lux-card .text-white\/75,
+.lux-card .text-white\/78,
 .section-pad .text-white\/55,
 .section-pad .text-white\/60,
 .section-pad .text-white\/65,
 .section-pad .text-white\/66,
+.section-pad .text-white\/68,
 .section-pad .text-white\/70,
 .section-pad .text-white\/72,
+.section-pad .text-white\/75,
+.section-pad .text-white\/78,
 .bg-background .text-white\/55,
 .bg-background .text-white\/60,
 .bg-background .text-white\/65,
-.bg-background .text-white\/70 { color: #4a3014; }
+.bg-background .text-white\/68,
+.bg-background .text-white\/70,
+.bg-background .text-white\/72,
+.bg-background .text-white\/75,
+.bg-background .text-white\/78 { color: #4a3014; }
 .lux-card .text-white\/35 { color: #6f4b16; }
 .lux-card .bg-white\/\[0\.04\],
 .lux-card .bg-black\/20 { background: rgba(255,250,241,.78); }
@@ -91,3 +102,10 @@
 .lux-card h3.text-white:not(.bg-black\/50 h3) { color: #24170d; }
 .lux-card .bg-black\/50 .text-white,
 .lux-card .bg-black\/50 .text-white\/70 { color: rgba(255,255,255,.9); }
+.booking-style-select { width: 100%; max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+.booking-selected-service { color: #3a2615; overflow-wrap: anywhere; word-break: normal; }
+@media (max-width: 640px) {
+  .booking-style-panel { padding: 1.35rem; }
+  .booking-style-select { font-size: .95rem; line-height: 1.35; padding-inline: 1rem; }
+  .booking-selected-service { font-size: .96rem; line-height: 1.65; }
+}
