@@ -134,3 +134,5 @@
 - [x] Preserve all unrelated content, styling, booking, shop, admin, AI Try-On, payment, navigation, and notification behavior while adding the top write-up
 - [x] Remove only the newly added top hero write-up from the homepage
 - [x] Add the text “EBYSPLACE” between the top logo and Book button without changing any other content, styling, navigation, booking, shop, admin, AI Try-On, payment, or notification behavior
+- [x] Enlarge only the top header logo so it is more visible and readable
+- [x] Preserve all other content, layout flow, navigation, booking, shop, admin, AI Try-On, payment, and notification behavior while enlarging the top logo

@@ -42,7 +42,7 @@ export function SiteHeader() {
           <img
             src={LOGO_SRC}
             alt="Eby’s Place"
-            className="h-24 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)] [filter:brightness(.55)_sepia(1)_saturate(1.35)] sm:h-28"
+            className="h-28 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)] [filter:brightness(.55)_sepia(1)_saturate(1.35)] sm:h-32 lg:h-36"
           />
         </Link>
 

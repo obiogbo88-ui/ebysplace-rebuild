@@ -46,8 +46,9 @@ describe("Eby’s Place landing page visual refinements", () => {
 
   it("uses enlarged clickable logo-only branding in the requested header and footer areas", () => {
     expect(homeSource).toContain('href="/"');
-    expect(homeSource).toContain("h-24 w-auto");
-    expect(homeSource).toContain("sm:h-28");
+    expect(homeSource).toContain("h-28 w-auto");
+    expect(homeSource).toContain("sm:h-32");
+    expect(homeSource).toContain("lg:h-36");
     expect(homeSource).toContain("h-36 w-auto");
     expect(homeSource).toContain("sm:h-40");
     expect(homeSource).toContain("alt=\"Eby’s Place\"");
