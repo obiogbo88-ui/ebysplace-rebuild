@@ -125,7 +125,7 @@ describe("Eby’s Place platform business rules", () => {
     expect(result.depositCurrency).toBe("GBP");
     expect(result.message).toContain("non-refundable deposit");
     expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
-      title: "New Eby’s Place booking request",
+      title: "Eby’s Place – New booking request",
       content: expect.stringContaining("Knotless Braids"),
     }));
   });
@@ -193,7 +193,7 @@ describe("Eby’s Place platform business rules", () => {
       await expect(response.json()).resolves.toEqual({ received: true });
       expect(markPaidSpy).toHaveBeenCalledWith("cs_live_mock", "pi_live_mock");
       expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
-        title: "Eby’s Place deposit paid",
+        title: "Eby’s Place – Deposit paid",
         content: expect.stringContaining("Goddess Braids"),
       }));
     } finally {

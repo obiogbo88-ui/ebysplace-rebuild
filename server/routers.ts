@@ -113,7 +113,7 @@ export const appRouter = router({
     createBooking: publicProcedure.input(bookingInput).mutation(async ({ input }) => {
       const booking = await db.createBooking({ ...input, status: "pending", depositStatus: "unpaid" });
       await notifyOwnerSafely(
-        "New Eby’s Place booking request",
+        "Eby’s Place – New booking request",
         [
           `A customer has submitted a booking request and needs to complete the £20 Stripe deposit.`,
           `Booking ID: ${booking.id}`,

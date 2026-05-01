@@ -88,3 +88,9 @@
 - [x] Fix menu list items that still appear white against the light header/menu background
 - [x] Fix footer write-ups and links that still appear white against the light footer background
 - [x] Re-run automated verification and save a new checkpoint for the targeted menu and footer contrast fix
+
+- [x] Apply the same light-theme readable text adjustments across the admin area so menu items, cards, tables, forms, and footers are visible
+- [x] Check whether website notifications can show Eby’s Place branding instead of Manus and update supported app-level notification titles/copy where possible
+- [x] Re-run automated verification and save a new checkpoint for the admin contrast and notification branding updates
+- [x] Refine the admin overview panel styling so shadows, cards, spacing, and cream-and-gold treatment match the landing page more closely
+- [x] Ensure the website is fully ready by running the final automated tests, production build, TypeScript/status validation, and saving a readiness checkpoint

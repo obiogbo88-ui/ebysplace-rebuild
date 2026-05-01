@@ -27,9 +27,9 @@ type AdminListData = {
 
 function Stat({ label, value, icon: Icon }: { label: string; value: number | string; icon: any }) {
   return (
-    <div className="lux-card bg-card">
+    <div className="admin-stat-card">
       <Icon className="text-primary" />
-      <p className="mt-4 text-sm text-white/55">{label}</p>
+      <p className="mt-4 text-sm text-muted-foreground">{label}</p>
       <b className="mt-1 block text-3xl text-primary">{value}</b>
     </div>
   );
@@ -121,18 +121,18 @@ export default function Admin() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-background text-foreground">
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+      <div className="admin-shell min-h-screen text-foreground">
+        <div className="admin-overview-panel mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="pill w-fit">Role-based backend</p>
             <h1 className="serif mt-3 text-5xl font-bold gold-text">Eby’s Place Admin Dashboard</h1>
-            <p className="mt-3 max-w-3xl text-white/60">
+            <p className="mt-3 max-w-3xl text-muted-foreground">
               Manage bookings, services, ecommerce orders, stock, gallery assets, moderated reviews, AI try-on records,
               homepage content, uploaded service media, and performance indicators from one secure area.
             </p>
           </div>
-          <div className="lux-card py-4">
-            <p className="text-sm text-white/55">Signed in as</p>
+          <div className="admin-mini-card py-4">
+            <p className="text-sm text-muted-foreground">Signed in as</p>
             <b>{user?.name || user?.email || "Admin"}</b>
             <p className="text-xs text-primary">{user?.role}</p>
           </div>
@@ -141,7 +141,7 @@ export default function Admin() {
         {summary.error && (
           <div className="lux-card border-destructive/50">
             <h2 className="font-bold text-destructive">Admin access required</h2>
-            <p className="mt-2 text-white/65">
+            <p className="mt-2 text-muted-foreground">
               This dashboard is protected by role-based access control. Sign in with the site owner account or promote the
               user role to admin.
             </p>
@@ -166,8 +166,8 @@ export default function Admin() {
               </thead>
               <tbody>
                 {(data.bookings || []).map((booking: any) => (
-                  <tr className="border-t border-white/10" key={booking.id}>
-                    <td className="py-3">{booking.clientName}<small className="block text-white/45">{booking.clientEmail}</small></td>
+                  <tr className="border-t border-border" key={booking.id}>
+                    <td className="py-3">{booking.clientName}<small className="block text-muted-foreground/70">{booking.clientEmail}</small></td>
                     <td>{booking.serviceName}</td>
                     <td>{booking.appointmentDate} {booking.appointmentTime}</td>
                     <td>{booking.depositStatus}</td>
@@ -188,15 +188,15 @@ export default function Admin() {
           <h2 className="serif text-3xl font-bold">Shop orders and delivery</h2>
           <div className="mt-5 grid gap-4">
             {(data.orders || []).length ? data.orders!.map((order: any) => (
-              <div className="rounded-2xl border border-white/10 p-4" key={order.id}>
+              <div className="rounded-2xl border border-border p-4" key={order.id}>
                 <div className="flex flex-wrap justify-between gap-3">
-                  <div><b>{order.customerName}</b><p className="text-sm text-white/55">{order.customerEmail} · {order.addressLine1}, {order.city}, {order.postcode}</p></div>
+                  <div><b>{order.customerName}</b><p className="text-sm text-muted-foreground">{order.customerEmail} · {order.addressLine1}, {order.city}, {order.postcode}</p></div>
                   <select value={order.status} onChange={(event) => updateOrder.mutate({ id: order.id, status: event.target.value as any })}>
                     <option value="draft">Draft</option><option value="pending_payment">Pending payment</option><option value="paid">Paid</option><option value="fulfilling">Fulfilling</option><option value="shipped">Shipped</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
                   </select>
                 </div>
               </div>
-            )) : <p className="text-white/55">No shop orders yet.</p>}
+            )) : <p className="text-muted-foreground">No shop orders yet.</p>}
           </div>
         </section>
 
@@ -204,11 +204,11 @@ export default function Admin() {
           <h2 className="serif text-3xl font-bold">Reviews moderator</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {(data.reviews || []).map((review: any) => (
-              <div className="rounded-2xl border border-white/10 p-4" key={review.id}>
+              <div className="rounded-2xl border border-border p-4" key={review.id}>
                 <div className="text-primary">{"★".repeat(review.rating)}</div>
-                <p className="mt-2 text-white/70">{review.reviewText}</p>
+                <p className="mt-2 text-foreground/70">{review.reviewText}</p>
                 <b className="mt-3 block">{review.customerName}</b>
-                <p className="text-xs text-white/45">Status: {review.status}</p>
+                <p className="text-xs text-muted-foreground">Status: {review.status}</p>
                 <div className="mt-4 flex gap-2">
                   <button className="btn-gold py-2" onClick={() => moderate.mutate({ id: review.id, status: "approved" })}>Approve</button>
                   <button className="btn-dark py-2" onClick={() => moderate.mutate({ id: review.id, status: "rejected" })}>Reject</button>
@@ -223,8 +223,8 @@ export default function Admin() {
             <h2 className="serif text-3xl font-bold"><Package className="mr-2 inline text-primary" />Products & stock</h2>
             <div className="mt-5 grid gap-3">
               {(data.products || []).map((product: any) => (
-                <div className="rounded-2xl border border-white/10 p-4" key={product.id}>
-                  <div className="flex justify-between gap-3"><span>{product.name}<small className="block text-white/45">{product.stockStatus}</small></span><b>£{product.price}</b></div>
+                <div className="rounded-2xl border border-border p-4" key={product.id}>
+                  <div className="flex justify-between gap-3"><span>{product.name}<small className="block text-muted-foreground/70">{product.stockStatus}</small></span><b>£{product.price}</b></div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                     <input type="number" min={0} defaultValue={product.stockQuantity} id={`stock-${product.id}`} />
                     <select defaultValue={product.stockStatus} id={`stock-status-${product.id}`}><option value="in_stock">In stock</option><option value="low_stock">Low stock</option><option value="out_of_stock">Out of stock</option></select>
@@ -237,16 +237,16 @@ export default function Admin() {
 
           <div id="services" className="lux-card">
             <h2 className="serif text-3xl font-bold"><Scissors className="mr-2 inline text-primary" />Services editor</h2>
-            <p className="mt-2 text-sm text-white/55">Upload a model image for each exact service name, or paste a storage URL manually.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Upload a model image for each exact service name, or paste a storage URL manually.</p>
             <div className="mt-5 grid gap-4">
               {(data.services || []).map((service: any) => (
-                <div className="rounded-2xl border border-white/10 p-4" key={service.id}>
+                <div className="rounded-2xl border border-border p-4" key={service.id}>
                   <div className="grid gap-4 md:grid-cols-[128px_1fr]">
-                    <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]">
-                      {service.imageUrl ? <img src={service.imageUrl} alt={service.name} /> : <div className="flex h-full items-center justify-center text-xs text-white/35">No image</div>}
+                    <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-muted">
+                      {service.imageUrl ? <img src={service.imageUrl} alt={service.name} /> : <div className="flex h-full items-center justify-center text-xs text-muted-foreground/70">No image</div>}
                     </div>
                     <div>
-                      <div className="flex justify-between gap-3"><span>{service.name}<small className="block text-white/45">{service.category} · {service.duration}</small></span><b>£{service.priceFrom}</b></div>
+                      <div className="flex justify-between gap-3"><span>{service.name}<small className="block text-muted-foreground/70">{service.category} · {service.duration}</small></span><b>£{service.priceFrom}</b></div>
                       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                         <input defaultValue={service.priceFrom} id={`price-${service.id}`} />
                         <input defaultValue={service.duration} id={`duration-${service.id}`} />
@@ -271,7 +271,7 @@ export default function Admin() {
           <div id="gallery" className="lux-card">
             <Images className="text-primary" />
             <h2 className="serif mt-3 text-3xl font-bold">Gallery uploader</h2>
-            <p className="mt-2 text-sm text-white/55">Upload a new gallery image, confirm the generated URL, then save it with the right category and alt text.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Upload a new gallery image, confirm the generated URL, then save it with the right category and alt text.</p>
             <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); addGallery.mutate({ ...gallery, category: gallery.category as any }); }}>
               <input required placeholder="Image title" value={gallery.title} onChange={(event) => setGallery({ ...gallery, title: event.target.value })} />
               <select value={gallery.category} onChange={(event) => setGallery({ ...gallery, category: event.target.value })}>
@@ -282,7 +282,7 @@ export default function Admin() {
                 <input className="sr-only" type="file" accept="image/*" disabled={uploadGalleryImage.isPending} onChange={(event) => handleGalleryImageUpload(event.target.files?.[0])} />
               </label>
               <input required placeholder="S3 image URL" value={gallery.imageUrl} onChange={(event) => setGallery({ ...gallery, imageUrl: event.target.value })} />
-              {gallery.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={gallery.imageUrl} alt="Gallery preview" /></div>}
+              {gallery.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-muted"><img src={gallery.imageUrl} alt="Gallery preview" /></div>}
               <input required placeholder="Alt text" value={gallery.altText} onChange={(event) => setGallery({ ...gallery, altText: event.target.value })} />
               <button className="btn-gold" disabled={addGallery.isPending}>{addGallery.isPending ? "Saving…" : "Add image"}</button>
             </form>
@@ -306,7 +306,7 @@ export default function Admin() {
           <div id="users" className="lux-card">
             <Users className="text-primary" />
             <h2 className="serif mt-3 text-3xl font-bold">Admin users</h2>
-            <p className="mt-3 text-white/60">
+            <p className="mt-3 text-muted-foreground">
               Authentication uses Manus OAuth with admin role protection on every backend dashboard procedure. Promote
               additional admins by updating the user role in the database management panel.
             </p>

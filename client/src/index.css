@@ -271,3 +271,52 @@
   color: #fff8e8 !important;
 }
 .luxury-shell .hero-video-reference .text-white\/82 { color: rgba(255, 255, 255, .84) !important; }
+
+/* Admin refinement: align the overview surface and stat panels with the public landing page’s light cream-and-gold visual language. */
+.admin-shell {
+  border-radius: 2rem;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(205, 166, 95, .20), transparent 32%),
+    linear-gradient(180deg, rgba(255, 250, 240, .92) 0%, rgba(239, 225, 199, .62) 48%, rgba(255, 250, 240, .96) 100%);
+  padding: clamp(1rem, 2vw, 1.5rem);
+  color: #24180d;
+}
+
+.admin-overview-panel {
+  border: 1px solid rgba(157, 112, 49, .22);
+  border-radius: 2rem;
+  background: linear-gradient(145deg, rgba(255, 250, 240, .90), rgba(238, 222, 190, .72));
+  box-shadow: 0 20px 58px rgba(74, 45, 18, .10), inset 0 1px 0 rgba(255, 255, 255, .78);
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.admin-stat-card,
+.admin-mini-card {
+  border: 1px solid rgba(157, 112, 49, .20);
+  border-radius: 1.45rem;
+  background: rgba(255, 250, 240, .80);
+  box-shadow: 0 16px 42px rgba(74, 45, 18, .09), inset 0 1px 0 rgba(255, 255, 255, .74);
+  color: #24180d;
+  padding: 1.5rem;
+  backdrop-filter: blur(12px);
+}
+
+.admin-stat-card {
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(198, 160, 93, .34);
+  box-shadow: 0 22px 56px rgba(74, 45, 18, .12), inset 0 1px 0 rgba(255, 255, 255, .78);
+}
+
+.admin-shell .lux-card {
+  background: rgba(255, 250, 240, .82);
+  border-color: rgba(157, 112, 49, .20);
+  box-shadow: 0 18px 45px rgba(74, 45, 18, .10), inset 0 1px 0 rgba(255, 255, 255, .72);
+}
+
+.admin-shell .rounded-2xl.border {
+  background: rgba(255, 250, 240, .38);
+}
