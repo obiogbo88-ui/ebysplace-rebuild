@@ -41,8 +41,11 @@ export function SiteHeader() {
           <img
             src={LOGO_SRC}
             alt="Eby’s Place"
-            className="h-12 w-auto object-contain mix-blend-screen drop-shadow-[0_0_18px_rgba(245,221,156,.42)] sm:h-14"
+            className="h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_28px_rgba(245,221,156,.78)] contrast-125 saturate-125 sm:h-20"
           />
+          <span className="serif hidden text-2xl font-black leading-none tracking-wide text-primary drop-shadow-[0_0_18px_rgba(245,221,156,.55)] min-[420px]:block sm:text-3xl">
+            Eby’s Place
+          </span>
         </Link>
 
         <nav
@@ -117,7 +120,7 @@ export function SiteFooter() {
           <img
             src={LOGO_SRC}
             alt="Eby’s Place"
-            className="h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_18px_rgba(245,221,156,.36)]"
+            className="h-20 w-auto object-contain mix-blend-screen drop-shadow-[0_0_26px_rgba(245,221,156,.68)] contrast-125 saturate-125"
           />
           <p className="mt-3 text-sm text-white/65">
             Zero pain. Zero trauma. Just perfection. Luxury pain-free braiding
@@ -178,12 +181,12 @@ export default function Home() {
             />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(18,13,8,.86),rgba(18,13,8,.54)_48%,rgba(18,13,8,.2)),linear-gradient(180deg,rgba(18,13,8,.18),rgba(18,13,8,.78))]" />
             <div className="container relative z-10 py-20 md:py-28">
-              <div className="max-w-3xl rounded-[2rem] border border-primary/24 bg-[#171009]/58 p-5 shadow-[0_30px_100px_rgba(0,0,0,.34)] backdrop-blur-sm sm:p-8 md:p-10">
-                <div className="mb-6 inline-flex rounded-full bg-[radial-gradient(circle,rgba(245,221,156,.22),rgba(245,221,156,.07)_42%,transparent_72%)] p-2">
+              <div className="max-w-3xl p-0">
+                <div className="mb-6 inline-flex p-0">
                   <img
                     src={LOGO_SRC}
                     alt="Eby’s Place luxury pain-free braiding"
-                    className="h-24 w-auto object-contain mix-blend-screen drop-shadow-[0_0_34px_rgba(245,221,156,.52)] sm:h-28"
+                    className="h-32 w-auto object-contain mix-blend-screen drop-shadow-[0_0_42px_rgba(245,221,156,.88)] contrast-125 saturate-125 sm:h-40"
                   />
                 </div>
                 <span className="pill inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 leading-6">
@@ -204,7 +207,7 @@ export default function Home() {
                   <Link className="btn-gold" href="/booking">
                     <CalendarDays className="mr-2 h-5 w-5" /> Book with £20 deposit
                   </Link>
-                  <Link className="btn-dark bg-[#171009]/55" href="/ai-try-on">
+                  <Link className="btn-dark bg-[#171009]/40" href="/ai-try-on">
                     <Wand2 className="mr-2 h-5 w-5" /> Try a braid style
                   </Link>
                 </div>

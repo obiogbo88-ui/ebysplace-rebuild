@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import Stripe from "stripe";
 import { z } from "zod";
-import { storagePut } from "./storage";
+import { storageGetSignedUrl, storagePut } from "./storage";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { generateImage } from "./_core/imageGeneration";
 import { systemRouter } from "./_core/systemRouter";
@@ -159,7 +159,16 @@ export const appRouter = router({
       const record = await db.createTryOnGeneration({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, status: "pending" });
       try {
         const prompt = `Preserve the person's exact face, identity, facial structure, skin tone, expression, and all non-hair features. Only change the hairstyle into ${input.styleName} braids in an elegant Eby's Place premium black-and-gold beauty editorial style. Keep the photo realistic, scalp-friendly, neat, tension-free, and suitable for a customer hairstyle preview. Do not alter eyes, nose, mouth, face shape, body, background, or clothing.`;
-        const result = await generateImage({ prompt, originalImages: [{ url: input.originalImageUrl, mimeType: "image/png" }] });
+        const storageKey = input.originalImageUrl.startsWith("/manus-storage/")
+          ? decodeURIComponent(input.originalImageUrl.replace("/manus-storage/", ""))
+          : null;
+        const editableImageUrl = storageKey
+          ? await storageGetSignedUrl(storageKey)
+          : input.originalImageUrl;
+        const mimeType = storageKey?.toLowerCase().endsWith(".jpg") || storageKey?.toLowerCase().endsWith(".jpeg")
+          ? "image/jpeg"
+          : "image/png";
+        const result = await generateImage({ prompt, originalImages: [{ url: editableImageUrl, mimeType }] });
         await db.updateTryOnGeneration(record.id, { status: "completed", generatedImageUrl: result.url });
         return { id: record.id, generatedImageUrl: result.url, status: "completed" as const };
       } catch (error) {

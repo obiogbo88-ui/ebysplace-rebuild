@@ -9,6 +9,9 @@ import type { TrpcContext } from "./_core/context";
 const stripeCreateSessionMock = vi.hoisted(() => vi.fn());
 const stripeConstructEventMock = vi.hoisted(() => vi.fn());
 const notifyOwnerMock = vi.hoisted(() => vi.fn());
+const storageGetSignedUrlMock = vi.hoisted(() => vi.fn());
+const storagePutMock = vi.hoisted(() => vi.fn());
+const generateImageMock = vi.hoisted(() => vi.fn());
 
 vi.mock("./_core/notification", () => ({
   notifyOwner: notifyOwnerMock,
@@ -19,6 +22,15 @@ vi.mock("stripe", () => ({
     checkout: { sessions: { create: stripeCreateSessionMock } },
     webhooks: { constructEvent: stripeConstructEventMock },
   })),
+}));
+
+vi.mock("./storage", () => ({
+  storageGetSignedUrl: storageGetSignedUrlMock,
+  storagePut: storagePutMock,
+}));
+
+vi.mock("./_core/imageGeneration", () => ({
+  generateImage: generateImageMock,
 }));
 
 function publicContext(): TrpcContext {
@@ -38,6 +50,12 @@ describe("Eby’s Place platform business rules", () => {
     stripeConstructEventMock.mockReset();
     notifyOwnerMock.mockReset();
     notifyOwnerMock.mockResolvedValue(true);
+    storageGetSignedUrlMock.mockReset();
+    storagePutMock.mockReset();
+    generateImageMock.mockReset();
+    storageGetSignedUrlMock.mockResolvedValue("https://signed-storage.example/try-on/customer-photo.png");
+    storagePutMock.mockResolvedValue({ url: "/manus-storage/mock-upload.png", key: "mock-upload.png" });
+    generateImageMock.mockResolvedValue({ url: "/manus-storage/generated-try-on.png" });
   });
 
   it("exposes premium featured services without requiring database access", async () => {
@@ -201,6 +219,25 @@ describe("Eby’s Place platform business rules", () => {
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
+  });
+
+  it("uses a signed absolute storage URL when generating AI Try-On previews from uploaded customer photos", async () => {
+    const caller = appRouter.createCaller(publicContext());
+
+    const result = await caller.public.generateTryOn({
+      styleName: "Knotless Braids",
+      originalImageUrl: "/manus-storage/try-on/uploads/customer-photo.png",
+    });
+
+    expect(result.status).toBe("completed");
+    expect(result.generatedImageUrl).toBe("/manus-storage/generated-try-on.png");
+    expect(storageGetSignedUrlMock).toHaveBeenCalledWith("try-on/uploads/customer-photo.png");
+    expect(generateImageMock).toHaveBeenCalledWith(expect.objectContaining({
+      originalImages: [expect.objectContaining({
+        url: "https://signed-storage.example/try-on/customer-photo.png",
+        mimeType: "image/png",
+      })],
+    }));
   });
 
   it("returns an admin summary fallback with seeded services and products", async () => {
