@@ -4,6 +4,11 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { SiteFooter, SiteHeader } from "./Home";
 
+const aiTryOnToastClassNames = {
+  title: "!text-black",
+  description: "!text-black",
+};
+
 const styles = [
   "Knotless Braids",
   "Box Braids",
@@ -153,11 +158,15 @@ export default function TryOn() {
       setPhoto(compressed);
       toast.success("Photo prepared for AI Try-On", {
         description: `Prepared to ${compressed.sizeKb}KB so the AI can read it more reliably.`,
+        classNames: aiTryOnToastClassNames,
       });
     } catch (err) {
       const message = friendlyTryOnError(err);
       setError(message);
-      toast.error("Photo could not be prepared", { description: message });
+      toast.error("Photo could not be prepared", {
+        description: message,
+        classNames: aiTryOnToastClassNames,
+      });
     } finally {
       setIsPreparing(false);
     }
@@ -185,11 +194,15 @@ export default function TryOn() {
       });
       toast.success("AI Try-On preview generated", {
         description: "Your hairstyle preview is ready below.",
+        classNames: aiTryOnToastClassNames,
       });
     } catch (err) {
       const message = friendlyTryOnError(err);
       setError(message);
-      toast.error("AI Try-On failed", { description: message });
+      toast.error("AI Try-On failed", {
+        description: message,
+        classNames: aiTryOnToastClassNames,
+      });
     }
   }
 

@@ -22,6 +22,10 @@ const policiesSource = readFileSync(
   resolve(process.cwd(), "client/src/pages/Policies.tsx"),
   "utf8"
 );
+const tryOnSource = readFileSync(
+  resolve(process.cwd(), "client/src/pages/TryOn.tsx"),
+  "utf8"
+);
 
 describe("Eby’s Place landing page visual refinements", () => {
   it("keeps the hero photo free of brand-card overlays and places the pain-free promise as a styled list", () => {
@@ -88,6 +92,17 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("review-marquee-track");
     expect(adminSource).toContain("Upload About Us CEO image");
     expect(adminSource).toContain("uploadWebsiteSectionImage");
+  });
+
+  it("keeps AI Try-On pop-up message text black without changing the global toaster", () => {
+    expect(tryOnSource).toContain("const aiTryOnToastClassNames");
+    expect(tryOnSource).toContain('title: "!text-black"');
+    expect(tryOnSource).toContain('description: "!text-black"');
+    expect(tryOnSource.match(/classNames: aiTryOnToastClassNames/g)?.length).toBe(4);
+    expect(tryOnSource).toContain('toast.success("Photo prepared for AI Try-On"');
+    expect(tryOnSource).toContain('toast.success("AI Try-On preview generated"');
+    expect(tryOnSource).toContain('toast.error("Photo could not be prepared"');
+    expect(tryOnSource).toContain('toast.error("AI Try-On failed"');
   });
 
   it("adds footer policy links and scrolls routed pages to the top", () => {
