@@ -150,24 +150,38 @@ export const appRouter = router({
     }),
     uploadTryOnPhoto: publicProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("try-on-photo.png") })).mutation(async ({ input }) => {
       const { mimeType, buffer } = decodeDataUrl(input.dataUrl);
+      if (!mimeType.startsWith("image/")) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "AI Try-On only supports image uploads." });
+      }
+      if (buffer.byteLength > 7 * 1024 * 1024) {
+        throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Please upload a smaller photo. The AI Try-On accepts images up to 7MB after compression." });
+      }
       const extension = mimeType.includes("jpeg") ? "jpg" : mimeType.split("/")[1] || "png";
-      const safeName = input.fileName.replace(/[^a-z0-9.-]/gi, "-");
+      const safeName = input.fileName.replace(/\.[^.]+$/, "").replace(/[^a-z0-9.-]/gi, "-").toLowerCase() || "customer-photo";
       const uploaded = await storagePut(`try-on/uploads/${Date.now()}-${safeName}.${extension}`, buffer, mimeType);
-      return { url: uploaded.url, key: uploaded.key };
+      return { url: uploaded.url, key: uploaded.key, mimeType };
     }),
-    generateTryOn: publicProcedure.input(z.object({ styleName: z.string().min(2), originalImageUrl: z.string().min(5) })).mutation(async ({ input }) => {
+    generateTryOn: publicProcedure.input(z.object({
+      styleName: z.string().min(2),
+      originalImageUrl: z.string().min(5),
+      originalImageKey: z.string().min(3).optional(),
+      mimeType: z.string().optional(),
+    })).mutation(async ({ input }) => {
       const record = await db.createTryOnGeneration({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, status: "pending" });
       try {
-        const prompt = `Preserve the person's exact face, identity, facial structure, skin tone, expression, and all non-hair features. Only change the hairstyle into ${input.styleName} braids in an elegant Eby's Place premium black-and-gold beauty editorial style. Keep the photo realistic, scalp-friendly, neat, tension-free, and suitable for a customer hairstyle preview. Do not alter eyes, nose, mouth, face shape, body, background, or clothing.`;
-        const storageKey = input.originalImageUrl.startsWith("/manus-storage/")
-          ? decodeURIComponent(input.originalImageUrl.replace("/manus-storage/", ""))
-          : null;
+        const prompt = `Change ONLY the hairstyle of the person in this photo to ${input.styleName}. Keep the person's face, skin tone, eye color, facial features, expression, body, background, and clothing EXACTLY the same — do not alter them in any way. Only modify the hair into neat, professional, realistic ${input.styleName} with the refined Eby’s Place salon finish.`;
+        const storageKey = input.originalImageKey
+          ?? (input.originalImageUrl.startsWith("/manus-storage/")
+            ? decodeURIComponent(input.originalImageUrl.replace("/manus-storage/", ""))
+            : null);
         const editableImageUrl = storageKey
           ? await storageGetSignedUrl(storageKey)
           : input.originalImageUrl;
-        const mimeType = storageKey?.toLowerCase().endsWith(".jpg") || storageKey?.toLowerCase().endsWith(".jpeg")
-          ? "image/jpeg"
-          : "image/png";
+        const mimeType = input.mimeType?.startsWith("image/")
+          ? input.mimeType
+          : storageKey?.toLowerCase().endsWith(".jpg") || storageKey?.toLowerCase().endsWith(".jpeg")
+            ? "image/jpeg"
+            : "image/png";
         const result = await generateImage({ prompt, originalImages: [{ url: editableImageUrl, mimeType }] });
         await db.updateTryOnGeneration(record.id, { status: "completed", generatedImageUrl: result.url });
         return { id: record.id, generatedImageUrl: result.url, status: "completed" as const };

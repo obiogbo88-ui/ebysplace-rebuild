@@ -94,3 +94,7 @@
 - [x] Re-run automated verification and save a new checkpoint for the admin contrast and notification branding updates
 - [x] Refine the admin overview panel styling so shadows, cards, spacing, and cream-and-gold treatment match the landing page more closely
 - [x] Ensure the website is fully ready by running the final automated tests, production build, TypeScript/status validation, and saving a readiness checkpoint
+
+- [x] Diagnose why the AI Try-On flow is not working for users, including frontend upload state, server storage access, image-generation call, and runtime logs
+- [x] Fix the AI Try-On flow so customers can upload a photo, choose a hairstyle, generate a face-preserving preview, and see a clear error if generation fails
+- [x] Add or update automated tests covering the AI Try-On fix and re-run test, TypeScript, build, and status verification before saving a checkpoint

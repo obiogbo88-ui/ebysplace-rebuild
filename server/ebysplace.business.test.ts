@@ -54,7 +54,7 @@ describe("Eby’s Place platform business rules", () => {
     storagePutMock.mockReset();
     generateImageMock.mockReset();
     storageGetSignedUrlMock.mockResolvedValue("https://signed-storage.example/try-on/customer-photo.png");
-    storagePutMock.mockResolvedValue({ url: "/manus-storage/mock-upload.png", key: "mock-upload.png" });
+    storagePutMock.mockResolvedValue({ url: "/manus-storage/mock-upload.png", key: "mock-upload.png", mimeType: "image/jpeg" });
     generateImageMock.mockResolvedValue({ url: "/manus-storage/generated-try-on.png" });
   });
 
@@ -238,21 +238,47 @@ describe("Eby’s Place platform business rules", () => {
     expect(submitted.id).toBeGreaterThan(0);
   });
 
+  it("uploads compressed AI Try-On photos and returns storage metadata for key-based generation", async () => {
+    const caller = appRouter.createCaller(publicContext());
+    const dataUrl = `data:image/jpeg;base64,${Buffer.from("small-compressed-photo").toString("base64")}`;
+
+    const uploaded = await caller.public.uploadTryOnPhoto({
+      dataUrl,
+      fileName: "Customer Portrait.JPG",
+    });
+
+    expect(uploaded).toEqual({ url: "/manus-storage/mock-upload.png", key: "mock-upload.png", mimeType: "image/jpeg" });
+    expect(storagePutMock).toHaveBeenCalledWith(expect.stringContaining("try-on/uploads/"), expect.any(Buffer), "image/jpeg");
+  });
+
+  it("rejects oversized AI Try-On uploads before storage so large camera photos cannot stall the flow", async () => {
+    const caller = appRouter.createCaller(publicContext());
+    const oversized = `data:image/jpeg;base64,${Buffer.alloc(7 * 1024 * 1024 + 1).toString("base64")}`;
+
+    await expect(caller.public.uploadTryOnPhoto({
+      dataUrl: oversized,
+      fileName: "large-photo.jpg",
+    })).rejects.toThrow("Please upload a smaller photo");
+    expect(storagePutMock).not.toHaveBeenCalled();
+  });
+
   it("uses a signed absolute storage URL when generating AI Try-On previews from uploaded customer photos", async () => {
     const caller = appRouter.createCaller(publicContext());
 
     const result = await caller.public.generateTryOn({
       styleName: "Knotless Braids",
       originalImageUrl: "/manus-storage/try-on/uploads/customer-photo.png",
+      originalImageKey: "try-on/uploads/customer-photo.jpg",
+      mimeType: "image/jpeg",
     });
 
     expect(result.status).toBe("completed");
     expect(result.generatedImageUrl).toBe("/manus-storage/generated-try-on.png");
-    expect(storageGetSignedUrlMock).toHaveBeenCalledWith("try-on/uploads/customer-photo.png");
+    expect(storageGetSignedUrlMock).toHaveBeenCalledWith("try-on/uploads/customer-photo.jpg");
     expect(generateImageMock).toHaveBeenCalledWith(expect.objectContaining({
       originalImages: [expect.objectContaining({
         url: "https://signed-storage.example/try-on/customer-photo.png",
-        mimeType: "image/png",
+        mimeType: "image/jpeg",
       })],
     }));
   });
