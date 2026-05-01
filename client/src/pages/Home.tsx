@@ -118,9 +118,9 @@ export function SiteFooter() {
         <div>
           <div className="flex items-center gap-4">
             <img
-              src={LOGO_SRC}
+              src={HEADER_LOGO_SRC}
               alt="Eby’s Place"
-              className="h-36 w-auto object-contain drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] [filter:brightness(.55)_sepia(1)_saturate(1.35)] sm:h-40"
+              className="h-36 w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-40"
             />
           </div>
           <p className="mt-3 text-sm font-medium text-[#4f3720]">

@@ -148,3 +148,6 @@
 - [x] Remove only the written “EBYSPLACE” wordmark from the top header
 - [x] Do not tamper with any other content, styling, layout, navigation, booking, shop, admin, AI Try-On, payment, notification, or other functionality while making the header-only logo update
 - [x] Blend the newly supplied top header logo into the existing header background so the logo box or border is not visible
+- [x] Keep the top header logo left-aligned as recommended without changing header navigation or layout
+- [x] Change only the lower Eby’s Place logo colour treatment to match the black top logo
+- [x] Do not tamper with any other content, styling, layout, navigation, booking, shop, admin, AI Try-On, payment, notification, or other functionality while applying this logo-only update
