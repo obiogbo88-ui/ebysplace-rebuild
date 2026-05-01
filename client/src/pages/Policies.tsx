@@ -186,9 +186,6 @@ export function PolicyPage({ type }: { type: PolicyKey }) {
                 </section>
               ))}
             </div>
-            <p className="mt-8 rounded-3xl border border-[#d8bd74]/45 bg-[#f5ead7] p-5 text-sm font-semibold leading-7 text-[#5a3d1e]">
-              This page is a practical website policy summary and not a substitute for independent legal advice.
-            </p>
           </article>
         </section>
       </main>

@@ -24,16 +24,20 @@ const policiesSource = readFileSync(
 );
 
 describe("Eby’s Place landing page visual refinements", () => {
-  it("keeps the hero photo free of the duplicated logo overlay", () => {
+  it("keeps the hero photo free of the duplicated logo overlay and places the slogans in the homepage hero", () => {
     expect(homeSource).not.toContain("Eby’s Place luxury pain-free braiding");
+    expect(homeSource).toContain("Beauty in every strand");
     expect(homeSource).toContain("Zero pain. Zero trauma. Just perfection.");
+    expect(homeSource.indexOf("Beauty in every strand")).toBeLessThan(homeSource.indexOf("Luxury Pain-Free Braiding"));
   });
 
-  it("uses broader readable logo treatments in the header and footer", () => {
-    expect(homeSource).toContain("sm:h-20");
+  it("uses a larger clickable logo without written header brand text or the old top slogan", () => {
+    expect(homeSource).toContain('href="/"');
+    expect(homeSource).toContain("sm:h-24");
     expect(homeSource).toContain("sm:h-32");
-    expect(homeSource).toContain("Eby’s Place");
-    expect(homeSource).toContain("mt-1 max-w-[13rem]");
+    expect(homeSource).toContain("alt=\"Eby’s Place\"");
+    expect(homeSource).not.toContain("text-base font-extrabold uppercase tracking-[0.14em]");
+    expect(homeSource).not.toContain("mt-1 max-w-[13rem]");
     expect(homeSource).toContain("[filter:brightness(.55)_sepia(1)_saturate(1.35)]");
   });
 
@@ -66,7 +70,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(appSource).toContain("/policies/shopping");
     expect(appSource).toContain("/policies/returns");
     expect(appSource).toContain("/policies/terms");
-    expect(policiesSource).toContain("This page is a practical website policy summary and not a substitute for independent legal advice.");
+    expect(policiesSource).not.toContain("This page is a practical website policy summary and not a substitute for independent legal advice.");
     expect(policiesSource).toContain("Payment details are handled securely by Stripe");
   });
 });

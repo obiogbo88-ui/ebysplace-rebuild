@@ -99,3 +99,11 @@
 - [x] Make site buttons and footer links open target pages from the top without changing destination flows
 - [x] Add concise UK-oriented policy links/pages in the footer, including shopping and returns policies
 - [x] Keep all other website content, automation, AI, booking, payment, admin, and notification flows unchanged while applying these requested changes
+- [x] Remove the legal-advice summary block from the policy pages only
+- [x] Remove the slogan line from under the top Eby’s Place header brand
+- [x] Add “Beauty in every strand” and “Zero pain. Zero trauma. Just perfection.” stylishly on the homepage only
+- [x] Preserve all other website content, automation, AI, booking, payment, admin, shop, and notification flows while making these edits
+- [x] Remove the written Eby’s Place text from the header and use only an enlarged readable logo
+- [x] Ensure clicking the header logo returns visitors to the homepage without changing any other navigation or flows
+- [x] Add focused regression evidence for unchanged key flows/content after the header/policy/slogan edits, covering booking, shop, AI try-on, admin, notifications, and unchanged navigation areas
+
