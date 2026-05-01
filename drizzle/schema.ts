@@ -85,6 +85,8 @@ export const products = mysqlTable("products", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 180 }).notNull(),
   slug: varchar("slug", { length: 220 }).notNull().unique(),
+  seoTitle: varchar("seoTitle", { length: 255 }),
+  seoDescription: text("seoDescription"),
   category: mysqlEnum("category", ["Accessories", "Aftercare", "Hair Attachments"]).notNull(),
   description: text("description").notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),

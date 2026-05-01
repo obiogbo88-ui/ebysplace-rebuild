@@ -10,6 +10,10 @@ const cssSource = readFileSync(
   resolve(process.cwd(), "client/src/index.css"),
   "utf8"
 );
+const adminSource = readFileSync(
+  resolve(process.cwd(), "client/src/pages/Admin.tsx"),
+  "utf8"
+);
 
 describe("Eby’s Place landing page visual refinements", () => {
   it("keeps the hero photo free of the duplicated logo overlay", () => {
@@ -29,5 +33,14 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("rgba(247,238,222,.72)");
     expect(cssSource).toContain("text-[#2a1a0b]/82");
     expect(homeSource).toContain("text-white sm:text-lg");
+  });
+
+  it("adds a backend-managed About Us story section with CEO image space", () => {
+    expect(homeSource).toContain("websiteSections.useQuery");
+    expect(homeSource).toContain("about_us");
+    expect(homeSource).toContain("From Passion to Power");
+    expect(homeSource).toContain("CEO portrait space");
+    expect(adminSource).toContain("Upload About Us CEO image");
+    expect(adminSource).toContain("uploadWebsiteSectionImage");
   });
 });

@@ -106,6 +106,7 @@ export const appRouter = router({
     services: publicProcedure.input(z.object({ category: serviceCategory.optional() }).optional()).query(({ input }) => db.listServices(input?.category)),
     featuredServices: publicProcedure.query(() => db.listFeaturedServices()),
     products: publicProcedure.query(() => db.listProducts()),
+    websiteSections: publicProcedure.query(() => db.listWebsiteSections()),
     reviews: publicProcedure.query(() => db.listApprovedReviews()),
     gallery: publicProcedure.input(z.object({ category: z.string().optional() }).optional()).query(({ input }) => db.listGallery(input?.category)),
     newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(({ input }) => db.subscribeNewsletter(input.email, input.productAlerts)),
@@ -199,7 +200,7 @@ export const appRouter = router({
       const { id, ...changes } = input;
       return db.updateService(id, changes);
     }),
-    updateProduct: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), category: productCategory.optional(), description: z.string().min(10).optional(), price: z.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z.number().int().min(0).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+    updateProduct: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), seoTitle: z.string().min(8).max(255).optional(), seoDescription: z.string().min(30).max(320).optional(), category: productCategory.optional(), description: z.string().min(10).optional(), price: z.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z.number().int().min(0).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
       const { id, ...changes } = input;
       return db.updateProduct(id, changes);
     }),
@@ -210,6 +211,11 @@ export const appRouter = router({
       return uploaded;
     }),
     uploadGalleryImage: adminProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("gallery-image.png") })).mutation(async ({ input }) => uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: input.fileName, folder: "gallery" })),
+    uploadWebsiteSectionImage: adminProcedure.input(z.object({ sectionKey: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("section-image.png") })).mutation(async ({ input }) => {
+      const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.sectionKey}-${input.fileName}`, folder: "website-sections" });
+      await db.updateWebsiteSection(input.sectionKey, { imageUrl: uploaded.url });
+      return uploaded;
+    }),
     addGalleryImage: adminProcedure.input(z.object({ title: z.string().min(2), category: galleryCategory, imageUrl: z.string().min(5), altText: z.string().min(5), isPublished: z.enum(["true", "false"]).default("true"), sortOrder: z.number().int().default(0) })).mutation(({ input }) => db.addGalleryImage(input)),
     updateWebsiteSection: adminProcedure.input(z.object({ sectionKey: z.string().min(2), title: z.string().min(2).optional(), eyebrow: z.string().optional(), body: z.string().optional(), ctaLabel: z.string().optional(), ctaHref: z.string().optional(), imageUrl: z.string().optional(), isPublished: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
       const { sectionKey, ...changes } = input;

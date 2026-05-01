@@ -75,3 +75,14 @@
 - [x] Remove the logo overlay from the landing page hero photo while preserving the existing landing structure
 - [x] Broaden/enlarge the remaining top and lower Eby’s Place logo treatments for stronger readability
 - [x] Shift the current Eby’s Place landing look to a lighter background and increase write-up contrast/readability
+- [x] Allow admin users to edit product names from the product management interface
+- [x] Add SEO-optimized product metadata fields for shop products, including SEO title, SEO description, and URL slug where appropriate
+- [x] Ensure edited product names and SEO metadata are used consistently in the shop/admin UI and covered by automated tests
+- [x] Verify and adjust every main page for clean mobile and desktop views, including Home, Services, Booking, Shop, AI Try-On, Braiders Near Me, Gallery, Reviews, and Admin
+- [x] Ensure product name and SEO metadata changes are visible, editable, and refreshed in the admin dashboard as well as the public shop
+- [x] Let customers click available product colours/variants and see the product presentation update to match the selected colour
+- [x] Uplift the shop page buying experience with clearer selected-colour feedback, stronger product visuals, and improved add-to-bag interactions
+- [x] Recreate the About Us section using the current ebysplace.com About Us visual style and tone while fitting the rebuilt site structure
+- [x] Add concise About Us copy that tells the Eby’s Place story from passion to power
+- [x] Leave a dedicated CEO image space in About Us that can be uploaded and managed from the admin dashboard/backend
+- [x] Ensure the About Us section and CEO image upload workflow are responsive on mobile and desktop

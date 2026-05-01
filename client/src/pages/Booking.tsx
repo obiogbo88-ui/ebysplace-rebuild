@@ -120,7 +120,7 @@ export default function Booking() {
       <SiteHeader />
       <main className="container section-pad">
         <p className="pill w-fit">Appointment booking</p>
-        <h1 className="serif mt-4 text-5xl font-bold md:text-6xl">
+        <h1 className="serif mt-4 text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">
           Secure your appointment with a{" "}
           <span className="gold-text">£20 non-refundable deposit.</span>
         </h1>

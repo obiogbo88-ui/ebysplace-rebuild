@@ -67,6 +67,7 @@ export default function Admin() {
   const updateBooking = trpc.admin.updateBookingStatus.useMutation(opts);
   const updateOrder = trpc.admin.updateOrderStatus.useMutation(opts);
   const updateStock = trpc.admin.updateProductStock.useMutation(opts);
+  const updateProduct = trpc.admin.updateProduct.useMutation(opts);
   const updateService = trpc.admin.updateService.useMutation(opts);
   const uploadServiceImage = trpc.admin.uploadServiceImage.useMutation({
     onSuccess: () => {
@@ -82,6 +83,14 @@ export default function Admin() {
     },
     onError: (error: any) => toast.error(error.message),
   });
+  const uploadWebsiteSectionImage = trpc.admin.uploadWebsiteSectionImage.useMutation({
+    onSuccess: (uploaded) => {
+      setContent((current) => ({ ...current, imageUrl: uploaded.url }));
+      refresh();
+      toast.success("About Us CEO image uploaded and saved");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
   const addGallery = trpc.admin.addGalleryImage.useMutation({
     onSuccess: () => {
       refresh();
@@ -92,7 +101,7 @@ export default function Admin() {
   });
   const updateContent = trpc.admin.updateWebsiteSection.useMutation(opts);
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
-  const [content, setContent] = useState({ sectionKey: "homepage_hero", title: "", eyebrow: "", body: "", ctaLabel: "", ctaHref: "" });
+  const [content, setContent] = useState({ sectionKey: "about_us", title: "", eyebrow: "", body: "", ctaLabel: "", ctaHref: "", imageUrl: "" });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const data = (lists.data || {}) as AdminListData;
 
@@ -119,13 +128,23 @@ export default function Admin() {
     }
   }
 
+  async function handleWebsiteSectionImageUpload(file?: File) {
+    if (!file) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await uploadWebsiteSectionImage.mutateAsync({ sectionKey: content.sectionKey || "about_us", dataUrl, fileName: file.name });
+    } catch (error: any) {
+      toast.error(error.message || "About Us CEO image upload failed");
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-background text-foreground">
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="pill w-fit">Role-based backend</p>
-            <h1 className="serif mt-3 text-5xl font-bold gold-text">Eby’s Place Admin Dashboard</h1>
+            <h1 className="serif mt-3 text-4xl font-bold leading-tight gold-text sm:text-5xl">Eby’s Place Admin Dashboard</h1>
             <p className="mt-3 max-w-3xl text-white/60">
               Manage bookings, services, ecommerce orders, stock, gallery assets, moderated reviews, AI try-on records,
               homepage content, uploaded service media, and performance indicators from one secure area.
@@ -220,12 +239,41 @@ export default function Admin() {
 
         <section className="mt-8 grid gap-8 lg:grid-cols-2">
           <div id="products" className="lux-card">
-            <h2 className="serif text-3xl font-bold"><Package className="mr-2 inline text-primary" />Products & stock</h2>
-            <div className="mt-5 grid gap-3">
+            <h2 className="serif text-3xl font-bold"><Package className="mr-2 inline text-primary" />Products, stock & SEO</h2>
+            <p className="mt-2 text-sm text-white/65">Edit product names, search-friendly slugs, SEO titles, and meta descriptions here. Changes refresh the admin dashboard and public shop after saving.</p>
+            <div className="mt-5 grid gap-4">
               {(data.products || []).map((product: any) => (
                 <div className="rounded-2xl border border-white/10 p-4" key={product.id}>
-                  <div className="flex justify-between gap-3"><span>{product.name}<small className="block text-white/45">{product.stockStatus}</small></span><b>£{product.price}</b></div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <span className="min-w-0"><b className="block break-words">{product.name}</b><small className="block text-white/55">/{product.slug} · {product.stockStatus}</small></span>
+                    <b className="text-primary">£{product.price}</b>
+                  </div>
+                  <div className="mt-4 grid gap-3">
+                    <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Product name<input defaultValue={product.name} id={`product-name-${product.id}`} /></label>
+                    <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">SEO slug<input defaultValue={product.slug} id={`product-slug-${product.id}`} placeholder="premium-braiding-hair" /></label>
+                    <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">SEO page title<input defaultValue={product.seoTitle || `${product.name} | Eby’s Place`} id={`product-seo-title-${product.id}`} /></label>
+                    <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">SEO meta description<textarea defaultValue={product.seoDescription || product.description} id={`product-seo-description-${product.id}`} rows={3} /></label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Public description<textarea defaultValue={product.description} id={`product-description-${product.id}`} rows={3} /></label>
+                      <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Badge<input defaultValue={product.badge || ""} id={`product-badge-${product.id}`} /></label>
+                    </div>
+                    <div className="rounded-2xl bg-white/[0.04] p-3 text-sm text-white/70"><b className="text-primary">SEO preview:</b> {product.seoTitle || `${product.name} | Eby’s Place`}<span className="block text-white/55">{product.seoDescription || product.description}</span></div>
+                    <div className="rounded-2xl border border-primary/20 bg-black/20 p-3 text-sm text-white/70">
+                      <b className="block text-primary">Shop colour previews</b>
+                      <span className="mt-1 block text-white/55">These are the colour options customers click on the shop page to update the product preview before checkout.</span>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(product.variants?.length ? product.variants : [{ name: "Default", colourHex: "#c8a95a" }]).map((variant: any) => (
+                          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2" key={`${product.id}-${variant.id || variant.name}`}>
+                            <span className="h-5 w-5 rounded-full border border-white/30" style={{ backgroundColor: variant.colourHex || "#c8a95a" }} />
+                            <span>{variant.name}</span>
+                            {typeof variant.stockQuantity === "number" && <small className="text-white/45">{variant.stockQuantity} left</small>}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <button className="btn-gold py-2" onClick={() => updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value })}>Save product SEO</button>
+                  </div>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                     <input type="number" min={0} defaultValue={product.stockQuantity} id={`stock-${product.id}`} />
                     <select defaultValue={product.stockStatus} id={`stock-status-${product.id}`}><option value="in_stock">In stock</option><option value="low_stock">Low stock</option><option value="out_of_stock">Out of stock</option></select>
                     <button className="btn-dark py-2" onClick={() => updateStock.mutate({ id: product.id, stockQuantity: Number((document.getElementById(`stock-${product.id}`) as HTMLInputElement).value), stockStatus: (document.getElementById(`stock-status-${product.id}`) as HTMLSelectElement).value as any })}>Save stock</button>
@@ -299,6 +347,13 @@ export default function Admin() {
               <textarea placeholder="Body copy" value={content.body} onChange={(event) => setContent({ ...content, body: event.target.value })} />
               <input placeholder="CTA label" value={content.ctaLabel} onChange={(event) => setContent({ ...content, ctaLabel: event.target.value })} />
               <input placeholder="CTA link" value={content.ctaHref} onChange={(event) => setContent({ ...content, ctaHref: event.target.value })} />
+              <input placeholder="CEO / founder image URL" value={content.imageUrl} onChange={(event) => setContent({ ...content, imageUrl: event.target.value })} />
+              <label className="btn-dark cursor-pointer justify-start">
+                <UploadCloud className="mr-2 h-4 w-4" /> {uploadWebsiteSectionImage.isPending ? "Uploading CEO image…" : "Upload About Us CEO image"}
+                <input className="sr-only" type="file" accept="image/*" disabled={uploadWebsiteSectionImage.isPending} onChange={(event) => handleWebsiteSectionImageUpload(event.target.files?.[0])} />
+              </label>
+              {content.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={content.imageUrl} alt="About Us CEO preview" /></div>}
+              <p className="text-xs font-semibold text-white/55">Use section key <b>about_us</b> to update the homepage “From Passion to Power” story and CEO portrait panel.</p>
               <button className="btn-gold">Save content section</button>
             </form>
           </div>

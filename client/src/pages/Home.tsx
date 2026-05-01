@@ -164,9 +164,18 @@ export function SiteFooter() {
 export default function Home() {
   const { data: styles = [] } = trpc.public.featuredServices.useQuery();
   const { data: products = [] } = trpc.public.products.useQuery();
+  const { data: sections = [] } = trpc.public.websiteSections.useQuery();
   const { data: reviews = [] } = trpc.public.reviews.useQuery();
   const newsletter = trpc.public.newsletter.useMutation();
   const [email, setEmail] = useState("");
+  const aboutSection = (sections as any[]).find((section) => section.sectionKey === "about_us") || {
+    eyebrow: "About Eby’s Place",
+    title: "From Passion to Power",
+    body: "Eby’s Place began with a simple passion for helping women and families feel confident in protective styles that look refined without pain, pressure, or hairline trauma. That passion has grown into a power-led salon experience: structured consultations, gentle hands, premium finishing, and a commitment to braids that protect your confidence as much as your hair.",
+    ctaLabel: "Read our services",
+    ctaHref: "/services",
+    imageUrl: "",
+  };
 
   return (
     <div className="luxury-shell">
@@ -252,12 +261,47 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="section-pad bg-[#fbf3e6] text-[#2f2014]">
+          <div className="container grid items-center gap-10 lg:grid-cols-[1fr_.9fr]">
+            <div className="relative order-2 overflow-hidden rounded-[2rem] border border-[#d8bd74]/45 bg-[#fffaf1] p-4 shadow-[0_28px_70px_rgba(66,42,18,.16)] lg:order-1">
+              {aboutSection.imageUrl ? (
+                <img className="aspect-[4/5] w-full rounded-[1.5rem] object-cover" src={aboutSection.imageUrl} alt="Founder or CEO of Eby’s Place" />
+              ) : (
+                <div className="flex aspect-[4/5] w-full flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[#c8a95a]/70 bg-[#f5ead7] p-8 text-center">
+                  <Crown className="h-12 w-12 text-[#9f7a22]" />
+                  <p className="mt-5 text-sm font-bold uppercase tracking-[.3em] text-[#8a5f1c]">CEO portrait space</p>
+                  <p className="mt-3 max-w-xs text-sm font-semibold leading-relaxed text-[#4f3720]">Upload the founder image from the admin dashboard to complete this About Us story panel.</p>
+                </div>
+              )}
+              <div className="absolute bottom-8 left-8 right-8 rounded-2xl border border-white/70 bg-white/88 p-4 shadow-lg backdrop-blur">
+                <p className="text-xs font-black uppercase tracking-[.28em] text-[#9f7a22]">Luxury braid care</p>
+                <p className="mt-1 text-sm font-semibold text-[#4f3720]">Built from skill, patience, and protective styling expertise.</p>
+              </div>
+            </div>
+            <div className="order-1 lg:order-2">
+              <p className="pill w-fit border-[#d8bd74]/70 bg-white text-[#6b4618]">{aboutSection.eyebrow || "About Eby’s Place"}</p>
+              <h2 className="serif mt-5 text-4xl font-bold leading-tight text-[#2f2014] md:text-6xl">{aboutSection.title || "From Passion to Power"}</h2>
+              <div className="mt-5 h-1 w-24 rounded-full bg-[#c8a95a]" />
+              <p className="mt-6 text-base font-semibold leading-8 text-[#4f3720] md:text-lg">{aboutSection.body}</p>
+              <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                {[["Gentle", "low-tension styling"], ["Premium", "clean salon finish"], ["Protected", "hairline-first care"]].map(([label, detail]) => (
+                  <div className="rounded-2xl border border-[#d8bd74]/50 bg-white p-4 shadow-sm" key={label}>
+                    <b className="serif text-2xl text-[#9f7a22]">{label}</b>
+                    <p className="mt-1 text-sm font-semibold text-[#5c4228]">{detail}</p>
+                  </div>
+                ))}
+              </div>
+              {aboutSection.ctaHref && <Link className="btn-gold mt-8" href={aboutSection.ctaHref}>{aboutSection.ctaLabel || "Explore Eby’s Place"}</Link>}
+            </div>
+          </div>
+        </section>
+
         <section className="section-pad">
           <div className="container">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="pill w-fit">Popular styles</p>
-                <h2 className="serif mt-4 text-5xl font-bold">
+                <h2 className="serif mt-4 text-4xl font-bold leading-tight md:text-5xl">
                   Signature braid menu
                 </h2>
               </div>
@@ -303,7 +347,7 @@ export default function Home() {
               <p className="pill w-fit">
                 <ShoppingBag className="mr-2 inline h-4 w-4" /> Shop preview
               </p>
-              <h2 className="serif mt-4 text-5xl font-bold">
+              <h2 className="serif mt-4 text-4xl font-bold leading-tight md:text-5xl">
                 Aftercare with a premium finish.
               </h2>
               <p className="mt-4 text-white/65">
@@ -331,7 +375,7 @@ export default function Home() {
         <section className="section-pad">
           <div className="container">
             <p className="pill w-fit">Live testimonials</p>
-            <h2 className="serif mt-4 text-5xl font-bold">
+            <h2 className="serif mt-4 text-4xl font-bold leading-tight md:text-5xl">
               Customer confidence, moderated by admin.
             </h2>
             <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -349,7 +393,7 @@ export default function Home() {
         <section className="container pb-24">
           <div className="lux-card grid gap-8 md:grid-cols-[1fr_auto]">
             <div>
-              <h2 className="serif text-5xl font-bold">
+              <h2 className="serif text-4xl font-bold leading-tight md:text-5xl">
                 Join the Eby’s Place list.
               </h2>
               <p className="mt-3 text-white/65">

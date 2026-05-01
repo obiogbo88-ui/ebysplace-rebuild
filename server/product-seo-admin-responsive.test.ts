@@ -1,0 +1,75 @@
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import * as db from "./db";
+
+const projectRoot = path.resolve(__dirname, "..");
+const readSource = (relativePath: string) => fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
+
+describe("product SEO administration and responsive page safeguards", () => {
+  it("provides seeded products with editable SEO metadata fallbacks", async () => {
+    process.env.DATABASE_URL = "";
+    const products = await db.listProducts();
+
+    expect(products.length).toBeGreaterThanOrEqual(3);
+    for (const product of products) {
+      expect(product.name).toBeTruthy();
+      expect(product.slug).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+      expect(product.seoTitle || `${product.name} | Eby’s Place`).toContain("Eby");
+      expect(product.seoDescription || product.description).toBeTruthy();
+    }
+  });
+
+  it("exposes product name, slug, SEO title, and SEO description editing inside the admin dashboard", () => {
+    const adminSource = readSource("client/src/pages/Admin.tsx");
+    const routerSource = readSource("server/routers.ts");
+
+    expect(routerSource).toContain("updateProduct: adminProcedure");
+    expect(routerSource).toContain("seoTitle");
+    expect(routerSource).toContain("seoDescription");
+    expect(adminSource).toContain("Product name");
+    expect(adminSource).toContain("SEO title");
+    expect(adminSource).toContain("SEO meta description");
+    expect(adminSource).toContain("updateProduct.mutate");
+  });
+
+  it("reflects admin-managed SEO fields and polished colour-selection shopping feedback in the public shop", () => {
+    const shopSource = readSource("client/src/pages/Shop.tsx");
+
+    expect(shopSource).toContain("product.seoTitle");
+    expect(shopSource).toContain("product.seoDescription");
+    expect(shopSource).toContain("product.slug");
+    expect(shopSource).toContain("selectedVariant");
+    expect(shopSource).toContain("Selected colour");
+    expect(shopSource).toContain("Add ${readableColourLabel(selectedVariant)} to bag");
+    expect(shopSource).toContain("Select a colour, preview the product finish");
+    expect(shopSource).toContain("md:grid-cols-2");
+    expect(shopSource).toContain("lg:grid-cols-[minmax(0,1fr)_420px]");
+  });
+
+  it("keeps every main public and admin page responsive between mobile and desktop views", () => {
+    const pages = ["Home", "Services", "Booking", "Shop", "TryOn", "Braiders", "Gallery", "Reviews", "Admin"];
+
+    for (const page of pages) {
+      const source = readSource(`client/src/pages/${page}.tsx`);
+      expect(source, `${page} should include mobile-first sizing`).toMatch(/text-4xl/);
+      expect(source, `${page} should include a responsive breakpoint`).toMatch(/(?:sm|md|lg|xl):/);
+      expect(source, `${page} should avoid fixed desktop-only overflow risks`).toMatch(/(?:min-w-0|overflow-x-auto|grid gap|container)/);
+    }
+  });
+
+  it("protects the About Us story and CEO image workflow across homepage and admin dashboard breakpoints", () => {
+    const homeSource = readSource("client/src/pages/Home.tsx");
+    const adminSource = readSource("client/src/pages/Admin.tsx");
+    const routerSource = readSource("server/routers.ts");
+
+    expect(homeSource).toContain("From Passion to Power");
+    expect(homeSource).toContain("CEO portrait space");
+    expect(homeSource).toContain("lg:grid-cols-[1fr_.9fr]");
+    expect(homeSource).toContain("md:text-6xl");
+    expect(adminSource).toContain("Upload About Us CEO image");
+    expect(adminSource).toContain("CEO / founder image URL");
+    expect(adminSource).toContain("lg:grid-cols-3");
+    expect(routerSource).toContain("uploadWebsiteSectionImage");
+  });
+});

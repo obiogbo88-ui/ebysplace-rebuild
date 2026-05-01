@@ -337,15 +337,29 @@ const seedServices = [
 ];
 
 const seedProducts = [
-  { name: "Satin Edge Scarf", slug: "satin-edge-scarf", category: "Accessories" as const, description: "A silky black satin scarf for preserving edges and protecting fresh braids overnight.", price: "18.00", badge: "Best Seller", stockStatus: "in_stock" as const, stockQuantity: 34, isFeatured: "true" as const },
-  { name: "Scalp Comfort Oil", slug: "scalp-comfort-oil", category: "Aftercare" as const, description: "A lightweight scalp oil for protective styles, designed to support comfort and shine.", price: "14.00", badge: "Aftercare", stockStatus: "low_stock" as const, stockQuantity: 8, isFeatured: "true" as const },
-  { name: "Premium Braiding Hair", slug: "premium-braiding-hair", category: "Hair Attachments" as const, description: "Soft-touch braiding hair available in classic natural tones and statement shades.", price: "6.50", badge: "Salon Pick", stockStatus: "in_stock" as const, stockQuantity: 120, isFeatured: "true" as const },
+  { name: "Satin Edge Scarf", slug: "satin-edge-scarf", seoTitle: "Satin Edge Scarf for Braids | Eby’s Place", seoDescription: "Protect fresh braids overnight with a silky satin edge scarf from Eby’s Place, designed to preserve edges and reduce friction.", category: "Accessories" as const, description: "A silky black satin scarf for preserving edges and protecting fresh braids overnight.", price: "18.00", badge: "Best Seller", stockStatus: "in_stock" as const, stockQuantity: 34, isFeatured: "true" as const },
+  { name: "Scalp Comfort Oil", slug: "scalp-comfort-oil", seoTitle: "Scalp Comfort Oil for Protective Styles | Eby’s Place", seoDescription: "Shop lightweight scalp comfort oil for braids, twists, and locs, created to support shine and comfort between salon appointments.", category: "Aftercare" as const, description: "A lightweight scalp oil for protective styles, designed to support comfort and shine.", price: "14.00", badge: "Aftercare", stockStatus: "low_stock" as const, stockQuantity: 8, isFeatured: "true" as const },
+  { name: "Premium Braiding Hair", slug: "premium-braiding-hair", seoTitle: "Premium Braiding Hair in Natural and Statement Shades | Eby’s Place", seoDescription: "Buy soft-touch premium braiding hair from Eby’s Place in natural tones and statement shades for protective styles.", category: "Hair Attachments" as const, description: "Soft-touch braiding hair available in classic natural tones and statement shades.", price: "6.50", badge: "Salon Pick", stockStatus: "in_stock" as const, stockQuantity: 120, isFeatured: "true" as const },
 ];
 
 const seedReviews = [
   { customerName: "Amara", rating: 5, reviewText: "The most comfortable braiding experience I have had. My scalp felt cared for and the finish was beautiful.", status: "approved" as const, source: "website" },
   { customerName: "Naomi", rating: 5, reviewText: "Eby’s Place feels premium from booking to the final look. The braids were neat, lightweight, and lasted so well.", status: "approved" as const, source: "website" },
   { customerName: "Tia", rating: 5, reviewText: "I booked for my daughter and the team was so patient and gentle. A truly family-friendly service.", status: "approved" as const, source: "website" },
+];
+
+const seedWebsiteSections = [
+  {
+    sectionKey: "about_us",
+    eyebrow: "About Eby’s Place",
+    title: "From Passion to Power",
+    body: "Eby’s Place began with a simple passion for helping women and families feel confident in protective styles that look refined without pain, pressure, or hairline trauma. That passion has grown into a power-led salon experience: structured consultations, gentle hands, premium finishing, and a commitment to braids that protect your confidence as much as your hair.",
+    ctaLabel: "Read our services",
+    ctaHref: "/services",
+    imageUrl: "",
+    sortOrder: 1,
+    isPublished: "true" as const,
+  },
 ];
 
 async function seedIfNeeded() {
@@ -376,6 +390,8 @@ async function seedIfNeeded() {
   }
   const existingReviews = await db.select().from(reviews).limit(1);
   if (existingReviews.length === 0) await db.insert(reviews).values(seedReviews);
+  const existingSections = await db.select().from(websiteSections).where(eq(websiteSections.sectionKey, "about_us")).limit(1);
+  if (existingSections.length === 0) await db.insert(websiteSections).values(seedWebsiteSections);
   const existingGallery = await db.select().from(galleryImages).limit(1);
   if (existingGallery.length === 0) await db.insert(galleryImages).values([
     { title: "Knotless Braids", category: "Braids", imageUrl: imageBySlug["knotless-braids"], altText: "HD model wearing Knotless Braids by Eby’s Place", sortOrder: 1 },
@@ -401,13 +417,25 @@ export async function listFeaturedServices() {
   return db.select().from(services).where(eq(services.isFeatured, "true")).orderBy(asc(services.sortOrder));
 }
 
+export async function listWebsiteSections() {
+  await seedIfNeeded();
+  const db = await getDb();
+  if (!db) return seedWebsiteSections.filter((section) => section.isPublished === "true");
+  return db.select().from(websiteSections).where(eq(websiteSections.isPublished, "true")).orderBy(asc(websiteSections.sortOrder));
+}
+
 export async function listProducts() {
   await seedIfNeeded();
   const db = await getDb();
   if (!db) return seedProducts.map((product) => ({ ...product, variants: [] }));
   const productRows = await db.select().from(products).orderBy(desc(products.isFeatured), asc(products.name));
   const variantRows = await db.select().from(productVariants);
-  return productRows.map((product) => ({ ...product, variants: variantRows.filter((variant) => variant.productId === product.id) }));
+  return productRows.map((product) => ({
+    ...product,
+    seoTitle: product.seoTitle || `${product.name} | Eby’s Place`,
+    seoDescription: product.seoDescription || product.description,
+    variants: variantRows.filter((variant) => variant.productId === product.id),
+  }));
 }
 
 export async function listApprovedReviews() {
@@ -498,9 +526,15 @@ export async function adminSummary() {
 export async function adminLists() {
   await seedIfNeeded();
   const db = await getDb();
-  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: seedProducts, services: seedServices, gallery: [], tryOns: [], sections: [] };
-  const [bookingRows, orderRows, reviewRows, productRows, serviceRows, galleryRows, tryOnRows, sectionRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder))]);
-  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, products: productRows, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows };
+  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: seedProducts.map((product) => ({ ...product, variants: [] })), services: seedServices, gallery: [], tryOns: [], sections: [] };
+  const [bookingRows, orderRows, reviewRows, productRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder))]);
+  const productsWithVariants = productRows.map((product) => ({
+    ...product,
+    seoTitle: product.seoTitle || `${product.name} | Eby’s Place`,
+    seoDescription: product.seoDescription || product.description,
+    variants: variantRows.filter((variant) => variant.productId === product.id),
+  }));
+  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows };
 }
 
 export async function moderateReview(id: number, status: "approved" | "rejected") {

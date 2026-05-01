@@ -31,7 +31,7 @@ export default function Services() {
         <p className="pill w-fit">Services & pricing</p>
         <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_.72fr] lg:items-end">
           <div>
-            <h1 className="serif text-5xl font-bold leading-tight md:text-7xl">
+            <h1 className="serif text-4xl font-bold leading-tight sm:text-5xl md:text-7xl">
               Full Eby’s Place{" "}
               <span className="gold-text">braiding catalogue.</span>
             </h1>

@@ -188,7 +188,7 @@ export default function TryOn() {
       <SiteHeader />
       <main className="container section-pad">
         <p className="pill w-fit">AI hairstyle try-on</p>
-        <h1 className="serif mt-4 max-w-5xl text-5xl font-bold text-[#2f2418] md:text-6xl">
+        <h1 className="serif mt-4 max-w-5xl text-4xl font-bold leading-tight text-[#2f2418] sm:text-5xl md:text-6xl">
           Preview braid styles while preserving your face.
         </h1>
         <p className="mt-5 max-w-3xl text-[#5f5142]">
