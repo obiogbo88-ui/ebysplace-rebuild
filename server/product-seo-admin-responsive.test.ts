@@ -58,6 +58,31 @@ describe("product SEO administration and responsive page safeguards", () => {
     }
   });
 
+  it("adds controlled admin product uploads, decluttered upload panels, analytics, monitoring, and shareable section links", () => {
+    const adminSource = readSource("client/src/pages/Admin.tsx");
+    const routerSource = readSource("server/routers.ts");
+    const dbSource = readSource("server/db.ts");
+    const shopSource = readSource("client/src/pages/Shop.tsx");
+    const appSource = readSource("client/src/App.tsx");
+
+    expect(routerSource).toContain("createProduct: adminProcedure");
+    expect(routerSource).toContain("uploadProductImage: adminProcedure");
+    expect(routerSource).toContain("insights: adminProcedure");
+    expect(dbSource).toContain("export async function createProduct");
+    expect(dbSource).toContain("export async function adminInsights");
+    expect(adminSource).toContain("Add more shop products");
+    expect(adminSource).toContain("Upload product image");
+    expect(adminSource).toContain("Add more gallery images");
+    expect(adminSource).toContain("Add or replace service image");
+    expect(adminSource).toContain("Add or replace website section image");
+    expect(adminSource).toContain("Best-selling analytics");
+    expect(adminSource).toContain("Activity monitoring");
+    expect(adminSource).toContain("Share different website sections");
+    expect(adminSource).toContain("publicSectionLinks");
+    expect(shopSource).toContain("product.imageUrl ? <img src={product.imageUrl}");
+    expect(appSource).toContain("document.getElementById(hash.slice(1))?.scrollIntoView");
+  });
+
   it("protects the About Us story and CEO image workflow across homepage and admin dashboard breakpoints", () => {
     const homeSource = readSource("client/src/pages/Home.tsx");
     const adminSource = readSource("client/src/pages/Admin.tsx");

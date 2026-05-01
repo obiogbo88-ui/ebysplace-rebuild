@@ -155,3 +155,9 @@
 - [x] Do not tamper with any other content, styling, layout, navigation, booking, shop, admin, logo, payment, notification, or other functionality while applying the AI Try-On pop-up text-colour update
 - [x] Reduce only the upper header logo and lower logo moderately while keeping both readable
 - [x] Do not tamper with any other content, styling, layout, navigation, booking, shop, admin, AI Try-On, payment, notification, or other functionality while applying the logo-only size reduction
+- [x] Add admin ability to upload and manage shop products from the dashboard
+- [x] Add decluttered expandable “add more” logic for gallery uploads and other upload-heavy admin areas
+- [x] Add analytics for best-selling products, braid styles, and services
+- [x] Add broader admin monitoring so the owner can review website activity from the dashboard
+- [x] Add shareable direct links for each main website section without breaking existing navigation
+- [x] Do not tamper with unrelated content, styling, layout, navigation, booking, shop browsing, AI Try-On, payments, notifications, logos, or other existing functionality while adding the admin enhancements

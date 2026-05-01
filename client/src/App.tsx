@@ -21,6 +21,11 @@ function ScrollToTop() {
   const [location] = useLocation();
 
   useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      window.setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+      return;
+    }
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [location]);
 

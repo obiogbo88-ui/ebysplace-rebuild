@@ -565,6 +565,13 @@ export async function updateProduct(id: number, input: Partial<typeof products.$
   return { id, ...input };
 }
 
+export async function createProduct(input: typeof products.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const inserted = await db.insert(products).values(input).$returningId();
+  return { id: inserted[0]?.id, ...input };
+}
+
 export async function updateOrderStatus(id: number, status: "draft" | "pending_payment" | "paid" | "fulfilling" | "shipped" | "completed" | "cancelled") {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -591,4 +598,43 @@ export async function updateWebsiteSection(sectionKey: string, input: Partial<ty
   if (!db) throw new Error("Database unavailable");
   await db.insert(websiteSections).values({ sectionKey, title: input.title ?? sectionKey, ...input }).onDuplicateKeyUpdate({ set: input });
   return { sectionKey, ...input };
+}
+
+export async function adminInsights() {
+  await seedIfNeeded();
+  const db = await getDb();
+  if (!db) return {
+    bestSellingProducts: [],
+    bestBookedServices: [],
+    bestTriedStyles: [],
+    recentActivity: [],
+  };
+
+  const [productSales, bookedServices, triedStyles, bookingRows, orderRows, reviewRows, analyticsRows, tryOnRows, subscriberRows] = await Promise.all([
+    db.select({ label: orderItems.productName, units: sql<number>`sum(${orderItems.quantity})`, revenue: sql<number>`sum(${orderItems.quantity} * ${orderItems.unitPrice})` }).from(orderItems).groupBy(orderItems.productName).orderBy(desc(sql`sum(${orderItems.quantity})`)).limit(8),
+    db.select({ label: bookings.serviceName, total: sql<number>`count(*)` }).from(bookings).groupBy(bookings.serviceName).orderBy(desc(sql`count(*)`)).limit(8),
+    db.select({ label: tryOnGenerations.styleName, total: sql<number>`count(*)` }).from(tryOnGenerations).groupBy(tryOnGenerations.styleName).orderBy(desc(sql`count(*)`)).limit(8),
+    db.select().from(bookings).orderBy(desc(bookings.createdAt)).limit(6),
+    db.select().from(orders).orderBy(desc(orders.createdAt)).limit(6),
+    db.select().from(reviews).orderBy(desc(reviews.createdAt)).limit(6),
+    db.select().from(analyticsEvents).orderBy(desc(analyticsEvents.createdAt)).limit(6),
+    db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)).limit(6),
+    db.select().from(newsletterSubscribers).orderBy(desc(newsletterSubscribers.createdAt)).limit(6),
+  ]);
+
+  const recentActivity = [
+    ...bookingRows.map((item) => ({ type: "Booking", label: item.clientName, detail: `${item.serviceName} · ${item.status}`, createdAt: item.createdAt })),
+    ...orderRows.map((item) => ({ type: "Shop order", label: item.customerName, detail: `${item.city} · ${item.status}`, createdAt: item.createdAt })),
+    ...reviewRows.map((item) => ({ type: "Review", label: item.customerName, detail: `${item.rating} stars · ${item.status}`, createdAt: item.createdAt })),
+    ...analyticsRows.map((item) => ({ type: "Visit", label: item.eventName, detail: item.pagePath, createdAt: item.createdAt })),
+    ...tryOnRows.map((item) => ({ type: "AI try-on", label: item.styleName, detail: item.status, createdAt: item.createdAt })),
+    ...subscriberRows.map((item) => ({ type: "Newsletter", label: item.email, detail: item.productAlerts === "true" ? "Product alerts" : "General updates", createdAt: item.createdAt })),
+  ].sort((a, b) => new Date(b.createdAt as Date).getTime() - new Date(a.createdAt as Date).getTime()).slice(0, 12);
+
+  return {
+    bestSellingProducts: productSales.map((item) => ({ label: item.label, units: Number(item.units ?? 0), revenue: Number(item.revenue ?? 0) })),
+    bestBookedServices: bookedServices.map((item) => ({ label: item.label, total: Number(item.total ?? 0) })),
+    bestTriedStyles: triedStyles.map((item) => ({ label: item.label, total: Number(item.total ?? 0) })),
+    recentActivity,
+  };
 }

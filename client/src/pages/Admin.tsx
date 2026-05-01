@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -12,6 +12,8 @@ import {
   Sparkles,
   TrendingUp,
   UploadCloud,
+  Link as LinkIcon,
+  Activity,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,6 +25,7 @@ type AdminListData = {
   products?: any[];
   services?: any[];
   gallery?: any[];
+  sections?: any[];
 };
 
 function Stat({ label, value, icon: Icon }: { label: string; value: number | string; icon: any }) {
@@ -45,15 +48,29 @@ function fileToDataUrl(file: File) {
 }
 
 const galleryCategories = ["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"] as const;
+const productCategories = ["Accessories", "Aftercare", "Hair Attachments"] as const;
+const publicSectionLinks = [
+  { label: "Homepage", path: "/" },
+  { label: "Services", path: "/services" },
+  { label: "Booking", path: "/booking" },
+  { label: "Shop", path: "/shop" },
+  { label: "AI Try-On", path: "/ai-try-on" },
+  { label: "Braiders Near Me", path: "/braiders-near-me" },
+  { label: "Gallery", path: "/gallery" },
+  { label: "Reviews", path: "/reviews" },
+  { label: "Policies", path: "/policies" },
+];
 
 export default function Admin() {
   const { user } = useAuth();
   const summary = trpc.admin.summary.useQuery(undefined, { retry: false });
   const lists = trpc.admin.lists.useQuery(undefined, { retry: false });
+  const insights = trpc.admin.insights.useQuery(undefined, { retry: false });
   const utils = trpc.useUtils();
   const refresh = () => {
     utils.admin.lists.invalidate();
     utils.admin.summary.invalidate();
+    utils.admin.insights.invalidate();
   };
   const opts = {
     onSuccess: () => {
@@ -67,8 +84,24 @@ export default function Admin() {
   const updateBooking = trpc.admin.updateBookingStatus.useMutation(opts);
   const updateOrder = trpc.admin.updateOrderStatus.useMutation(opts);
   const updateStock = trpc.admin.updateProductStock.useMutation(opts);
+  const createProduct = trpc.admin.createProduct.useMutation({
+    onSuccess: () => {
+      refresh();
+      setNewProduct({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "" });
+      toast.success("Shop product uploaded");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
   const updateProduct = trpc.admin.updateProduct.useMutation(opts);
   const updateService = trpc.admin.updateService.useMutation(opts);
+  const uploadProductImage = trpc.admin.uploadProductImage.useMutation({
+    onSuccess: (uploaded, variables) => {
+      if (!variables.productId) setNewProduct((current) => ({ ...current, imageUrl: uploaded.url }));
+      refresh();
+      toast.success(variables.productId ? "Product image uploaded and saved" : "Product image uploaded. Add the product details and save it to the shop.");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
   const uploadServiceImage = trpc.admin.uploadServiceImage.useMutation({
     onSuccess: () => {
       refresh();
@@ -101,9 +134,17 @@ export default function Admin() {
   });
   const updateContent = trpc.admin.updateWebsiteSection.useMutation(opts);
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
+  const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "" });
   const [content, setContent] = useState({ sectionKey: "about_us", title: "", eyebrow: "", body: "", ctaLabel: "", ctaHref: "", imageUrl: "" });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const data = (lists.data || {}) as AdminListData;
+  const siteOrigin = useMemo(() => (typeof window === "undefined" ? "" : window.location.origin), []);
+  const makePublicLink = (path: string) => `${siteOrigin}${path}`;
+  const copyPublicLink = async (path: string) => {
+    const url = makePublicLink(path);
+    await navigator.clipboard.writeText(url);
+    toast.success("Shareable link copied");
+  };
 
   function readAdminPrice(inputId: string, label: string) {
     const rawValue = (document.getElementById(inputId) as HTMLInputElement).value;
@@ -113,6 +154,16 @@ export default function Admin() {
       return null;
     }
     return numericValue.toFixed(2);
+  }
+
+  async function handleProductImageUpload(product: { id?: number; name: string }, file?: File) {
+    if (!file) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await uploadProductImage.mutateAsync({ productId: product.id, productName: product.name || "new-product", dataUrl, fileName: file.name });
+    } catch (error: any) {
+      toast.error(error.message || "Product image upload failed");
+    }
   }
 
   async function handleServiceImageUpload(service: any, file?: File) {
@@ -186,6 +237,36 @@ export default function Admin() {
           <Stat label="AI try-ons" value={summary.data?.tryOns ?? 0} icon={Sparkles} />
         </div>
 
+        <section id="control-center" className="mt-8 grid gap-6 xl:grid-cols-[1.2fr_1fr]">
+          <div className="lux-card">
+            <TrendingUp className="text-primary" />
+            <h2 className="serif mt-3 text-3xl font-bold">Best-selling analytics</h2>
+            <p className="mt-2 text-sm text-white/55">Track the strongest shop products, booked braid styles, and requested services from real shop, booking, and AI Try-On activity.</p>
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4"><b className="text-primary">Products</b>{(insights.data?.bestSellingProducts || []).length ? (insights.data?.bestSellingProducts || []).map((item: any) => <p className="mt-3 text-sm" key={item.label}>{item.label}<small className="block text-white/45">{item.units} sold · £{Number(item.revenue || 0).toFixed(2)}</small></p>) : <p className="mt-3 text-sm text-white/45">No paid product sales yet.</p>}</div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4"><b className="text-primary">Braid styles & services</b>{(insights.data?.bestBookedServices || []).length ? (insights.data?.bestBookedServices || []).map((item: any) => <p className="mt-3 text-sm" key={item.label}>{item.label}<small className="block text-white/45">{item.total} bookings</small></p>) : <p className="mt-3 text-sm text-white/45">No booking volume yet.</p>}</div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4"><b className="text-primary">AI Try-On styles</b>{(insights.data?.bestTriedStyles || []).length ? (insights.data?.bestTriedStyles || []).map((item: any) => <p className="mt-3 text-sm" key={item.label}>{item.label}<small className="block text-white/45">{item.total} try-ons</small></p>) : <p className="mt-3 text-sm text-white/45">No try-on style data yet.</p>}</div>
+            </div>
+          </div>
+          <div className="lux-card">
+            <Activity className="text-primary" />
+            <h2 className="serif mt-3 text-3xl font-bold">Activity monitoring</h2>
+            <p className="mt-2 text-sm text-white/55">Monitor recent bookings, orders, reviews, visits, AI Try-On generations, and newsletter actions in one compact feed.</p>
+            <div className="mt-4 max-h-[22rem] overflow-y-auto pr-2">
+              {(insights.data?.recentActivity || []).length ? (insights.data?.recentActivity || []).map((item: any, index: number) => <div className="border-t border-white/10 py-3 text-sm" key={`${item.type}-${index}`}><b className="text-primary">{item.type}</b><span className="ml-2">{item.label}</span><small className="block text-white/45">{item.detail}</small></div>) : <p className="text-sm text-white/45">No recent activity to show yet.</p>}
+            </div>
+          </div>
+        </section>
+
+        <section id="shareable-links" className="mt-8 lux-card">
+          <LinkIcon className="text-primary" />
+          <h2 className="serif mt-3 text-3xl font-bold">Share different website sections</h2>
+          <p className="mt-2 text-sm text-white/55">Copy a direct link to each major public section so you can share the shop, gallery, booking, AI Try-On, reviews, or policies without changing the visitor journey.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {publicSectionLinks.map((link) => <button className="btn-dark justify-between py-3" key={link.path} onClick={() => copyPublicLink(link.path)}><span>{link.label}</span><small className="text-primary">Copy link</small></button>)}
+          </div>
+        </section>
+
         <section id="bookings" className="mt-10 lux-card">
           <h2 className="serif text-3xl font-bold">Bookings manager</h2>
           <div className="mt-5 overflow-x-auto">
@@ -251,6 +332,21 @@ export default function Admin() {
           <div id="products" className="lux-card">
             <h2 className="serif text-3xl font-bold"><Package className="mr-2 inline text-primary" />Products, prices, stock & SEO</h2>
             <p className="mt-2 text-sm text-white/65">Edit product names, prices, search-friendly slugs, SEO titles, and meta descriptions here. Changes refresh the admin dashboard and public shop after saving.</p>
+            <details className="mt-5 rounded-2xl border border-primary/20 bg-black/20 p-4">
+              <summary className="cursor-pointer font-semibold text-primary">Add more shop products</summary>
+              <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); const price = Number(newProduct.price); if (!Number.isFinite(price) || price < 0) { toast.error("Product price must be valid."); return; } createProduct.mutate({ name: newProduct.name, slug: (newProduct.slug || newProduct.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), category: newProduct.category as any, description: newProduct.description, price: price.toFixed(2), imageUrl: newProduct.imageUrl || undefined, badge: newProduct.badge || undefined, stockQuantity: Number(newProduct.stockQuantity) || 0, seoTitle: newProduct.seoTitle || `${newProduct.name} | Eby’s Place`, seoDescription: newProduct.seoDescription || newProduct.description, stockStatus: "in_stock", isFeatured: "false" }); }}>
+                <div className="grid gap-3 sm:grid-cols-2"><input required placeholder="Product name" value={newProduct.name} onChange={(event) => setNewProduct({ ...newProduct, name: event.target.value })} /><input placeholder="SEO slug" value={newProduct.slug} onChange={(event) => setNewProduct({ ...newProduct, slug: event.target.value })} /></div>
+                <div className="grid gap-3 sm:grid-cols-2"><select value={newProduct.category} onChange={(event) => setNewProduct({ ...newProduct, category: event.target.value })}>{productCategories.map((category) => <option key={category}>{category}</option>)}</select><input required type="number" min="0" step="0.01" placeholder="Price (£)" value={newProduct.price} onChange={(event) => setNewProduct({ ...newProduct, price: event.target.value })} /></div>
+                <textarea required placeholder="Public product description" value={newProduct.description} onChange={(event) => setNewProduct({ ...newProduct, description: event.target.value })} />
+                <div className="grid gap-3 sm:grid-cols-2"><input placeholder="Badge" value={newProduct.badge} onChange={(event) => setNewProduct({ ...newProduct, badge: event.target.value })} /><input type="number" min="0" placeholder="Stock quantity" value={newProduct.stockQuantity} onChange={(event) => setNewProduct({ ...newProduct, stockQuantity: Number(event.target.value) })} /></div>
+                <input placeholder="SEO title" value={newProduct.seoTitle} onChange={(event) => setNewProduct({ ...newProduct, seoTitle: event.target.value })} />
+                <textarea placeholder="SEO meta description" value={newProduct.seoDescription} onChange={(event) => setNewProduct({ ...newProduct, seoDescription: event.target.value })} />
+                <label className="btn-dark cursor-pointer justify-start"><UploadCloud className="mr-2 h-4 w-4" /> {uploadProductImage.isPending ? "Uploading product image…" : "Upload product image"}<input className="sr-only" type="file" accept="image/*" disabled={uploadProductImage.isPending} onChange={(event) => handleProductImageUpload({ name: newProduct.name }, event.target.files?.[0])} /></label>
+                <input placeholder="Product image URL" value={newProduct.imageUrl} onChange={(event) => setNewProduct({ ...newProduct, imageUrl: event.target.value })} />
+                {newProduct.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={newProduct.imageUrl} alt="New product preview" /></div>}
+                <button className="btn-gold" disabled={createProduct.isPending}>{createProduct.isPending ? "Saving product…" : "Save product to shop"}</button>
+              </form>
+            </details>
             <div className="mt-5 grid gap-4">
               {(data.products || []).map((product: any) => (
                 <div className="rounded-2xl border border-white/10 p-4" key={product.id}>
@@ -269,6 +365,7 @@ export default function Admin() {
                       <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Badge<input defaultValue={product.badge || ""} id={`product-badge-${product.id}`} /></label>
                     </div>
                     <div className="rounded-2xl bg-white/[0.04] p-3 text-sm text-white/70"><b className="text-primary">SEO preview:</b> {product.seoTitle || `${product.name} | Eby’s Place`}<span className="block text-white/55">{product.seoDescription || product.description}</span></div>
+                    <details className="rounded-2xl border border-primary/20 bg-black/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-primary">Update product image</summary><div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]"><input id={`product-image-${product.id}`} defaultValue={product.imageUrl || ""} placeholder="Product image URL" /><label className="btn-dark cursor-pointer py-2"><UploadCloud className="mr-2 h-4 w-4" /> Upload image<input className="sr-only" type="file" accept="image/*" onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])} /></label></div>{product.imageUrl && <div className="mt-3 media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={product.imageUrl} alt={product.name} /></div>}</details>
                     <div className="rounded-2xl border border-primary/20 bg-black/20 p-3 text-sm text-white/70">
                       <b className="block text-primary">Shop colour previews</b>
                       <span className="mt-1 block text-white/55">These are the colour options customers click on the shop page to update the product preview before checkout.</span>
@@ -282,7 +379,7 @@ export default function Admin() {
                         ))}
                       </div>
                     </div>
-                    <button className="btn-gold py-2" onClick={() => { const price = readAdminPrice(`product-price-${product.id}`, "Shop price"); if (!price) return; updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, price, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value }); }}>Save product price & SEO</button>
+                    <button className="btn-gold py-2" onClick={() => { const price = readAdminPrice(`product-price-${product.id}`, "Shop price"); if (!price) return; updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, price, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, imageUrl: (document.getElementById(`product-image-${product.id}`) as HTMLInputElement).value || undefined, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value }); }}>Save product price & SEO</button>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                     <input type="number" min={0} defaultValue={product.stockQuantity} id={`stock-${product.id}`} />
@@ -311,13 +408,16 @@ export default function Admin() {
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Duration<input defaultValue={service.duration} id={`duration-${service.id}`} /></label>
                         <button className="btn-dark py-2" onClick={() => { const priceFrom = readAdminPrice(`price-${service.id}`, "Service price"); if (!priceFrom) return; updateService.mutate({ id: service.id, priceFrom, duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value, imageUrl: (document.getElementById(`service-image-${service.id}`) as HTMLInputElement).value }); }}>Save service price</button>
                       </div>
-                      <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
-                        <input id={`service-image-${service.id}`} defaultValue={service.imageUrl || ""} placeholder="Service image URL" />
-                        <label className="btn-dark cursor-pointer py-2">
-                          <UploadCloud className="mr-2 h-4 w-4" /> {uploadingServiceId === service.id ? "Uploading…" : "Upload image"}
-                          <input className="sr-only" type="file" accept="image/*" disabled={uploadingServiceId === service.id} onChange={(event) => handleServiceImageUpload(service, event.target.files?.[0])} />
-                        </label>
-                      </div>
+                      <details className="mt-3 rounded-2xl border border-primary/20 bg-black/20 p-3">
+                        <summary className="cursor-pointer text-sm font-semibold text-primary">Add or replace service image</summary>
+                        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+                          <input id={`service-image-${service.id}`} defaultValue={service.imageUrl || ""} placeholder="Service image URL" />
+                          <label className="btn-dark cursor-pointer py-2">
+                            <UploadCloud className="mr-2 h-4 w-4" /> {uploadingServiceId === service.id ? "Uploading…" : "Upload image"}
+                            <input className="sr-only" type="file" accept="image/*" disabled={uploadingServiceId === service.id} onChange={(event) => handleServiceImageUpload(service, event.target.files?.[0])} />
+                          </label>
+                        </div>
+                      </details>
                     </div>
                   </div>
                 </div>
@@ -330,7 +430,9 @@ export default function Admin() {
           <div id="gallery" className="lux-card">
             <Images className="text-primary" />
             <h2 className="serif mt-3 text-3xl font-bold">Gallery uploader</h2>
-            <p className="mt-2 text-sm text-white/55">Upload a new gallery image, confirm the generated URL, then save it with the right category and alt text.</p>
+            <p className="mt-2 text-sm text-white/55">Use the expandable add-more control to keep the dashboard clear while still uploading fresh gallery work when needed.</p>
+            <details className="mt-4 rounded-2xl border border-primary/20 bg-black/20 p-4">
+              <summary className="cursor-pointer font-semibold text-primary">Add more gallery images</summary>
             <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); addGallery.mutate({ ...gallery, category: gallery.category as any }); }}>
               <input required placeholder="Image title" value={gallery.title} onChange={(event) => setGallery({ ...gallery, title: event.target.value })} />
               <select value={gallery.category} onChange={(event) => setGallery({ ...gallery, category: event.target.value })}>
@@ -345,6 +447,7 @@ export default function Admin() {
               <input required placeholder="Alt text" value={gallery.altText} onChange={(event) => setGallery({ ...gallery, altText: event.target.value })} />
               <button className="btn-gold" disabled={addGallery.isPending}>{addGallery.isPending ? "Saving…" : "Add image"}</button>
             </form>
+            </details>
             <b className="mt-4 block text-primary">{data.gallery?.length || 0} images</b>
           </div>
 
@@ -358,12 +461,17 @@ export default function Admin() {
               <textarea placeholder="Body copy" value={content.body} onChange={(event) => setContent({ ...content, body: event.target.value })} />
               <input placeholder="CTA label" value={content.ctaLabel} onChange={(event) => setContent({ ...content, ctaLabel: event.target.value })} />
               <input placeholder="CTA link" value={content.ctaHref} onChange={(event) => setContent({ ...content, ctaHref: event.target.value })} />
-              <input placeholder="CEO / founder image URL" value={content.imageUrl} onChange={(event) => setContent({ ...content, imageUrl: event.target.value })} />
-              <label className="btn-dark cursor-pointer justify-start">
-                <UploadCloud className="mr-2 h-4 w-4" /> {uploadWebsiteSectionImage.isPending ? "Uploading CEO image…" : "Upload About Us CEO image"}
-                <input className="sr-only" type="file" accept="image/*" disabled={uploadWebsiteSectionImage.isPending} onChange={(event) => handleWebsiteSectionImageUpload(event.target.files?.[0])} />
-              </label>
-              {content.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={content.imageUrl} alt="About Us CEO preview" /></div>}
+              <details className="rounded-2xl border border-primary/20 bg-black/20 p-3">
+                <summary className="cursor-pointer text-sm font-semibold text-primary">Add or replace website section image</summary>
+                <div className="mt-3 grid gap-3">
+                  <input placeholder="CEO / founder image URL" value={content.imageUrl} onChange={(event) => setContent({ ...content, imageUrl: event.target.value })} />
+                  <label className="btn-dark cursor-pointer justify-start">
+                    <UploadCloud className="mr-2 h-4 w-4" /> {uploadWebsiteSectionImage.isPending ? "Uploading CEO image…" : "Upload About Us CEO image"}
+                    <input className="sr-only" type="file" accept="image/*" disabled={uploadWebsiteSectionImage.isPending} onChange={(event) => handleWebsiteSectionImageUpload(event.target.files?.[0])} />
+                  </label>
+                  {content.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={content.imageUrl} alt="About Us CEO preview" /></div>}
+                </div>
+              </details>
               <p className="text-xs font-semibold text-white/55">Use section key <b>about_us</b> to update the homepage “From Passion to Power” story and CEO portrait panel.</p>
               <button className="btn-gold">Save content section</button>
             </form>
