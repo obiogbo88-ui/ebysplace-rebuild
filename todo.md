@@ -31,3 +31,36 @@
 - [x] Add robots.txt and sitemap.xml
 - [x] Add or update Vitest tests covering core backend procedures and role restrictions
 - [x] Run type checks, tests, and project status validation before delivery
+
+- [x] Refine site colours and theme to match the current Eby’s Place website more closely rather than the earlier darker premium variation
+- [x] Add the provided Eby’s Place logo across the header, hero, footer, and metadata where appropriate using web-safe asset handling
+- [x] Replace the generic “Premium black-and-gold braiding salon” badge copy with the Eby’s Place slogan “Zero pain. Zero trauma. Just perfection.”
+- [x] Adjust homepage wording and section copy to follow the original Eby’s Place write-up and tone more closely
+- [x] Add a dedicated homepage video placeholder area for the current Eby’s Place video to be embedded later
+- [x] Re-check automation coverage for bookings, Stripe deposit flow, orders, reviews, admin moderation, AI try-on, newsletter, and owner/admin monitoring flows
+- [x] Verify and improve desktop and mobile responsive layouts after the brand refinements
+
+- [x] Expand the Eby’s Place service catalogue to include all observed braiding styles and services, including Knotless Braids, Box Braids, Goddess Braids, Fulani Braids, Cornrows, Stitch Braids, Lemonade Braids, Boho Braids, Tribal Braids, Twists, Locs, Kids Styles, and Add-ons
+- [x] Ensure the expanded service catalogue appears consistently on the Services page, booking service selector, homepage style areas, and admin service management tools
+
+- [x] Blend the Eby’s Place logo into the page background without visible boxed boundaries while preserving strong contrast and brand visibility
+- [x] Adjust surrounding colours and hero/header treatment so the logo stands out naturally against the black-and-gold palette
+- [x] Create HD model imagery matched to the correct service categories and styles for the services and gallery experience
+- [x] Add service image support so admin users can upload and update images for individual services
+- [x] Add gallery image upload support so admin users can upload new gallery images directly instead of pasting URLs only
+- [x] Verify the new media workflows with Vitest coverage, TypeScript checks, and responsive status validation
+
+- [x] Complete Stripe checkout integration for booking deposits with dynamic success and cancellation redirects
+- [x] Add Stripe webhook handling for deposit payment confirmation and test webhook verification
+- [x] Update booking payment status automatically after successful Stripe checkout or webhook events
+- [x] Send automated owner notifications when bookings and Stripe deposit events occur, with existing admin monitoring for orders, reviews, and related dashboard events
+- [x] Send automated customer/user notifications for booking submission, deposit checkout, and payment confirmation through in-app toasts and confirmation pages
+- [x] Add automated tests covering Stripe checkout metadata, webhook behaviour, and notification-triggered booking/payment flows
+
+- [x] Match every HD model image to the exact service name in the catalogue so image titles, alt text, service cards, and gallery labels use names such as “Knotless Braids”, “Box Braids”, and “Goddess Braids” without generic labels
+
+- [x] Locate the current Eby’s Place landing video source and embed or mirror it into the new homepage landing section when technically accessible and appropriate
+- [x] If the current landing video cannot be directly reused, keep a polished branded video area ready for the owner to upload or replace the source later
+
+- [x] Run a full final test pass after all requested branding, media, upload, Stripe, and notification work is complete, including automated tests, TypeScript/build checks, server health, and responsive/status validation
+- [x] Run and document explicit final responsive verification across home, services, booking, gallery, and admin at mobile, tablet, and desktop breakpoints after the last asset and UI changes

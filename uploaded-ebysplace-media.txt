@@ -1,0 +1,108 @@
+Uploading file (webdev private): ebysplace_header_video.mp4 (size: 1523712 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_header_video_64d5fea4.mp4
+Uploading file (webdev private): ebysplace_service_beads_accessories.png (size: 2478964 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_beads_accessories_05425a55.png
+Uploading file (webdev private): ebysplace_service_boho_braids.png (size: 2328540 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_boho_braids_ee8557bc.png
+Uploading file (webdev private): ebysplace_service_box_braids.png (size: 2035759 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_box_braids_c219e578.png
+Uploading file (webdev private): ebysplace_service_braid_takedown.png (size: 2244206 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_braid_takedown_6240fcb4.png
+Uploading file (webdev private): ebysplace_service_butterfly_locs.png (size: 2065490 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_butterfly_locs_642d7503.png
+Uploading file (webdev private): ebysplace_service_cornrows.png (size: 2301824 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_cornrows_2b5007dd.png
+Uploading file (webdev private): ebysplace_service_crochet_braids.png (size: 2468498 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_crochet_braids_8dc4ec80.png
+Uploading file (webdev private): ebysplace_service_edge_control_styling.png (size: 2362866 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_edge_control_styling_675ed964.png
+Uploading file (webdev private): ebysplace_service_faux_locs.png (size: 2101624 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_faux_locs_b738d17e.png
+Uploading file (webdev private): ebysplace_service_feed_in_braids.png (size: 2024291 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_feed_in_braids_f1f2622f.png
+Uploading file (webdev private): ebysplace_service_fulani_braids.png (size: 2208012 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_fulani_braids_0575047c.png
+Uploading file (webdev private): ebysplace_service_goddess_braids.png (size: 2298091 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_goddess_braids_da92cf33.png
+Uploading file (webdev private): ebysplace_service_hair_wash_prep.png (size: 1941666 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_hair_wash_prep_ccec3da2.png
+Uploading file (webdev private): ebysplace_service_kids_braids.png (size: 2064801 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_kids_braids_066faa86.png
+Uploading file (webdev private): ebysplace_service_kids_cornrows.png (size: 2208009 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_kids_cornrows_e12e1096.png
+Uploading file (webdev private): ebysplace_service_knotless_braids.png (size: 2330388 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_knotless_braids_ee7bcfb0.png
+Uploading file (webdev private): ebysplace_service_lemonade_braids.png (size: 1796074 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_lemonade_braids_71001277.png
+Uploading file (webdev private): ebysplace_service_natural_hair_cornrows.png (size: 2087604 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_natural_hair_cornrows_9501e362.png
+Uploading file (webdev private): ebysplace_service_passion_twists.png (size: 2384704 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_passion_twists_fb79128f.png
+Uploading file (webdev private): ebysplace_service_senegalese_twists.png (size: 2376006 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_senegalese_twists_d58a9d66.png
+Uploading file (webdev private): ebysplace_service_soft_locs.png (size: 2186057 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_soft_locs_5e2ba13c.png
+Uploading file (webdev private): ebysplace_service_spring_twists.png (size: 2111440 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_spring_twists_ae84f47f.png
+Uploading file (webdev private): ebysplace_service_starter_locs.png (size: 2151319 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_starter_locs_3cfa3435.png
+Uploading file (webdev private): ebysplace_service_stitch_braids.png (size: 2292248 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_stitch_braids_562f3424.png
+Uploading file (webdev private): ebysplace_service_tribal_braids.png (size: 2135001 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_tribal_braids_f0ce8622.png
+
+========== Upload Summary ==========
+[SUCCESS] ebysplace_header_video.mp4 -> /manus-storage/ebysplace_header_video_64d5fea4.mp4
+[SUCCESS] ebysplace_service_beads_accessories.png -> /manus-storage/ebysplace_service_beads_accessories_05425a55.png
+[SUCCESS] ebysplace_service_boho_braids.png -> /manus-storage/ebysplace_service_boho_braids_ee8557bc.png
+[SUCCESS] ebysplace_service_box_braids.png -> /manus-storage/ebysplace_service_box_braids_c219e578.png
+[SUCCESS] ebysplace_service_braid_takedown.png -> /manus-storage/ebysplace_service_braid_takedown_6240fcb4.png
+[SUCCESS] ebysplace_service_butterfly_locs.png -> /manus-storage/ebysplace_service_butterfly_locs_642d7503.png
+[SUCCESS] ebysplace_service_cornrows.png -> /manus-storage/ebysplace_service_cornrows_2b5007dd.png
+[SUCCESS] ebysplace_service_crochet_braids.png -> /manus-storage/ebysplace_service_crochet_braids_8dc4ec80.png
+[SUCCESS] ebysplace_service_edge_control_styling.png -> /manus-storage/ebysplace_service_edge_control_styling_675ed964.png
+[SUCCESS] ebysplace_service_faux_locs.png -> /manus-storage/ebysplace_service_faux_locs_b738d17e.png
+[SUCCESS] ebysplace_service_feed_in_braids.png -> /manus-storage/ebysplace_service_feed_in_braids_f1f2622f.png
+[SUCCESS] ebysplace_service_fulani_braids.png -> /manus-storage/ebysplace_service_fulani_braids_0575047c.png
+[SUCCESS] ebysplace_service_goddess_braids.png -> /manus-storage/ebysplace_service_goddess_braids_da92cf33.png
+[SUCCESS] ebysplace_service_hair_wash_prep.png -> /manus-storage/ebysplace_service_hair_wash_prep_ccec3da2.png
+[SUCCESS] ebysplace_service_kids_braids.png -> /manus-storage/ebysplace_service_kids_braids_066faa86.png
+[SUCCESS] ebysplace_service_kids_cornrows.png -> /manus-storage/ebysplace_service_kids_cornrows_e12e1096.png
+[SUCCESS] ebysplace_service_knotless_braids.png -> /manus-storage/ebysplace_service_knotless_braids_ee7bcfb0.png
+[SUCCESS] ebysplace_service_lemonade_braids.png -> /manus-storage/ebysplace_service_lemonade_braids_71001277.png
+[SUCCESS] ebysplace_service_natural_hair_cornrows.png -> /manus-storage/ebysplace_service_natural_hair_cornrows_9501e362.png
+[SUCCESS] ebysplace_service_passion_twists.png -> /manus-storage/ebysplace_service_passion_twists_fb79128f.png
+[SUCCESS] ebysplace_service_senegalese_twists.png -> /manus-storage/ebysplace_service_senegalese_twists_d58a9d66.png
+[SUCCESS] ebysplace_service_soft_locs.png -> /manus-storage/ebysplace_service_soft_locs_5e2ba13c.png
+[SUCCESS] ebysplace_service_spring_twists.png -> /manus-storage/ebysplace_service_spring_twists_ae84f47f.png
+[SUCCESS] ebysplace_service_starter_locs.png -> /manus-storage/ebysplace_service_starter_locs_3cfa3435.png
+[SUCCESS] ebysplace_service_stitch_braids.png -> /manus-storage/ebysplace_service_stitch_braids_562f3424.png
+[SUCCESS] ebysplace_service_tribal_braids.png -> /manus-storage/ebysplace_service_tribal_braids_f0ce8622.png
+=====================================
+Total: 26, Success: 26, Failed: 0

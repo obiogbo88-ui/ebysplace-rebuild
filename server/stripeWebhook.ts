@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import Stripe from "stripe";
 import * as db from "./db";
+import { notifyOwner } from "./_core/notification";
 
 function getStripeWebhookConfig() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -45,6 +46,18 @@ export function registerStripeWebhook(app: Express) {
         if (session.metadata?.deposit_type === "non_refundable_20_gbp" && session.id) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await db.markBookingDepositPaid(session.id, paymentIntentId);
+          await notifyOwner({
+            title: "Eby’s Place deposit paid",
+            content: [
+              `A £20 booking deposit has been confirmed through Stripe.`,
+              `Booking ID: ${session.metadata?.booking_id ?? "Not provided"}`,
+              `Service: ${session.metadata?.service_name ?? "Not provided"}`,
+              `Customer: ${session.metadata?.customer_name ?? "Not provided"}`,
+              `Email: ${session.metadata?.customer_email ?? session.customer_email ?? "Not provided"}`,
+              `Stripe session: ${session.id}`,
+              paymentIntentId ? `Payment intent: ${paymentIntentId}` : undefined,
+            ].filter(Boolean).join("\n"),
+          }).catch((error) => console.warn("[StripeWebhook] Owner payment notification failed", error));
         }
       }
       console.log("[StripeWebhook] Processed event", event.type, event.id);

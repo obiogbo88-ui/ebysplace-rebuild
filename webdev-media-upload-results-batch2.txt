@@ -1,0 +1,24 @@
+Uploading file (webdev private): ebysplace_service_stitch_braids.png (size: 2292248 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_stitch_braids_1d953918.png
+Uploading file (webdev private): ebysplace_service_lemonade_braids.png (size: 1796074 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_lemonade_braids_c74f4507.png
+Uploading file (webdev private): ebysplace_service_boho_braids.png (size: 2328540 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_boho_braids_2e11c97f.png
+Uploading file (webdev private): ebysplace_service_tribal_braids.png (size: 2135001 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_tribal_braids_50fdb974.png
+Uploading file (webdev private): ebysplace_service_senegalese_twists.png (size: 2376006 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_senegalese_twists_4c9a49ab.png
+
+========== Upload Summary ==========
+[SUCCESS] ebysplace_service_stitch_braids.png -> /manus-storage/ebysplace_service_stitch_braids_1d953918.png
+[SUCCESS] ebysplace_service_lemonade_braids.png -> /manus-storage/ebysplace_service_lemonade_braids_c74f4507.png
+[SUCCESS] ebysplace_service_boho_braids.png -> /manus-storage/ebysplace_service_boho_braids_2e11c97f.png
+[SUCCESS] ebysplace_service_tribal_braids.png -> /manus-storage/ebysplace_service_tribal_braids_50fdb974.png
+[SUCCESS] ebysplace_service_senegalese_twists.png -> /manus-storage/ebysplace_service_senegalese_twists_4c9a49ab.png
+=====================================
+Total: 5, Success: 5, Failed: 0

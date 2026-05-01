@@ -1,0 +1,16 @@
+Uploading file (webdev private): ebysplace_service_beads_accessories.png (size: 2478964 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_beads_accessories_464108b4.png
+Uploading file (webdev private): ebysplace_service_edge_control_styling.png (size: 2362866 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_edge_control_styling_555b71b4.png
+Uploading file (webdev private): ebysplace_service_braid_takedown.png (size: 2244206 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_braid_takedown_14a18416.png
+
+========== Upload Summary ==========
+[SUCCESS] ebysplace_service_beads_accessories.png -> /manus-storage/ebysplace_service_beads_accessories_464108b4.png
+[SUCCESS] ebysplace_service_edge_control_styling.png -> /manus-storage/ebysplace_service_edge_control_styling_555b71b4.png
+[SUCCESS] ebysplace_service_braid_takedown.png -> /manus-storage/ebysplace_service_braid_takedown_14a18416.png
+=====================================
+Total: 3, Success: 3, Failed: 0

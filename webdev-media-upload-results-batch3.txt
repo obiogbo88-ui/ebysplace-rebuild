@@ -1,0 +1,24 @@
+Uploading file (webdev private): ebysplace_service_passion_twists.png (size: 2384704 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_passion_twists_fdf487dc.png
+Uploading file (webdev private): ebysplace_service_spring_twists.png (size: 2111440 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_spring_twists_7d3cdea1.png
+Uploading file (webdev private): ebysplace_service_faux_locs.png (size: 2101624 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_faux_locs_88fde203.png
+Uploading file (webdev private): ebysplace_service_soft_locs.png (size: 2186057 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_soft_locs_c8ac577d.png
+Uploading file (webdev private): ebysplace_service_butterfly_locs.png (size: 2065490 bytes)
+File uploaded successfully!
+Storage Path: /manus-storage/ebysplace_service_butterfly_locs_0fa24198.png
+
+========== Upload Summary ==========
+[SUCCESS] ebysplace_service_passion_twists.png -> /manus-storage/ebysplace_service_passion_twists_fdf487dc.png
+[SUCCESS] ebysplace_service_spring_twists.png -> /manus-storage/ebysplace_service_spring_twists_7d3cdea1.png
+[SUCCESS] ebysplace_service_faux_locs.png -> /manus-storage/ebysplace_service_faux_locs_88fde203.png
+[SUCCESS] ebysplace_service_soft_locs.png -> /manus-storage/ebysplace_service_soft_locs_c8ac577d.png
+[SUCCESS] ebysplace_service_butterfly_locs.png -> /manus-storage/ebysplace_service_butterfly_locs_0fa24198.png
+=====================================
+Total: 5, Success: 5, Failed: 0
