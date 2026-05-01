@@ -25,17 +25,42 @@ type StoredPhoto = {
   mimeType: string;
 };
 
+type HeicConverter = (options: {
+  blob: Blob;
+  toType: string;
+  quality?: number;
+}) => Promise<Blob | Blob[]>;
+
+function isHeicLike(file: File) {
+  const name = file.name.toLowerCase();
+  const type = file.type.toLowerCase();
+  return type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif");
+}
+
+async function convertHeicToJpeg(file: File) {
+  try {
+    const imported = await import("heic2any");
+    const heic2any = imported.default as HeicConverter;
+    const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.88 });
+    const blob = Array.isArray(converted) ? converted[0] : converted;
+    if (!blob || blob.size === 0) throw new Error("Converted file was empty.");
+    return blob;
+  } catch {
+    throw new Error("This iPhone HEIC photo could not be converted. Please try saving it as JPEG, or choose another clear portrait photo.");
+  }
+}
+
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Could not read this image. Please try a JPEG or PNG portrait photo."));
+    image.onerror = () => reject(new Error("Could not read this image. Please try a JPEG, PNG, WebP, or iPhone HEIC portrait photo."));
     image.src = src;
   });
 }
 
 async function compressImage(file: File): Promise<UploadedPhoto> {
-  if (!file.type.startsWith("image/")) {
+  if (!file.type.startsWith("image/") && !isHeicLike(file)) {
     throw new Error("Please choose an image file for the AI Try-On.");
   }
 
@@ -43,7 +68,8 @@ async function compressImage(file: File): Promise<UploadedPhoto> {
     throw new Error("Please choose a photo under 20MB. Very large camera files can time out before upload.");
   }
 
-  const objectUrl = URL.createObjectURL(file);
+  const preparedBlob = isHeicLike(file) ? await convertHeicToJpeg(file) : file;
+  const objectUrl = URL.createObjectURL(preparedBlob);
   try {
     const image = await loadImage(objectUrl);
     const maxSide = 1600;
@@ -63,7 +89,7 @@ async function compressImage(file: File): Promise<UploadedPhoto> {
       canvas.toBlob((value) => {
         if (value) resolve(value);
         else reject(new Error("Your browser could not compress this photo. Please try a different image."));
-      }, "image/jpeg", 0.82);
+      }, "image/jpeg", 0.84);
     });
 
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -81,6 +107,18 @@ async function compressImage(file: File): Promise<UploadedPhoto> {
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
+}
+
+function friendlyTryOnError(error: unknown) {
+  const message = error instanceof Error ? error.message : "AI Try-On could not generate a preview right now.";
+  const lower = message.toLowerCase();
+  if (lower.includes("read") || lower.includes("12007") || lower.includes("unsupported") || lower.includes("image generation failed")) {
+    return "The AI could not read that photo clearly. Please upload a bright front-facing JPEG, PNG, WebP, or iPhone HEIC portrait where the face and hair are visible.";
+  }
+  if (lower.includes("payload") || lower.includes("smaller") || lower.includes("too large")) {
+    return "That photo is still too large after preparation. Please choose a smaller portrait or screenshot, then try again.";
+  }
+  return message;
 }
 
 export default function TryOn() {
@@ -104,10 +142,10 @@ export default function TryOn() {
       const compressed = await compressImage(file);
       setPhoto(compressed);
       toast.success("Photo prepared for AI Try-On", {
-        description: `Compressed to ${compressed.sizeKb}KB to avoid upload timeouts.`,
+        description: `Prepared to ${compressed.sizeKb}KB so the AI can read it more reliably.`,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not prepare this image.";
+      const message = friendlyTryOnError(err);
       setError(message);
       toast.error("Photo could not be prepared", { description: message });
     } finally {
@@ -139,7 +177,7 @@ export default function TryOn() {
         description: "Your hairstyle preview is ready below.",
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "AI Try-On could not generate a preview right now.";
+      const message = friendlyTryOnError(err);
       setError(message);
       toast.error("AI Try-On failed", { description: message });
     }
@@ -154,7 +192,7 @@ export default function TryOn() {
           Preview braid styles while preserving your face.
         </h1>
         <p className="mt-5 max-w-3xl text-[#5f5142]">
-          Upload a clear portrait photo, choose a braid style, and generate a visual preview. The page compresses large camera photos before upload so the request does not time out.
+          Upload a clear portrait photo, choose a braid style, and generate a visual preview. iPhone HEIC photos, JPEGs, PNGs, and WebP images are prepared before upload so the AI can read them more reliably.
         </p>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
@@ -162,11 +200,11 @@ export default function TryOn() {
             <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#c8a552]/60 bg-white/70 p-8 text-center transition hover:border-[#9f7a25] hover:bg-[#fff7df]">
               <UploadCloud className="h-10 w-10 text-[#9f7a25]" />
               <span className="mt-3 font-semibold text-[#2f2418]">Upload a clear front-facing photo</span>
-              <span className="mt-2 text-sm text-[#6e604f]">JPEG or PNG works best. Large photos are resized automatically before upload.</span>
+              <span className="mt-2 text-sm text-[#6e604f]">JPEG, PNG, WebP, or iPhone HEIC works best. Large photos are resized automatically.</span>
               <input
                 className="sr-only"
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/*"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,image/*"
                 disabled={isBusy}
                 onChange={(event) => onFile(event.target.files?.[0])}
               />
@@ -194,11 +232,11 @@ export default function TryOn() {
 
             {photo && (
               <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
-                Prepared upload size: <strong className="text-[#2f2418]">{photo.sizeKb}KB</strong>. This prevents the large-photo timeout that can happen with uncompressed camera images.
+                Prepared upload size: <strong className="text-[#2f2418]">{photo.sizeKb}KB</strong>. This helps the AI read the portrait and prevents large-photo upload timeouts.
               </p>
             )}
             {error && (
-              <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <p className="mt-4 rounded-2xl border-2 border-[#b42318] bg-[#fff1f0] px-4 py-3 text-sm font-semibold leading-relaxed text-[#5a160f] shadow-[0_10px_24px_rgba(180,35,24,0.16)]" role="alert">
                 {error}
               </p>
             )}

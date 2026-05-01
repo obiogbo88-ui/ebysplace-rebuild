@@ -12,7 +12,6 @@ import TryOn from "./pages/TryOn";
 import Braiders from "./pages/Braiders";
 import Gallery from "./pages/Gallery";
 import Reviews from "./pages/Reviews";
-import LeaveReview from "./pages/LeaveReview";
 import BookingSuccess from "./pages/BookingSuccess";
 import Admin from "./pages/Admin";
 
@@ -28,7 +27,6 @@ function Router() {
       <Route path="/braiders-near-me" component={Braiders} />
       <Route path="/gallery" component={Gallery} />
       <Route path="/reviews" component={Reviews} />
-      <Route path="/leave-review" component={LeaveReview} />
       <Route path="/admin" component={Admin} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
@@ -39,7 +37,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
           <Router />

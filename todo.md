@@ -66,38 +66,9 @@
 - [x] Run and document explicit final responsive verification across home, services, booking, gallery, and admin at mobile, tablet, and desktop breakpoints after the last asset and UI changes
 - [x] Match the homepage video block dimensions, service image dimensions, gallery image dimensions, and admin upload preview dimensions to the current Eby’s Place website as closely as possible while preserving responsive behaviour
 - [x] Make the overall website background a bit lighter while preserving the Eby’s Place black-and-gold brand feel and readable contrast
-- [x] Make selecting a booking style advance the customer through a clear staged flow until deposit payment
-- [x] Enlarge and embolden the Eby’s Place logo so it is readable in the header, hero, and key branded areas
-- [x] Remove the shaded overlay treatment from the “Luxury Pain-Free Braiding” hero write-up card while preserving text readability
+- [ ] Make selecting a booking style advance the customer through a clear staged flow until deposit payment
+- [ ] Enlarge and embolden the Eby’s Place logo so it is readable in the header, hero, and key branded areas
+- [ ] Remove the shaded overlay treatment from the “Luxury Pain-Free Braiding” hero write-up card while preserving text readability
 - [x] Verify whether the AI Try-On feature is usable now and fix any blocking issue found in the upload/style/generation flow
 
-- [x] Remove suggestive or overly promotional write-ups around aftercare/premium wording and reviews where they do not match the current Eby’s Place tone
-- [x] Realign the affected sections with the current Eby’s Place colours, style, spacing, and design treatment
-- [x] Re-run automated verification and save a new checkpoint for the copy and style cleanup
-
-- [x] Lighten the website background and section treatments to better match the current Eby’s Place site while preserving gold branding and readability
-- [x] Re-run automated verification and save a new checkpoint for the lighter background refinement
-
-- [x] Add a current-site-style moving reviews strip that scrolls approved reviews across the screen from end to end
-- [x] Add a shareable public review form link customers can use directly to submit a review
-- [x] Re-run automated verification and save a new checkpoint for the reviews carousel and shareable review form updates
-
-- [x] Fix remaining white-font write-ups that are unreadable on the light Eby’s Place background
-- [x] Re-run automated verification and save a new checkpoint for the white-font contrast fix
-
-- [x] Fix menu list items that still appear white against the light header/menu background
-- [x] Fix footer write-ups and links that still appear white against the light footer background
-- [x] Re-run automated verification and save a new checkpoint for the targeted menu and footer contrast fix
-
-- [x] Apply the same light-theme readable text adjustments across the admin area so menu items, cards, tables, forms, and footers are visible
-- [x] Check whether website notifications can show Eby’s Place branding instead of Manus and update supported app-level notification titles/copy where possible
-- [x] Re-run automated verification and save a new checkpoint for the admin contrast and notification branding updates
-- [x] Refine the admin overview panel styling so shadows, cards, spacing, and cream-and-gold treatment match the landing page more closely
-- [x] Ensure the website is fully ready by running the final automated tests, production build, TypeScript/status validation, and saving a readiness checkpoint
-
-- [x] Diagnose why the AI Try-On flow is not working for users, including frontend upload state, server storage access, image-generation call, and runtime logs
-- [x] Fix the AI Try-On flow so customers can upload a photo, choose a hairstyle, generate a face-preserving preview, and see a clear error if generation fails
-- [x] Add or update automated tests covering the AI Try-On fix and re-run test, TypeScript, build, and status verification before saving a checkpoint
-
-- [x] Adjust AI Try-On original and generated preview boxes so portrait photos fit cleanly without awkward cropping or overflow across desktop and mobile
-- [x] Re-run focused verification and save a checkpoint for the AI Try-On preview dimension fix
+- [x] Fix AI Try-On image-reading failures for prepared customer photos, including HEIC/iPhone conversion support, signed image URLs for generation, high-contrast readable errors, tests, build, and health verification

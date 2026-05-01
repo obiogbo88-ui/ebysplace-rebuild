@@ -1,5 +1,4 @@
 import { Link } from "wouter";
-import { MovingReviewStrip } from "@/components/ReviewWidgets";
 import { trpc } from "@/lib/trpc";
 import {
   CalendarDays,
@@ -32,7 +31,7 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-primary/20 bg-[#fbf6ea]/90 shadow-[0_12px_36px_rgba(74,45,18,.08)] backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-primary/20 bg-[#171009]/82 backdrop-blur-xl">
       <div className="container flex h-20 items-center justify-between gap-4">
         <Link
           href="/"
@@ -42,11 +41,8 @@ export function SiteHeader() {
           <img
             src={LOGO_SRC}
             alt="Eby’s Place"
-            className="h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_22px_rgba(246,224,178,.62)] contrast-125 saturate-125 sm:h-20"
+            className="h-12 w-auto object-contain mix-blend-screen drop-shadow-[0_0_18px_rgba(245,221,156,.42)] sm:h-14"
           />
-          <span className="serif hidden text-2xl font-black leading-none tracking-wide text-primary drop-shadow-[0_0_14px_rgba(246,224,178,.45)] min-[420px]:block sm:text-3xl">
-            EBY’S PLACE
-          </span>
         </Link>
 
         <nav
@@ -69,7 +65,7 @@ export function SiteHeader() {
           </Link>
           <button
             type="button"
-            className="rounded-full border border-primary/25 bg-[#fff8e8]/80 p-3 text-primary shadow-sm"
+            className="rounded-full border border-primary/30 bg-black/60 p-3 text-primary"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(value => !value)}
@@ -85,14 +81,14 @@ export function SiteHeader() {
 
       {menuOpen ? (
         <nav
-          className="border-t border-primary/18 bg-[#fbf6ea]/96 px-5 py-5 lg:hidden"
+          className="border-t border-primary/15 bg-[#171009]/95 px-5 py-5 lg:hidden"
           aria-label="Mobile navigation"
         >
           <div className="container grid gap-3 p-0">
             {navLinks.map(item => (
               <Link
                 key={item.href}
-                className="rounded-2xl border border-primary/15 bg-[#fff8e8]/70 px-4 py-3 text-sm font-semibold text-[#24180d]/85 transition hover:border-primary/50 hover:text-primary"
+                className="rounded-2xl border border-primary/10 px-4 py-3 text-sm font-semibold text-white/80 transition hover:border-primary/50 hover:text-primary"
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
               >
@@ -115,29 +111,29 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-primary/20 bg-[#fbf6ea]/92 py-12">
+    <footer className="border-t border-primary/20 bg-black/80 py-12">
       <div className="container grid gap-8 md:grid-cols-4">
         <div>
           <img
             src={LOGO_SRC}
             alt="Eby’s Place"
-            className="h-20 w-auto object-contain mix-blend-screen drop-shadow-[0_0_26px_rgba(245,221,156,.68)] contrast-125 saturate-125"
+            className="h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_18px_rgba(245,221,156,.36)]"
           />
-          <p className="mt-3 text-sm text-[#24180d]/70">
+          <p className="mt-3 text-sm text-white/65">
             Zero pain. Zero trauma. Just perfection. Luxury pain-free braiding
             in Somerset, UK.
           </p>
         </div>
         <div>
           <h4 className="font-bold text-primary">Visit</h4>
-          <p className="mt-3 text-sm text-[#24180d]/70">
-            Book your pain-free appointment, browse styles, and shop products
-            between visits.
+          <p className="mt-3 text-sm text-white/65">
+            Book protective styles, shop aftercare, try AI previews, and connect
+            to the Kouvia braider platform.
           </p>
         </div>
         <div>
           <h4 className="font-bold text-primary">Quick Links</h4>
-          <div className="mt-3 grid gap-2 text-sm text-[#24180d]/75">
+          <div className="mt-3 grid gap-2 text-sm text-white/70">
             <Link href="/services">Services & Pricing</Link>
             <Link href="/booking">Book Appointment</Link>
             <Link href="/shop">Shop</Link>
@@ -146,10 +142,10 @@ export function SiteFooter() {
           </div>
         </div>
         <div>
-          <h4 className="font-bold text-primary">Pain-Free Guarantee</h4>
-          <p className="mt-3 text-sm text-[#24180d]/70">
-            If your braids feel excessively tight within 48 hours, Eby’s Place
-            will fix it with care.
+          <h4 className="font-bold text-primary">Luxury Care Promise</h4>
+          <p className="mt-3 text-sm text-white/65">
+            Zero tension. Maximum longevity. Total comfort for clients who want
+            beautiful braids without scalp trauma.
           </p>
         </div>
       </div>
@@ -182,12 +178,12 @@ export default function Home() {
             />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(18,13,8,.86),rgba(18,13,8,.54)_48%,rgba(18,13,8,.2)),linear-gradient(180deg,rgba(18,13,8,.18),rgba(18,13,8,.78))]" />
             <div className="container relative z-10 py-20 md:py-28">
-              <div className="max-w-3xl p-0">
-                <div className="mb-6 inline-flex p-0">
+              <div className="max-w-3xl rounded-[2rem] border border-primary/24 bg-[#171009]/58 p-5 shadow-[0_30px_100px_rgba(0,0,0,.34)] backdrop-blur-sm sm:p-8 md:p-10">
+                <div className="mb-6 inline-flex rounded-full bg-[radial-gradient(circle,rgba(245,221,156,.22),rgba(245,221,156,.07)_42%,transparent_72%)] p-2">
                   <img
                     src={LOGO_SRC}
                     alt="Eby’s Place luxury pain-free braiding"
-                    className="h-32 w-auto object-contain mix-blend-screen drop-shadow-[0_0_42px_rgba(245,221,156,.88)] contrast-125 saturate-125 sm:h-40"
+                    className="h-24 w-auto object-contain mix-blend-screen drop-shadow-[0_0_34px_rgba(245,221,156,.52)] sm:h-28"
                   />
                 </div>
                 <span className="pill inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 leading-6">
@@ -208,7 +204,7 @@ export default function Home() {
                   <Link className="btn-gold" href="/booking">
                     <CalendarDays className="mr-2 h-5 w-5" /> Book with £20 deposit
                   </Link>
-                  <Link className="btn-dark bg-[#171009]/40" href="/ai-try-on">
+                  <Link className="btn-dark bg-[#171009]/55" href="/ai-try-on">
                     <Wand2 className="mr-2 h-5 w-5" /> Try a braid style
                   </Link>
                 </div>
@@ -233,21 +229,23 @@ export default function Home() {
             <div className="lux-card">
               <ShieldCheck className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
-                Structured scheduling
+                Professional structure
               </h2>
               <p className="mt-3 text-white/65">
-                No delays. No guesswork. Your appointment time is respected
-                from booking through finish.
+                Clear service categories, booking deposits, delivery details,
+                reviews, gallery images, and admin oversight support a scalable
+                salon operation.
               </p>
             </div>
             <div className="lux-card">
               <Sparkles className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
-                Style preview
+                Modern automation
               </h2>
               <p className="mt-3 text-white/65">
-                Try braid inspiration before booking, then choose the service
-                that feels right for you.
+                AI hairstyle previews, live content systems, customer reviews,
+                ecommerce, analytics, and Kouvia SaaS handoff are part of the
+                platform.
               </p>
             </div>
           </div>
@@ -302,14 +300,15 @@ export default function Home() {
           <div className="container grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
             <div>
               <p className="pill w-fit">
-                <ShoppingBag className="mr-2 inline h-4 w-4" /> The Collection
+                <ShoppingBag className="mr-2 inline h-4 w-4" /> Shop preview
               </p>
               <h2 className="serif mt-4 text-5xl font-bold">
-                What you use between appointments matters more.
+                Aftercare with a premium finish.
               </h2>
               <p className="mt-4 text-white/65">
-                Selected braid care, accessories, and hair products shipped
-                directly to your door.
+                Sell braid care, accessories, and hair products with stock
+                badges, colour variants, cart capture, delivery details, and
+                order management.
               </p>
               <Link className="btn-gold mt-7" href="/shop">
                 Shop products
@@ -330,18 +329,18 @@ export default function Home() {
 
         <section className="section-pad">
           <div className="container">
-            <p className="pill w-fit">The Inner Circle</p>
+            <p className="pill w-fit">Live testimonials</p>
             <h2 className="serif mt-4 text-5xl font-bold">
-              What Our Clients Say
+              Customer confidence, moderated by admin.
             </h2>
-            <MovingReviewStrip reviews={reviews as any[]} />
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link className="btn-gold" href="/leave-review">
-                Leave a review
-              </Link>
-              <Link className="btn-dark" href="/reviews">
-                Read reviews
-              </Link>
+            <div className="mt-10 grid gap-5 md:grid-cols-3">
+              {(reviews as any[]).slice(0, 3).map(r => (
+                <blockquote className="lux-card" key={r.id ?? r.customerName}>
+                  <div className="text-primary">★★★★★</div>
+                  <p className="mt-4 text-white/70">“{r.reviewText}”</p>
+                  <footer className="mt-5 font-bold">{r.customerName}</footer>
+                </blockquote>
+              ))}
             </div>
           </div>
         </section>
@@ -353,7 +352,8 @@ export default function Home() {
                 Join the Eby’s Place list.
               </h2>
               <p className="mt-3 text-white/65">
-                Get appointment openings and product updates from Eby’s Place.
+                Get style openings, product drops, and premium braid care
+                guidance.
               </p>
             </div>
             <form

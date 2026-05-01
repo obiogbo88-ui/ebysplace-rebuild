@@ -113,7 +113,7 @@ export const appRouter = router({
     createBooking: publicProcedure.input(bookingInput).mutation(async ({ input }) => {
       const booking = await db.createBooking({ ...input, status: "pending", depositStatus: "unpaid" });
       await notifyOwnerSafely(
-        "Eby’s Place – New booking request",
+        "New Eby’s Place booking request",
         [
           `A customer has submitted a booking request and needs to complete the £20 Stripe deposit.`,
           `Booking ID: ${booking.id}`,
@@ -148,15 +148,16 @@ export const appRouter = router({
       const order = await db.createOrderWithItems(input);
       return { orderId: order.id, status: "draft", message: "Order captured with delivery details. The admin team can manage fulfilment from the dashboard." };
     }),
-    uploadTryOnPhoto: publicProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("try-on-photo.png") })).mutation(async ({ input }) => {
+    uploadTryOnPhoto: publicProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("try-on-photo.jpg") })).mutation(async ({ input }) => {
       const { mimeType, buffer } = decodeDataUrl(input.dataUrl);
-      if (!mimeType.startsWith("image/")) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "AI Try-On only supports image uploads." });
+      const supportedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+      if (!supportedTypes.has(mimeType)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "AI Try-On accepts JPEG, PNG, or WebP photos after preparation." });
       }
       if (buffer.byteLength > 7 * 1024 * 1024) {
-        throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Please upload a smaller photo. The AI Try-On accepts images up to 7MB after compression." });
+        throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Please upload a smaller photo. The AI Try-On accepts images up to 7MB after preparation." });
       }
-      const extension = mimeType.includes("jpeg") ? "jpg" : mimeType.split("/")[1] || "png";
+      const extension = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
       const safeName = input.fileName.replace(/\.[^.]+$/, "").replace(/[^a-z0-9.-]/gi, "-").toLowerCase() || "customer-photo";
       const uploaded = await storagePut(`try-on/uploads/${Date.now()}-${safeName}.${extension}`, buffer, mimeType);
       return { url: uploaded.url, key: uploaded.key, mimeType };
@@ -174,19 +175,13 @@ export const appRouter = router({
           ?? (input.originalImageUrl.startsWith("/manus-storage/")
             ? decodeURIComponent(input.originalImageUrl.replace("/manus-storage/", ""))
             : null);
-        const editableImageUrl = storageKey
-          ? await storageGetSignedUrl(storageKey)
-          : input.originalImageUrl;
-        const mimeType = input.mimeType?.startsWith("image/")
-          ? input.mimeType
-          : storageKey?.toLowerCase().endsWith(".jpg") || storageKey?.toLowerCase().endsWith(".jpeg")
-            ? "image/jpeg"
-            : "image/png";
+        const editableImageUrl = storageKey ? await storageGetSignedUrl(storageKey) : input.originalImageUrl;
+        const mimeType = input.mimeType?.startsWith("image/") ? input.mimeType : "image/jpeg";
         const result = await generateImage({ prompt, originalImages: [{ url: editableImageUrl, mimeType }] });
         await db.updateTryOnGeneration(record.id, { status: "completed", generatedImageUrl: result.url });
         return { id: record.id, generatedImageUrl: result.url, status: "completed" as const };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Image generation failed.";
+        const message = error instanceof Error ? error.message : "The AI could not read that photo clearly. Please upload a bright front-facing JPEG, PNG, WebP, or iPhone HEIC portrait where the face and hair are visible.";
         await db.updateTryOnGeneration(record.id, { status: "failed", errorMessage: message });
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
       }

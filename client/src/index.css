@@ -5,318 +5,54 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: oklch(0.94 0.026 86);
-  --color-foreground: oklch(0.22 0.028 70);
-  --color-card: oklch(0.985 0.010 86);
-  --color-card-foreground: oklch(0.22 0.028 70);
-  --color-popover: oklch(0.985 0.010 86);
-  --color-popover-foreground: oklch(0.22 0.028 70);
-  --color-primary: oklch(0.58 0.105 78);
-  --color-primary-foreground: oklch(0.98 0.012 86);
-  --color-secondary: oklch(0.90 0.030 84);
-  --color-secondary-foreground: oklch(0.23 0.028 70);
-  --color-muted: oklch(0.88 0.026 84);
-  --color-muted-foreground: oklch(0.42 0.028 70);
-  --color-accent: oklch(0.68 0.110 80);
-  --color-accent-foreground: oklch(0.98 0.012 86);
-  --color-destructive: oklch(0.52 0.18 25);
-  --color-destructive-foreground: oklch(0.98 0.012 86);
-  --color-border: oklch(0.77 0.036 82);
-  --color-input: oklch(0.98 0.010 86);
-  --color-ring: oklch(0.58 0.105 78);
+  --color-background: oklch(0.135 0.014 70);
+  --color-foreground: oklch(0.97 0.02 88);
+  --color-card: oklch(0.18 0.018 70);
+  --color-card-foreground: oklch(0.96 0.02 88);
+  --color-popover: oklch(0.165 0.016 70);
+  --color-popover-foreground: oklch(0.96 0.02 88);
+  --color-primary: oklch(0.78 0.12 83);
+  --color-primary-foreground: oklch(0.12 0.01 70);
+  --color-secondary: oklch(0.25 0.024 70);
+  --color-secondary-foreground: oklch(0.96 0.02 88);
+  --color-muted: oklch(0.24 0.018 70);
+  --color-muted-foreground: oklch(0.72 0.025 88);
+  --color-accent: oklch(0.70 0.11 80);
+  --color-accent-foreground: oklch(0.10 0.01 70);
+  --color-destructive: oklch(0.57 0.20 25);
+  --color-destructive-foreground: oklch(0.97 0.02 88);
+  --color-border: oklch(0.27 0.025 75);
+  --color-input: oklch(0.20 0.02 70);
+  --color-ring: oklch(0.78 0.12 83);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-:root { --radius: 1.1rem; color-scheme: light; }
+:root { --radius: 1.1rem; color-scheme: dark; }
 
 @layer base {
   * { @apply border-border outline-ring/50; }
   html, body, #root { max-width: 100%; overflow-x: hidden; }
   body { @apply bg-background text-foreground; font-family: Inter, system-ui, sans-serif; }
   h1, h2, h3, .serif { font-family: 'Cormorant Garamond', Georgia, serif; }
-  input, select, textarea { @apply rounded-xl border px-4 py-3 focus:border-primary; background: rgba(255,250,240,.86); border-color: rgba(115,80,35,.22); color: #24180d; }
-  input::placeholder, textarea::placeholder { color: rgba(36,24,13,.48); }
+  input, select, textarea { @apply bg-black/35 border border-white/15 rounded-xl px-4 py-3 text-white placeholder:text-white/45 focus:border-primary; }
 }
 
-.luxury-shell { min-height: 100vh; max-width: 100vw; overflow-x: hidden; background: radial-gradient(circle at 20% 4%, rgba(205,166,95,.20), transparent 30%), linear-gradient(180deg, #fbf6ea 0%, #efe1c7 42%, #fffaf0 100%); color: #24180d; }
+.luxury-shell { min-height: 100vh; max-width: 100vw; overflow-x: hidden; background: radial-gradient(circle at 20% 5%, rgba(216,184,102,.25), transparent 34%), radial-gradient(circle at 86% 10%, rgba(176,113,48,.2), transparent 36%), linear-gradient(135deg, #120d08 0%, #24180d 48%, #11100d 100%); }
 .container { width: min(1180px, calc(100% - 32px)); margin-inline: auto; }
-.gold-text { background: linear-gradient(110deg, #f4ddaf, #c6a05d 46%, #f8ead0); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.gold-border { border: 1px solid rgba(157,112,49,.24); box-shadow: 0 18px 50px rgba(74,45,18,.14), inset 0 1px 0 rgba(255,255,255,.7); }
-.lux-card { @apply rounded-[1.45rem] backdrop-blur p-6; background: rgba(255,250,240,.78); border: 1px solid rgba(157,112,49,.20); box-shadow: 0 18px 45px rgba(74,45,18,.12), inset 0 1px 0 rgba(255,255,255,.72); color: #24180d; }
-.btn-gold { @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-xs font-extrabold uppercase tracking-[.14em] text-[#120d08] transition hover:-translate-y-0.5; background: linear-gradient(135deg, #f8ead0, #c6a05d 58%, #8a642e); }
-.btn-dark { @apply inline-flex items-center justify-center rounded-full border border-primary/35 px-6 py-3 text-xs font-extrabold uppercase tracking-[.14em] text-primary transition hover:bg-primary/10; background: rgba(255,250,240,.48); }
-.pill { @apply rounded-full border border-primary/25 bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-[.18em] text-primary; background-color: rgba(255,248,226,.70); }
+.gold-text { background: linear-gradient(110deg, #f5dd9c, #c8a95a 45%, #fff2c2); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.gold-border { border: 1px solid rgba(200,169,90,.32); box-shadow: 0 20px 80px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06); }
+.lux-card { @apply rounded-[1.6rem] bg-card/82 backdrop-blur p-6; border: 1px solid rgba(216,184,102,.34); box-shadow: 0 20px 80px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.075); }
+.btn-gold { @apply inline-flex items-center justify-center rounded-full px-6 py-3 font-bold text-black transition hover:-translate-y-0.5; background: linear-gradient(135deg, #fff1b8, #c8a95a 58%, #8f6724); }
+.btn-dark { @apply inline-flex items-center justify-center rounded-full border border-primary/40 px-6 py-3 font-bold text-primary transition hover:bg-primary/10; }
+.pill { @apply rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary; }
 .section-pad { @apply py-20 md:py-28; }
-.nav-link { @apply text-xs font-extrabold uppercase tracking-[.18em] transition hover:text-primary; color: rgba(36,24,13,.78); }
+.nav-link { @apply text-sm font-semibold text-white/76 hover:text-primary transition; }
 .input-grid { @apply grid gap-4 md:grid-cols-2; }
 .media-portrait { aspect-ratio: 4 / 5; }
 .media-portrait img,
 .media-portrait video { width: 100%; height: 100%; object-fit: cover; }
-.hero-video-reference { min-height: calc(100vh - 5rem); color: #fff8e8; }
-.luxury-shell main .text-white\/82 { color: rgba(36,24,13,.78); }
-.luxury-shell main .text-white\/70 { color: rgba(36,24,13,.70); }
-.luxury-shell main .text-white\/68 { color: rgba(36,24,13,.68); }
-.luxury-shell main .text-white\/66 { color: rgba(36,24,13,.66); }
-.luxury-shell main .text-white\/65 { color: rgba(36,24,13,.65); }
-.luxury-shell main .text-white\/60 { color: rgba(36,24,13,.60); }
-.luxury-shell main .text-white\/55 { color: rgba(36,24,13,.55); }
-.luxury-shell main .text-white\/50 { color: rgba(36,24,13,.50); }
-.luxury-shell .hero-video-reference .text-white\/82 { color: rgba(255,255,255,.82); }
-.luxury-shell footer .text-white\/65, .luxury-shell footer .text-white\/60, .luxury-shell footer .text-white\/55, .luxury-shell footer .text-white\/50 { color: rgba(36,24,13,.62); }
+.hero-video-reference { min-height: calc(100vh - 5rem); }
 @media (max-width: 767px) { .hero-video-reference { min-height: calc(100svh - 5rem); } }
-
-/* Light Eby’s Place refinement: keep the hero/header dramatic, but make content pages warm and airy like the current site. */
-.luxury-shell main .bg-black\/35,
-.luxury-shell main .bg-black\/25,
-.luxury-shell main .bg-black\/24 {
-  background-color: rgba(255, 250, 240, .66) !important;
-}
-
-.luxury-shell main .bg-white\/\[0\.045\],
-.luxury-shell main .bg-white\/\[0\.04\],
-.luxury-shell main .bg-white\/\[0\.035\] {
-  background-color: rgba(255, 250, 240, .42) !important;
-}
-
-.luxury-shell main .border-white\/10,
-.luxury-shell main .border-white\/15 {
-  border-color: rgba(122, 84, 36, .18) !important;
-}
-
-.luxury-shell main .text-white\/75,
-.luxury-shell main .text-white\/40 {
-  color: rgba(36, 24, 13, .72) !important;
-}
-
-.luxury-shell footer.bg-black\/80 {
-  background: linear-gradient(180deg, rgba(255, 250, 240, .82), rgba(238, 222, 190, .92)) !important;
-  color: #24180d;
-}
-
-.luxury-shell main .media-portrait.bg-\[\#171009\],
-.luxury-shell main .bg-\[\#171009\] {
-  background-color: #ead8b8 !important;
-}
-
-/* Readability patch for legacy dark-theme utility classes used on light cream surfaces. */
-.luxury-shell main .text-white {
-  color: #24180d !important;
-}
-
-.luxury-shell main .text-white\/80 { color: rgba(36, 24, 13, .80) !important; }
-.luxury-shell main .text-white\/78 { color: rgba(36, 24, 13, .78) !important; }
-.luxury-shell main .text-white\/75 { color: rgba(36, 24, 13, .75) !important; }
-.luxury-shell main .text-white\/72 { color: rgba(36, 24, 13, .72) !important; }
-.luxury-shell main .text-white\/70 { color: rgba(36, 24, 13, .70) !important; }
-.luxury-shell main .text-white\/68 { color: rgba(36, 24, 13, .68) !important; }
-.luxury-shell main .text-white\/66 { color: rgba(36, 24, 13, .66) !important; }
-.luxury-shell main .text-white\/65 { color: rgba(36, 24, 13, .65) !important; }
-.luxury-shell main .text-white\/62 { color: rgba(36, 24, 13, .62) !important; }
-.luxury-shell main .text-white\/60 { color: rgba(36, 24, 13, .60) !important; }
-.luxury-shell main .text-white\/55 { color: rgba(36, 24, 13, .55) !important; }
-.luxury-shell main .text-white\/50 { color: rgba(36, 24, 13, .50) !important; }
-.luxury-shell main .text-white\/45 { color: rgba(36, 24, 13, .45) !important; }
-.luxury-shell main .text-white\/40 { color: rgba(36, 24, 13, .40) !important; }
-.luxury-shell main .text-white\/35 { color: rgba(36, 24, 13, .35) !important; }
-
-.luxury-shell .hero-video-reference,
-.luxury-shell .hero-video-reference h1,
-.luxury-shell .hero-video-reference .text-white,
-.luxury-shell .hero-video-reference .text-white\/82 {
-  color: #fff8e8 !important;
-}
-.luxury-shell .hero-video-reference .text-white\/82 {
-  color: rgba(255, 255, 255, .84) !important;
-}
-
-.review-marquee {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-  padding: .25rem 0 1rem;
-  mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
-}
-
-.review-marquee-track {
-  display: flex;
-  width: max-content;
-  gap: 1.25rem;
-  animation: review-marquee-slide 34s linear infinite;
-}
-
-.review-marquee:hover .review-marquee-track {
-  animation-play-state: paused;
-}
-
-.review-marquee-card {
-  width: min(82vw, 25rem);
-  flex: 0 0 auto;
-  border: 1px solid rgba(198, 160, 93, .26);
-  border-radius: 2rem;
-  background: linear-gradient(145deg, rgba(255, 250, 240, .94), rgba(238, 222, 190, .78));
-  box-shadow: 0 18px 55px rgba(74, 45, 18, .10);
-  color: #24180d;
-  padding: 1.5rem;
-}
-
-.review-marquee-card p {
-  color: rgba(36, 24, 13, .70);
-  line-height: 1.75;
-}
-
-@keyframes review-marquee-slide {
-  from { transform: translateX(0); }
-  to { transform: translateX(calc(-50% - .625rem)); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .review-marquee-track {
-    animation: none;
-    flex-wrap: wrap;
-    width: auto;
-  }
-}
-
-/* Final light-theme contrast fix: remap leftover white utility text in cards, footer, header mobile menu, and light dialog surfaces while preserving the dark hero video copy. */
-.luxury-shell header .text-white,
-.luxury-shell footer .text-white,
-.luxury-shell .lux-card .text-white,
-.luxury-shell .review-marquee-card .text-white {
-  color: #24180d !important;
-}
-
-.luxury-shell header .text-white\/80,
-.luxury-shell footer .text-white\/80,
-.luxury-shell .lux-card .text-white\/80 { color: rgba(36, 24, 13, .80) !important; }
-.luxury-shell header .text-white\/75,
-.luxury-shell footer .text-white\/75,
-.luxury-shell .lux-card .text-white\/75 { color: rgba(36, 24, 13, .75) !important; }
-.luxury-shell header .text-white\/70,
-.luxury-shell footer .text-white\/70,
-.luxury-shell .lux-card .text-white\/70 { color: rgba(36, 24, 13, .70) !important; }
-.luxury-shell header .text-white\/68,
-.luxury-shell footer .text-white\/68,
-.luxury-shell .lux-card .text-white\/68 { color: rgba(36, 24, 13, .68) !important; }
-.luxury-shell header .text-white\/65,
-.luxury-shell footer .text-white\/65,
-.luxury-shell .lux-card .text-white\/65 { color: rgba(36, 24, 13, .65) !important; }
-.luxury-shell header .text-white\/62,
-.luxury-shell footer .text-white\/62,
-.luxury-shell .lux-card .text-white\/62 { color: rgba(36, 24, 13, .62) !important; }
-.luxury-shell header .text-white\/60,
-.luxury-shell footer .text-white\/60,
-.luxury-shell .lux-card .text-white\/60 { color: rgba(36, 24, 13, .60) !important; }
-.luxury-shell header .text-white\/55,
-.luxury-shell footer .text-white\/55,
-.luxury-shell .lux-card .text-white\/55 { color: rgba(36, 24, 13, .55) !important; }
-.luxury-shell header .text-white\/50,
-.luxury-shell footer .text-white\/50,
-.luxury-shell .lux-card .text-white\/50 { color: rgba(36, 24, 13, .50) !important; }
-.luxury-shell header .text-white\/45,
-.luxury-shell footer .text-white\/45,
-.luxury-shell .lux-card .text-white\/45 { color: rgba(36, 24, 13, .45) !important; }
-.luxury-shell header .text-white\/40,
-.luxury-shell footer .text-white\/40,
-.luxury-shell .lux-card .text-white\/40 { color: rgba(36, 24, 13, .40) !important; }
-.luxury-shell header .text-white\/35,
-.luxury-shell footer .text-white\/35,
-.luxury-shell .lux-card .text-white\/35 { color: rgba(36, 24, 13, .35) !important; }
-
-.luxury-shell header .hover\:text-primary:hover,
-.luxury-shell footer a:hover,
-.luxury-shell .lux-card a:hover {
-  color: #8a642e !important;
-}
-
-.luxury-shell header .border-white\/10,
-.luxury-shell footer .border-white\/10,
-.luxury-shell .lux-card .border-white\/10 {
-  border-color: rgba(122, 84, 36, .18) !important;
-}
-
-/* Broad safety net for any remaining public/admin write-up text using legacy white utilities on the light theme. */
-.luxury-shell .text-white { color: #24180d !important; }
-.luxury-shell .text-white\/82 { color: rgba(36, 24, 13, .82) !important; }
-.luxury-shell .text-white\/80 { color: rgba(36, 24, 13, .80) !important; }
-.luxury-shell .text-white\/78 { color: rgba(36, 24, 13, .78) !important; }
-.luxury-shell .text-white\/75 { color: rgba(36, 24, 13, .75) !important; }
-.luxury-shell .text-white\/72 { color: rgba(36, 24, 13, .72) !important; }
-.luxury-shell .text-white\/70 { color: rgba(36, 24, 13, .70) !important; }
-.luxury-shell .text-white\/68 { color: rgba(36, 24, 13, .68) !important; }
-.luxury-shell .text-white\/66 { color: rgba(36, 24, 13, .66) !important; }
-.luxury-shell .text-white\/65 { color: rgba(36, 24, 13, .65) !important; }
-.luxury-shell .text-white\/62 { color: rgba(36, 24, 13, .62) !important; }
-.luxury-shell .text-white\/60 { color: rgba(36, 24, 13, .60) !important; }
-.luxury-shell .text-white\/55 { color: rgba(36, 24, 13, .55) !important; }
-.luxury-shell .text-white\/50 { color: rgba(36, 24, 13, .50) !important; }
-.luxury-shell .text-white\/45 { color: rgba(36, 24, 13, .45) !important; }
-.luxury-shell .text-white\/40 { color: rgba(36, 24, 13, .40) !important; }
-.luxury-shell .text-white\/35 { color: rgba(36, 24, 13, .35) !important; }
-
-.luxury-shell .hero-video-reference,
-.luxury-shell .hero-video-reference h1,
-.luxury-shell .hero-video-reference .text-white,
-.luxury-shell .hero-video-reference .text-white\/82,
-.luxury-shell .hero-video-reference .text-white\/80,
-.luxury-shell .hero-video-reference .text-white\/75,
-.luxury-shell .hero-video-reference .text-white\/70,
-.luxury-shell .hero-video-reference .text-white\/68,
-.luxury-shell .hero-video-reference .text-white\/65,
-.luxury-shell .hero-video-reference .text-white\/60,
-.luxury-shell .hero-video-reference .text-white\/55,
-.luxury-shell .hero-video-reference .text-white\/50 {
-  color: #fff8e8 !important;
-}
-.luxury-shell .hero-video-reference .text-white\/82 { color: rgba(255, 255, 255, .84) !important; }
-
-/* Admin refinement: align the overview surface and stat panels with the public landing page’s light cream-and-gold visual language. */
-.admin-shell {
-  border-radius: 2rem;
-  background:
-    radial-gradient(circle at 14% 0%, rgba(205, 166, 95, .20), transparent 32%),
-    linear-gradient(180deg, rgba(255, 250, 240, .92) 0%, rgba(239, 225, 199, .62) 48%, rgba(255, 250, 240, .96) 100%);
-  padding: clamp(1rem, 2vw, 1.5rem);
-  color: #24180d;
-}
-
-.admin-overview-panel {
-  border: 1px solid rgba(157, 112, 49, .22);
-  border-radius: 2rem;
-  background: linear-gradient(145deg, rgba(255, 250, 240, .90), rgba(238, 222, 190, .72));
-  box-shadow: 0 20px 58px rgba(74, 45, 18, .10), inset 0 1px 0 rgba(255, 255, 255, .78);
-  padding: clamp(1.25rem, 3vw, 2rem);
-}
-
-.admin-stat-card,
-.admin-mini-card {
-  border: 1px solid rgba(157, 112, 49, .20);
-  border-radius: 1.45rem;
-  background: rgba(255, 250, 240, .80);
-  box-shadow: 0 16px 42px rgba(74, 45, 18, .09), inset 0 1px 0 rgba(255, 255, 255, .74);
-  color: #24180d;
-  padding: 1.5rem;
-  backdrop-filter: blur(12px);
-}
-
-.admin-stat-card {
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-}
-
-.admin-stat-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(198, 160, 93, .34);
-  box-shadow: 0 22px 56px rgba(74, 45, 18, .12), inset 0 1px 0 rgba(255, 255, 255, .78);
-}
-
-.admin-shell .lux-card {
-  background: rgba(255, 250, 240, .82);
-  border-color: rgba(157, 112, 49, .20);
-  box-shadow: 0 18px 45px rgba(74, 45, 18, .10), inset 0 1px 0 rgba(255, 255, 255, .72);
-}
-
-.admin-shell .rounded-2xl.border {
-  background: rgba(255, 250, 240, .38);
-}

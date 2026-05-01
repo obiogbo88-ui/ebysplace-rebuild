@@ -47,7 +47,7 @@ export function registerStripeWebhook(app: Express) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await db.markBookingDepositPaid(session.id, paymentIntentId);
           await notifyOwner({
-            title: "Eby’s Place – Deposit paid",
+            title: "Eby’s Place deposit paid",
             content: [
               `A £20 booking deposit has been confirmed through Stripe.`,
               `Booking ID: ${session.metadata?.booking_id ?? "Not provided"}`,

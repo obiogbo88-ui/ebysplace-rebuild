@@ -9,12 +9,21 @@ import type { TrpcContext } from "./_core/context";
 const stripeCreateSessionMock = vi.hoisted(() => vi.fn());
 const stripeConstructEventMock = vi.hoisted(() => vi.fn());
 const notifyOwnerMock = vi.hoisted(() => vi.fn());
-const storageGetSignedUrlMock = vi.hoisted(() => vi.fn());
 const storagePutMock = vi.hoisted(() => vi.fn());
+const storageGetSignedUrlMock = vi.hoisted(() => vi.fn());
 const generateImageMock = vi.hoisted(() => vi.fn());
 
 vi.mock("./_core/notification", () => ({
   notifyOwner: notifyOwnerMock,
+}));
+
+vi.mock("./storage", () => ({
+  storagePut: storagePutMock,
+  storageGetSignedUrl: storageGetSignedUrlMock,
+}));
+
+vi.mock("./_core/imageGeneration", () => ({
+  generateImage: generateImageMock,
 }));
 
 vi.mock("stripe", () => ({
@@ -22,15 +31,6 @@ vi.mock("stripe", () => ({
     checkout: { sessions: { create: stripeCreateSessionMock } },
     webhooks: { constructEvent: stripeConstructEventMock },
   })),
-}));
-
-vi.mock("./storage", () => ({
-  storageGetSignedUrl: storageGetSignedUrlMock,
-  storagePut: storagePutMock,
-}));
-
-vi.mock("./_core/imageGeneration", () => ({
-  generateImage: generateImageMock,
 }));
 
 function publicContext(): TrpcContext {
@@ -49,13 +49,13 @@ describe("Eby’s Place platform business rules", () => {
     stripeCreateSessionMock.mockReset();
     stripeConstructEventMock.mockReset();
     notifyOwnerMock.mockReset();
-    notifyOwnerMock.mockResolvedValue(true);
-    storageGetSignedUrlMock.mockReset();
     storagePutMock.mockReset();
+    storageGetSignedUrlMock.mockReset();
     generateImageMock.mockReset();
-    storageGetSignedUrlMock.mockResolvedValue("https://signed-storage.example/try-on/customer-photo.png");
-    storagePutMock.mockResolvedValue({ url: "/manus-storage/mock-upload.png", key: "mock-upload.png", mimeType: "image/jpeg" });
-    generateImageMock.mockResolvedValue({ url: "/manus-storage/generated-try-on.png" });
+    notifyOwnerMock.mockResolvedValue(true);
+    storagePutMock.mockResolvedValue({ url: "/manus-storage/try-on/uploads/test-customer-photo.jpg", key: "try-on/uploads/test-customer-photo.jpg" });
+    storageGetSignedUrlMock.mockResolvedValue("https://signed-storage.example.test/try-on/uploads/test-customer-photo.jpg");
+    generateImageMock.mockResolvedValue({ url: "/manus-storage/try-on/generated/result.jpg" });
   });
 
   it("exposes premium featured services without requiring database access", async () => {
@@ -125,7 +125,7 @@ describe("Eby’s Place platform business rules", () => {
     expect(result.depositCurrency).toBe("GBP");
     expect(result.message).toContain("non-refundable deposit");
     expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
-      title: "Eby’s Place – New booking request",
+      title: "New Eby’s Place booking request",
       content: expect.stringContaining("Knotless Braids"),
     }));
   });
@@ -193,13 +193,52 @@ describe("Eby’s Place platform business rules", () => {
       await expect(response.json()).resolves.toEqual({ received: true });
       expect(markPaidSpy).toHaveBeenCalledWith("cs_live_mock", "pi_live_mock");
       expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
-        title: "Eby’s Place – Deposit paid",
+        title: "Eby’s Place deposit paid",
         content: expect.stringContaining("Goddess Braids"),
       }));
     } finally {
       markPaidSpy.mockRestore();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
+  });
+
+  it("uploads AI Try-On photos as readable prepared images with MIME metadata", async () => {
+    const caller = appRouter.createCaller(publicContext());
+    const dataUrl = `data:image/jpeg;base64,${Buffer.from("prepared portrait bytes").toString("base64")}`;
+
+    const result = await caller.public.uploadTryOnPhoto({ dataUrl, fileName: "Client Portrait.JPG" });
+
+    expect(result).toEqual({
+      url: "/manus-storage/try-on/uploads/test-customer-photo.jpg",
+      key: "try-on/uploads/test-customer-photo.jpg",
+      mimeType: "image/jpeg",
+    });
+    expect(storagePutMock).toHaveBeenCalledWith(
+      expect.stringMatching(/^try-on\/uploads\/\d+-client-portrait\.jpg$/),
+      expect.any(Buffer),
+      "image/jpeg",
+    );
+  });
+
+  it("uses the stored AI Try-On image key to generate from a signed readable image URL", async () => {
+    const createSpy = vi.spyOn(db, "createTryOnGeneration").mockResolvedValueOnce({ id: 77 } as Awaited<ReturnType<typeof db.createTryOnGeneration>>);
+    const updateSpy = vi.spyOn(db, "updateTryOnGeneration").mockResolvedValueOnce(undefined);
+    const caller = appRouter.createCaller(publicContext());
+
+    const result = await caller.public.generateTryOn({
+      styleName: "Knotless Braids",
+      originalImageUrl: "/manus-storage/try-on/uploads/test-customer-photo.jpg",
+      originalImageKey: "try-on/uploads/test-customer-photo.jpg",
+      mimeType: "image/jpeg",
+    });
+
+    expect(result).toEqual({ id: 77, generatedImageUrl: "/manus-storage/try-on/generated/result.jpg", status: "completed" });
+    expect(storageGetSignedUrlMock).toHaveBeenCalledWith("try-on/uploads/test-customer-photo.jpg");
+    expect(generateImageMock).toHaveBeenCalledWith(expect.objectContaining({
+      originalImages: [{ url: "https://signed-storage.example.test/try-on/uploads/test-customer-photo.jpg", mimeType: "image/jpeg" }],
+    }));
+    createSpy.mockRestore();
+    updateSpy.mockRestore();
   });
 
   it("responds to Stripe test webhook events with the required verification payload", async () => {
@@ -219,68 +258,6 @@ describe("Eby’s Place platform business rules", () => {
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
-  });
-
-  it("lists approved reviews and accepts public review submissions for moderation", async () => {
-    const caller = appRouter.createCaller(publicContext());
-
-    const approvedReviews = await caller.public.reviews();
-    expect(approvedReviews.length).toBeGreaterThanOrEqual(3);
-    expect(approvedReviews.every((review) => review.status === "approved")).toBe(true);
-
-    const submitted = await caller.public.submitReview({
-      customerName: "Review Client",
-      rating: 5,
-      reviewText: "Eby’s Place gave me a lovely appointment experience.",
-    });
-
-    expect(submitted.status).toBe("pending");
-    expect(submitted.id).toBeGreaterThan(0);
-  });
-
-  it("uploads compressed AI Try-On photos and returns storage metadata for key-based generation", async () => {
-    const caller = appRouter.createCaller(publicContext());
-    const dataUrl = `data:image/jpeg;base64,${Buffer.from("small-compressed-photo").toString("base64")}`;
-
-    const uploaded = await caller.public.uploadTryOnPhoto({
-      dataUrl,
-      fileName: "Customer Portrait.JPG",
-    });
-
-    expect(uploaded).toEqual({ url: "/manus-storage/mock-upload.png", key: "mock-upload.png", mimeType: "image/jpeg" });
-    expect(storagePutMock).toHaveBeenCalledWith(expect.stringContaining("try-on/uploads/"), expect.any(Buffer), "image/jpeg");
-  });
-
-  it("rejects oversized AI Try-On uploads before storage so large camera photos cannot stall the flow", async () => {
-    const caller = appRouter.createCaller(publicContext());
-    const oversized = `data:image/jpeg;base64,${Buffer.alloc(7 * 1024 * 1024 + 1).toString("base64")}`;
-
-    await expect(caller.public.uploadTryOnPhoto({
-      dataUrl: oversized,
-      fileName: "large-photo.jpg",
-    })).rejects.toThrow("Please upload a smaller photo");
-    expect(storagePutMock).not.toHaveBeenCalled();
-  });
-
-  it("uses a signed absolute storage URL when generating AI Try-On previews from uploaded customer photos", async () => {
-    const caller = appRouter.createCaller(publicContext());
-
-    const result = await caller.public.generateTryOn({
-      styleName: "Knotless Braids",
-      originalImageUrl: "/manus-storage/try-on/uploads/customer-photo.png",
-      originalImageKey: "try-on/uploads/customer-photo.jpg",
-      mimeType: "image/jpeg",
-    });
-
-    expect(result.status).toBe("completed");
-    expect(result.generatedImageUrl).toBe("/manus-storage/generated-try-on.png");
-    expect(storageGetSignedUrlMock).toHaveBeenCalledWith("try-on/uploads/customer-photo.jpg");
-    expect(generateImageMock).toHaveBeenCalledWith(expect.objectContaining({
-      originalImages: [expect.objectContaining({
-        url: "https://signed-storage.example/try-on/customer-photo.png",
-        mimeType: "image/jpeg",
-      })],
-    }));
   });
 
   it("returns an admin summary fallback with seeded services and products", async () => {
