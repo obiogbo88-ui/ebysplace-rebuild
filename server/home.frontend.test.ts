@@ -48,10 +48,11 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain('href="/"');
     expect(homeSource).not.toContain("h-28 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
     expect(homeSource).not.toContain("sm:h-32 lg:h-36");
-    expect(homeSource).toContain("h-52 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
+    expect(homeSource).toContain("h-36 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
+    expect(homeSource).not.toContain("h-52 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
+    expect(homeSource).not.toContain("sm:h-56 lg:h-60");
     expect(homeSource).not.toContain("translate-y-8");
     expect(homeSource).toContain("h-36 w-auto object-contain drop-shadow-[0_12px_26px_rgba(112,78,28,.22)]");
-    expect(homeSource).toContain("sm:h-56 lg:h-60");
     expect(homeSource).toContain("sm:h-40");
     expect(homeSource).toContain("alt=\"Eby’s Place\"");
     expect(homeSource).not.toContain("text-base font-extrabold uppercase tracking-[0.14em]");

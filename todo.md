@@ -142,3 +142,5 @@
 - [x] Do not tamper with any other content, styling, layout flow, navigation, booking, shop, admin, AI Try-On, payment, or notification behavior while enlarging the top logo further
 - [x] Remove the added top-logo transform and use only top-logo size classes for the final enlargement
 - [x] Revalidate that no unrelated content, styling, layout flow, navigation, booking, shop, admin, AI Try-On, payment, or notification behavior was changed by the corrected logo-only adjustment
+- [x] Reduce only the top header logo to match the lower logo size while keeping it mobile responsive
+- [x] Do not tamper with any other content, styling, layout, navigation, booking, shop, admin, AI Try-On, payment, notification, or other functionality while reducing the top logo
