@@ -1,0 +1,33 @@
+# Project TODO
+
+- [x] Preserve Eby’s Place brand identity with consistent black-and-gold luxury styling, premium typography, refined copy, and mobile-friendly layouts across all public and admin pages
+- [x] Build homepage hero section with luxury pain-free braiding positioning and primary booking CTA
+- [x] Build homepage pain-free philosophy section focused on scalp health, tension-free styling, edge protection, and comfort
+- [x] Build homepage popular styles grid with duration, pricing, and direct booking CTAs
+- [x] Build homepage experience highlights section covering structured scheduling, calm studio experience, family-friendly care, and premium comfort
+- [x] Build homepage shop preview section with product cards and add-to-bag entry points
+- [x] Build homepage testimonials carousel sourced from approved live reviews
+- [x] Build homepage newsletter signup form and footer navigation
+- [x] Build services and pricing page with category tabs for Braids, Twists, Locs, Kids Styles, and Add-ons
+- [x] Build service cards with duration, prices, descriptions, and “Book This Style” CTAs linked to the booking flow
+- [x] Build appointment booking flow with service selection, date picker, time picker, client details, phone, email, and delivery address capture
+- [x] Integrate Stripe for exactly £20 non-refundable booking deposit payment messaging and checkout flow
+- [x] Build ecommerce shop with product listings, colour variant selectors, stock badges, and add-to-bag functionality
+- [x] Build cart management with item quantity updates, removal, delivery address capture, and checkout flow
+- [x] Build order management data model and admin order tracking views
+- [x] Build AI Hairstyle Try-On feature with S3-first image upload, braid style selector, face-preserving prompt, generated preview, and result display
+- [x] Build Braiders Near Me page with clear CTA handoff to the SaaS platform for customer matching and braider registration
+- [x] Build gallery page with category filters and modal/lightbox for individual hairstyle images
+- [x] Build secure role-based admin dashboard using authenticated admin access
+- [x] Build admin content management tools for homepage sections and website copy
+- [x] Build admin services and pricing editor
+- [x] Build admin bookings manager with booking status and deposit status visibility
+- [x] Build admin shop, orders, product, price, stock, variant, and image management tools
+- [x] Build admin gallery uploader and gallery management view using S3 references rather than local media storage
+- [x] Build customer review submission with star ratings and review text
+- [x] Build admin review moderation workflow and approved-review homepage display
+- [x] Build site analytics overview in the admin dashboard using live platform analytics where available and internal summary metrics
+- [x] Implement SEO metadata across pages with keyword-rich titles, meta descriptions, Open Graph tags, and LocalBusiness JSON-LD
+- [x] Add robots.txt and sitemap.xml
+- [x] Add or update Vitest tests covering core backend procedures and role restrictions
+- [x] Run type checks, tests, and project status validation before delivery
