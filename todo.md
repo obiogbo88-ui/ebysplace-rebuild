@@ -98,3 +98,6 @@
 - [x] Diagnose why the AI Try-On flow is not working for users, including frontend upload state, server storage access, image-generation call, and runtime logs
 - [x] Fix the AI Try-On flow so customers can upload a photo, choose a hairstyle, generate a face-preserving preview, and see a clear error if generation fails
 - [x] Add or update automated tests covering the AI Try-On fix and re-run test, TypeScript, build, and status verification before saving a checkpoint
+
+- [x] Adjust AI Try-On original and generated preview boxes so portrait photos fit cleanly without awkward cropping or overflow across desktop and mobile
+- [x] Re-run focused verification and save a checkpoint for the AI Try-On preview dimension fix

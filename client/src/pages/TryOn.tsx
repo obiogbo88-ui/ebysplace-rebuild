@@ -210,23 +210,27 @@ export default function TryOn() {
           <section className="grid gap-5 md:grid-cols-2">
             <div className="lux-card border-[#d8b66b]/35 bg-[#fffaf0]/90 shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
               <h2 className="serif text-3xl font-bold text-[#2f2418]">Original</h2>
-              {photo ? (
-                <img className="mt-4 h-80 w-full rounded-2xl object-cover" src={photo.dataUrl} alt="Uploaded customer portrait preview" />
-              ) : (
-                <div className="mt-4 flex h-80 items-center justify-center rounded-2xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
-                  Your uploaded portrait will appear here.
-                </div>
-              )}
+              <div className="mt-4 flex aspect-[3/4] min-h-[24rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-2">
+                {photo ? (
+                  <img className="h-full w-full rounded-xl object-contain" src={photo.dataUrl} alt="Uploaded customer portrait preview" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
+                    Your uploaded portrait will appear here.
+                  </div>
+                )}
+              </div>
             </div>
             <div className="lux-card border-[#d8b66b]/35 bg-[#fffaf0]/90 shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
               <h2 className="serif text-3xl font-bold text-[#2f2418]">Generated</h2>
-              {generate.data?.generatedImageUrl ? (
-                <img className="mt-4 h-80 w-full rounded-2xl object-cover" src={generate.data.generatedImageUrl} alt={`${style} AI Try-On preview`} />
-              ) : (
-                <div className="mt-4 flex h-80 items-center justify-center rounded-2xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
-                  Your AI result will appear here after upload and generation.
-                </div>
-              )}
+              <div className="mt-4 flex aspect-[3/4] min-h-[24rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-2">
+                {generate.data?.generatedImageUrl ? (
+                  <img className="h-full w-full rounded-xl object-contain" src={generate.data.generatedImageUrl} alt={`${style} AI Try-On preview`} />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
+                    Your AI result will appear here after upload and generation.
+                  </div>
+                )}
+              </div>
             </div>
           </section>
         </div>
