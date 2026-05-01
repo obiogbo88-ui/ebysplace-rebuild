@@ -35,20 +35,20 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(cssSource).toContain(".hero-slogan-list li:last-child");
   });
 
-  it("removes the hero write-up and places EBYSPLACE between the top logo and mobile Book button", () => {
+  it("removes the hero write-up and removes the written EBYSPLACE header wordmark", () => {
     expect(homeSource).not.toContain('data-home-top-writeup="ebys-place"');
     expect(homeSource).not.toContain("Eby’s Place brings luxury pain-free braiding, protective styling,");
-    expect(homeSource).toContain('data-header-center-wordmark="ebysplace"');
-    expect(homeSource).toContain("EBYSPLACE");
-    expect(homeSource.indexOf('data-header-center-wordmark="ebysplace"')).toBeGreaterThan(homeSource.indexOf('aria-label="Eby’s Place home"'));
-    expect(homeSource.indexOf('data-header-center-wordmark="ebysplace"')).toBeLessThan(homeSource.indexOf('href="/booking"'));
+    expect(homeSource).not.toContain('data-header-center-wordmark="ebysplace"');
+    expect(homeSource).not.toContain(">\n            EBYSPLACE\n          </span>");
+    expect(homeSource).toContain("HEADER_LOGO_SRC");
+    expect(homeSource).toContain("/manus-storage/top-header-logo-1000220440-cropped-transparent_777ea202.png");
+    expect(homeSource.indexOf("HEADER_LOGO_SRC")).toBeLessThan(homeSource.indexOf('href="/booking"'));
   });
 
-  it("uses enlarged clickable logo-only branding in the requested header and footer areas", () => {
+  it("uses the supplied stretched and blended clickable top logo while preserving footer branding", () => {
     expect(homeSource).toContain('href="/"');
-    expect(homeSource).not.toContain("h-28 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
-    expect(homeSource).not.toContain("sm:h-32 lg:h-36");
-    expect(homeSource).toContain("h-36 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
+    expect(homeSource).toContain("src={HEADER_LOGO_SRC}");
+    expect(homeSource).toContain("h-24 w-[16rem] object-contain mix-blend-multiply sm:h-28 sm:w-[22rem] lg:h-24 lg:w-[18rem] xl:w-[20rem]");
     expect(homeSource).not.toContain("h-52 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
     expect(homeSource).not.toContain("sm:h-56 lg:h-60");
     expect(homeSource).not.toContain("translate-y-8");

@@ -144,3 +144,7 @@
 - [x] Revalidate that no unrelated content, styling, layout flow, navigation, booking, shop, admin, AI Try-On, payment, or notification behavior was changed by the corrected logo-only adjustment
 - [x] Reduce only the top header logo to match the lower logo size while keeping it mobile responsive
 - [x] Do not tamper with any other content, styling, layout, navigation, booking, shop, admin, AI Try-On, payment, notification, or other functionality while reducing the top logo
+- [x] Replace only the top header logo with the newly supplied Eby’s Place logo image and stretch it responsively across the available top logo area
+- [x] Remove only the written “EBYSPLACE” wordmark from the top header
+- [x] Do not tamper with any other content, styling, layout, navigation, booking, shop, admin, AI Try-On, payment, notification, or other functionality while making the header-only logo update
+- [x] Blend the newly supplied top header logo into the existing header background so the logo box or border is not visible

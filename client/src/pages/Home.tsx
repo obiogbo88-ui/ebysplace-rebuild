@@ -16,6 +16,7 @@ import {
 import { useState } from "react";
 
 const LOGO_SRC = "/manus-storage/ebysplace-logo-gold-cropped_721223da.png";
+const HEADER_LOGO_SRC = "/manus-storage/top-header-logo-1000220440-cropped-transparent_777ea202.png";
 const LANDING_VIDEO_SRC = "/manus-storage/ebysplace_header_video_64d5fea4.mp4";
 
 const navLinks = [
@@ -36,21 +37,15 @@ export function SiteHeader() {
       <div className="container flex h-28 items-center justify-between gap-4">
         <Link
           href="/"
-            className="flex items-center py-1"
+          className="flex flex-1 items-center py-1 lg:flex-none"
           aria-label="Eby’s Place home"
         >
           <img
-            src={LOGO_SRC}
+            src={HEADER_LOGO_SRC}
             alt="Eby’s Place"
-            className="h-36 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)] [filter:brightness(.55)_sepia(1)_saturate(1.35)] sm:h-40"
+            className="h-24 w-[16rem] object-contain mix-blend-multiply sm:h-28 sm:w-[22rem] lg:h-24 lg:w-[18rem] xl:w-[20rem]"
           />
         </Link>
-
-        <div className="flex flex-1 justify-center px-2" aria-label="Eby’s Place wordmark placement">
-          <span className="whitespace-nowrap text-[0.72rem] font-bold uppercase tracking-[0.32em] text-[#7a5a21] sm:text-sm lg:text-base" data-header-center-wordmark="ebysplace">
-            EBYSPLACE
-          </span>
-        </div>
 
         <nav
           className="hidden items-center gap-6 lg:flex"
