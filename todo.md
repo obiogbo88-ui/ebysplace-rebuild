@@ -167,3 +167,8 @@
 - [x] Add admin-controlled available in-stock colour choices for shop products
 - [x] Let shoppers click only the admin-provided available colours and update the selected product colour accordingly
 - [x] Do not tamper with unrelated content, styling, layout, navigation, booking, gallery, admin areas beyond product colours, AI Try-On, payments, notifications, logos, or other existing functionality while applying the shop-specific changes
+- [x] Add an admin-dashboard button or clear control that returns the owner to the website homepage
+- [x] Ensure signing out from the admin dashboard returns the user to the public website instead of leaving them in the admin area
+- [x] Clean up the admin overview overlay/layout so it displays clearly without visual overlap or clutter
+- [x] Make the admin overview menu actions work automatically and safely while preserving existing protections
+- [x] Do not tamper with unrelated content, styling, layout, navigation, booking, shop, gallery, AI Try-On, payments, notifications, logos, services, or other existing functionality while applying the admin-dashboard-only changes

@@ -61,6 +61,15 @@ const publicSectionLinks = [
   { label: "Policies", path: "/policies" },
 ];
 
+const adminOverviewActions = [
+  { label: "Bookings", sectionId: "bookings", description: "Review and update appointment statuses." },
+  { label: "Orders", sectionId: "orders", description: "Open protected shop order fulfilment." },
+  { label: "Products", sectionId: "products", description: "Manage shop stock, colours, prices, and SEO." },
+  { label: "Services", sectionId: "services", description: "Update public braid service details." },
+  { label: "Gallery", sectionId: "gallery", description: "Add or organise gallery images." },
+  { label: "Reviews", sectionId: "reviews", description: "Moderate customer reviews safely." },
+] as const;
+
 export default function Admin() {
   const { user } = useAuth();
   const summary = trpc.admin.summary.useQuery(undefined, { retry: false });
@@ -146,6 +155,15 @@ export default function Admin() {
     await navigator.clipboard.writeText(url);
     toast.success("Shareable link copied");
   };
+  const openPublicHomepage = () => {
+    window.location.assign(`${window.location.origin}/`);
+  };
+  const openProtectedOverviewSection = (sectionId: string, label: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.history.replaceState(null, "", `${window.location.pathname}#${sectionId}`);
+    refresh();
+    toast.success(`${label} opened with protected admin data refreshed`);
+  };
 
   function parseColourChoices(rawValue: string) {
     return rawValue.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
@@ -223,10 +241,13 @@ export default function Admin() {
               homepage content, uploaded service media, and performance indicators from one secure area.
             </p>
           </div>
-          <div className="lux-card py-4">
-            <p className="text-sm text-white/55">Signed in as</p>
-            <b>{user?.name || user?.email || "Admin"}</b>
-            <p className="text-xs text-primary">{user?.role}</p>
+          <div className="lux-card grid gap-3 py-4">
+            <div>
+              <p className="text-sm text-white/55">Signed in as</p>
+              <b>{user?.name || user?.email || "Admin"}</b>
+              <p className="text-xs text-primary">{user?.role}</p>
+            </div>
+            <button className="btn-dark py-2 text-sm" type="button" onClick={openPublicHomepage}>Back to Homepage</button>
           </div>
         </div>
 
@@ -240,14 +261,32 @@ export default function Admin() {
           </div>
         )}
 
-        <div className="grid gap-5 md:grid-cols-3 xl:grid-cols-6">
-          <Stat label="Bookings" value={summary.data?.bookings ?? 0} icon={CalendarDays} />
-          <Stat label="Orders" value={summary.data?.orders ?? 0} icon={ShoppingBag} />
-          <Stat label="Pending reviews" value={summary.data?.pendingReviews ?? 0} icon={MessageSquare} />
-          <Stat label="Products" value={summary.data?.products ?? 0} icon={Package} />
-          <Stat label="Services" value={summary.data?.services ?? 0} icon={Scissors} />
-          <Stat label="AI try-ons" value={summary.data?.tryOns ?? 0} icon={Sparkles} />
-        </div>
+        <section id="overview" className="mt-8 overflow-hidden rounded-[2rem] border border-primary/20 bg-card/95 p-5 shadow-[0_24px_80px_rgba(46,27,16,.12)] sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="pill w-fit">Protected overview</p>
+              <h2 className="serif mt-3 text-3xl font-bold text-primary">Clean admin overview</h2>
+              <p className="mt-2 text-sm text-white/65">Use these protected shortcuts to open each admin area, refresh live dashboard data, and keep the overview clear without stacked overlays.</p>
+            </div>
+            <button className="btn-gold w-fit py-2 text-sm" type="button" onClick={refresh}>Refresh overview data</button>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {adminOverviewActions.map((action) => (
+              <button className="rounded-2xl border border-white/10 bg-white/70 p-4 text-left transition hover:border-primary/40 hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" type="button" key={action.sectionId} onClick={() => openProtectedOverviewSection(action.sectionId, action.label)}>
+                <b className="text-primary">{action.label}</b>
+                <small className="mt-1 block text-white/55">{action.description}</small>
+              </button>
+            ))}
+          </div>
+          <div className="mt-6 grid gap-5 md:grid-cols-3 xl:grid-cols-6">
+            <Stat label="Bookings" value={summary.data?.bookings ?? 0} icon={CalendarDays} />
+            <Stat label="Orders" value={summary.data?.orders ?? 0} icon={ShoppingBag} />
+            <Stat label="Pending reviews" value={summary.data?.pendingReviews ?? 0} icon={MessageSquare} />
+            <Stat label="Products" value={summary.data?.products ?? 0} icon={Package} />
+            <Stat label="Services" value={summary.data?.services ?? 0} icon={Scissors} />
+            <Stat label="AI try-ons" value={summary.data?.tryOns ?? 0} icon={Sparkles} />
+          </div>
+        </section>
 
         <section id="control-center" className="mt-8 grid gap-6 xl:grid-cols-[1.2fr_1fr]">
           <div className="lux-card">

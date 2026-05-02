@@ -89,6 +89,30 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(appSource).toContain("document.getElementById(hash.slice(1))?.scrollIntoView");
   });
 
+  it("keeps admin dashboard exit paths, clean overview actions, and protected overview data scoped to admin", () => {
+    const adminSource = readSource("client/src/pages/Admin.tsx");
+    const layoutSource = readSource("client/src/components/DashboardLayout.tsx");
+    const routerSource = readSource("server/routers.ts");
+
+    expect(layoutSource).toContain("Back to Website");
+    expect(layoutSource).toContain("Back to website homepage");
+    expect(layoutSource).toContain("handleSignOut");
+    expect(layoutSource).toContain("window.location.assign(`${window.location.origin}/`)");
+    expect(layoutSource).toContain("navigateAdminMenu");
+    expect(layoutSource).toContain("scrollIntoView({ behavior: \"smooth\", block: \"start\" })");
+    expect(adminSource).toContain("Back to Homepage");
+    expect(adminSource).toContain("adminOverviewActions");
+    expect(adminSource).toContain("Clean admin overview");
+    expect(adminSource).toContain("Protected overview");
+    expect(adminSource).toContain("openProtectedOverviewSection");
+    expect(adminSource).toContain("Refresh overview data");
+    expect(adminSource).toContain("overflow-hidden rounded-[2rem]");
+    expect(adminSource).toContain("refresh();");
+    expect(routerSource).toContain("summary: adminProcedure");
+    expect(routerSource).toContain("lists: adminProcedure");
+    expect(routerSource).toContain("insights: adminProcedure");
+  });
+
   it("protects the About Us story and CEO image workflow across homepage and admin dashboard breakpoints", () => {
     const homeSource = readSource("client/src/pages/Home.tsx");
     const adminSource = readSource("client/src/pages/Admin.tsx");

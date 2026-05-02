@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { CalendarDays, Images, LayoutDashboard, LogOut, MessageSquare, Package, PanelLeft, Scissors, ShoppingBag, Users } from "lucide-react";
+import { CalendarDays, Home, Images, LayoutDashboard, LogOut, MessageSquare, Package, PanelLeft, Scissors, ShoppingBag, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -118,7 +118,9 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.path === location);
+  const [currentHash, setCurrentHash] = useState(() => (typeof window === "undefined" ? "" : window.location.hash));
+  const activePath = location === "/admin" && currentHash ? `/admin${currentHash}` : location;
+  const activeMenuItem = menuItems.find(item => item.path === activePath) ?? menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -126,6 +128,39 @@ function DashboardLayoutContent({
       setIsResizing(false);
     }
   }, [isCollapsed]);
+
+  useEffect(() => {
+    const syncHash = () => setCurrentHash(window.location.hash);
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, []);
+
+  const returnToHomepage = () => {
+    if (typeof window !== "undefined") {
+      window.location.assign(`${window.location.origin}/`);
+      return;
+    }
+    setLocation("/");
+  };
+
+  const handleSignOut = async () => {
+    await logout();
+    returnToHomepage();
+  };
+
+  const navigateAdminMenu = (path: string) => {
+    const [pathname, sectionId] = path.split("#");
+    setLocation(path);
+    if (pathname === "/admin" && sectionId) {
+      window.setTimeout(() => {
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        setCurrentHash(`#${sectionId}`);
+      }, 0);
+      return;
+    }
+    setCurrentHash("");
+  };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -187,12 +222,12 @@ function DashboardLayoutContent({
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
               {menuItems.map(item => {
-                const isActive = location === item.path;
+                const isActive = activePath === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      onClick={() => setLocation(item.path)}
+                      onClick={() => navigateAdminMenu(item.path)}
                       tooltip={item.label}
                       className={`h-10 transition-all font-normal`}
                     >
@@ -208,6 +243,16 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={returnToHomepage}
+              className="mb-3 h-10 w-full justify-start gap-2 border-primary/30 bg-background/80 text-foreground hover:bg-primary/10 group-data-[collapsible=icon]:justify-center"
+              aria-label="Back to website homepage"
+            >
+              <Home className="h-4 w-4 text-primary" />
+              <span className="group-data-[collapsible=icon]:hidden">Back to Website</span>
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -228,7 +273,7 @@ function DashboardLayoutContent({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem
-                  onClick={logout}
+                  onClick={handleSignOut}
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
