@@ -204,3 +204,9 @@
 - [x] Remove any remaining Manus branding from checkout notifications, payment confirmations, and receipt-related customer/owner messaging controlled by the website
 - [x] Ensure all checkout notifications, payment confirmations, and receipt-related messaging controlled by the website use Eby’s Place branding only
 - [x] Do not tamper with unrelated website content, design, products, services, navigation, booking details, shop display, admin areas, AI Try-On, gallery, reviews, or other flows while applying notification and receipt branding safeguards
+- [x] Improve loading speed across the entire Eby’s Place website with performance-only changes
+- [x] Audit current build output and runtime loading bottlenecks before making performance edits
+- [x] Reduce initial JavaScript/CSS loading cost where safe without changing visible design or business flows
+- [x] Preserve all unrelated website content, design, products, services, navigation, booking, payment, admin, AI Try-On, notifications, branding, and existing automation while optimizing performance
+- [x] Add or update focused regression safeguards for performance changes and unchanged critical website behavior
+- [x] Run tests, TypeScript validation, production build, and project health checks after performance-only changes

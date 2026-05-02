@@ -150,7 +150,15 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+const isProductionBuild = process.env.NODE_ENV === "production";
+
+const plugins = [
+  react(),
+  tailwindcss(),
+  ...(isProductionBuild ? [] : [jsxLocPlugin()]),
+  vitePluginManusRuntime(),
+  vitePluginManusDebugCollector(),
+];
 
 export default defineConfig({
   plugins,
@@ -167,6 +175,19 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("heic2any")) return "heic2any";
+          if (id.includes("react") || id.includes("scheduler")) return "vendor-react";
+          if (id.includes("@trpc") || id.includes("@tanstack") || id.includes("superjson")) return "vendor-data";
+          if (id.includes("@radix-ui") || id.includes("lucide-react") || id.includes("sonner") || id.includes("cmdk") || id.includes("vaul")) return "vendor-ui";
+          if (id.includes("stripe") || id.includes("recharts") || id.includes("date-fns")) return "vendor-feature";
+          return "vendor-core";
+        },
+      },
+    },
   },
   server: {
     host: true,

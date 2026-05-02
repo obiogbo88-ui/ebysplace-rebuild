@@ -39,7 +39,7 @@ describe("strict visual-only change regression coverage", () => {
     const adminSource = source("client/src/pages/Admin.tsx");
 
     expect(appSource).toContain("window.scrollTo({ top: 0, left: 0, behavior: \"auto\" })");
-    expect(appSource).toContain("import Services from \"./pages/Services\";");
+    expect(appSource).toContain("const Services = lazy(() => import(\"./pages/Services\"));");
     expect(appSource).toContain("<Route path=\"/services\" component={Services} />");
     expect(appSource).toContain("<Route path=\"/booking\" component={Booking} />");
     expect(appSource).toContain("<Route path=\"/shop\" component={Shop} />");
