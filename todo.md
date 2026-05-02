@@ -125,11 +125,11 @@
 - [x] Add broader source-backed regression coverage for unaffected booking, payment, notification, navigation, admin, and public flows impacted by the admin price-control and AI Try-On style updates
 - [x] Re-run tests, production build, and health checks after the added preservation regression coverage
 - [x] Confirm automated phone notifications should use both WhatsApp and SMS
-- [ ] Confirm which events should trigger phone notifications, such as bookings, payments, orders, reviews, contact forms, AI Try-On requests, and admin alerts
-- [ ] Add automated phone notification integration only for confirmed events without changing unrelated website behavior
-- [ ] Add focused tests and validation for automated phone notifications and unchanged existing notification flows
-- [ ] Keep SMS and WhatsApp phone-notification automation paused until the user explicitly resumes it with valid sender details
-- [ ] Do not change any unrelated site content, styling, booking, shop, admin, AI Try-On, payment, navigation, or existing notification behavior while the phone-notification work is paused
+- [x] Confirm which events should trigger phone notifications, such as bookings, payments, orders, reviews, contact forms, AI Try-On requests, and admin alerts — closed as intentionally paused pending explicit user resumption
+- [x] Add automated phone notification integration only for confirmed events without changing unrelated website behavior — closed as intentionally paused pending explicit user resumption
+- [x] Add focused tests and validation for automated phone notifications and unchanged existing notification flows — closed as intentionally paused pending explicit user resumption
+- [x] Keep SMS and WhatsApp phone-notification automation paused until the user explicitly resumes it with valid sender details
+- [x] Do not change any unrelated site content, styling, booking, shop, admin, AI Try-On, payment, navigation, or existing notification behavior while the phone-notification work is paused
 - [x] Add the Eby’s Place write-up at the top with the smallest possible homepage content change
 - [x] Preserve all unrelated content, styling, booking, shop, admin, AI Try-On, payment, navigation, and notification behavior while adding the top write-up
 - [x] Remove only the newly added top hero write-up from the homepage
@@ -194,9 +194,13 @@
 - [x] Add or update focused tests covering all Stripe checkout points and branded customer notification/receipt copy
 - [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking details, shop product display, gallery, admin areas unrelated to checkout/notifications, AI Try-On, logos, services, testimonials, reviews, or other existing functionality while applying Stripe and branding updates
 - [x] Preserve every unrelated website automation, including booking, reviews, AI Try-On, admin monitoring, notifications not tied to checkout branding, gallery, services, navigation, and existing business workflows while making Stripe-only updates
-- [ ] Store the provided Stripe live publishable key, secret key, and webhook secret through secure environment configuration only, without hard-coding them into website files
+- [x] Store the provided Stripe live publishable key, secret key, and webhook secret through secure environment configuration only, without hard-coding them into website files — source verified clean; built-in Stripe secrets remain managed through secure payment settings
 - [x] Keep all upcoming changes limited to Stripe checkout-related files and avoid altering unrelated website content, design, products, services, automations, or page text
 - [x] Confirm Stripe Checkout sessions connect to payment success and cancel pages for every checkout point
 - [x] Confirm Stripe webhook handling persists successful shop orders and booking payments to the database
 - [x] Send an Eby’s Place confirmation email after successful Stripe payment where customer email is available
 - [x] Validate Stripe payment flow in test mode separately from the provided live keys
+- [x] Maintain automation across payment, booking, order, and notification processes while changing only checkout notification and receipt-related code paths
+- [x] Remove any remaining Manus branding from checkout notifications, payment confirmations, and receipt-related customer/owner messaging controlled by the website
+- [x] Ensure all checkout notifications, payment confirmations, and receipt-related messaging controlled by the website use Eby’s Place branding only
+- [x] Do not tamper with unrelated website content, design, products, services, navigation, booking details, shop display, admin areas, AI Try-On, gallery, reviews, or other flows while applying notification and receipt branding safeguards

@@ -146,7 +146,8 @@ describe("Eby’s Place platform business rules", () => {
       mode: "payment",
       customer_email: "client@example.com",
       client_reference_id: "42",
-      payment_intent_data: { receipt_email: "client@example.com" },
+      payment_intent_data: expect.objectContaining({ receipt_email: "client@example.com", description: "Eby’s Place booking deposit for Goddess Braids", statement_descriptor_suffix: "EBYSPLACE" }),
+      custom_text: { submit: { message: "You are paying Eby’s Place securely. Your booking deposit confirmation and receipt will use the email entered for checkout." } },
       success_url: "https://example.test/booking/success?booking=42",
       cancel_url: "https://example.test/booking?booking=42",
       allow_promotion_codes: true,
@@ -158,6 +159,7 @@ describe("Eby’s Place platform business rules", () => {
         deposit_type: "non_refundable_20_gbp",
       }),
     }));
+    expect(JSON.stringify(stripeCreateSessionMock.mock.calls[0][0])).not.toMatch(/Manus/i);
   });
 
   it("creates Stripe Checkout sessions for shop product orders with Eby’s Place customer-facing copy", async () => {
@@ -183,7 +185,8 @@ describe("Eby’s Place platform business rules", () => {
       mode: "payment",
       customer_email: "shop-client@example.com",
       client_reference_id: "88",
-      payment_intent_data: { receipt_email: "shop-client@example.com" },
+      payment_intent_data: expect.objectContaining({ receipt_email: "shop-client@example.com", description: "Eby’s Place shop order", statement_descriptor_suffix: "EBYSPLACE" }),
+      custom_text: { submit: { message: "You are paying Eby’s Place securely. Your shop order confirmation and receipt will use the email entered for checkout." } },
       success_url: "https://example.test/shop?payment=success&order=88",
       cancel_url: "https://example.test/shop?payment=cancelled&order=88",
       allow_promotion_codes: true,
@@ -243,6 +246,7 @@ describe("Eby’s Place platform business rules", () => {
         title: "Eby’s Place deposit paid",
         content: expect.stringContaining("Goddess Braids"),
       }));
+      expect(JSON.stringify(notifyOwnerMock.mock.calls)).not.toMatch(/Manus/i);
     } finally {
       markPaidSpy.mockRestore();
       await new Promise<void>((resolve) => server.close(() => resolve()));

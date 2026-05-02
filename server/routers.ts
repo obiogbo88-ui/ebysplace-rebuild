@@ -136,7 +136,8 @@ export const appRouter = router({
         mode: "payment",
         customer_email: input.clientEmail,
         client_reference_id: input.bookingId.toString(),
-        payment_intent_data: { receipt_email: input.clientEmail },
+        payment_intent_data: { receipt_email: input.clientEmail, description: `Eby’s Place booking deposit for ${input.serviceName}`, statement_descriptor_suffix: "EBYSPLACE" },
+        custom_text: { submit: { message: "You are paying Eby’s Place securely. Your booking deposit confirmation and receipt will use the email entered for checkout." } },
         line_items: [{ price_data: { currency: "gbp", unit_amount: 2000, product_data: { name: "Eby’s Place £20 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 }],
         allow_promotion_codes: true,
         success_url: `${origin}/booking/success?booking=${input.bookingId}`,
@@ -155,7 +156,8 @@ export const appRouter = router({
         mode: "payment",
         customer_email: input.customerEmail,
         client_reference_id: orderId,
-        payment_intent_data: { receipt_email: input.customerEmail },
+        payment_intent_data: { receipt_email: input.customerEmail, description: "Eby’s Place shop order", statement_descriptor_suffix: "EBYSPLACE" },
+        custom_text: { submit: { message: "You are paying Eby’s Place securely. Your shop order confirmation and receipt will use the email entered for checkout." } },
         line_items: input.items.map((item) => ({
           price_data: {
             currency: "gbp",
