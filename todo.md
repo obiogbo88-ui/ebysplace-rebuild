@@ -250,3 +250,8 @@
 - [x] Preserve all unrelated website content, styling, layout, navigation, booking, shop, admin areas outside availability, gallery, reviews, AI Try-On, payments, notifications, domains, favicon assets, and public functionality while applying this availability-control change
 - [x] Add or update focused regression coverage for the admin availability control and unchanged critical flows
 - [x] Run tests, production build, and project health checks after the admin availability-control update
+- [x] Diagnose why website pictures take long to load without changing visible design or unrelated functionality
+- [x] Apply performance-only image loading fixes for slow website pictures
+- [x] Preserve all unrelated website content, styling, layout, navigation, booking, shop, admin, gallery, reviews, AI Try-On, payments, notifications, domains, favicon assets, and public functionality while fixing image loading
+- [x] Add or update focused regression coverage for image-loading performance safeguards and unchanged critical flows
+- [x] Run tests, production build, and project health checks after image-loading performance fixes

@@ -44,6 +44,9 @@ export function SiteHeader() {
             src={HEADER_LOGO_SRC}
             alt="Eby’s Place"
             className="h-20 w-[14rem] object-contain mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]"
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
           />
         </Link>
 
@@ -121,6 +124,8 @@ export function SiteFooter() {
               src={HEADER_LOGO_SRC}
               alt="Eby’s Place"
               className="h-[7.5rem] w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-[8.5rem]"
+              loading="lazy"
+              decoding="async"
             />
           </div>
           <p className="mt-3 text-sm font-medium text-[#4f3720]">
@@ -295,6 +300,7 @@ export default function Home() {
                         src={s.imageUrl}
                         alt={`${s.name} hairstyle by Eby’s Place`}
                         loading="lazy"
+                        decoding="async"
                       />
                     </div>
                   ) : null}
@@ -405,7 +411,7 @@ export default function Home() {
                 <aside className="justify-self-start text-center lg:justify-self-end" aria-label="Eby’s Place round story portrait">
                   <div className="relative mx-auto h-32 w-32 overflow-hidden rounded-full border border-[#d8bd74]/75 bg-[#efe0c7] p-2 shadow-[0_18px_48px_rgba(74,48,20,.2)] sm:h-36 sm:w-36">
                     {aboutSection.portraitImageUrl || aboutSection.imageUrl ? (
-                      <img className="h-full w-full rounded-full object-cover object-[center_18%]" src={aboutSection.portraitImageUrl || aboutSection.imageUrl} alt="Eby’s Place story portrait" />
+                      <img className="h-full w-full rounded-full object-cover object-[center_18%]" src={aboutSection.portraitImageUrl || aboutSection.imageUrl} alt="Eby’s Place story portrait" loading="lazy" decoding="async" />
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-dashed border-[#b88b2d]/75 bg-[#f7eddc] p-4 text-center">
                         <Crown className="h-7 w-7 text-[#8a641e]" />

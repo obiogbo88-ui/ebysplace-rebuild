@@ -54,6 +54,18 @@ const manifestSource = readFileSync(
   resolve(process.cwd(), "client/public/site.webmanifest"),
   "utf8"
 );
+const storageProxySource = readFileSync(
+  resolve(process.cwd(), "server/_core/storageProxy.ts"),
+  "utf8"
+);
+const servicesSource = readFileSync(
+  resolve(process.cwd(), "client/src/pages/Services.tsx"),
+  "utf8"
+);
+const gallerySource = readFileSync(
+  resolve(process.cwd(), "client/src/pages/Gallery.tsx"),
+  "utf8"
+);
 
 describe("Eby’s Place landing page visual refinements", () => {
   it("keeps the hero photo free of brand-card overlays and places the pain-free promise as a styled list", () => {
@@ -80,6 +92,8 @@ describe("Eby’s Place landing page visual refinements", () => {
   it("uses the supplied stretched and blended clickable top logo while matching the lower logo colour", () => {
     expect(homeSource).toContain('href="/"');
     expect(homeSource).toContain("src={HEADER_LOGO_SRC}");
+    expect(homeSource).toContain('fetchPriority="high"');
+    expect(homeSource).toContain('decoding="async"');
     expect(homeSource).toContain("h-20 w-[14rem] object-contain mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]");
     expect(homeSource).not.toContain("h-24 w-[16rem] object-contain mix-blend-multiply sm:h-28 sm:w-[22rem] lg:h-24 lg:w-[18rem] xl:w-[20rem]");
     expect(homeSource).not.toContain("h-52 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
@@ -93,6 +107,16 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("mt-1 max-w-[13rem]");
     expect(homeSource).not.toContain("<span className=\"text-2xl font-extrabold uppercase tracking-[0.14em] text-[#2a1a0b]\">");
     expect(homeSource).not.toContain("[filter:brightness(.55)_sepia(1)_saturate(1.35)]");
+  });
+
+  it("keeps storage-backed images cacheable and decodes gallery images without blocking layout", () => {
+    expect(storageProxySource).toContain('Cache-Control", "public, max-age=86400, stale-while-revalidate=604800"');
+    expect(storageProxySource).not.toContain('Cache-Control", "no-store"');
+    expect(homeSource).toContain('loading="lazy"\n                        decoding="async"');
+    expect(homeSource).toContain('alt="Eby’s Place story portrait" loading="lazy" decoding="async"');
+    expect(servicesSource).toContain('loading="lazy"\n                        decoding="async"');
+    expect(gallerySource).toContain('loading="lazy" decoding="async"');
+    expect(gallerySource).toContain('loading="eager" decoding="async"');
   });
 
   it("applies a lighter landing treatment with readable navigation contrast", () => {

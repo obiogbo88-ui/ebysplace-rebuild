@@ -110,6 +110,7 @@ export default function Services() {
                         src={service.imageUrl}
                         alt={`${service.name} hairstyle by Eby’s Place`}
                         loading="lazy"
+                        decoding="async"
                       />
                     </div>
                   ) : null}
