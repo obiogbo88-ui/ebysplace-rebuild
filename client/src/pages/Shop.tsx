@@ -21,10 +21,7 @@ type ProductVariant = {
 type ShopProduct = {
   id: number;
   name: string;
-  slug?: string;
   description: string;
-  seoTitle?: string;
-  seoDescription?: string;
   price: string;
   badge?: string | null;
   stockStatus?: string;
@@ -34,6 +31,12 @@ type ShopProduct = {
 };
 
 const fallbackVariant: ProductVariant = { name: "Default", colourHex: "#c8a95a" };
+const descriptionPreviewLength = 115;
+
+function previewDescription(description: string) {
+  if (description.length <= descriptionPreviewLength) return description;
+  return `${description.slice(0, descriptionPreviewLength).trim()}…`;
+}
 
 function readableColourLabel(variant: ProductVariant) {
   return variant.name === "Default" ? "Signature finish" : variant.name;
@@ -43,8 +46,11 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
   const variants = product.variants?.length ? product.variants : [fallbackVariant];
   const [selectedVariantKey, setSelectedVariantKey] = useState(String(variants[0]?.id ?? variants[0]?.name ?? "Default"));
   const selectedVariant = variants.find((variant) => String(variant.id ?? variant.name) === selectedVariantKey) ?? variants[0] ?? fallbackVariant;
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const selectedColour = selectedVariant.colourHex || "#c8a95a";
   const outOfStock = product.stockStatus === "out_of_stock" || selectedVariant.stockQuantity === 0;
+  const canToggleDescription = product.description.length > descriptionPreviewLength;
+  const visibleDescription = isDescriptionExpanded ? product.description : previewDescription(product.description);
 
   return (
     <article className="lux-card group min-w-0 overflow-hidden p-0">
@@ -67,17 +73,23 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <h2 className="serif break-words text-3xl font-bold text-white">{product.name}</h2>
-            <p className="mt-2 break-words text-xs uppercase tracking-[0.18em] text-primary/80">/{product.slug}</p>
           </div>
           <b className="shrink-0 text-2xl text-primary">£{product.price}</b>
         </div>
 
-        <p className="mt-4 text-white/72">{product.description}</p>
-        <p className="mt-4 rounded-2xl bg-white/[0.04] p-3 text-sm text-white/70">
-          <b className="block text-primary">SEO title</b>
-          {product.seoTitle || `${product.name} | Eby’s Place`}
-          <span className="mt-1 block text-white/58">{product.seoDescription || product.description}</span>
-        </p>
+        <div className="mt-4 rounded-2xl bg-white/[0.04] p-4 text-white/72">
+          <p className="text-sm leading-6">{visibleDescription}</p>
+          {canToggleDescription ? (
+            <button
+              type="button"
+              className="mt-3 text-sm font-semibold text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              aria-expanded={isDescriptionExpanded}
+              onClick={() => setIsDescriptionExpanded((current) => !current)}
+            >
+              {isDescriptionExpanded ? "Read less" : "Read full details"}
+            </button>
+          ) : null}
+        </div>
 
         <div className="mt-5 rounded-3xl border border-primary/20 bg-black/20 p-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -150,7 +162,7 @@ export default function Shop() {
           <div>
             <p className="pill w-fit">Shop</p>
             <h1 className="serif mt-4 text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">Premium braid care and accessories.</h1>
-            <p className="mt-4 max-w-3xl text-white/75">Choose scalp-friendly braid-care essentials, click available colours to preview the look instantly, then send delivery details directly into the admin order manager.</p>
+            <p className="mt-4 max-w-3xl text-white/75">Choose scalp-friendly braid-care essentials, click available colours to preview each finish, then leave your delivery details at checkout.</p>
           </div>
 
         </div>

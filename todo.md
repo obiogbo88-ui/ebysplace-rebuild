@@ -178,3 +178,8 @@
 - [x] Add the customer reviews visible in the attached screenshots to the live reviews/testimonials shown on the site
 - [x] Exclude all Eby’s Place owner replies from the live review text
 - [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking, shop, admin, AI Try-On, payments, notifications, logos, services, or other existing functionality while applying this reviews-only change
+- [x] Remove SEO-style titles, subtitles, and any wording indicating SEO from shop product descriptions
+- [x] Replace shop product description wording with customer-friendly ecommerce language only
+- [x] Make shop product descriptions collapsible so customers can click to read full details without filling the page
+- [x] Remove only the pictured “Aftercare with a premium finish” shop-review/aftercare block from the shop area
+- [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking, gallery, admin, AI Try-On, payments, notifications, logos, services, testimonials, reviews, or other existing functionality while applying this shop-only change

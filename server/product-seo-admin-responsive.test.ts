@@ -33,18 +33,27 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(adminSource).toContain("updateProduct.mutate");
   });
 
-  it("reflects admin-managed SEO fields and requested colour-selection shopping feedback in the public shop", () => {
+  it("keeps SEO metadata in admin only while public shop descriptions stay customer-friendly and collapsible", () => {
     const shopSource = readSource("client/src/pages/Shop.tsx");
+    const homeSource = readSource("client/src/pages/Home.tsx");
 
-    expect(shopSource).toContain("product.seoTitle");
-    expect(shopSource).toContain("product.seoDescription");
-    expect(shopSource).toContain("product.slug");
+    expect(shopSource).not.toContain("product.seoTitle");
+    expect(shopSource).not.toContain("product.seoDescription");
+    expect(shopSource).not.toContain("product.slug");
+    expect(shopSource).not.toContain("SEO title");
+    expect(shopSource).toContain("descriptionPreviewLength");
+    expect(shopSource).toContain("Read full details");
+    expect(shopSource).toContain("Read less");
+    expect(shopSource).toContain("aria-expanded={isDescriptionExpanded}");
     expect(shopSource).toContain("selectedVariant");
     expect(shopSource).toContain("Add ${readableColourLabel(selectedVariant)} to bag");
     expect(shopSource).toContain("<p className=\"pill w-fit\">Shop</p>");
     expect(shopSource).not.toContain("Better shopping flow");
     expect(shopSource).not.toContain("Selected colour");
-    expect(shopSource).not.toContain("Tap a colour below to preview this product before adding it to your bag.");
+    expect(shopSource).not.toContain("admin order manager");
+    expect(homeSource).not.toContain("Aftercare with a premium finish.");
+    expect(homeSource).not.toContain("Shop preview");
+    expect(homeSource).not.toContain("Sell braid care, accessories, and hair products");
     expect(shopSource).toContain("md:grid-cols-2");
     expect(shopSource).toContain("lg:grid-cols-[minmax(0,1fr)_420px]");
   });
