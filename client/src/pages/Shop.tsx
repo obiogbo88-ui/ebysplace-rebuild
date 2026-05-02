@@ -153,7 +153,10 @@ export default function Shop() {
   const remove = (index: number) => setCart((current) => current.filter((_, idx) => idx !== index));
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await order.mutateAsync({ ...delivery, items: cart });
+    const result = await order.mutateAsync({ ...delivery, items: cart });
+    if (result.checkoutUrl) {
+      window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+    }
     setCart([]);
   };
 
@@ -218,8 +221,8 @@ export default function Shop() {
               </div>
               <input required placeholder="Postcode" value={delivery.postcode} onChange={(event) => setDelivery({ ...delivery, postcode: event.target.value })} />
               <textarea placeholder="Delivery notes" value={delivery.deliveryNote} onChange={(event) => setDelivery({ ...delivery, deliveryNote: event.target.value })} />
-              <button disabled={!cart.length || order.isPending} className="btn-gold disabled:cursor-not-allowed disabled:opacity-50">Create order for fulfilment</button>
-              {order.isSuccess && <p className="rounded-2xl border border-primary/30 bg-primary/10 p-3 font-semibold text-primary">Order captured for admin fulfilment.</p>}
+              <button disabled={!cart.length || order.isPending} className="btn-gold disabled:cursor-not-allowed disabled:opacity-50">Pay securely with Stripe</button>
+              {order.isSuccess && <p className="rounded-2xl border border-primary/30 bg-primary/10 p-3 font-semibold text-primary">Secure Stripe checkout opened in a new tab.</p>}
               {order.error && <p className="rounded-2xl border border-red-500/40 bg-red-50 p-3 font-semibold text-red-900">{order.error.message}</p>}
             </form>
           </aside>

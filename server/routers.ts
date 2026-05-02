@@ -145,9 +145,39 @@ export const appRouter = router({
       await db.updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),
-    createOrder: publicProcedure.input(orderInput).mutation(async ({ input }) => {
+    createOrder: publicProcedure.input(orderInput).mutation(async ({ input, ctx }) => {
       const order = await db.createOrderWithItems(input);
-      return { orderId: order.id, status: "draft", message: "Order captured with delivery details. The admin team can manage fulfilment from the dashboard." };
+      const stripe = getStripe();
+      const origin = getOrigin(ctx.req);
+      const orderId = order.id.toString();
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer_email: input.customerEmail,
+        client_reference_id: orderId,
+        line_items: input.items.map((item) => ({
+          price_data: {
+            currency: "gbp",
+            unit_amount: Math.round(Number(item.unitPrice) * 100),
+            product_data: {
+              name: item.variantName ? `${item.productName} — ${item.variantName}` : item.productName,
+              description: "Eby’s Place shop product",
+            },
+          },
+          quantity: item.quantity,
+        })),
+        allow_promotion_codes: true,
+        success_url: `${origin}/shop?payment=success&order=${orderId}`,
+        cancel_url: `${origin}/shop?payment=cancelled&order=${orderId}`,
+        metadata: {
+          order_id: orderId,
+          order_type: "shop_products",
+          customer_email: input.customerEmail,
+          customer_name: input.customerName,
+        },
+      });
+      if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout link. Please try again." });
+      await db.updateOrderCheckout(order.id, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
+      return { orderId: order.id, checkoutUrl: session.url, status: "pending_payment", message: "Your secure Eby’s Place checkout is ready." };
     }),
     uploadTryOnPhoto: publicProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("try-on-photo.jpg") })).mutation(async ({ input }) => {
       const { mimeType, buffer } = decodeDataUrl(input.dataUrl);

@@ -187,3 +187,10 @@
 - [x] Keep the crossed-out “Aftercare with a premium finish” write-up and sales paragraph removed from the homepage shop-preview area
 - [x] Change shop product descriptions so only the first sentence is visible before customers click to read the full details
 - [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking, gallery, admin, AI Try-On, payments, notifications, logos, services, testimonials, reviews, or other existing functionality while applying this shop refinement
+- [x] Audit every checkout point, including booking deposits and shop/cart checkout, to confirm Stripe coverage and gaps
+- [x] Fully integrate Stripe Checkout for any checkout point that is not already using Stripe without changing unrelated flows
+- [x] Remove Manus branding from customer-facing payment receipts, payment confirmations, and website notifications where the app controls the content
+- [x] Identify any Stripe Dashboard account settings needed to remove Manus branding from Stripe-hosted receipts, invoices, emails, or checkout branding
+- [x] Add or update focused tests covering all Stripe checkout points and branded customer notification/receipt copy
+- [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking details, shop product display, gallery, admin areas unrelated to checkout/notifications, AI Try-On, logos, services, testimonials, reviews, or other existing functionality while applying Stripe and branding updates
+- [x] Preserve every unrelated website automation, including booking, reviews, AI Try-On, admin monitoring, notifications not tied to checkout branding, gallery, services, navigation, and existing business workflows while making Stripe-only updates

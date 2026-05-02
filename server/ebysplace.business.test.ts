@@ -159,6 +159,51 @@ describe("Eby’s Place platform business rules", () => {
     }));
   });
 
+  it("creates Stripe Checkout sessions for shop product orders with Eby’s Place customer-facing copy", async () => {
+    stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_shop_123", url: "https://checkout.stripe.test/shop", payment_intent: "pi_shop_123" });
+    const createOrderSpy = vi.spyOn(db, "createOrderWithItems").mockResolvedValueOnce({ id: 88 });
+    const updateCheckoutSpy = vi.spyOn(db, "updateOrderCheckout").mockResolvedValueOnce(undefined);
+    const caller = appRouter.createCaller(publicContext());
+
+    const result = await caller.public.createOrder({
+      customerName: "Shop Client",
+      customerEmail: "shop-client@example.com",
+      customerPhone: "07123456789",
+      addressLine1: "1 Gold Street",
+      city: "London",
+      county: "Greater London",
+      postcode: "E1 1AA",
+      deliveryNote: "Leave safely if needed",
+      items: [{ productId: 1, variantId: 2, productName: "X-Pression Braiding Hair", variantName: "Colour 30", quantity: 2, unitPrice: "8.50" }],
+    });
+
+    expect(result).toEqual({ orderId: 88, checkoutUrl: "https://checkout.stripe.test/shop", status: "pending_payment", message: "Your secure Eby’s Place checkout is ready." });
+    expect(stripeCreateSessionMock).toHaveBeenCalledWith(expect.objectContaining({
+      mode: "payment",
+      customer_email: "shop-client@example.com",
+      client_reference_id: "88",
+      success_url: "https://example.test/shop?payment=success&order=88",
+      cancel_url: "https://example.test/shop?payment=cancelled&order=88",
+      allow_promotion_codes: true,
+      metadata: expect.objectContaining({
+        order_id: "88",
+        order_type: "shop_products",
+        customer_email: "shop-client@example.com",
+        customer_name: "Shop Client",
+      }),
+    }));
+    const checkoutConfig = stripeCreateSessionMock.mock.calls[0][0];
+    expect(checkoutConfig.line_items[0].price_data.unit_amount).toBe(850);
+    expect(checkoutConfig.line_items[0].price_data.product_data).toEqual({
+      name: "X-Pression Braiding Hair — Colour 30",
+      description: "Eby’s Place shop product",
+    });
+    expect(JSON.stringify(checkoutConfig)).not.toMatch(/Manus/i);
+    expect(updateCheckoutSpy).toHaveBeenCalledWith(88, "cs_shop_123", "pi_shop_123");
+    createOrderSpy.mockRestore();
+    updateCheckoutSpy.mockRestore();
+  });
+
   it("notifies the owner and marks bookings paid for completed Stripe deposit webhooks", async () => {
     stripeConstructEventMock.mockReturnValueOnce({
       id: "evt_live_mock",
@@ -198,6 +243,49 @@ describe("Eby’s Place platform business rules", () => {
       }));
     } finally {
       markPaidSpy.mockRestore();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it("notifies the owner and marks shop orders paid for completed Stripe product webhooks", async () => {
+    stripeConstructEventMock.mockReturnValueOnce({
+      id: "evt_live_shop_mock",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_shop_live_mock",
+          customer_email: "shop-client@example.com",
+          payment_intent: "pi_shop_live_mock",
+          metadata: {
+            order_id: "88",
+            order_type: "shop_products",
+            customer_email: "shop-client@example.com",
+            customer_name: "Shop Client",
+          },
+        },
+      },
+    });
+    const markOrderPaidSpy = vi.spyOn(db, "markOrderPaid").mockResolvedValueOnce(undefined);
+    const app = express();
+    registerStripeWebhook(app);
+    const server = app.listen(0);
+    try {
+      const port = (server.address() as AddressInfo).port;
+      const response = await fetch(`http://127.0.0.1:${port}/api/stripe/webhook`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "stripe-signature": "live_signature" },
+        body: JSON.stringify({ id: "evt_live_shop_mock" }),
+      });
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({ received: true });
+      expect(markOrderPaidSpy).toHaveBeenCalledWith("cs_shop_live_mock", "pi_shop_live_mock");
+      expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Eby’s Place shop order paid",
+        content: expect.stringContaining("Order ID: 88"),
+      }));
+      expect(JSON.stringify(notifyOwnerMock.mock.calls)).not.toMatch(/Manus/i);
+    } finally {
+      markOrderPaidSpy.mockRestore();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   });

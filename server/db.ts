@@ -527,6 +527,18 @@ export async function createOrderWithItems(input: { customerName: string; custom
   return { id: orderId };
 }
 
+export async function updateOrderCheckout(id: number, stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(orders).set({ status: "pending_payment", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, id));
+}
+
+export async function markOrderPaid(stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(orders).set({ status: "paid", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId));
+}
+
 export async function recordAnalytics(eventName: string, pagePath: string, metadata?: unknown) {
   const db = await getDb();
   if (!db) return { success: true };

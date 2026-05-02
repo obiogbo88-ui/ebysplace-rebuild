@@ -59,6 +59,21 @@ export function registerStripeWebhook(app: Express) {
             ].filter(Boolean).join("\n"),
           }).catch((error) => console.warn("[StripeWebhook] Owner payment notification failed", error));
         }
+        if (session.metadata?.order_type === "shop_products" && session.id) {
+          const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
+          await db.markOrderPaid(session.id, paymentIntentId);
+          await notifyOwner({
+            title: "Eby’s Place shop order paid",
+            content: [
+              `A shop product payment has been confirmed through Stripe.`,
+              `Order ID: ${session.metadata?.order_id ?? "Not provided"}`,
+              `Customer: ${session.metadata?.customer_name ?? "Not provided"}`,
+              `Email: ${session.metadata?.customer_email ?? session.customer_email ?? "Not provided"}`,
+              `Stripe session: ${session.id}`,
+              paymentIntentId ? `Payment intent: ${paymentIntentId}` : undefined,
+            ].filter(Boolean).join("\n"),
+          }).catch((error) => console.warn("[StripeWebhook] Owner order notification failed", error));
+        }
       }
       console.log("[StripeWebhook] Processed event", event.type, event.id);
       res.json({ received: true });
