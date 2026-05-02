@@ -7,6 +7,7 @@ import {
   Menu,
   Play,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   Wand2,
   MessageCircle,
@@ -317,7 +318,15 @@ export default function Home() {
         </section>
 
         <section className="section-pad bg-white/[0.04]">
-          <div className="container">
+          <div className="container grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
+            <div className="flex flex-col items-start justify-center">
+              <p className="pill w-fit">
+                <ShoppingBag className="mr-2 inline h-4 w-4" /> Shop preview
+              </p>
+              <Link className="btn-gold mt-7" href="/shop">
+                Shop products
+              </Link>
+            </div>
             <div className="grid gap-5 md:grid-cols-3">
               {(products as any[]).slice(0, 3).map(p => (
                 <div className="lux-card" key={p.id ?? p.slug}>

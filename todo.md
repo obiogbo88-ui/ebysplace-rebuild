@@ -183,3 +183,7 @@
 - [x] Make shop product descriptions collapsible so customers can click to read full details without filling the page
 - [x] Remove only the pictured “Aftercare with a premium finish” shop-review/aftercare block from the shop area
 - [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking, gallery, admin, AI Try-On, payments, notifications, logos, services, testimonials, reviews, or other existing functionality while applying this shop-only change
+- [x] Restore the homepage shop-preview label and Shop products button for the shop product preview area without bringing back the crossed-out heading or paragraph
+- [x] Keep the crossed-out “Aftercare with a premium finish” write-up and sales paragraph removed from the homepage shop-preview area
+- [x] Change shop product descriptions so only the first sentence is visible before customers click to read the full details
+- [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking, gallery, admin, AI Try-On, payments, notifications, logos, services, testimonials, reviews, or other existing functionality while applying this shop refinement

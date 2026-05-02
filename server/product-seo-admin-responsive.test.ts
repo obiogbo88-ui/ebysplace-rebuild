@@ -41,7 +41,8 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(shopSource).not.toContain("product.seoDescription");
     expect(shopSource).not.toContain("product.slug");
     expect(shopSource).not.toContain("SEO title");
-    expect(shopSource).toContain("descriptionPreviewLength");
+    expect(shopSource).toContain("function previewDescription(description: string)");
+    expect(shopSource).toContain("trimmed.match(/^[^.!?]+[.!?]/)");
     expect(shopSource).toContain("Read full details");
     expect(shopSource).toContain("Read less");
     expect(shopSource).toContain("aria-expanded={isDescriptionExpanded}");
@@ -51,8 +52,9 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(shopSource).not.toContain("Better shopping flow");
     expect(shopSource).not.toContain("Selected colour");
     expect(shopSource).not.toContain("admin order manager");
+    expect(homeSource).toContain("Shop preview");
+    expect(homeSource).toContain("Shop products");
     expect(homeSource).not.toContain("Aftercare with a premium finish.");
-    expect(homeSource).not.toContain("Shop preview");
     expect(homeSource).not.toContain("Sell braid care, accessories, and hair products");
     expect(shopSource).toContain("md:grid-cols-2");
     expect(shopSource).toContain("lg:grid-cols-[minmax(0,1fr)_420px]");

@@ -31,11 +31,13 @@ type ShopProduct = {
 };
 
 const fallbackVariant: ProductVariant = { name: "Default", colourHex: "#c8a95a" };
-const descriptionPreviewLength = 115;
 
 function previewDescription(description: string) {
-  if (description.length <= descriptionPreviewLength) return description;
-  return `${description.slice(0, descriptionPreviewLength).trim()}…`;
+  const trimmed = description.trim();
+  const firstSentence = trimmed.match(/^[^.!?]+[.!?]/)?.[0]?.trim();
+  if (firstSentence) return firstSentence;
+  const firstLine = trimmed.split(/\n+/)[0]?.trim();
+  return firstLine || trimmed;
 }
 
 function readableColourLabel(variant: ProductVariant) {
@@ -49,8 +51,9 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const selectedColour = selectedVariant.colourHex || "#c8a95a";
   const outOfStock = product.stockStatus === "out_of_stock" || selectedVariant.stockQuantity === 0;
-  const canToggleDescription = product.description.length > descriptionPreviewLength;
-  const visibleDescription = isDescriptionExpanded ? product.description : previewDescription(product.description);
+  const collapsedDescription = previewDescription(product.description);
+  const canToggleDescription = product.description.trim() !== collapsedDescription;
+  const visibleDescription = isDescriptionExpanded ? product.description : collapsedDescription;
 
   return (
     <article className="lux-card group min-w-0 overflow-hidden p-0">
