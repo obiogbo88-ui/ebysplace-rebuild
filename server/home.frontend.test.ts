@@ -96,6 +96,15 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(adminSource).toContain("uploadWebsiteSectionImage");
   });
 
+  it("keeps only live testimonials and removes the extra admin-confidence heading space", () => {
+    expect(homeSource).toContain("Live testimonials");
+    expect(homeSource).toContain("review-marquee-track");
+    expect(homeSource).toContain("review-marquee mt-5");
+    expect(homeSource).toContain("py-8 overflow-hidden bg-[#efe0c7]/78 text-[#24170d] md:py-10");
+    expect(homeSource).not.toContain("Customer confidence, moderated by admin.");
+    expect(homeSource).not.toContain("review-marquee mt-10");
+  });
+
   it("keeps AI Try-On pop-up message text black without changing the global toaster", () => {
     expect(tryOnSource).toContain("const aiTryOnToastClassNames");
     expect(tryOnSource).toContain('title: "!text-black"');

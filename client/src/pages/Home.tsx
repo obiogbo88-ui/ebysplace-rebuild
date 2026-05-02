@@ -348,14 +348,11 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="section-pad overflow-hidden bg-[#efe0c7]/78 text-[#24170d]">
+        <section className="py-8 overflow-hidden bg-[#efe0c7]/78 text-[#24170d] md:py-10">
           <div className="container">
             <p className="pill w-fit border-[#d8bd74]/70 bg-white text-[#5b3a12]">Live testimonials</p>
-            <h2 className="serif mt-4 text-4xl font-bold leading-tight text-[#24170d] md:text-5xl">
-              Customer confidence, moderated by admin.
-            </h2>
           </div>
-          <div className="review-marquee mt-10" aria-label="Moving Eby’s Place customer reviews">
+          <div className="review-marquee mt-5" aria-label="Moving Eby’s Place customer reviews">
             <div className="review-marquee-track">
               {[...(reviews as any[]).slice(0, 6), ...(reviews as any[]).slice(0, 6)].map((r, index) => (
                 <blockquote className="lux-card review-marquee-card" key={`${r.id ?? r.customerName}-${index}`}>

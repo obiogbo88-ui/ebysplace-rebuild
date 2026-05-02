@@ -172,3 +172,6 @@
 - [x] Clean up the admin overview overlay/layout so it displays clearly without visual overlap or clutter
 - [x] Make the admin overview menu actions work automatically and safely while preserving existing protections
 - [x] Do not tamper with unrelated content, styling, layout, navigation, booking, shop, gallery, AI Try-On, payments, notifications, logos, services, or other existing functionality while applying the admin-dashboard-only changes
+- [x] Keep only the live testimonials in the homepage testimonials area by removing the extra “Customer confidence, moderated by admin” block
+- [x] Close up the remaining testimonial-section space after removing that block
+- [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking, shop, admin, AI Try-On, payments, notifications, logos, services, or other existing functionality while applying this testimonial-only change
