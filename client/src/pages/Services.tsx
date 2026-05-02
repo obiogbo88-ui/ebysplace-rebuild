@@ -97,7 +97,9 @@ export default function Services() {
             </div>
           ) : (
             <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {(data as any[]).map(service => (
+              {(data as any[]).map(service => {
+                const isBookable = service.isBookable !== "false";
+                return (
                 <article
                   className="lux-card flex flex-col overflow-hidden p-0"
                   key={service.id ?? service.slug}
@@ -130,15 +132,22 @@ export default function Services() {
                       From £{service.priceFrom}
                     </b>
                   </div>
-                    <Link
-                      href={`/booking?service=${encodeURIComponent(service.name)}`}
-                      className="btn-gold mt-5 w-full"
-                    >
-                      Book This Style
-                    </Link>
+                    {isBookable ? (
+                      <Link
+                        href={`/booking?service=${encodeURIComponent(service.name)}`}
+                        className="btn-gold mt-5 w-full"
+                      >
+                        Book This Style
+                      </Link>
+                    ) : (
+                      <button className="btn-dark mt-5 w-full cursor-not-allowed opacity-70" type="button" disabled>
+                        Currently unavailable
+                      </button>
+                    )}
                   </div>
                 </article>
-              ))}
+              );
+              })}
             </div>
           )}
         </section>

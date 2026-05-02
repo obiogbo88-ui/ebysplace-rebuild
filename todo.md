@@ -245,3 +245,8 @@
 - [x] Adjust the About portrait holder so uploaded images are centered for bust-style portraits
 - [x] Preserve all unrelated website content, styling, layout, navigation, booking, shop, admin, gallery, reviews, AI Try-On, payments, notifications, domains, favicon assets, and public functionality while applying this About-only change
 - [x] Run focused tests, production build, and project health checks after the About-only deletion and portrait-framing update
+- [x] Add a narrow admin availability control without changing unrelated website content or flows
+- [x] Ensure the admin availability control affects the intended customer-facing availability state safely
+- [x] Preserve all unrelated website content, styling, layout, navigation, booking, shop, admin areas outside availability, gallery, reviews, AI Try-On, payments, notifications, domains, favicon assets, and public functionality while applying this availability-control change
+- [x] Add or update focused regression coverage for the admin availability control and unchanged critical flows
+- [x] Run tests, production build, and project health checks after the admin availability-control update

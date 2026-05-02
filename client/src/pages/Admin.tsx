@@ -470,10 +470,11 @@ export default function Admin() {
                     </div>
                     <div>
                       <div className="flex justify-between gap-3"><span>{service.name}<small className="block text-white/45">{service.category} · {service.duration}</small></span><b>£{service.priceFrom}</b></div>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                      <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_1fr_1fr_auto]">
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Service price (£)<input type="number" min="0" step="0.01" defaultValue={service.priceFrom} id={`price-${service.id}`} /></label>
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Duration<input defaultValue={service.duration} id={`duration-${service.id}`} /></label>
-                        <button className="btn-dark py-2" onClick={() => { const priceFrom = readAdminPrice(`price-${service.id}`, "Service price"); if (!priceFrom) return; updateService.mutate({ id: service.id, priceFrom, duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value, imageUrl: (document.getElementById(`service-image-${service.id}`) as HTMLInputElement).value }); }}>Save service price</button>
+                        <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Availability<select defaultValue={service.isBookable || "true"} id={`availability-${service.id}`}><option value="true">Available for booking</option><option value="false">Unavailable for booking</option></select></label>
+                        <button className="btn-dark py-2" onClick={() => { const priceFrom = readAdminPrice(`price-${service.id}`, "Service price"); if (!priceFrom) return; updateService.mutate({ id: service.id, priceFrom, duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value, imageUrl: (document.getElementById(`service-image-${service.id}`) as HTMLInputElement).value, isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as "true" | "false" }); }}>Save service availability</button>
                       </div>
                       <details className="mt-3 rounded-2xl border border-primary/20 bg-black/20 p-3">
                         <summary className="cursor-pointer text-sm font-semibold text-primary">Add or replace service image</summary>

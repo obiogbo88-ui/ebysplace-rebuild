@@ -57,6 +57,8 @@ describe("strict visual-only change regression coverage", () => {
     expect(servicesSource).toContain("<SiteFooter />");
     expect(servicesSource).toContain("Services & pricing");
     expect(servicesSource).toContain("Book This Style");
+    expect(servicesSource).toContain("Currently unavailable");
+    expect(servicesSource).toContain("const isBookable = service.isBookable !== \"false\";");
     expect(shopSource).toContain("trpc.public.products.useQuery()");
     expect(shopSource).toContain("Add ${readableColourLabel(selectedVariant)} to bag");
     expect(shopSource).toContain("trpc.public.createOrder.useMutation()");
@@ -76,13 +78,17 @@ describe("strict visual-only change regression coverage", () => {
     expect(adminSource).toContain("Save product price, SEO & colours");
     expect(adminSource).toContain("Service price (£)");
     expect(adminSource).toContain("id={`price-${service.id}`}");
-    expect(adminSource).toContain("Save service price");
+    expect(adminSource).toContain("Save service availability");
+    expect(adminSource).toContain("Availability");
+    expect(adminSource).toContain("id={`availability-${service.id}`}");
+    expect(adminSource).toContain("isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as \"true\" | \"false\"");
     expect(adminSource).toContain("readAdminPrice");
     expect(adminSource).toContain("must be a valid price of 0 or more");
     expect(adminSource).toContain("updateProduct.mutate({ id: product.id");
     expect(adminSource).toContain("updateService.mutate({ id: service.id");
     expect(routersSource).toContain("updateService: adminProcedure.input");
     expect(routersSource).toContain("priceFrom: z.string().regex");
+    expect(routersSource).toContain("isBookable: z.enum([\"true\", \"false\"]).optional()");
     expect(routersSource).toContain("updateProduct: adminProcedure.input");
     expect(routersSource).toContain("price: z.string().regex");
     expect(dbSource).toContain("export async function updateService");
