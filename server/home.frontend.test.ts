@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const homeSource = readFileSync(
@@ -44,6 +44,14 @@ const loginDialogSource = readFileSync(
 );
 const dbSource = readFileSync(
   resolve(process.cwd(), "server/db.ts"),
+  "utf8"
+);
+const indexSource = readFileSync(
+  resolve(process.cwd(), "client/index.html"),
+  "utf8"
+);
+const manifestSource = readFileSync(
+  resolve(process.cwd(), "client/public/site.webmanifest"),
   "utf8"
 );
 
@@ -175,6 +183,43 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(loginDialogSource).toContain("Continue securely");
     expect(customerNotificationSources).not.toContain("Login with Manus");
     expect(customerNotificationSources).not.toContain("Please login with Manus");
+  });
+
+  it("uses the official Eby’s Place logo assets for favicon, mobile shortcuts, and link previews", () => {
+    expect(indexSource).toContain('<link rel="icon" href="/favicon.ico" sizes="any" />');
+    expect(indexSource).toContain('href="/favicon-32x32.png"');
+    expect(indexSource).toContain('href="/favicon-16x16.png"');
+    expect(indexSource).toContain('rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"');
+    expect(indexSource).toContain('<link rel="manifest" href="/site.webmanifest" />');
+    expect(indexSource).toContain('property="og:image" content="/manus-storage/ebysplace-link-preview_6583844d.png"');
+    expect(indexSource).toContain('name="twitter:image" content="/manus-storage/ebysplace-link-preview_6583844d.png"');
+    expect(indexSource).toContain('property="og:image:alt" content="Eby’s Place official logo');
+    expect(indexSource).toContain('"image": "/manus-storage/ebysplace-link-preview_6583844d.png"');
+    expect(indexSource).not.toContain('/manus-storage/ebysplace-logo_433432b1.png');
+
+    const manifest = JSON.parse(manifestSource) as {
+      name: string;
+      short_name: string;
+      icons: Array<{ src: string; sizes: string; purpose: string }>;
+    };
+    expect(manifest.name).toBe("Eby’s Place");
+    expect(manifest.short_name).toBe("Eby’s Place");
+    expect(manifest.icons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ src: "/android-chrome-192x192.png", sizes: "192x192", purpose: "any maskable" }),
+        expect.objectContaining({ src: "/android-chrome-512x512.png", sizes: "512x512", purpose: "any maskable" }),
+      ])
+    );
+    [
+      "client/public/favicon.ico",
+      "client/public/favicon-16x16.png",
+      "client/public/favicon-32x32.png",
+      "client/public/apple-touch-icon.png",
+      "client/public/android-chrome-192x192.png",
+      "client/public/android-chrome-512x512.png",
+    ].forEach((assetPath) => {
+      expect(existsSync(resolve(process.cwd(), assetPath))).toBe(true);
+    });
   });
 
   it("keeps AI Try-On pop-up message text black without changing the global toaster", () => {

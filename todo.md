@@ -220,3 +220,9 @@
 - [x] Do not tamper with unrelated website content, design, products, services, navigation, performance optimizations, checkout behavior, admin areas, gallery, policies, or existing automation while adding custom notifications
 - [x] After custom notification work is completed and checkpointed, direct the user on how to point the website to ebysplace.com without changing unrelated website files
 - [x] Remove any Manus branding from customer-facing notification messages controlled by the website and use Eby’s Place branding instead
+- [x] Update the website favicon to the official Eby’s Place logo/icon for browser tabs
+- [x] Add or update mobile shortcut icons so saved home-screen shortcuts use the Eby’s Place logo/icon
+- [x] Add or update link-preview metadata images so shared links present Eby’s Place branding
+- [x] Preserve unrelated website content, layout, navigation, booking, shop, admin, AI Try-On, payment, and notification flows while updating favicon assets
+- [x] Add or update focused regression coverage for favicon, shortcut, and link-preview metadata
+- [x] Run tests, production build, and project health checks after the favicon/metadata update
