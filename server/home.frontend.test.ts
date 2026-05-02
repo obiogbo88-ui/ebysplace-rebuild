@@ -132,7 +132,11 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("Eby’s Place round story portrait");
     expect(homeSource).toContain("rounded-full");
     expect(homeSource).toContain("portraitImageUrl");
-    expect(homeSource).toContain("portraitDescription");
+    expect(homeSource).toContain("object-[center_18%]");
+    expect(homeSource).not.toContain("low-tension styling");
+    expect(homeSource).not.toContain("clean salon finish");
+    expect(homeSource).not.toContain("hairline-first care");
+    expect(homeSource).not.toContain("A short Eby’s Place story note can be edited from the admin dashboard.");
     expect(homeSource.indexOf("Join the Eby’s Place list.")).toBeLessThan(homeSource.lastIndexOf("From Passion to Power"));
     expect(homeSource).toContain("review-marquee-track");
     expect(adminSource).toContain("Eby’s Place Admin Dashboard");

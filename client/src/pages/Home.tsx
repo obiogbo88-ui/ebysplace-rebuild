@@ -400,20 +400,12 @@ export default function Home() {
                   <h2 className="serif mt-5 text-4xl font-bold leading-tight text-[#24170d] md:text-6xl">{aboutSection.title || "From Passion to Power"}</h2>
                   <div className="mt-5 h-1 w-24 rounded-full bg-[#b88b2d]" />
                   <p className="mt-6 max-w-3xl text-base font-semibold leading-8 text-[#3a2615] md:text-lg">{aboutSection.body}</p>
-                  <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                    {[["Gentle", "low-tension styling"], ["Premium", "clean salon finish"], ["Protected", "hairline-first care"]].map(([label, detail]) => (
-                      <div className="rounded-2xl border border-[#d8bd74]/55 bg-white/86 p-4 shadow-sm" key={label}>
-                        <b className="serif text-2xl text-[#7d571b]">{label}</b>
-                        <p className="mt-1 text-sm font-semibold text-[#442d18]">{detail}</p>
-                      </div>
-                    ))}
-                  </div>
                   {aboutSection.ctaHref && <Link className="btn-gold mt-8" href={aboutSection.ctaHref}>{aboutSection.ctaLabel || "Explore Eby’s Place"}</Link>}
                 </div>
                 <aside className="justify-self-start text-center lg:justify-self-end" aria-label="Eby’s Place round story portrait">
                   <div className="relative mx-auto h-32 w-32 overflow-hidden rounded-full border border-[#d8bd74]/75 bg-[#efe0c7] p-2 shadow-[0_18px_48px_rgba(74,48,20,.2)] sm:h-36 sm:w-36">
                     {aboutSection.portraitImageUrl || aboutSection.imageUrl ? (
-                      <img className="h-full w-full rounded-full object-cover" src={aboutSection.portraitImageUrl || aboutSection.imageUrl} alt="Eby’s Place story portrait" />
+                      <img className="h-full w-full rounded-full object-cover object-[center_18%]" src={aboutSection.portraitImageUrl || aboutSection.imageUrl} alt="Eby’s Place story portrait" />
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-dashed border-[#b88b2d]/75 bg-[#f7eddc] p-4 text-center">
                         <Crown className="h-7 w-7 text-[#8a641e]" />
@@ -421,7 +413,6 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-                  <p className="mx-auto mt-4 max-w-52 text-sm font-semibold leading-6 text-[#442d18]">{aboutSection.portraitDescription || "A short Eby’s Place story note can be edited from the admin dashboard."}</p>
                 </aside>
               </div>
             </div>

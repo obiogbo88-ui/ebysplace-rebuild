@@ -240,3 +240,8 @@
 - [x] Preserve all unrelated website content, styling, layout, navigation, booking, shop, gallery, reviews, AI Try-On, payments, notifications, domains, favicon assets, and public functionality while applying the About Us update
 - [x] Add focused regression coverage for the updated About Us wording and admin-managed round-frame content
 - [x] Run tests, production build, and project health checks after the About Us update
+- [x] Delete only the marked About-section feature-card area without changing unrelated homepage content or functionality
+- [x] Delete only the marked About portrait placeholder description text beneath the round frame
+- [x] Adjust the About portrait holder so uploaded images are centered for bust-style portraits
+- [x] Preserve all unrelated website content, styling, layout, navigation, booking, shop, admin, gallery, reviews, AI Try-On, payments, notifications, domains, favicon assets, and public functionality while applying this About-only change
+- [x] Run focused tests, production build, and project health checks after the About-only deletion and portrait-framing update

@@ -149,7 +149,10 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(homeSource).toContain("Eby’s Place round story portrait");
     expect(homeSource).toContain("h-32 w-32");
     expect(homeSource).toContain("sm:h-36 sm:w-36");
-    expect(homeSource).toContain("portraitDescription");
+    expect(homeSource).toContain("object-[center_18%]");
+    expect(homeSource).not.toContain("low-tension styling");
+    expect(homeSource).not.toContain("clean salon finish");
+    expect(homeSource).not.toContain("hairline-first care");
     expect(homeSource.indexOf("Join the Eby’s Place list.")).toBeLessThan(homeSource.lastIndexOf("From Passion to Power"));
     expect(homeSource).toContain("review-marquee-track");
     expect(homeSource).toContain("md:text-6xl");
