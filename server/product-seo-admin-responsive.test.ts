@@ -147,6 +147,7 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(homeSource).toContain("Our Story");
     expect(homeSource).toContain("From Passion to Power");
     expect(homeSource).toContain("Eby’s Place round story portrait");
+    expect(homeSource).toContain("Eberechi Ogbo | Founder & Service Lead");
     expect(homeSource).toContain("h-32 w-32");
     expect(homeSource).toContain("sm:h-36 sm:w-36");
     expect(homeSource).toContain("object-[center_18%]");
@@ -159,6 +160,7 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(adminSource).toContain("AdminPanel id=\"content\"");
     expect(adminSource).toContain("Upload About Us round image");
     expect(adminSource).toContain("Description beneath round image");
+    expect(adminSource).toContain("Eberechi Ogbo | Founder & Service Lead");
     expect(adminSource).toContain("AdminPanel id=\"gallery\"");
     expect(routerSource).toContain("uploadWebsiteSectionImage");
     expect(routerSource).toContain("portraitImageUrl");

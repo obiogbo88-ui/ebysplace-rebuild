@@ -156,6 +156,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("Eby’s Place round story portrait");
     expect(homeSource).toContain("rounded-full");
     expect(homeSource).toContain("portraitImageUrl");
+    expect(homeSource).toContain("Eberechi Ogbo | Founder & Service Lead");
     expect(homeSource).toContain("object-[center_18%]");
     expect(homeSource).not.toContain("low-tension styling");
     expect(homeSource).not.toContain("clean salon finish");
@@ -167,6 +168,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(adminSource).toContain("About Us content");
     expect(adminSource).toContain("Upload About Us round image");
     expect(adminSource).toContain("Description beneath round image");
+    expect(adminSource).toContain("Eberechi Ogbo | Founder & Service Lead");
     expect(adminSource).toContain("uploadWebsiteSectionImage");
   });
 

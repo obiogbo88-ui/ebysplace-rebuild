@@ -190,7 +190,7 @@ export default function Home() {
     ctaHref: "/services",
     imageUrl: "",
     portraitImageUrl: "",
-    portraitDescription: "A personal Eby’s Place portrait can be added here from the admin dashboard, with a short description that reflects the heart behind the brand.",
+    portraitDescription: "Eberechi Ogbo | Founder & Service Lead",
   };
 
   return (

@@ -255,3 +255,8 @@
 - [x] Preserve all unrelated website content, styling, layout, navigation, booking, shop, admin, gallery, reviews, AI Try-On, payments, notifications, domains, favicon assets, and public functionality while fixing image loading
 - [x] Add or update focused regression coverage for image-loading performance safeguards and unchanged critical flows
 - [x] Run tests, production build, and project health checks after image-loading performance fixes
+- [x] Update only the About round-image description to automatically show “Eberechi Ogbo | Founder & Service Lead” on the public page
+- [x] Preserve the existing admin-managed About description control while setting the requested default/value
+- [x] Do not tamper with unrelated website content, styling, layout, navigation, booking, shop, admin areas outside this About description, gallery, reviews, AI Try-On, payments, notifications, domains, favicon assets, or public functionality
+- [x] Add or update focused regression coverage for the About round-image description text
+- [x] Run tests, production build, and project health checks after the About description update
