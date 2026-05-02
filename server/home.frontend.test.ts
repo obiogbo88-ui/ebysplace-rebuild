@@ -26,6 +26,10 @@ const tryOnSource = readFileSync(
   resolve(process.cwd(), "client/src/pages/TryOn.tsx"),
   "utf8"
 );
+const dbSource = readFileSync(
+  resolve(process.cwd(), "server/db.ts"),
+  "utf8"
+);
 
 describe("Eby’s Place landing page visual refinements", () => {
   it("keeps the hero photo free of brand-card overlays and places the pain-free promise as a styled list", () => {
@@ -103,6 +107,44 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("py-8 overflow-hidden bg-[#efe0c7]/78 text-[#24170d] md:py-10");
     expect(homeSource).not.toContain("Customer confidence, moderated by admin.");
     expect(homeSource).not.toContain("review-marquee mt-10");
+  });
+
+  it("brings attached customer reviews live without including owner replies", () => {
+    [
+      "Obi",
+      "Claudia Grenlus",
+      "Lauren Groves",
+      "amy martlin",
+      "Rafiatu Yussif",
+      "Nazanin Aflakian",
+      "Finlay Pettitt",
+      "yaali",
+      "Maliha Berridge",
+      "Miracle Igboanugo",
+      "Ivy O",
+      "Lynda Francis",
+      "Chiamaka Udebbia",
+      "ebirim salvy",
+      "Logos HQ",
+      "Onuoha Christiana",
+      "Kelly",
+      "Isaac Fortune",
+      "elizabethz okeke",
+      "Nombulelo Choto",
+      "Chigozie Gloria",
+    ].forEach((customerName) => {
+      expect(dbSource).toContain(`customerName: "${customerName}"`);
+    });
+    const reviewSeedBlock = dbSource.slice(
+      dbSource.indexOf("const seedReviews = ["),
+      dbSource.indexOf("const seedWebsiteSections = [")
+    );
+    expect(reviewSeedBlock).toContain('source: "google"');
+    expect(dbSource).toContain("async function ensureSeedReviews");
+    expect(dbSource).toContain("await ensureSeedReviews(db);");
+    expect(reviewSeedBlock).not.toContain("Thank you love for this beautiful review.");
+    expect(reviewSeedBlock).not.toContain("Thank you so much, and we hope to see you again.");
+    expect(reviewSeedBlock).not.toContain("You are always welcome to visit again");
   });
 
   it("keeps AI Try-On pop-up message text black without changing the global toaster", () => {

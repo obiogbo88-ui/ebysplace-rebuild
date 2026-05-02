@@ -175,3 +175,6 @@
 - [x] Keep only the live testimonials in the homepage testimonials area by removing the extra “Customer confidence, moderated by admin” block
 - [x] Close up the remaining testimonial-section space after removing that block
 - [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking, shop, admin, AI Try-On, payments, notifications, logos, services, or other existing functionality while applying this testimonial-only change
+- [x] Add the customer reviews visible in the attached screenshots to the live reviews/testimonials shown on the site
+- [x] Exclude all Eby’s Place owner replies from the live review text
+- [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking, shop, admin, AI Try-On, payments, notifications, logos, services, or other existing functionality while applying this reviews-only change
