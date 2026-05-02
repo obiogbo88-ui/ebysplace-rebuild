@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState, type ReactNode } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -12,7 +12,6 @@ import {
   Sparkles,
   TrendingUp,
   UploadCloud,
-  Link as LinkIcon,
   Activity,
   Users,
 } from "lucide-react";
@@ -49,18 +48,6 @@ function fileToDataUrl(file: File) {
 
 const galleryCategories = ["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"] as const;
 const productCategories = ["Accessories", "Aftercare", "Hair Attachments"] as const;
-const publicSectionLinks = [
-  { label: "Homepage", path: "/" },
-  { label: "Services", path: "/services" },
-  { label: "Booking", path: "/booking" },
-  { label: "Shop", path: "/shop" },
-  { label: "AI Try-On", path: "/ai-try-on" },
-  { label: "Braiders Near Me", path: "/braiders-near-me" },
-  { label: "Gallery", path: "/gallery" },
-  { label: "Reviews", path: "/reviews" },
-  { label: "Policies", path: "/policies" },
-];
-
 const adminOverviewActions = [
   { label: "Bookings", sectionId: "bookings", description: "Review and update appointment statuses." },
   { label: "Orders", sectionId: "orders", description: "Open protected shop order fulfilment." },
@@ -68,7 +55,46 @@ const adminOverviewActions = [
   { label: "Services", sectionId: "services", description: "Update public braid service details." },
   { label: "Gallery", sectionId: "gallery", description: "Add or organise gallery images." },
   { label: "Reviews", sectionId: "reviews", description: "Moderate customer reviews safely." },
+  { label: "Activity", sectionId: "activity-monitoring", description: "Review analytics and live activity monitoring." },
 ] as const;
+
+type AdminPanelProps = {
+  id: string;
+  title: string;
+  eyebrow: string;
+  description: string;
+  icon: any;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+};
+
+function AdminPanel({ id, title, eyebrow, description, icon: Icon, open, onToggle, children }: AdminPanelProps) {
+  return (
+    <section id={id} className="lux-card overflow-hidden border-primary/20 bg-card/95">
+      <button
+        type="button"
+        className="flex w-full flex-col gap-4 text-left sm:flex-row sm:items-center sm:justify-between"
+        aria-expanded={open}
+        aria-controls={`${id}-content`}
+        onClick={onToggle}
+      >
+        <span className="flex min-w-0 gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+            <Icon className="h-5 w-5" />
+          </span>
+          <span className="min-w-0">
+            <span className="pill w-fit">{eyebrow}</span>
+            <span className="serif mt-3 block text-3xl font-bold leading-tight text-primary">{title}</span>
+            <span className="mt-2 block text-sm text-white/60">{description}</span>
+          </span>
+        </span>
+        <span className="btn-dark shrink-0 py-2 text-sm">{open ? "Hide section" : "Open section"}</span>
+      </button>
+      {open && <div id={`${id}-content`} className="mt-6 border-t border-white/10 pt-6">{children}</div>}
+    </section>
+  );
+}
 
 export default function Admin() {
   const { user } = useAuth();
@@ -126,14 +152,6 @@ export default function Admin() {
     },
     onError: (error: any) => toast.error(error.message),
   });
-  const uploadWebsiteSectionImage = trpc.admin.uploadWebsiteSectionImage.useMutation({
-    onSuccess: (uploaded) => {
-      setContent((current) => ({ ...current, imageUrl: uploaded.url }));
-      refresh();
-      toast.success("About Us CEO image uploaded and saved");
-    },
-    onError: (error: any) => toast.error(error.message),
-  });
   const addGallery = trpc.admin.addGalleryImage.useMutation({
     onSuccess: () => {
       refresh();
@@ -142,24 +160,24 @@ export default function Admin() {
     },
     onError: (error: any) => toast.error(error.message),
   });
-  const updateContent = trpc.admin.updateWebsiteSection.useMutation(opts);
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
-  const [content, setContent] = useState({ sectionKey: "about_us", title: "", eyebrow: "", body: "", ctaLabel: "", ctaHref: "", imageUrl: "" });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
+  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["activity-monitoring"]));
   const data = (lists.data || {}) as AdminListData;
-  const siteOrigin = useMemo(() => (typeof window === "undefined" ? "" : window.location.origin), []);
-  const makePublicLink = (path: string) => `${siteOrigin}${path}`;
-  const copyPublicLink = async (path: string) => {
-    const url = makePublicLink(path);
-    await navigator.clipboard.writeText(url);
-    toast.success("Shareable link copied");
-  };
+  const isPanelOpen = (panelId: string) => openPanels.has(panelId);
+  const togglePanel = (panelId: string) => setOpenPanels((current) => {
+    const next = new Set(current);
+    if (next.has(panelId)) next.delete(panelId);
+    else next.add(panelId);
+    return next;
+  });
   const openPublicHomepage = () => {
     window.location.assign(`${window.location.origin}/`);
   };
   const openProtectedOverviewSection = (sectionId: string, label: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setOpenPanels((current) => new Set(current).add(sectionId));
+    window.setTimeout(() => document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
     window.history.replaceState(null, "", `${window.location.pathname}#${sectionId}`);
     refresh();
     toast.success(`${label} opened with protected admin data refreshed`);
@@ -219,15 +237,6 @@ export default function Admin() {
     }
   }
 
-  async function handleWebsiteSectionImageUpload(file?: File) {
-    if (!file) return;
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      await uploadWebsiteSectionImage.mutateAsync({ sectionKey: content.sectionKey || "about_us", dataUrl, fileName: file.name });
-    } catch (error: any) {
-      toast.error(error.message || "About Us CEO image upload failed");
-    }
-  }
 
   return (
     <DashboardLayout>
@@ -265,8 +274,8 @@ export default function Admin() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
               <p className="pill w-fit">Protected overview</p>
-              <h2 className="serif mt-3 text-3xl font-bold text-primary">Clean admin overview</h2>
-              <p className="mt-2 text-sm text-white/65">Use these protected shortcuts to open each admin area, refresh live dashboard data, and keep the overview clear without stacked overlays.</p>
+              <h2 className="serif mt-3 text-3xl font-bold text-primary">Eby’s Place command centre</h2>
+              <p className="mt-2 text-sm text-white/65">Use these protected shortcuts to open each owner area on demand. Dense records stay hidden until clicked, keeping daily management calm, branded, and easy to scan.</p>
             </div>
             <button className="btn-gold w-fit py-2 text-sm" type="button" onClick={refresh}>Refresh overview data</button>
           </div>
@@ -288,38 +297,31 @@ export default function Admin() {
           </div>
         </section>
 
-        <section id="control-center" className="mt-8 grid gap-6 xl:grid-cols-[1.2fr_1fr]">
-          <div className="lux-card">
-            <TrendingUp className="text-primary" />
-            <h2 className="serif mt-3 text-3xl font-bold">Best-selling analytics</h2>
-            <p className="mt-2 text-sm text-white/55">Track the strongest shop products, booked braid styles, and requested services from real shop, booking, and AI Try-On activity.</p>
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4"><b className="text-primary">Products</b>{(insights.data?.bestSellingProducts || []).length ? (insights.data?.bestSellingProducts || []).map((item: any) => <p className="mt-3 text-sm" key={item.label}>{item.label}<small className="block text-white/45">{item.units} sold · £{Number(item.revenue || 0).toFixed(2)}</small></p>) : <p className="mt-3 text-sm text-white/45">No paid product sales yet.</p>}</div>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4"><b className="text-primary">Braid styles & services</b>{(insights.data?.bestBookedServices || []).length ? (insights.data?.bestBookedServices || []).map((item: any) => <p className="mt-3 text-sm" key={item.label}>{item.label}<small className="block text-white/45">{item.total} bookings</small></p>) : <p className="mt-3 text-sm text-white/45">No booking volume yet.</p>}</div>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4"><b className="text-primary">AI Try-On styles</b>{(insights.data?.bestTriedStyles || []).length ? (insights.data?.bestTriedStyles || []).map((item: any) => <p className="mt-3 text-sm" key={item.label}>{item.label}<small className="block text-white/45">{item.total} try-ons</small></p>) : <p className="mt-3 text-sm text-white/45">No try-on style data yet.</p>}</div>
+        <div className="mt-8 grid gap-6">
+          <AdminPanel id="activity-monitoring" eyebrow="Live intelligence" title="Analytics and activity monitoring" description="Open the current Eby’s Place performance view for product sales, booked styles, AI Try-On usage, and recent owner activity." icon={Activity} open={isPanelOpen("activity-monitoring")} onToggle={() => togglePanel("activity-monitoring")}>
+            <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
+              <div>
+                <h3 className="serif text-2xl font-bold text-primary"><TrendingUp className="mr-2 inline h-5 w-5" />Best-selling analytics</h3>
+                <p className="mt-2 text-sm text-white/55">Track the strongest shop products, booked braid styles, and requested services from real shop, booking, and AI Try-On activity.</p>
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4"><b className="text-primary">Products</b>{(insights.data?.bestSellingProducts || []).length ? (insights.data?.bestSellingProducts || []).map((item: any) => <p className="mt-3 text-sm" key={item.label}>{item.label}<small className="block text-white/45">{item.units} sold · £{Number(item.revenue || 0).toFixed(2)}</small></p>) : <p className="mt-3 text-sm text-white/45">No paid product sales yet.</p>}</div>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4"><b className="text-primary">Braid styles & services</b>{(insights.data?.bestBookedServices || []).length ? (insights.data?.bestBookedServices || []).map((item: any) => <p className="mt-3 text-sm" key={item.label}>{item.label}<small className="block text-white/45">{item.total} bookings</small></p>) : <p className="mt-3 text-sm text-white/45">No booking volume yet.</p>}</div>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4"><b className="text-primary">AI Try-On styles</b>{(insights.data?.bestTriedStyles || []).length ? (insights.data?.bestTriedStyles || []).map((item: any) => <p className="mt-3 text-sm" key={item.label}>{item.label}<small className="block text-white/45">{item.total} try-ons</small></p>) : <p className="mt-3 text-sm text-white/45">No try-on style data yet.</p>}</div>
+                </div>
+              </div>
+              <div>
+                <h3 className="serif text-2xl font-bold text-primary">Recent activity</h3>
+                <p className="mt-2 text-sm text-white/55">Monitor bookings, orders, reviews, visits, AI Try-On generations, and newsletter actions in one compact feed.</p>
+                <div className="mt-4 max-h-[22rem] overflow-y-auto pr-2">
+                  {(insights.data?.recentActivity || []).length ? (insights.data?.recentActivity || []).map((item: any, index: number) => <div className="border-t border-white/10 py-3 text-sm" key={`${item.type}-${index}`}><b className="text-primary">{item.type}</b><span className="ml-2">{item.label}</span><small className="block text-white/45">{item.detail}</small></div>) : <p className="text-sm text-white/45">No recent activity to show yet.</p>}
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="lux-card">
-            <Activity className="text-primary" />
-            <h2 className="serif mt-3 text-3xl font-bold">Activity monitoring</h2>
-            <p className="mt-2 text-sm text-white/55">Monitor recent bookings, orders, reviews, visits, AI Try-On generations, and newsletter actions in one compact feed.</p>
-            <div className="mt-4 max-h-[22rem] overflow-y-auto pr-2">
-              {(insights.data?.recentActivity || []).length ? (insights.data?.recentActivity || []).map((item: any, index: number) => <div className="border-t border-white/10 py-3 text-sm" key={`${item.type}-${index}`}><b className="text-primary">{item.type}</b><span className="ml-2">{item.label}</span><small className="block text-white/45">{item.detail}</small></div>) : <p className="text-sm text-white/45">No recent activity to show yet.</p>}
-            </div>
-          </div>
-        </section>
+          </AdminPanel>
+        </div>
 
-        <section id="shareable-links" className="mt-8 lux-card">
-          <LinkIcon className="text-primary" />
-          <h2 className="serif mt-3 text-3xl font-bold">Share different website sections</h2>
-          <p className="mt-2 text-sm text-white/55">Copy a direct link to each major public section so you can share the shop, gallery, booking, AI Try-On, reviews, or policies without changing the visitor journey.</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {publicSectionLinks.map((link) => <button className="btn-dark justify-between py-3" key={link.path} onClick={() => copyPublicLink(link.path)}><span>{link.label}</span><small className="text-primary">Copy link</small></button>)}
-          </div>
-        </section>
-
-        <section id="bookings" className="mt-10 lux-card">
-          <h2 className="serif text-3xl font-bold">Bookings manager</h2>
+        <div className="mt-8 grid gap-6">
+          <AdminPanel id="bookings" eyebrow="Appointments" title="Bookings manager" description="Open appointment requests, deposits, dates, and status controls only when you need to manage the diary." icon={CalendarDays} open={isPanelOpen("bookings")} onToggle={() => togglePanel("bookings")}>
           <div className="mt-5 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-primary">
@@ -343,10 +345,9 @@ export default function Admin() {
               </tbody>
             </table>
           </div>
-        </section>
+          </AdminPanel>
 
-        <section id="orders" className="mt-8 lux-card">
-          <h2 className="serif text-3xl font-bold">Shop orders and delivery</h2>
+          <AdminPanel id="orders" eyebrow="Fulfilment" title="Shop orders and delivery" description="Review paid orders, customer delivery details, and fulfilment statuses in a protected Eby’s Place order workspace." icon={ShoppingBag} open={isPanelOpen("orders")} onToggle={() => togglePanel("orders")}>
           <div className="mt-5 grid gap-4">
             {(data.orders || []).length ? data.orders!.map((order: any) => (
               <div className="rounded-2xl border border-white/10 p-4" key={order.id}>
@@ -359,10 +360,9 @@ export default function Admin() {
               </div>
             )) : <p className="text-white/55">No shop orders yet.</p>}
           </div>
-        </section>
+          </AdminPanel>
 
-        <section id="reviews" className="mt-8 lux-card">
-          <h2 className="serif text-3xl font-bold">Reviews moderator</h2>
+          <AdminPanel id="reviews" eyebrow="Trust & reputation" title="Reviews moderator" description="Approve or reject customer reviews from a focused moderation panel without crowding the daily overview." icon={MessageSquare} open={isPanelOpen("reviews")} onToggle={() => togglePanel("reviews")}>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {(data.reviews || []).map((review: any) => (
               <div className="rounded-2xl border border-white/10 p-4" key={review.id}>
@@ -377,12 +377,9 @@ export default function Admin() {
               </div>
             ))}
           </div>
-        </section>
+          </AdminPanel>
 
-        <section className="mt-8 grid gap-8 lg:grid-cols-2">
-          <div id="products" className="lux-card">
-            <h2 className="serif text-3xl font-bold"><Package className="mr-2 inline text-primary" />Products, prices, stock & SEO</h2>
-            <p className="mt-2 text-sm text-white/65">Edit product names, prices, search-friendly slugs, SEO titles, and meta descriptions here. Changes refresh the admin dashboard and public shop after saving.</p>
+          <AdminPanel id="products" eyebrow="Shop catalogue" title="Products, prices, stock & SEO" description="Open product names, prices, search-friendly slugs, SEO titles, colour choices, and stock controls when catalogue maintenance is needed." icon={Package} open={isPanelOpen("products")} onToggle={() => togglePanel("products")}>
             <details className="mt-5 rounded-2xl border border-primary/20 bg-black/20 p-4">
               <summary className="cursor-pointer font-semibold text-primary">Add more shop products</summary>
               <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); const price = Number(newProduct.price); if (!Number.isFinite(price) || price < 0) { toast.error("Product price must be valid."); return; } createProduct.mutate({ name: newProduct.name, slug: (newProduct.slug || newProduct.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), category: newProduct.category as any, description: newProduct.description, price: price.toFixed(2), imageUrl: newProduct.imageUrl || undefined, badge: newProduct.badge || undefined, stockQuantity: Number(newProduct.stockQuantity) || 0, seoTitle: newProduct.seoTitle || `${newProduct.name} | Eby’s Place`, seoDescription: newProduct.seoDescription || newProduct.description, stockStatus: "in_stock", isFeatured: "false", variants: parseColourChoices(newProduct.colourChoices) }); }}>
@@ -442,11 +439,9 @@ export default function Admin() {
                 </div>
               ))}
             </div>
-          </div>
+          </AdminPanel>
 
-          <div id="services" className="lux-card">
-            <h2 className="serif text-3xl font-bold"><Scissors className="mr-2 inline text-primary" />Services prices editor</h2>
-            <p className="mt-2 text-sm text-white/55">Edit service prices and duration, upload a model image for each exact service name, or paste a storage URL manually.</p>
+          <AdminPanel id="services" eyebrow="Service menu" title="Services prices editor" description="Maintain braid-service pricing, duration, and service imagery from a dedicated owner-only panel." icon={Scissors} open={isPanelOpen("services")} onToggle={() => togglePanel("services")}>
             <div className="mt-5 grid gap-4">
               {(data.services || []).map((service: any) => (
                 <div className="rounded-2xl border border-white/10 p-4" key={service.id}>
@@ -476,14 +471,9 @@ export default function Admin() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
+          </AdminPanel>
 
-        <section className="mt-8 grid gap-8 lg:grid-cols-3">
-          <div id="gallery" className="lux-card">
-            <Images className="text-primary" />
-            <h2 className="serif mt-3 text-3xl font-bold">Gallery uploader</h2>
-            <p className="mt-2 text-sm text-white/55">Use the expandable add-more control to keep the dashboard clear while still uploading fresh gallery work when needed.</p>
+          <AdminPanel id="gallery" eyebrow="Portfolio" title="Gallery uploader" description="Open the gallery uploader when adding fresh braid, twist, loc, kids-style, or behind-the-chair images." icon={Images} open={isPanelOpen("gallery")} onToggle={() => togglePanel("gallery")}>
             <details className="mt-4 rounded-2xl border border-primary/20 bg-black/20 p-4">
               <summary className="cursor-pointer font-semibold text-primary">Add more gallery images</summary>
             <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); addGallery.mutate({ ...gallery, category: gallery.category as any }); }}>
@@ -502,43 +492,15 @@ export default function Admin() {
             </form>
             </details>
             <b className="mt-4 block text-primary">{data.gallery?.length || 0} images</b>
-          </div>
+          </AdminPanel>
 
-          <div className="lux-card">
-            <TrendingUp className="text-primary" />
-            <h2 className="serif mt-3 text-3xl font-bold">Content & analytics</h2>
-            <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); updateContent.mutate(content); }}>
-              <input required placeholder="Section key" value={content.sectionKey} onChange={(event) => setContent({ ...content, sectionKey: event.target.value })} />
-              <input placeholder="Title" value={content.title} onChange={(event) => setContent({ ...content, title: event.target.value })} />
-              <input placeholder="Eyebrow" value={content.eyebrow} onChange={(event) => setContent({ ...content, eyebrow: event.target.value })} />
-              <textarea placeholder="Body copy" value={content.body} onChange={(event) => setContent({ ...content, body: event.target.value })} />
-              <input placeholder="CTA label" value={content.ctaLabel} onChange={(event) => setContent({ ...content, ctaLabel: event.target.value })} />
-              <input placeholder="CTA link" value={content.ctaHref} onChange={(event) => setContent({ ...content, ctaHref: event.target.value })} />
-              <details className="rounded-2xl border border-primary/20 bg-black/20 p-3">
-                <summary className="cursor-pointer text-sm font-semibold text-primary">Add or replace website section image</summary>
-                <div className="mt-3 grid gap-3">
-                  <input placeholder="CEO / founder image URL" value={content.imageUrl} onChange={(event) => setContent({ ...content, imageUrl: event.target.value })} />
-                  <label className="btn-dark cursor-pointer justify-start">
-                    <UploadCloud className="mr-2 h-4 w-4" /> {uploadWebsiteSectionImage.isPending ? "Uploading CEO image…" : "Upload About Us CEO image"}
-                    <input className="sr-only" type="file" accept="image/*" disabled={uploadWebsiteSectionImage.isPending} onChange={(event) => handleWebsiteSectionImageUpload(event.target.files?.[0])} />
-                  </label>
-                  {content.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={content.imageUrl} alt="About Us CEO preview" /></div>}
-                </div>
-              </details>
-              <p className="text-xs font-semibold text-white/55">Use section key <b>about_us</b> to update the homepage “From Passion to Power” story and CEO portrait panel.</p>
-              <button className="btn-gold">Save content section</button>
-            </form>
-          </div>
-
-          <div id="users" className="lux-card">
-            <Users className="text-primary" />
-            <h2 className="serif mt-3 text-3xl font-bold">Admin users</h2>
-            <p className="mt-3 text-white/60">
-              Authentication uses Manus OAuth with admin role protection on every backend dashboard procedure. Promote
+          <AdminPanel id="users" eyebrow="Owner access" title="Admin users" description="Review secure owner access guidance and keep role-protected management controls separate from customer-facing pages." icon={Users} open={isPanelOpen("users")} onToggle={() => togglePanel("users")}>
+            <p className="text-white/60">
+              Eby’s Place uses secure owner sign-in with admin role protection on every backend dashboard procedure. Promote
               additional admins by updating the user role in the database management panel.
             </p>
-          </div>
-        </section>
+          </AdminPanel>
+        </div>
       </div>
     </DashboardLayout>
   );

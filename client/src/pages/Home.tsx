@@ -239,34 +239,33 @@ export default function Home() {
             <div className="lux-card">
               <Heart className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
-                Zero tension. Maximum longevity. Total comfort.
+                No pain. No pulling. Just flawless braids.
               </h2>
               <p className="mt-3 text-white/65">
-                The Eby’s Place philosophy is simple: braids should look refined
-                and last beautifully without pulling, pressure, or avoidable
-                scalp trauma.
+                Premium braiding designed to protect your scalp, last beautifully,
+                and keep you comfortable from start to finish.
               </p>
             </div>
             <div className="lux-card">
               <ShieldCheck className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
-                Professional structure
+                Professional from booking to finish.
               </h2>
               <p className="mt-3 text-white/65">
-                Clear service categories, booking deposits, delivery details,
-                reviews, gallery images, and admin oversight support a scalable
-                salon operation.
+                Clear services, simple deposits, customer reviews, gallery updates,
+                delivery details, and full admin oversight — all built for a
+                smooth salon experience.
               </p>
             </div>
             <div className="lux-card">
               <Sparkles className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
-                Modern automation
+                The future of braiding is here.
               </h2>
               <p className="mt-3 text-white/65">
-                AI hairstyle previews, live content systems, customer reviews,
-                ecommerce, analytics, and Kouvia SaaS handoff are part of the
-                platform.
+                AI hairstyle previews, ecommerce, live content, customer reviews,
+                analytics, and SaaS integration — all inside one powerful Eby’s
+                Place platform.
               </p>
             </div>
           </div>

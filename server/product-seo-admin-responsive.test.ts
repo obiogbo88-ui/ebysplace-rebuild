@@ -74,7 +74,7 @@ describe("product SEO administration and responsive page safeguards", () => {
     }
   });
 
-  it("adds controlled admin product uploads, decluttered upload panels, analytics, monitoring, and shareable section links", () => {
+  it("adds controlled admin product uploads, branded click-to-open panels, analytics, monitoring, and removes website-section sharing UI", () => {
     const adminSource = readSource("client/src/pages/Admin.tsx");
     const routerSource = readSource("server/routers.ts");
     const dbSource = readSource("server/db.ts");
@@ -94,11 +94,22 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(adminSource).toContain("Colour name|#hexcode|stock");
     expect(adminSource).toContain("Add more gallery images");
     expect(adminSource).toContain("Add or replace service image");
-    expect(adminSource).toContain("Add or replace website section image");
     expect(adminSource).toContain("Best-selling analytics");
-    expect(adminSource).toContain("Activity monitoring");
-    expect(adminSource).toContain("Share different website sections");
-    expect(adminSource).toContain("publicSectionLinks");
+    expect(adminSource).toContain("Analytics and activity monitoring");
+    expect(adminSource).toContain("<AdminPanel id=\"bookings\"");
+    expect(adminSource).toContain("<AdminPanel id=\"orders\"");
+    expect(adminSource).toContain("<AdminPanel id=\"reviews\"");
+    expect(adminSource).toContain("<AdminPanel id=\"products\"");
+    expect(adminSource).toContain("<AdminPanel id=\"services\"");
+    expect(adminSource).toContain("<AdminPanel id=\"gallery\"");
+    expect(adminSource).toContain("<AdminPanel id=\"users\"");
+    expect(adminSource).toContain("open={isPanelOpen(\"bookings\")}");
+    expect(adminSource).toContain("onToggle={() => togglePanel(\"bookings\")}");
+    expect(adminSource).toContain("Eby’s Place uses secure owner sign-in");
+    expect(adminSource).not.toContain("Share different website sections");
+    expect(adminSource).not.toContain("publicSectionLinks");
+    expect(adminSource).not.toContain("Add or replace website section image");
+    expect(adminSource).not.toContain("Content & analytics");
     expect(shopSource).toContain("product.imageUrl ? <img src={product.imageUrl}");
     expect(appSource).toContain("document.getElementById(hash.slice(1))?.scrollIntoView");
   });
@@ -116,7 +127,8 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(layoutSource).toContain("scrollIntoView({ behavior: \"smooth\", block: \"start\" })");
     expect(adminSource).toContain("Back to Homepage");
     expect(adminSource).toContain("adminOverviewActions");
-    expect(adminSource).toContain("Clean admin overview");
+    expect(adminSource).toContain("Eby’s Place command centre");
+    expect(adminSource).toContain("Dense records stay hidden until clicked");
     expect(adminSource).toContain("Protected overview");
     expect(adminSource).toContain("openProtectedOverviewSection");
     expect(adminSource).toContain("Refresh overview data");
@@ -139,9 +151,9 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(homeSource.indexOf("Join the Eby’s Place list.")).toBeLessThan(homeSource.lastIndexOf("From Passion to Power"));
     expect(homeSource).toContain("review-marquee-track");
     expect(homeSource).toContain("md:text-6xl");
-    expect(adminSource).toContain("Upload About Us CEO image");
-    expect(adminSource).toContain("CEO / founder image URL");
-    expect(adminSource).toContain("lg:grid-cols-3");
+    expect(adminSource).not.toContain("Upload About Us CEO image");
+    expect(adminSource).not.toContain("CEO / founder image URL");
+    expect(adminSource).toContain("AdminPanel id=\"gallery\"");
     expect(routerSource).toContain("uploadWebsiteSectionImage");
   });
 });

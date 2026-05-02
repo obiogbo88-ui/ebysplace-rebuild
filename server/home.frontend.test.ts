@@ -102,6 +102,18 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("text-white sm:text-lg");
   });
 
+  it("uses the requested three homepage card write-ups without changing the card structure", () => {
+    expect(homeSource).toContain("No pain. No pulling. Just flawless braids.");
+    expect(homeSource).toContain("Premium braiding designed to protect your scalp, last beautifully,");
+    expect(homeSource).toContain("Professional from booking to finish.");
+    expect(homeSource).toContain("Clear services, simple deposits, customer reviews, gallery updates,");
+    expect(homeSource).toContain("The future of braiding is here.");
+    expect(homeSource).toContain("AI hairstyle previews, ecommerce, live content, customer reviews,");
+    expect(homeSource.match(/className=\"lux-card\"/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(homeSource).not.toContain("Professional structure");
+    expect(homeSource).not.toContain("Modern automation");
+  });
+
   it("adds the requested WhatsApp shortcut and moves the beauty slogan to the footer", () => {
     expect(homeSource).toContain('href="https://wa.me/447864585110"');
     expect(homeSource).toContain("Chat with Eby’s Place on WhatsApp");
@@ -120,8 +132,9 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("lg:grid-cols-[minmax(0,1fr)_13rem]");
     expect(homeSource.indexOf("Join the Eby’s Place list.")).toBeLessThan(homeSource.lastIndexOf("From Passion to Power"));
     expect(homeSource).toContain("review-marquee-track");
-    expect(adminSource).toContain("Upload About Us CEO image");
-    expect(adminSource).toContain("uploadWebsiteSectionImage");
+    expect(adminSource).toContain("Eby’s Place Admin Dashboard");
+    expect(adminSource).not.toContain("Upload About Us CEO image");
+    expect(adminSource).not.toContain("uploadWebsiteSectionImage");
   });
 
   it("keeps only live testimonials and removes the extra admin-confidence heading space", () => {

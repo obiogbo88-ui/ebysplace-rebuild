@@ -226,3 +226,11 @@
 - [x] Preserve unrelated website content, layout, navigation, booking, shop, admin, AI Try-On, payment, and notification flows while updating favicon assets
 - [x] Add or update focused regression coverage for favicon, shortcut, and link-preview metadata
 - [x] Run tests, production build, and project health checks after the favicon/metadata update
+- [x] Refine only the admin dashboard into a comprehensive Eby’s Place branded management experience without changing public pages or unrelated flows
+- [x] Add click-to-open/collapsible dashboard logic that hides dense admin content until the owner opens each section
+- [x] Remove the shareable different website section area from the admin dashboard only
+- [x] Preserve all unrelated website content, styling, navigation, booking, shop, AI Try-On, payments, notifications, domain settings, favicon assets, and public functionality while updating the admin dashboard
+- [x] Add focused regression coverage for the admin dashboard collapsible logic, removed share section, and unchanged public/admin-critical flows
+- [x] Run tests, production build, and project health checks after the admin dashboard refinement
+- [x] Update only the three homepage card write-ups to the user-provided Card 1, Card 2, and Card 3 copy without changing the card structure or any unrelated website behavior
+- [x] Validate the targeted homepage card-copy update and save a checkpoint for review
