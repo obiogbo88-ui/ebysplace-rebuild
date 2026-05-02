@@ -141,6 +141,15 @@ export default function Shop() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [delivery, setDelivery] = useState({ customerName: "", customerEmail: "", customerPhone: "", addressLine1: "", city: "", county: "", postcode: "", deliveryNote: "" });
   const total = useMemo(() => cart.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0), [cart]);
+  const checkoutReturn = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const orderId = params.get("order");
+    if (payment === "success") return { status: "success" as const, orderId };
+    if (payment === "cancelled") return { status: "cancelled" as const, orderId };
+    return null;
+  }, []);
 
   const add = (product: ShopProduct, variant?: ProductVariant) => setCart((current) => {
     const key = `${product.id}:${variant?.id ?? variant?.name ?? "default"}`;
@@ -172,6 +181,17 @@ export default function Shop() {
           </div>
 
         </div>
+
+        {checkoutReturn ? (
+          <div className={`mt-8 rounded-3xl border p-5 ${checkoutReturn.status === "success" ? "border-primary/35 bg-primary/10 text-primary" : "border-white/15 bg-white/[0.05] text-white/78"}`} role="status">
+            <p className="font-semibold">{checkoutReturn.status === "success" ? "Stripe payment successful" : "Stripe checkout cancelled"}</p>
+            <p className="mt-2 text-sm leading-6">
+              {checkoutReturn.status === "success"
+                ? `Thank you. Your Eby’s Place shop order${checkoutReturn.orderId ? ` #${checkoutReturn.orderId}` : ""} has returned from Stripe, and a receipt will be sent to the email used at checkout once payment is confirmed.`
+                : `Your Eby’s Place shop order${checkoutReturn.orderId ? ` #${checkoutReturn.orderId}` : ""} was not paid. You can adjust your bag and start secure Stripe checkout again when ready.`}
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid gap-6 md:grid-cols-2">

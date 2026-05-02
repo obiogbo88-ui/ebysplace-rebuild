@@ -194,3 +194,9 @@
 - [x] Add or update focused tests covering all Stripe checkout points and branded customer notification/receipt copy
 - [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking details, shop product display, gallery, admin areas unrelated to checkout/notifications, AI Try-On, logos, services, testimonials, reviews, or other existing functionality while applying Stripe and branding updates
 - [x] Preserve every unrelated website automation, including booking, reviews, AI Try-On, admin monitoring, notifications not tied to checkout branding, gallery, services, navigation, and existing business workflows while making Stripe-only updates
+- [ ] Store the provided Stripe live publishable key, secret key, and webhook secret through secure environment configuration only, without hard-coding them into website files
+- [x] Keep all upcoming changes limited to Stripe checkout-related files and avoid altering unrelated website content, design, products, services, automations, or page text
+- [x] Confirm Stripe Checkout sessions connect to payment success and cancel pages for every checkout point
+- [x] Confirm Stripe webhook handling persists successful shop orders and booking payments to the database
+- [x] Send an Eby’s Place confirmation email after successful Stripe payment where customer email is available
+- [x] Validate Stripe payment flow in test mode separately from the provided live keys

@@ -49,6 +49,9 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(shopSource).toContain("selectedVariant");
     expect(shopSource).toContain("Add ${readableColourLabel(selectedVariant)} to bag");
     expect(shopSource).toContain("<p className=\"pill w-fit\">Shop</p>");
+    expect(shopSource).toContain("payment === \"success\"");
+    expect(shopSource).toContain("Stripe payment successful");
+    expect(shopSource).toContain("Stripe checkout cancelled");
     expect(shopSource).not.toContain("Better shopping flow");
     expect(shopSource).not.toContain("Selected colour");
     expect(shopSource).not.toContain("admin order manager");

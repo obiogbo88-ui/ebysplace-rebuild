@@ -45,7 +45,7 @@ describe("Eby’s Place platform business rules", () => {
   beforeEach(() => {
     process.env.DATABASE_URL = "";
     process.env.STRIPE_SECRET_KEY = "sk_test_mock";
-    process.env.STRIPE_WEBHOOK_SECRET = "whsec_mock";
+    process.env.STRIPE_WEBHOOK_SECRET = "webhook_secret_mock";
     stripeCreateSessionMock.mockReset();
     stripeConstructEventMock.mockReset();
     notifyOwnerMock.mockReset();
@@ -146,6 +146,7 @@ describe("Eby’s Place platform business rules", () => {
       mode: "payment",
       customer_email: "client@example.com",
       client_reference_id: "42",
+      payment_intent_data: { receipt_email: "client@example.com" },
       success_url: "https://example.test/booking/success?booking=42",
       cancel_url: "https://example.test/booking?booking=42",
       allow_promotion_codes: true,
@@ -182,6 +183,7 @@ describe("Eby’s Place platform business rules", () => {
       mode: "payment",
       customer_email: "shop-client@example.com",
       client_reference_id: "88",
+      payment_intent_data: { receipt_email: "shop-client@example.com" },
       success_url: "https://example.test/shop?payment=success&order=88",
       cancel_url: "https://example.test/shop?payment=cancelled&order=88",
       allow_promotion_codes: true,
