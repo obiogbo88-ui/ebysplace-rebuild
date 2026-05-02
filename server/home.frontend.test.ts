@@ -26,6 +26,22 @@ const tryOnSource = readFileSync(
   resolve(process.cwd(), "client/src/pages/TryOn.tsx"),
   "utf8"
 );
+const bookingSource = readFileSync(
+  resolve(process.cwd(), "client/src/pages/Booking.tsx"),
+  "utf8"
+);
+const shopSource = readFileSync(
+  resolve(process.cwd(), "client/src/pages/Shop.tsx"),
+  "utf8"
+);
+const reviewsSource = readFileSync(
+  resolve(process.cwd(), "client/src/pages/Reviews.tsx"),
+  "utf8"
+);
+const loginDialogSource = readFileSync(
+  resolve(process.cwd(), "client/src/components/ManusDialog.tsx"),
+  "utf8"
+);
 const dbSource = readFileSync(
   resolve(process.cwd(), "server/db.ts"),
   "utf8"
@@ -145,6 +161,20 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(reviewSeedBlock).not.toContain("Thank you love for this beautiful review.");
     expect(reviewSeedBlock).not.toContain("Thank you so much, and we hope to see you again.");
     expect(reviewSeedBlock).not.toContain("You are always welcome to visit again");
+  });
+
+  it("keeps customer-facing notification and sign-in copy Eby’s Place branded without Manus wording", () => {
+    const customerNotificationSources = [bookingSource, shopSource, reviewsSource, tryOnSource, loginDialogSource].join("\n");
+    expect(customerNotificationSources).toContain("Eby’s Place");
+    expect(bookingSource).toContain("Opening Eby’s Place secure checkout");
+    expect(bookingSource).toContain("booking.customerNotification");
+    expect(shopSource).toContain("result.customerNotification");
+    expect(reviewsSource).toContain("result.customerNotification");
+    expect(tryOnSource).toContain("result.customerNotification");
+    expect(loginDialogSource).toContain("Please sign in securely to continue with Eby’s Place");
+    expect(loginDialogSource).toContain("Continue securely");
+    expect(customerNotificationSources).not.toContain("Login with Manus");
+    expect(customerNotificationSources).not.toContain("Please login with Manus");
   });
 
   it("keeps AI Try-On pop-up message text black without changing the global toaster", () => {

@@ -110,7 +110,20 @@ export const appRouter = router({
     reviews: publicProcedure.query(() => db.listApprovedReviews()),
     gallery: publicProcedure.input(z.object({ category: z.string().optional() }).optional()).query(({ input }) => db.listGallery(input?.category)),
     newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(({ input }) => db.subscribeNewsletter(input.email, input.productAlerts)),
-    submitReview: publicProcedure.input(z.object({ customerName: z.string().min(2), rating: z.number().min(1).max(5), reviewText: z.string().min(10) })).mutation(({ input }) => db.submitReview(input)),
+    submitReview: publicProcedure.input(z.object({ customerName: z.string().min(2), rating: z.number().min(1).max(5), reviewText: z.string().min(10) })).mutation(async ({ input }) => {
+      const review = await db.submitReview(input);
+      await notifyOwnerSafely(
+        "New Eby’s Place review submitted",
+        [
+          `A customer submitted a website review for moderation.`,
+          `Review ID: ${review.id}`,
+          `Customer: ${input.customerName}`,
+          `Rating: ${input.rating}/5`,
+          `Status: ${review.status}`,
+        ].join("\n")
+      );
+      return { ...review, customerNotification: "Thank you for reviewing Eby’s Place. Your review has been received and is pending approval." };
+    }),
     createBooking: publicProcedure.input(bookingInput).mutation(async ({ input }) => {
       const booking = await db.createBooking({ ...input, status: "pending", depositStatus: "unpaid" });
       await notifyOwnerSafely(
@@ -127,7 +140,7 @@ export const appRouter = router({
           input.deliveryNote ? `Notes: ${input.deliveryNote}` : undefined,
         ].filter(Boolean).join("\n")
       );
-      return { bookingId: booking.id, depositAmount: 20, depositCurrency: "GBP", message: "A £20 non-refundable deposit is required to secure your Eby’s Place appointment. You will receive on-screen confirmation after Stripe confirms payment." };
+      return { bookingId: booking.id, depositAmount: 20, depositCurrency: "GBP", message: "A £20 non-refundable deposit is required to secure your Eby’s Place appointment. You will receive on-screen confirmation after Stripe confirms payment.", customerNotification: "Your Eby’s Place booking request has been received. Please complete the secure Stripe deposit checkout to confirm the appointment." };
     }),
     createDepositCheckout: publicProcedure.input(z.object({ bookingId: z.number(), clientEmail: z.string().email(), clientName: z.string().min(2), serviceName: z.string().min(2) })).mutation(async ({ input, ctx }) => {
       const stripe = getStripe();
@@ -181,7 +194,18 @@ export const appRouter = router({
       });
       if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout link. Please try again." });
       await db.updateOrderCheckout(order.id, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
-      return { orderId: order.id, checkoutUrl: session.url, status: "pending_payment", message: "Your secure Eby’s Place checkout is ready." };
+      await notifyOwnerSafely(
+        "New Eby’s Place shop order checkout started",
+        [
+          `A customer started Stripe checkout for a shop order.`,
+          `Order ID: ${order.id}`,
+          `Customer: ${input.customerName}`,
+          `Email: ${input.customerEmail}`,
+          input.customerPhone ? `Phone: ${input.customerPhone}` : undefined,
+          `Items: ${input.items.map((item) => `${item.quantity} × ${item.variantName ? `${item.productName} — ${item.variantName}` : item.productName}`).join(", ")}`,
+        ].filter(Boolean).join("\n")
+      );
+      return { orderId: order.id, checkoutUrl: session.url, status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete Stripe payment to confirm the order." };
     }),
     uploadTryOnPhoto: publicProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("try-on-photo.jpg") })).mutation(async ({ input }) => {
       const { mimeType, buffer } = decodeDataUrl(input.dataUrl);
@@ -214,7 +238,15 @@ export const appRouter = router({
         const mimeType = input.mimeType?.startsWith("image/") ? input.mimeType : "image/jpeg";
         const result = await generateImage({ prompt, originalImages: [{ url: editableImageUrl, mimeType }] });
         await db.updateTryOnGeneration(record.id, { status: "completed", generatedImageUrl: result.url });
-        return { id: record.id, generatedImageUrl: result.url, status: "completed" as const };
+        await notifyOwnerSafely(
+          "New Eby’s Place AI Try-On generated",
+          [
+            `A visitor generated an AI Try-On preview on the website.`,
+            `Try-On ID: ${record.id}`,
+            `Style: ${input.styleName}`,
+          ].join("\n")
+        );
+        return { id: record.id, generatedImageUrl: result.url, status: "completed" as const, customerNotification: "Your Eby’s Place AI Try-On preview is ready." };
       } catch (error) {
         const message = error instanceof Error ? error.message : "The AI could not read that photo clearly. Please upload a bright front-facing JPEG, PNG, WebP, or iPhone HEIC portrait where the face and hair are visible.";
         await db.updateTryOnGeneration(record.id, { status: "failed", errorMessage: message });

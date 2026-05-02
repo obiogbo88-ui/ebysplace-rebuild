@@ -210,3 +210,13 @@
 - [x] Preserve all unrelated website content, design, products, services, navigation, booking, payment, admin, AI Try-On, notifications, branding, and existing automation while optimizing performance
 - [x] Add or update focused regression safeguards for performance changes and unchanged critical website behavior
 - [x] Run tests, TypeScript validation, production build, and project health checks after performance-only changes
+- [x] Add a focused custom notification feature to the website after confirming the notification type, trigger, audience, and message content
+- [x] Preserve all unrelated website content, design, products, booking, payment, admin, AI Try-On, performance optimizations, and existing automation while adding custom notifications
+- [x] Add focused tests for the custom notification behavior and unchanged existing notification/payment/booking flows
+- [x] Run tests, TypeScript validation, production build, and project health checks after the custom notification change
+- [x] Add custom admin/owner notifications when a customer books, pays, places an order, submits a review, or uses AI Try-On
+- [x] Add customer-facing notifications or confirmations for booking, payment, order, review, and AI Try-On events where the website controls the message
+- [x] Keep all custom notification wording Eby’s Place branded and remove any Manus-branded wording from notification paths controlled by the website
+- [x] Do not tamper with unrelated website content, design, products, services, navigation, performance optimizations, checkout behavior, admin areas, gallery, policies, or existing automation while adding custom notifications
+- [x] After custom notification work is completed and checkpointed, direct the user on how to point the website to ebysplace.com without changing unrelated website files
+- [x] Remove any Manus branding from customer-facing notification messages controlled by the website and use Eby’s Place branding instead

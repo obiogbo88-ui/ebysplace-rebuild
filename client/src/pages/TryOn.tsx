@@ -186,14 +186,14 @@ export default function TryOn() {
       });
       setStoredPhoto(uploaded);
 
-      await generate.mutateAsync({
+      const result = await generate.mutateAsync({
         styleName: style,
         originalImageUrl: uploaded.url,
         originalImageKey: uploaded.key,
         mimeType: uploaded.mimeType,
       });
       toast.success("AI Try-On preview generated", {
-        description: "Your hairstyle preview is ready below.",
+        description: result.customerNotification ?? "Your hairstyle preview is ready below.",
         classNames: aiTryOnToastClassNames,
       });
     } catch (err) {

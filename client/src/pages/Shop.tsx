@@ -1,4 +1,5 @@
 import { type FormEvent, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { SiteFooter, SiteHeader } from "./Home";
 
@@ -163,6 +164,7 @@ export default function Shop() {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const result = await order.mutateAsync({ ...delivery, items: cart });
+    toast.success(result.customerNotification);
     if (result.checkoutUrl) {
       window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
     }

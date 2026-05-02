@@ -93,9 +93,10 @@ export default function Booking() {
     }
     try {
       const booking = await create.mutateAsync(form);
-      toast.message("Opening Stripe Checkout", {
+      toast.success(booking.customerNotification);
+      toast.message("Opening Eby’s Place secure checkout", {
         description:
-          "Your £20 non-refundable deposit page will open in a new tab.",
+          "Your £20 non-refundable Eby’s Place deposit page will open in a new tab.",
       });
       const session = await checkout.mutateAsync({
         bookingId: booking.bookingId,

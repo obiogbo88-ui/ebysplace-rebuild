@@ -124,6 +124,8 @@ describe("Eby’s Place platform business rules", () => {
     expect(result.depositAmount).toBe(20);
     expect(result.depositCurrency).toBe("GBP");
     expect(result.message).toContain("non-refundable deposit");
+    expect(result.customerNotification).toContain("Eby’s Place");
+    expect(JSON.stringify(result)).not.toMatch(/Manus/i);
     expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
       title: "New Eby’s Place booking request",
       content: expect.stringContaining("Knotless Braids"),
@@ -180,7 +182,9 @@ describe("Eby’s Place platform business rules", () => {
       items: [{ productId: 1, variantId: 2, productName: "X-Pression Braiding Hair", variantName: "Colour 30", quantity: 2, unitPrice: "8.50" }],
     });
 
-    expect(result).toEqual({ orderId: 88, checkoutUrl: "https://checkout.stripe.test/shop", status: "pending_payment", message: "Your secure Eby’s Place checkout is ready." });
+    expect(result).toEqual({ orderId: 88, checkoutUrl: "https://checkout.stripe.test/shop", status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete Stripe payment to confirm the order." });
+    expect(result.customerNotification).toContain("Eby’s Place");
+    expect(JSON.stringify(result)).not.toMatch(/Manus/i);
     expect(stripeCreateSessionMock).toHaveBeenCalledWith(expect.objectContaining({
       mode: "payment",
       customer_email: "shop-client@example.com",
@@ -326,7 +330,9 @@ describe("Eby’s Place platform business rules", () => {
       mimeType: "image/jpeg",
     });
 
-    expect(result).toEqual({ id: 77, generatedImageUrl: "/manus-storage/try-on/generated/result.jpg", status: "completed" });
+    expect(result).toEqual({ id: 77, generatedImageUrl: "/manus-storage/try-on/generated/result.jpg", status: "completed", customerNotification: "Your Eby’s Place AI Try-On preview is ready." });
+    expect(result.customerNotification).toContain("Eby’s Place");
+    expect(result.customerNotification).not.toMatch(/Manus/i);
     expect(storageGetSignedUrlMock).toHaveBeenCalledWith("try-on/uploads/test-customer-photo.jpg");
     expect(generateImageMock).toHaveBeenCalledWith(expect.objectContaining({
       originalImages: [{ url: "https://signed-storage.example.test/try-on/uploads/test-customer-photo.jpg", mimeType: "image/jpeg" }],
