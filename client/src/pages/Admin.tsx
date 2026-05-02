@@ -56,6 +56,7 @@ const adminOverviewActions = [
   { label: "Gallery", sectionId: "gallery", description: "Add or organise gallery images." },
   { label: "Reviews", sectionId: "reviews", description: "Moderate customer reviews safely." },
   { label: "Activity", sectionId: "activity-monitoring", description: "Review analytics and live activity monitoring." },
+  { label: "Content", sectionId: "content", description: "Update the About Us story, round image, and image description." },
 ] as const;
 
 type AdminPanelProps = {
@@ -152,6 +153,14 @@ export default function Admin() {
     },
     onError: (error: any) => toast.error(error.message),
   });
+  const uploadWebsiteSectionImage = trpc.admin.uploadWebsiteSectionImage.useMutation({
+    onSuccess: () => {
+      refresh();
+      toast.success("About Us round image uploaded and saved");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
+  const updateWebsiteSection = trpc.admin.updateWebsiteSection.useMutation(opts);
   const addGallery = trpc.admin.addGalleryImage.useMutation({
     onSuccess: () => {
       refresh();
@@ -234,6 +243,16 @@ export default function Admin() {
       await uploadGalleryImage.mutateAsync({ dataUrl, fileName: file.name });
     } catch (error: any) {
       toast.error(error.message || "Gallery image upload failed");
+    }
+  }
+
+  async function handleAboutPortraitUpload(file?: File) {
+    if (!file) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await uploadWebsiteSectionImage.mutateAsync({ sectionKey: "about_us", imageRole: "portrait", dataUrl, fileName: file.name });
+    } catch (error: any) {
+      toast.error(error.message || "About Us round image upload failed");
     }
   }
 
@@ -471,6 +490,30 @@ export default function Admin() {
                 </div>
               ))}
             </div>
+          </AdminPanel>
+
+          <AdminPanel id="content" eyebrow="Homepage story" title="About Us content" description="Update the public About Us wording, round image frame, and the description shown beneath that image." icon={Sparkles} open={isPanelOpen("content")} onToggle={() => togglePanel("content")}>
+            {(() => {
+              const about = (data.sections || []).find((section: any) => section.sectionKey === "about_us") || {};
+              return (
+                <div className="grid gap-4">
+                  <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Eyebrow label<input id="about-eyebrow" defaultValue={about.eyebrow || "Our Story"} /></label>
+                  <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Heading<input id="about-title" defaultValue={about.title || "From Passion to Power"} /></label>
+                  <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">About Us write-up<textarea id="about-body" defaultValue={about.body || "Eby’s Place was born from a love for braiding and a belief that beautiful hair should never come with pain, pulling, or damage. What began as a passion for helping women and families feel confident has grown into a premium braid-care experience built on gentle hands, neat finishing, protective styling, and genuine customer care."} rows={5} /></label>
+                  <div className="grid gap-4 md:grid-cols-[10rem_1fr] md:items-start">
+                    <div className="mx-auto h-32 w-32 overflow-hidden rounded-full border border-primary/25 bg-[#171009] p-2">
+                      {about.portraitImageUrl || about.imageUrl ? <img className="h-full w-full rounded-full object-cover" src={about.portraitImageUrl || about.imageUrl} alt="About Us round preview" /> : <div className="flex h-full w-full items-center justify-center rounded-full text-center text-xs text-white/40">No round image</div>}
+                    </div>
+                    <div className="grid gap-3">
+                      <label className="btn-dark cursor-pointer justify-start"><UploadCloud className="mr-2 h-4 w-4" /> {uploadWebsiteSectionImage.isPending ? "Uploading About Us round image…" : "Upload About Us round image"}<input className="sr-only" type="file" accept="image/*" disabled={uploadWebsiteSectionImage.isPending} onChange={(event) => handleAboutPortraitUpload(event.target.files?.[0])} /></label>
+                      <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Round image URL<input id="about-portrait-image" defaultValue={about.portraitImageUrl || about.imageUrl || ""} placeholder="/manus-storage/about-round-image.png" /></label>
+                      <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Description beneath round image<textarea id="about-portrait-description" defaultValue={about.portraitDescription || "A personal Eby’s Place portrait can be added here from the admin dashboard, with a short description that reflects the heart behind the brand."} rows={3} /></label>
+                    </div>
+                  </div>
+                  <button className="btn-gold" disabled={updateWebsiteSection.isPending} onClick={() => updateWebsiteSection.mutate({ sectionKey: "about_us", eyebrow: (document.getElementById("about-eyebrow") as HTMLInputElement).value, title: (document.getElementById("about-title") as HTMLInputElement).value, body: (document.getElementById("about-body") as HTMLTextAreaElement).value, portraitImageUrl: (document.getElementById("about-portrait-image") as HTMLInputElement).value, portraitDescription: (document.getElementById("about-portrait-description") as HTMLTextAreaElement).value, ctaLabel: about.ctaLabel || "Read our services", ctaHref: about.ctaHref || "/services", isPublished: "true" })}>{updateWebsiteSection.isPending ? "Saving About Us…" : "Save About Us story"}</button>
+                </div>
+              );
+            })()}
           </AdminPanel>
 
           <AdminPanel id="gallery" eyebrow="Portfolio" title="Gallery uploader" description="Open the gallery uploader when adding fresh braid, twist, loc, kids-style, or behind-the-chair images." icon={Images} open={isPanelOpen("gallery")} onToggle={() => togglePanel("gallery")}>

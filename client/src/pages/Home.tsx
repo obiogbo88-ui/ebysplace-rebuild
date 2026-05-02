@@ -178,12 +178,14 @@ export default function Home() {
   const newsletter = trpc.public.newsletter.useMutation();
   const [email, setEmail] = useState("");
   const aboutSection = (sections as any[]).find((section) => section.sectionKey === "about_us") || {
-    eyebrow: "About Eby’s Place",
+    eyebrow: "Our Story",
     title: "From Passion to Power",
-    body: "Eby’s Place began with a simple passion for helping women and families feel confident in protective styles that look refined without pain, pressure, or hairline trauma. That passion has grown into a power-led salon experience: structured consultations, gentle hands, premium finishing, and a commitment to braids that protect your confidence as much as your hair.",
+    body: "Eby’s Place was born from a love for braiding and a belief that beautiful hair should never come with pain, pulling, or damage. What began as a passion for helping women and families feel confident has grown into a premium braid-care experience built on gentle hands, neat finishing, protective styling, and genuine customer care.",
     ctaLabel: "Read our services",
     ctaHref: "/services",
     imageUrl: "",
+    portraitImageUrl: "",
+    portraitDescription: "A personal Eby’s Place portrait can be added here from the admin dashboard, with a short description that reflects the heart behind the brand.",
   };
 
   return (
@@ -408,19 +410,18 @@ export default function Home() {
                   </div>
                   {aboutSection.ctaHref && <Link className="btn-gold mt-8" href={aboutSection.ctaHref}>{aboutSection.ctaLabel || "Explore Eby’s Place"}</Link>}
                 </div>
-                <aside className="justify-self-start lg:justify-self-end" aria-label="Eby’s Place CEO portrait">
-                  <div className="relative w-36 overflow-hidden rounded-[1.5rem] border border-[#d8bd74]/70 bg-[#efe0c7] p-2 shadow-[0_18px_48px_rgba(74,48,20,.2)] sm:w-44 lg:w-52">
-                    {aboutSection.imageUrl ? (
-                      <img className="aspect-[4/5] w-full rounded-[1.15rem] object-cover" src={aboutSection.imageUrl} alt="Founder or CEO of Eby’s Place" />
+                <aside className="justify-self-start text-center lg:justify-self-end" aria-label="Eby’s Place round story portrait">
+                  <div className="relative mx-auto h-32 w-32 overflow-hidden rounded-full border border-[#d8bd74]/75 bg-[#efe0c7] p-2 shadow-[0_18px_48px_rgba(74,48,20,.2)] sm:h-36 sm:w-36">
+                    {aboutSection.portraitImageUrl || aboutSection.imageUrl ? (
+                      <img className="h-full w-full rounded-full object-cover" src={aboutSection.portraitImageUrl || aboutSection.imageUrl} alt="Eby’s Place story portrait" />
                     ) : (
-                      <div className="flex aspect-[4/5] w-full flex-col items-center justify-center rounded-[1.15rem] border border-dashed border-[#b88b2d]/75 bg-[#f7eddc] p-4 text-center">
-                        <Crown className="h-8 w-8 text-[#8a641e]" />
-                        <p className="mt-3 text-[0.68rem] font-black uppercase tracking-[.22em] text-[#6f4b16]">CEO portrait</p>
-                        <p className="mt-2 text-xs font-semibold leading-relaxed text-[#3a2615]">Upload from admin.</p>
+                      <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-dashed border-[#b88b2d]/75 bg-[#f7eddc] p-4 text-center">
+                        <Crown className="h-7 w-7 text-[#8a641e]" />
+                        <p className="mt-2 text-[0.62rem] font-black uppercase tracking-[.18em] text-[#6f4b16]">Story image</p>
                       </div>
                     )}
                   </div>
-                  <p className="mt-3 max-w-44 text-xs font-bold uppercase tracking-[.2em] text-[#6f4b16]">Luxury braid care</p>
+                  <p className="mx-auto mt-4 max-w-52 text-sm font-semibold leading-6 text-[#442d18]">{aboutSection.portraitDescription || "A short Eby’s Place story note can be edited from the admin dashboard."}</p>
                 </aside>
               </div>
             </div>

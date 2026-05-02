@@ -36,6 +36,8 @@ export const websiteSections = mysqlTable("websiteSections", {
   ctaLabel: varchar("ctaLabel", { length: 120 }),
   ctaHref: varchar("ctaHref", { length: 500 }),
   imageUrl: varchar("imageUrl", { length: 800 }),
+  portraitImageUrl: varchar("portraitImageUrl", { length: 800 }),
+  portraitDescription: text("portraitDescription"),
   sortOrder: int("sortOrder").default(0).notNull(),
   isPublished: mysqlEnum("isPublished", ["true", "false"]).default("true").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

@@ -124,17 +124,22 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource.indexOf("Beauty in every strand")).toBe(homeSource.lastIndexOf("Beauty in every strand"));
   });
 
-  it("adds a backend-managed final About Us story section with a small side CEO portrait", () => {
+  it("adds a backend-managed final About Us story section with an admin-controlled round portrait", () => {
     expect(homeSource).toContain("websiteSections.useQuery");
     expect(homeSource).toContain("about_us");
+    expect(homeSource).toContain("Our Story");
     expect(homeSource).toContain("From Passion to Power");
-    expect(homeSource).toContain("Eby’s Place CEO portrait");
-    expect(homeSource).toContain("lg:grid-cols-[minmax(0,1fr)_13rem]");
+    expect(homeSource).toContain("Eby’s Place round story portrait");
+    expect(homeSource).toContain("rounded-full");
+    expect(homeSource).toContain("portraitImageUrl");
+    expect(homeSource).toContain("portraitDescription");
     expect(homeSource.indexOf("Join the Eby’s Place list.")).toBeLessThan(homeSource.lastIndexOf("From Passion to Power"));
     expect(homeSource).toContain("review-marquee-track");
     expect(adminSource).toContain("Eby’s Place Admin Dashboard");
-    expect(adminSource).not.toContain("Upload About Us CEO image");
-    expect(adminSource).not.toContain("uploadWebsiteSectionImage");
+    expect(adminSource).toContain("About Us content");
+    expect(adminSource).toContain("Upload About Us round image");
+    expect(adminSource).toContain("Description beneath round image");
+    expect(adminSource).toContain("uploadWebsiteSectionImage");
   });
 
   it("keeps only live testimonials and removes the extra admin-confidence heading space", () => {

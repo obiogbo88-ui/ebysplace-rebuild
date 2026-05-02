@@ -234,3 +234,9 @@
 - [x] Run tests, production build, and project health checks after the admin dashboard refinement
 - [x] Update only the three homepage card write-ups to the user-provided Card 1, Card 2, and Card 3 copy without changing the card structure or any unrelated website behavior
 - [x] Validate the targeted homepage card-copy update and save a checkpoint for review
+- [x] Change only the About Us section to match the user-provided attached wording: Our Story, From Passion to Power, and the supplied Eby’s Place story paragraphs
+- [x] Add a small round admin-controlled image frame under the About Us section with an editable description beneath the frame
+- [x] Allow the About Us round image and description to be managed from the admin dashboard without changing unrelated admin controls
+- [x] Preserve all unrelated website content, styling, layout, navigation, booking, shop, gallery, reviews, AI Try-On, payments, notifications, domains, favicon assets, and public functionality while applying the About Us update
+- [x] Add focused regression coverage for the updated About Us wording and admin-managed round-frame content
+- [x] Run tests, production build, and project health checks after the About Us update

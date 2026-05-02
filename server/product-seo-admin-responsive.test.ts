@@ -139,21 +139,26 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(routerSource).toContain("insights: adminProcedure");
   });
 
-  it("protects the About Us story and CEO image workflow across homepage and admin dashboard breakpoints", () => {
+  it("protects the About Us story and round image workflow across homepage and admin dashboard breakpoints", () => {
     const homeSource = readSource("client/src/pages/Home.tsx");
     const adminSource = readSource("client/src/pages/Admin.tsx");
     const routerSource = readSource("server/routers.ts");
 
+    expect(homeSource).toContain("Our Story");
     expect(homeSource).toContain("From Passion to Power");
-    expect(homeSource).toContain("Eby’s Place CEO portrait");
-    expect(homeSource).toContain("lg:grid-cols-[minmax(0,1fr)_13rem]");
-    expect(homeSource).toContain("sm:w-44 lg:w-52");
+    expect(homeSource).toContain("Eby’s Place round story portrait");
+    expect(homeSource).toContain("h-32 w-32");
+    expect(homeSource).toContain("sm:h-36 sm:w-36");
+    expect(homeSource).toContain("portraitDescription");
     expect(homeSource.indexOf("Join the Eby’s Place list.")).toBeLessThan(homeSource.lastIndexOf("From Passion to Power"));
     expect(homeSource).toContain("review-marquee-track");
     expect(homeSource).toContain("md:text-6xl");
-    expect(adminSource).not.toContain("Upload About Us CEO image");
-    expect(adminSource).not.toContain("CEO / founder image URL");
+    expect(adminSource).toContain("AdminPanel id=\"content\"");
+    expect(adminSource).toContain("Upload About Us round image");
+    expect(adminSource).toContain("Description beneath round image");
     expect(adminSource).toContain("AdminPanel id=\"gallery\"");
     expect(routerSource).toContain("uploadWebsiteSectionImage");
+    expect(routerSource).toContain("portraitImageUrl");
+    expect(routerSource).toContain("portraitDescription");
   });
 });

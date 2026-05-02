@@ -384,12 +384,14 @@ async function ensureSeedReviews(db: Awaited<ReturnType<typeof getDb>>) {
 const seedWebsiteSections = [
   {
     sectionKey: "about_us",
-    eyebrow: "About Eby’s Place",
+    eyebrow: "Our Story",
     title: "From Passion to Power",
-    body: "Eby’s Place began with a simple passion for helping women and families feel confident in protective styles that look refined without pain, pressure, or hairline trauma. That passion has grown into a power-led salon experience: structured consultations, gentle hands, premium finishing, and a commitment to braids that protect your confidence as much as your hair.",
+    body: "Eby’s Place was born from a love for braiding and a belief that beautiful hair should never come with pain, pulling, or damage. What began as a passion for helping women and families feel confident has grown into a premium braid-care experience built on gentle hands, neat finishing, protective styling, and genuine customer care.",
     ctaLabel: "Read our services",
     ctaHref: "/services",
     imageUrl: "",
+    portraitImageUrl: "",
+    portraitDescription: "A personal Eby’s Place portrait can be added here from the admin dashboard, with a short description that reflects the heart behind the brand.",
     sortOrder: 1,
     isPublished: "true" as const,
   },
