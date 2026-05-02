@@ -73,7 +73,7 @@ describe("strict visual-only change regression coverage", () => {
 
     expect(adminSource).toContain("Shop price (£)");
     expect(adminSource).toContain("id={`product-price-${product.id}`}");
-    expect(adminSource).toContain("Save product price & SEO");
+    expect(adminSource).toContain("Save product price, SEO & colours");
     expect(adminSource).toContain("Service price (£)");
     expect(adminSource).toContain("id={`price-${service.id}`}");
     expect(adminSource).toContain("Save service price");

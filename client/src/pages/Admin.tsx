@@ -84,10 +84,11 @@ export default function Admin() {
   const updateBooking = trpc.admin.updateBookingStatus.useMutation(opts);
   const updateOrder = trpc.admin.updateOrderStatus.useMutation(opts);
   const updateStock = trpc.admin.updateProductStock.useMutation(opts);
+  const updateProductVariants = trpc.admin.updateProductVariants.useMutation(opts);
   const createProduct = trpc.admin.createProduct.useMutation({
     onSuccess: () => {
       refresh();
-      setNewProduct({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "" });
+      setNewProduct({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
       toast.success("Shop product uploaded");
     },
     onError: (error: any) => toast.error(error.message),
@@ -134,7 +135,7 @@ export default function Admin() {
   });
   const updateContent = trpc.admin.updateWebsiteSection.useMutation(opts);
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
-  const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "" });
+  const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [content, setContent] = useState({ sectionKey: "about_us", title: "", eyebrow: "", body: "", ctaLabel: "", ctaHref: "", imageUrl: "" });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const data = (lists.data || {}) as AdminListData;
@@ -145,6 +146,17 @@ export default function Admin() {
     await navigator.clipboard.writeText(url);
     toast.success("Shareable link copied");
   };
+
+  function parseColourChoices(rawValue: string) {
+    return rawValue.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
+      const [name = "", colourHex = "#c8a95a", stockQuantity = "0"] = line.split("|").map((part) => part.trim());
+      return { name, colourHex, stockQuantity: Math.max(0, Number(stockQuantity) || 0) };
+    }).filter((variant) => variant.name && /^#[0-9a-fA-F]{6}$/.test(variant.colourHex));
+  }
+
+  function formatColourChoices(variants: any[] = []) {
+    return (variants.length ? variants : [{ name: "Signature finish", colourHex: "#c8a95a", stockQuantity: 0 }]).map((variant: any) => `${variant.name}|${variant.colourHex || "#c8a95a"}|${Number(variant.stockQuantity) || 0}`).join("\n");
+  }
 
   function readAdminPrice(inputId: string, label: string) {
     const rawValue = (document.getElementById(inputId) as HTMLInputElement).value;
@@ -334,7 +346,7 @@ export default function Admin() {
             <p className="mt-2 text-sm text-white/65">Edit product names, prices, search-friendly slugs, SEO titles, and meta descriptions here. Changes refresh the admin dashboard and public shop after saving.</p>
             <details className="mt-5 rounded-2xl border border-primary/20 bg-black/20 p-4">
               <summary className="cursor-pointer font-semibold text-primary">Add more shop products</summary>
-              <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); const price = Number(newProduct.price); if (!Number.isFinite(price) || price < 0) { toast.error("Product price must be valid."); return; } createProduct.mutate({ name: newProduct.name, slug: (newProduct.slug || newProduct.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), category: newProduct.category as any, description: newProduct.description, price: price.toFixed(2), imageUrl: newProduct.imageUrl || undefined, badge: newProduct.badge || undefined, stockQuantity: Number(newProduct.stockQuantity) || 0, seoTitle: newProduct.seoTitle || `${newProduct.name} | Eby’s Place`, seoDescription: newProduct.seoDescription || newProduct.description, stockStatus: "in_stock", isFeatured: "false" }); }}>
+              <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); const price = Number(newProduct.price); if (!Number.isFinite(price) || price < 0) { toast.error("Product price must be valid."); return; } createProduct.mutate({ name: newProduct.name, slug: (newProduct.slug || newProduct.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), category: newProduct.category as any, description: newProduct.description, price: price.toFixed(2), imageUrl: newProduct.imageUrl || undefined, badge: newProduct.badge || undefined, stockQuantity: Number(newProduct.stockQuantity) || 0, seoTitle: newProduct.seoTitle || `${newProduct.name} | Eby’s Place`, seoDescription: newProduct.seoDescription || newProduct.description, stockStatus: "in_stock", isFeatured: "false", variants: parseColourChoices(newProduct.colourChoices) }); }}>
                 <div className="grid gap-3 sm:grid-cols-2"><input required placeholder="Product name" value={newProduct.name} onChange={(event) => setNewProduct({ ...newProduct, name: event.target.value })} /><input placeholder="SEO slug" value={newProduct.slug} onChange={(event) => setNewProduct({ ...newProduct, slug: event.target.value })} /></div>
                 <div className="grid gap-3 sm:grid-cols-2"><select value={newProduct.category} onChange={(event) => setNewProduct({ ...newProduct, category: event.target.value })}>{productCategories.map((category) => <option key={category}>{category}</option>)}</select><input required type="number" min="0" step="0.01" placeholder="Price (£)" value={newProduct.price} onChange={(event) => setNewProduct({ ...newProduct, price: event.target.value })} /></div>
                 <textarea required placeholder="Public product description" value={newProduct.description} onChange={(event) => setNewProduct({ ...newProduct, description: event.target.value })} />
@@ -343,6 +355,7 @@ export default function Admin() {
                 <textarea placeholder="SEO meta description" value={newProduct.seoDescription} onChange={(event) => setNewProduct({ ...newProduct, seoDescription: event.target.value })} />
                 <label className="btn-dark cursor-pointer justify-start"><UploadCloud className="mr-2 h-4 w-4" /> {uploadProductImage.isPending ? "Uploading product image…" : "Upload product image"}<input className="sr-only" type="file" accept="image/*" disabled={uploadProductImage.isPending} onChange={(event) => handleProductImageUpload({ name: newProduct.name }, event.target.files?.[0])} /></label>
                 <input placeholder="Product image URL" value={newProduct.imageUrl} onChange={(event) => setNewProduct({ ...newProduct, imageUrl: event.target.value })} />
+                <textarea placeholder={"Available colours in stock, one per line: Colour name|#hexcode|stock"} value={newProduct.colourChoices} onChange={(event) => setNewProduct({ ...newProduct, colourChoices: event.target.value })} />
                 {newProduct.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={newProduct.imageUrl} alt="New product preview" /></div>}
                 <button className="btn-gold" disabled={createProduct.isPending}>{createProduct.isPending ? "Saving product…" : "Save product to shop"}</button>
               </form>
@@ -369,6 +382,7 @@ export default function Admin() {
                     <div className="rounded-2xl border border-primary/20 bg-black/20 p-3 text-sm text-white/70">
                       <b className="block text-primary">Shop colour previews</b>
                       <span className="mt-1 block text-white/55">These are the colour options customers click on the shop page to update the product preview before checkout.</span>
+                      <label className="mt-3 grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Available colours in stock<textarea defaultValue={formatColourChoices(product.variants)} id={`product-colours-${product.id}`} rows={4} placeholder="Colour name|#hexcode|stock" /></label>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {(product.variants?.length ? product.variants : [{ name: "Default", colourHex: "#c8a95a" }]).map((variant: any) => (
                           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2" key={`${product.id}-${variant.id || variant.name}`}>
@@ -379,7 +393,7 @@ export default function Admin() {
                         ))}
                       </div>
                     </div>
-                    <button className="btn-gold py-2" onClick={() => { const price = readAdminPrice(`product-price-${product.id}`, "Shop price"); if (!price) return; updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, price, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, imageUrl: (document.getElementById(`product-image-${product.id}`) as HTMLInputElement).value || undefined, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value }); }}>Save product price & SEO</button>
+                    <button className="btn-gold py-2" onClick={() => { const price = readAdminPrice(`product-price-${product.id}`, "Shop price"); if (!price) return; updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, price, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, imageUrl: (document.getElementById(`product-image-${product.id}`) as HTMLInputElement).value || undefined, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value }); updateProductVariants.mutate({ productId: product.id, variants: parseColourChoices((document.getElementById(`product-colours-${product.id}`) as HTMLTextAreaElement).value) }); }}>Save product price, SEO & colours</button>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                     <input type="number" min={0} defaultValue={product.stockQuantity} id={`stock-${product.id}`} />

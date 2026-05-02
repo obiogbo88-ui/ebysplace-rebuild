@@ -565,11 +565,21 @@ export async function updateProduct(id: number, input: Partial<typeof products.$
   return { id, ...input };
 }
 
-export async function createProduct(input: typeof products.$inferInsert) {
+export async function createProduct(input: typeof products.$inferInsert, variants: Array<{ name: string; colourHex?: string; stockQuantity: number }> = []) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const inserted = await db.insert(products).values(input).$returningId();
-  return { id: inserted[0]?.id, ...input };
+  const productId = inserted[0]?.id;
+  if (productId && variants.length) await db.insert(productVariants).values(variants.map((variant) => ({ ...variant, productId })));
+  return { id: productId, ...input };
+}
+
+export async function replaceProductVariants(productId: number, variants: Array<{ name: string; colourHex?: string; stockQuantity: number }>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.delete(productVariants).where(eq(productVariants.productId, productId));
+  if (variants.length) await db.insert(productVariants).values(variants.map((variant) => ({ ...variant, productId })));
+  return { productId, variants };
 }
 
 export async function updateOrderStatus(id: number, status: "draft" | "pending_payment" | "paid" | "fulfilling" | "shipped" | "completed" | "cancelled") {

@@ -33,16 +33,18 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(adminSource).toContain("updateProduct.mutate");
   });
 
-  it("reflects admin-managed SEO fields and polished colour-selection shopping feedback in the public shop", () => {
+  it("reflects admin-managed SEO fields and requested colour-selection shopping feedback in the public shop", () => {
     const shopSource = readSource("client/src/pages/Shop.tsx");
 
     expect(shopSource).toContain("product.seoTitle");
     expect(shopSource).toContain("product.seoDescription");
     expect(shopSource).toContain("product.slug");
     expect(shopSource).toContain("selectedVariant");
-    expect(shopSource).toContain("Selected colour");
     expect(shopSource).toContain("Add ${readableColourLabel(selectedVariant)} to bag");
-    expect(shopSource).toContain("Select a colour, preview the product finish");
+    expect(shopSource).toContain("<p className=\"pill w-fit\">Shop</p>");
+    expect(shopSource).not.toContain("Better shopping flow");
+    expect(shopSource).not.toContain("Selected colour");
+    expect(shopSource).not.toContain("Tap a colour below to preview this product before adding it to your bag.");
     expect(shopSource).toContain("md:grid-cols-2");
     expect(shopSource).toContain("lg:grid-cols-[minmax(0,1fr)_420px]");
   });
@@ -72,6 +74,10 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(dbSource).toContain("export async function adminInsights");
     expect(adminSource).toContain("Add more shop products");
     expect(adminSource).toContain("Upload product image");
+    expect(routerSource).toContain("updateProductVariants");
+    expect(dbSource).toContain("replaceProductVariants");
+    expect(adminSource).toContain("Available colours in stock");
+    expect(adminSource).toContain("Colour name|#hexcode|stock");
     expect(adminSource).toContain("Add more gallery images");
     expect(adminSource).toContain("Add or replace service image");
     expect(adminSource).toContain("Add or replace website section image");

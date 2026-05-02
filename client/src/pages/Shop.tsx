@@ -60,11 +60,7 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
           <span className="pill bg-black/55 text-xs text-primary">{product.badge || "Eby’s Pick"}</span>
           <span className="pill bg-black/55 text-xs text-primary">{product.stockStatus?.replace("_", " ") || "available"}</span>
         </div>
-        <div className="absolute bottom-5 left-5 right-5 rounded-3xl border border-white/15 bg-black/50 p-4 backdrop-blur-md">
-          <p className="text-xs uppercase tracking-[0.2em] text-primary/90">Selected colour</p>
-          <h3 className="mt-1 text-xl font-bold text-white">{readableColourLabel(selectedVariant)}</h3>
-          <p className="mt-1 text-sm text-white/70">Tap a colour below to preview this product before adding it to your bag.</p>
-        </div>
+
       </div>
 
       <div className="p-5 sm:p-6">
@@ -152,14 +148,11 @@ export default function Shop() {
       <main className="container section-pad">
         <div className="grid gap-6 lg:grid-cols-[1fr_.7fr] lg:items-end">
           <div>
-            <p className="pill w-fit">E-commerce shop</p>
+            <p className="pill w-fit">Shop</p>
             <h1 className="serif mt-4 text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">Premium braid care and accessories.</h1>
             <p className="mt-4 max-w-3xl text-white/75">Choose scalp-friendly braid-care essentials, click available colours to preview the look instantly, then send delivery details directly into the admin order manager.</p>
           </div>
-          <div className="rounded-3xl border border-primary/20 bg-black/20 p-5 text-sm text-white/70">
-            <b className="block text-primary">Better shopping flow</b>
-            Select a colour, preview the product finish, add it to your bag, and complete fulfilment details in one responsive checkout panel.
-          </div>
+
         </div>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">

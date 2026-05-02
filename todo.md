@@ -161,3 +161,9 @@
 - [x] Add broader admin monitoring so the owner can review website activity from the dashboard
 - [x] Add shareable direct links for each main website section without breaking existing navigation
 - [x] Do not tamper with unrelated content, styling, layout, navigation, booking, shop browsing, AI Try-On, payments, notifications, logos, or other existing functionality while adding the admin enhancements
+- [x] Remove only the “Better shopping flow” write-up from the shop page
+- [x] Change only the ecommerce shop write-up or heading to “Shop”
+- [x] Make only the selected-colour card overlay blocking product images invisible on the shop page
+- [x] Add admin-controlled available in-stock colour choices for shop products
+- [x] Let shoppers click only the admin-provided available colours and update the selected product colour accordingly
+- [x] Do not tamper with unrelated content, styling, layout, navigation, booking, gallery, admin areas beyond product colours, AI Try-On, payments, notifications, logos, or other existing functionality while applying the shop-specific changes
