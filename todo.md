@@ -380,3 +380,7 @@
 - [x] Run automated tests, production build checks, local smoke tests, and live-route verification after the Vercel repair pass.
 - [x] Save and sync a checkpoint to GitHub after all verified live-site repair work is complete.
 - [x] Address the supplied Vercel deployment URL returning Vercel `401` login/SSO protection for unauthenticated visitors, either by documenting the required Vercel setting change or validating a public production deployment URL.
+
+- [x] Generate a complete `all-media-urls.txt` inventory covering every image and media URL used across services, products, gallery, hero sections, logos, favicons, metadata, static assets, seed data, and source code.
+- [x] Verify the media URL inventory is unique, categorized where useful, and suitable for Cloudflare R2 migration planning.
+- [x] Save and sync the `all-media-urls.txt` file to GitHub through the checkpoint workflow.
