@@ -56,6 +56,16 @@ describe("Vercel public frontend routing", () => {
     expect(vercelSource.trim()).toMatch(/serveStatic\(app\);\n\nexport default app;$/);
   });
 
+  it("keeps server-level TypeScript config relaxed for Vercel server builds", () => {
+    const serverTsconfig = JSON.parse(readProjectFile("server/tsconfig.json"));
+
+    expect(serverTsconfig.extends).toBe("../tsconfig.json");
+    expect(serverTsconfig.compilerOptions.skipLibCheck).toBe(true);
+    expect(serverTsconfig.compilerOptions.strict).toBe(false);
+    expect(serverTsconfig.compilerOptions.noImplicitAny).toBe(false);
+    expect(serverTsconfig.compilerOptions.noEmitOnError).toBe(false);
+  });
+
   it("does not leave unresolved analytics placeholders in the production HTML shell", () => {
     const html = readProjectFile("client/index.html");
 

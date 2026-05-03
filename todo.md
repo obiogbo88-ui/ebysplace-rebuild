@@ -339,3 +339,10 @@
 - [x] Apply `skipLibCheck: true`, `strict: false`, `noImplicitAny: false`, and `noEmitOnError: false` to every applicable TypeScript config file
 - [x] Verify Vercel build scripts use the intended TypeScript config and production fallback still returns HTTP 200 for non-API GET routes
 - [x] Save and sync a checkpoint for the all-tsconfig Vercel TypeScript build fix to GitHub
+
+- [x] Open and update `server/tsconfig.json` with `skipLibCheck: true`, `strict: false`, `noImplicitAny: false`, and `noEmitOnError: false` for Vercel server build resolution
+- [x] Check whether `server/_core/tsconfig.json` exists and apply the same compiler settings if present
+- [x] Validate the server-level TypeScript configuration change without regressing the production build or route fallback behavior
+- [x] Save and sync a checkpoint for the server-level tsconfig Vercel build fix to GitHub
+- [x] Investigate the remaining Vercel 403 Forbidden response reported after the server-level TypeScript config fix, without re-opening the user-provided screenshot
+- [x] Check Vercel routing/static configuration for any source/deployment protection or rewrite behavior that could still return 403 after a successful build
