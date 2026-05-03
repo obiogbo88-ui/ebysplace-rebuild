@@ -1,27 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "version": 2,
-  "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm exec vite build --outDir $PWD/client/dist",
   "outputDirectory": "client/dist",
-  "framework": "vite",
-  "functions": {
-    "server/vercel.ts": {
-      "runtime": "nodejs22.x",
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "/server/vercel.ts"
-    },
-    {
-      "source": "/manus-storage/:path*",
-      "destination": "/server/vercel.ts"
-    },
-    {
-      "source": "/((?!assets/|favicon.ico|robots.txt|manifest.json|.*\\..*).*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

@@ -275,3 +275,8 @@
 - [x] Route `/api` requests to the Express backend in the `server` folder while preserving client-side routing for non-API pages
 - [x] Align the Vite build output with the requested `client/dist` deployment target if required
 - [x] Validate the revised Vercel deployment configuration with build, tests, and project health checks
+
+- [x] Simplify root-level `vercel.json` to remove any `functions` or `builds` runtime configuration causing the Vercel deployment error
+- [x] Keep `vercel.json` focused on `client/dist` as the build output directory and a minimal non-API rewrite to `index.html`
+- [x] Validate the simplified Vercel JSON and confirm no unrelated website code changes are introduced
+- [x] Save a checkpoint for the minimal Vercel deployment-error fix
