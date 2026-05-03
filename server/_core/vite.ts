@@ -47,12 +47,24 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
+function resolveProductionStaticPath() {
+  const candidates = [
+    path.resolve(process.cwd(), "public"),
+    path.resolve(import.meta.dirname, "..", "public"),
+    path.resolve(import.meta.dirname, "../..", "public"),
+    path.resolve(import.meta.dirname, "public"),
+    path.resolve(import.meta.dirname, "../..", "dist", "public"),
+  ];
+
+  return candidates.find(candidate => fs.existsSync(path.resolve(candidate, "index.html"))) ?? candidates[0];
+}
+
 export function serveStatic(app: Express) {
   const distPath =
     process.env.NODE_ENV === "development"
       ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "public");
-  if (!fs.existsSync(distPath)) {
+      : resolveProductionStaticPath();
+  if (!fs.existsSync(path.resolve(distPath, "index.html"))) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
@@ -60,8 +72,15 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  // Fall through to index.html for public SPA routes only. API routes must remain
+  // handled by their dedicated middleware so protected/admin behavior is preserved.
+  app.use("*", (req, res, next) => {
+    if (req.originalUrl.startsWith("/api/")) {
+      return next();
+    }
+
+    res.sendFile(path.resolve(distPath, "index.html"), error => {
+      if (error) next(error);
+    });
   });
 }

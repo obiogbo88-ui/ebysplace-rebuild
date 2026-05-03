@@ -287,3 +287,9 @@
 - [x] Update root vercel.json so `outputDirectory` is `public`
 - [x] Validate the root build creates `public/index.html` and preserve unrelated files
 - [x] Save and sync a checkpoint to the connected GitHub repository
+
+- [x] Investigate the Vercel 403 Forbidden error for public frontend routes and identify any server routing, middleware, host, or environment checks causing it
+- [x] Fix public frontend route access on Vercel while preserving protected admin/API behavior
+- [x] Add or update focused tests covering public frontend routing and protected route behavior after the Vercel 403 fix
+- [x] Validate build, TypeScript, tests, and project health after the Vercel 403 fix
+- [x] Save and sync a checkpoint for the Vercel 403 routing fix

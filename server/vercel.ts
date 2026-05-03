@@ -6,6 +6,7 @@ import { registerStorageProxy } from "./_core/storageProxy";
 import { registerStripeWebhook } from "./stripeWebhook";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
+import { serveStatic } from "./_core/vite";
 
 const app = express();
 
@@ -22,5 +23,7 @@ app.use(
     createContext,
   })
 );
+
+serveStatic(app);
 
 export default app;
