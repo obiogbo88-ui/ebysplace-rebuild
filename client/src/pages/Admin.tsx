@@ -133,9 +133,10 @@ export default function Admin() {
   const updateService = trpc.admin.updateService.useMutation(opts);
   const uploadProductImage = trpc.admin.uploadProductImage.useMutation({
     onSuccess: (uploaded, variables) => {
-      if (!variables.productId) setNewProduct((current) => ({ ...current, imageUrl: uploaded.url }));
+      const productId = variables && typeof variables === "object" ? variables.productId : undefined;
+      if (!productId) setNewProduct((current) => ({ ...current, imageUrl: uploaded.url }));
       refresh();
-      toast.success(variables.productId ? "Product image uploaded and saved" : "Product image uploaded. Add the product details and save it to the shop.");
+      toast.success(productId ? "Product image uploaded and saved" : "Product image uploaded. Add the product details and save it to the shop.");
     },
     onError: (error: any) => toast.error(error.message),
   });
