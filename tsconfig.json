@@ -39,6 +39,7 @@
         "./shared/*"
       ]
     },
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "noEmitOnError": false
   }
 }

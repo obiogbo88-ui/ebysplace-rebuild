@@ -333,3 +333,9 @@
 - [x] Ensure `@types/express` is listed in root `package.json` dependencies, not only devDependencies, for Vercel build type resolution
 - [x] Validate TypeScript, automated tests, production build, and non-API route fallback after the root TypeScript configuration fix
 - [x] Save and sync a checkpoint for the root TypeScript/Vercel dependency fix to GitHub
+
+- [x] Audit all `tsconfig*.json` files, including any server-specific configs, to confirm which compiler options Vercel may use
+- [x] Confirm root `tsconfig.json` currently contains `skipLibCheck: true`, `strict: false`, and `noImplicitAny: false`
+- [x] Apply `skipLibCheck: true`, `strict: false`, `noImplicitAny: false`, and `noEmitOnError: false` to every applicable TypeScript config file
+- [x] Verify Vercel build scripts use the intended TypeScript config and production fallback still returns HTTP 200 for non-API GET routes
+- [x] Save and sync a checkpoint for the all-tsconfig Vercel TypeScript build fix to GitHub
