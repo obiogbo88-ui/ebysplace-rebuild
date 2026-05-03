@@ -270,3 +270,8 @@
 - [x] Configure API traffic to route to the Express server entry point and all non-API routes to the client build
 - [x] Validate the Vercel configuration JSON and confirm unrelated website source files are unchanged
 - [x] Save a checkpoint for the Vercel configuration update
+
+- [x] Revise root-level `vercel.json` so Vercel builds the Vite frontend from the `client` folder and serves static files from `client/dist`
+- [x] Route `/api` requests to the Express backend in the `server` folder while preserving client-side routing for non-API pages
+- [x] Align the Vite build output with the requested `client/dist` deployment target if required
+- [x] Validate the revised Vercel deployment configuration with build, tests, and project health checks
