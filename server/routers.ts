@@ -1,5 +1,6 @@
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
+import type { Request } from "express";
 import Stripe from "stripe";
 import { z } from "zod";
 import { storageGetSignedUrl, storagePut } from "./storage";
@@ -58,8 +59,8 @@ function getStripe() {
   return new Stripe(key);
 }
 
-function getOrigin(req: { headers?: Record<string, unknown> }) {
-  const origin = req.headers?.origin;
+function getOrigin(req: Request) {
+  const origin = req.headers.origin;
   return typeof origin === "string" ? origin : "http://localhost:3000";
 }
 

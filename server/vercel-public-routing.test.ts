@@ -42,7 +42,7 @@ describe("Vercel public frontend routing", () => {
     expect(staticServerSource).toContain('pathname === "/api/index" || pathname === "/api/index/"');
     expect(staticServerSource).toContain("return false;");
     expect(staticServerSource).toContain('return pathname === "/api" || pathname.startsWith("/api/");');
-    expect(staticServerSource).toContain('app.use("*", (req, res, next) => {');
+    expect(staticServerSource).toContain('app.use("*", (req: Request, res: Response, next: NextFunction) => {');
     expect(staticServerSource).toContain("isBackendApiRequest(req.originalUrl || req.url)");
     expect(staticServerSource).toContain("return next();");
     expect(staticServerSource).toContain("res.status(200).sendFile(indexPath");

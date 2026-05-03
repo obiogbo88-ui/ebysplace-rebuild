@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Application, type NextFunction, type Request, type Response } from "express";
 import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
@@ -6,7 +6,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
-export async function setupVite(app: Express, server: Server) {
+export async function setupVite(app: Application, server: Server) {
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -21,7 +21,7 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.use("*", async (req: Request, res: Response, next: NextFunction) => {
     const url = req.originalUrl;
 
     try {
@@ -74,7 +74,7 @@ function isBackendApiRequest(url: string) {
   return pathname === "/api" || pathname.startsWith("/api/");
 }
 
-export function serveStatic(app: Express) {
+export function serveStatic(app: Application) {
   const distPath =
     process.env.NODE_ENV === "development"
       ? path.resolve(import.meta.dirname, "../..", "dist", "public")
@@ -92,7 +92,7 @@ export function serveStatic(app: Express) {
   // Fall through to public/index.html for every frontend route. Only real API
   // requests are excluded; the Vercel adapter path itself is intentionally not
   // treated as a backend API route, so public pages are never blocked here.
-  app.use("*", (req, res, next) => {
+  app.use("*", (req: Request, res: Response, next: NextFunction) => {
     if (isBackendApiRequest(req.originalUrl || req.url)) {
       return next();
     }

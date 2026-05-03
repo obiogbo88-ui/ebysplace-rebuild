@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Application, type Request, type Response } from "express";
 import Stripe from "stripe";
 import * as db from "./db";
 import { notifyOwner } from "./_core/notification";
@@ -10,8 +10,8 @@ function getStripeWebhookConfig() {
   return { stripe: new Stripe(secretKey), webhookSecret };
 }
 
-export function registerStripeWebhook(app: Express) {
-  app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+export function registerStripeWebhook(app: Application) {
+  app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req: Request, res: Response) => {
     const config = getStripeWebhookConfig();
     if (!config) {
       res.status(503).json({ error: "Stripe webhook is not configured" });

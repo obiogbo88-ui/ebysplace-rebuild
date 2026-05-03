@@ -35,7 +35,7 @@ describe("website loading performance safeguards", () => {
     const viteConfig = readProjectFile("vite.config.ts");
 
     expect(viteConfig).toContain('const isProductionBuild = process.env.NODE_ENV === "production"');
-    expect(viteConfig).toContain('...(isProductionBuild ? [] : [jsxLocPlugin()])');
+    expect(viteConfig).toContain('...(isProductionBuild ? [] : [jsxLocPlugin() as PluginOption])');
     expect(viteConfig).toContain('if (id.includes("heic2any")) return "heic2any"');
     expect(viteConfig).toContain("manualChunks(id)");
   });
