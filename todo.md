@@ -260,3 +260,8 @@
 - [x] Do not tamper with unrelated website content, styling, layout, navigation, booking, shop, admin areas outside this About description, gallery, reviews, AI Try-On, payments, notifications, domains, favicon assets, or public functionality
 - [x] Add or update focused regression coverage for the About round-image description text
 - [x] Run tests, production build, and project health checks after the About description update
+
+- [x] Create a new standalone `supabase-schema.sql` file containing the complete PostgreSQL-compatible schema for the project
+- [x] Convert the existing schema to Supabase/PostgreSQL syntax using SERIAL, TEXT/VARCHAR, CREATE TYPE enums, double-quoted identifiers where needed, and no MySQL-only syntax such as backticks or ON UPDATE CURRENT_TIMESTAMP
+- [x] Include all current project tables, including users, services, bookings, products, reviews, gallery, orders, content, availability, AI Try-On, newsletters, analytics/supporting tables, and any other schema-defined tables
+- [x] Validate the generated schema file for PostgreSQL compatibility conventions without changing the running website behavior
