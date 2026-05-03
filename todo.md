@@ -280,3 +280,10 @@
 - [x] Keep `vercel.json` focused on `client/dist` as the build output directory and a minimal non-API rewrite to `index.html`
 - [x] Validate the simplified Vercel JSON and confirm no unrelated website code changes are introduced
 - [x] Save a checkpoint for the minimal Vercel deployment-error fix
+
+- [x] Verify the actual Vite build output directory and confirm whether Vercel should use `dist`, `client/dist`, or another path without changing unrelated files
+
+- [x] Update the root package.json build script so `pnpm run build` outputs frontend files to root `public`
+- [x] Update root vercel.json so `outputDirectory` is `public`
+- [x] Validate the root build creates `public/index.html` and preserve unrelated files
+- [x] Save and sync a checkpoint to the connected GitHub repository
