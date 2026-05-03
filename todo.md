@@ -293,3 +293,22 @@
 - [x] Add or update focused tests covering public frontend routing and protected route behavior after the Vercel 403 fix
 - [x] Validate build, TypeScript, tests, and project health after the Vercel 403 fix
 - [x] Save and sync a checkpoint for the Vercel 403 routing fix
+
+- [x] Fix Vercel 403 Forbidden on all public routes by ensuring production Express serves root `public/index.html` for every non-API route
+- [x] Preserve API and protected backend routing while applying the public SPA fallback fix
+- [x] Remove or safely default missing `VITE_ANALYTICS_ENDPOINT` and `VITE_ANALYTICS_WEBSITE_ID` usage in the frontend HTML/build
+- [x] Add or update focused tests for Vercel public route fallback and analytics variable handling
+- [x] Validate production build output, TypeScript, tests, routing behavior, and project health after the Vercel deployment fix
+- [x] Save and sync a checkpoint for the renewed Vercel 403 and analytics-variable fix
+
+- [x] Re-investigate Vercel 403 Forbidden on all deployed routes including routing configuration, middleware, auth protection, storage proxy, and API route exclusions
+- [x] Check environment-variable handling, including analytics placeholders and any Supabase-related keys or configuration that could block production public access
+- [x] Ensure production Express or Vercel routing publicly serves root `public/index.html` for all non-API routes without requiring authentication
+- [x] Preserve protected API, admin, payment, webhook, OAuth, storage, and database behavior while making public frontend routes accessible
+- [x] Validate with production build, route checks, TypeScript, tests, and project health after the renewed Vercel deployment fix
+- [x] Save and sync a checkpoint for the renewed production 403 deployment fix and provide redeploy verification guidance
+
+- [x] Ensure production Express serves built frontend assets from the root `public` folder for all non-API routes
+- [x] Ensure production Express returns `public/index.html` as the SPA fallback for non-API frontend routes without blocking or rejecting them
+- [x] Validate the explicit Express public-folder fallback with build, route smoke tests, TypeScript, automated tests, and project health
+- [x] Save and sync a checkpoint for the explicit production Express frontend fallback fix

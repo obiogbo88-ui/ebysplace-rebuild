@@ -59,27 +59,45 @@ function resolveProductionStaticPath() {
   return candidates.find(candidate => fs.existsSync(path.resolve(candidate, "index.html"))) ?? candidates[0];
 }
 
+function isBackendApiRequest(url: string) {
+  const pathname = url.split("?")[0] ?? "/";
+
+  // `/api/index` is the Vercel serverless adapter entry point. When Vercel
+  // rewrites public frontend routes into that adapter, Express may see this
+  // internal path rather than the visitor-facing route. Treat it as frontend
+  // traffic so the SPA fallback still returns public/index.html instead of
+  // passing through to a platform-level 403/404.
+  if (pathname === "/api/index" || pathname === "/api/index/") {
+    return false;
+  }
+
+  return pathname === "/api" || pathname.startsWith("/api/");
+}
+
 export function serveStatic(app: Express) {
   const distPath =
     process.env.NODE_ENV === "development"
       ? path.resolve(import.meta.dirname, "../..", "dist", "public")
       : resolveProductionStaticPath();
-  if (!fs.existsSync(path.resolve(distPath, "index.html"))) {
+  const indexPath = path.resolve(distPath, "index.html");
+
+  if (!fs.existsSync(indexPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, { fallthrough: true, index: false }));
 
-  // Fall through to index.html for public SPA routes only. API routes must remain
-  // handled by their dedicated middleware so protected/admin behavior is preserved.
+  // Fall through to public/index.html for every frontend route. Only real API
+  // requests are excluded; the Vercel adapter path itself is intentionally not
+  // treated as a backend API route, so public pages are never blocked here.
   app.use("*", (req, res, next) => {
-    if (req.originalUrl.startsWith("/api/")) {
+    if (isBackendApiRequest(req.originalUrl || req.url)) {
       return next();
     }
 
-    res.sendFile(path.resolve(distPath, "index.html"), error => {
+    res.status(200).sendFile(indexPath, error => {
       if (error) next(error);
     });
   });
