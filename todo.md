@@ -318,7 +318,7 @@
 - [x] Ensure Express request/response methods such as `post`, `query`, `get`, `status`, `cookie`, `clearCookie`, and `redirect` are recognised by TypeScript in the Vercel build
 - [x] Validate the server compiles and runs correctly for Vercel after the Express type fixes
 - [x] Run automated tests, TypeScript checks, production build, local route smoke tests, and project health checks after the Vercel TypeScript fix
-- [ ] Save and sync a checkpoint for the Vercel TypeScript and 403 deployment fix
+- [x] Save and sync a checkpoint for the Vercel TypeScript and 403 deployment fix
 
 - [x] Push the TypeScript, Vercel production fallback, and non-API 200 route fixes to the connected GitHub repository through the checkpoint sync workflow
 - [x] Confirm production Express returns HTTP 200 with `public/index.html` for all non-API GET requests instead of 403
@@ -327,4 +327,4 @@
 - [x] Fix the `vite.config.ts` plugin type error without changing website behavior
 - [x] Temporarily set `noImplicitAny` to `false` in `tsconfig.json` to unblock Vercel deployment compilation
 - [x] Re-run TypeScript checks and Vercel-oriented production build after the Express and Vite typing fixes
-- [ ] Sync the completed TypeScript/Vercel compilation fixes to the connected GitHub repository
+- [x] Sync the completed TypeScript/Vercel compilation fixes to the connected GitHub repository
