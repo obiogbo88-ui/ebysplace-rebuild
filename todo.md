@@ -365,3 +365,18 @@
 - [x] Preserve protected API, admin, OAuth, Stripe webhook, storage proxy, and authenticated tRPC behavior while fixing public route access
 - [x] Validate the Vercel 403 fix with production build, route smoke tests, TypeScript, and automated regression tests
 - [x] Save and sync a checkpoint for the production 403 public-index fallback fix to GitHub
+
+- [x] Investigate the admin panel `TypeError: Invalid URL` on Vercel by tracing use of `VITE_FRONTEND_FORGE_API_URL`, `BUILT_IN_FORGE_API_URL`, and any API base URL construction
+- [x] Fix admin URL handling so Vercel does not construct `new URL()` with an empty, relative, or undefined base
+- [x] Validate the admin route, TypeScript, automated tests, and production build after the Invalid URL fix
+- [x] Save and sync a checkpoint for the Vercel admin Invalid URL fix to GitHub
+
+- [x] Perform a comprehensive live Vercel audit of the Eby’s Place deployment across Home, Services, Booking, Shop, Gallery, AI Try-On, Reviews, Braiders Near Me, policy pages, admin, checkout, and API-backed content.
+- [x] Fix every visible live Vercel issue found during the audit, including broken images, missing seeded catalogue/content, page errors, layout regressions, broken links, and production-only runtime failures.
+- [x] Fix the admin dashboard `TypeError: Invalid URL` and ensure admin routes fail gracefully when optional production environment services are unavailable.
+- [x] Replace or proxy `/manus-storage/*` image references so production Vercel pages display all public images reliably outside the Manus preview environment.
+- [x] Seed production-compatible default services, products, gallery items, reviews, and website content so public pages are not empty or limited to one service.
+- [x] Validate booking deposit checkout and shop checkout against Stripe test mode using the standard test card path where possible without submitting real payments.
+- [x] Run automated tests, production build checks, local smoke tests, and live-route verification after the Vercel repair pass.
+- [x] Save and sync a checkpoint to GitHub after all verified live-site repair work is complete.
+- [x] Address the supplied Vercel deployment URL returning Vercel `401` login/SSO protection for unauthenticated visitors, either by documenting the required Vercel setting change or validating a public production deployment URL.
