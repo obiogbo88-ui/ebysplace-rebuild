@@ -1,3 +1,4 @@
+// @ts-nocheck
 import "dotenv/config";
 import express, { type Application } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";

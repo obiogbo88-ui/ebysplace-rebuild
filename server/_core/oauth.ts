@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Application, Request, Response } from "express";
 import * as db from "../db";

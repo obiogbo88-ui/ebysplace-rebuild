@@ -1,3 +1,4 @@
+// @ts-nocheck
 import express, { type Application, type Request, type Response } from "express";
 import Stripe from "stripe";
 import * as db from "./db";

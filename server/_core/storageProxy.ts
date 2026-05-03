@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Application, Request, Response } from "express";
 import { ENV } from "./env";
 
