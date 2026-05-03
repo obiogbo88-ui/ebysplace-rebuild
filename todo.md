@@ -265,3 +265,8 @@
 - [x] Convert the existing schema to Supabase/PostgreSQL syntax using SERIAL, TEXT/VARCHAR, CREATE TYPE enums, double-quoted identifiers where needed, and no MySQL-only syntax such as backticks or ON UPDATE CURRENT_TIMESTAMP
 - [x] Include all current project tables, including users, services, bookings, products, reviews, gallery, orders, content, availability, AI Try-On, newsletters, analytics/supporting tables, and any other schema-defined tables
 - [x] Validate the generated schema file for PostgreSQL compatibility conventions without changing the running website behavior
+
+- [x] Create a root-level `vercel.json` for Vercel deployment of the full-stack Vite + Express app
+- [x] Configure API traffic to route to the Express server entry point and all non-API routes to the client build
+- [x] Validate the Vercel configuration JSON and confirm unrelated website source files are unchanged
+- [x] Save a checkpoint for the Vercel configuration update
