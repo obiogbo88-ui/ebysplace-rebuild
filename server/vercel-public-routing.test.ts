@@ -6,15 +6,23 @@ const projectRoot = resolve(__dirname, "..");
 const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf8");
 
 describe("Vercel public frontend routing", () => {
-  it("routes every Vercel request into the Express serverless adapter", () => {
+  it("serves public frontend routes from the static HTML shell while preserving API and storage proxy routes", () => {
     const vercelConfig = JSON.parse(readProjectFile("vercel.json"));
 
     expect(vercelConfig.outputDirectory).toBe("public");
     expect(vercelConfig.functions["api/index.ts"].includeFiles).toBe("public/**");
     expect(vercelConfig.rewrites).toEqual([
       {
-        source: "/(.*)",
+        source: "/api/:path*",
         destination: "/api/index",
+      },
+      {
+        source: "/manus-storage/:path*",
+        destination: "/api/index",
+      },
+      {
+        source: "/:path*",
+        destination: "/index.html",
       },
     ]);
   });
@@ -48,7 +56,7 @@ describe("Vercel public frontend routing", () => {
     expect(staticServerSource).toContain("res.status(200).sendFile(indexPath");
   });
 
-  it("registers the same public static fallback in the Vercel Express adapter after API middleware", () => {
+  it("keeps a secondary public static fallback in the Vercel Express adapter after API middleware", () => {
     const vercelSource = readProjectFile("server/vercel.ts");
 
     expect(vercelSource).toContain('import { serveStatic } from "./_core/vite";');

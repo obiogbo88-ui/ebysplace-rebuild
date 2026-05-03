@@ -358,3 +358,10 @@
 - [x] Add `// @ts-nocheck` to the top of `vite.config.ts` to bypass the Vercel build type-check failure
 - [x] Validate the no-check workaround with TypeScript, automated tests, production build, and route smoke tests
 - [x] Save and sync a checkpoint for the no-check Vercel TypeScript workaround to GitHub
+
+- [x] Inspect `server/vercel.ts` for production middleware, authentication, IP blocking, access control, or routing that could reject all Vercel requests with 403
+- [x] Inspect `server/_core/index.ts` for production middleware, authentication, IP blocking, access control, or routing that could reject all requests with 403
+- [x] Ensure `/` and all non-API public routes serve `public/index.html` with HTTP 200 without requiring authentication in production
+- [x] Preserve protected API, admin, OAuth, Stripe webhook, storage proxy, and authenticated tRPC behavior while fixing public route access
+- [x] Validate the Vercel 403 fix with production build, route smoke tests, TypeScript, and automated regression tests
+- [x] Save and sync a checkpoint for the production 403 public-index fallback fix to GitHub
