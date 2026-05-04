@@ -10,7 +10,8 @@ describe("Vercel public frontend routing", () => {
     const vercelConfig = JSON.parse(readProjectFile("vercel.json"));
 
     expect(vercelConfig.outputDirectory).toBe("public");
-    expect(vercelConfig.functions["api/index.ts"].includeFiles).toBe("public/**");
+    expect(vercelConfig.buildCommand).toBe("pnpm run build:vercel");
+    expect(vercelConfig.functions["api/index.js"].includeFiles).toBe("public/**");
     expect(vercelConfig.rewrites).toEqual([
       {
         source: "/api/:path*",
@@ -23,10 +24,13 @@ describe("Vercel public frontend routing", () => {
     ]);
   });
 
-  it("exposes a Vercel API entry point that delegates to the Express adapter", () => {
-    const apiEntrySource = readProjectFile("api/index.ts").trim();
+  it("exposes a bundled Vercel API entry point without unresolved local server imports", () => {
+    const apiEntrySource = readProjectFile("api/index.js");
 
-    expect(apiEntrySource).toBe('export { default } from "../server/vercel";');
+    expect(apiEntrySource).toContain("// server/vercel.ts");
+    expect(apiEntrySource).toContain("vercel_default as default");
+    expect(apiEntrySource).not.toContain('from "../server/vercel"');
+    expect(apiEntrySource).not.toContain("from '../server/vercel'");
   });
 
   it("serves production frontend assets from the root public build output before legacy locations", () => {

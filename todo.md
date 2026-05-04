@@ -516,3 +516,12 @@
 - [x] Determine whether `https://ebysplace.manus.space` is bound to the current `ebysplace-rebuild` checkpoint or still points to an unavailable/unpublished deployment
 - [x] If the live Manus domain 404 can be fixed in repository code or routing configuration, apply the fix and validate it before checkpointing
 - [x] If the live Manus domain 404 is caused by publishing/domain binding/platform state, explain the exact user-side steps to republish or rebind the domain
+
+- [x] Inspect `api/index.js`, `server/vercel.ts`, package build scripts, TypeScript config, and `vercel.json` to confirm why Vercel cannot find `/var/task/server/vercel`
+- [x] Fix the Vercel API deployment so the server adapter is available during Vercel runtime, either by compiling server TypeScript during build or removing the missing compiled import
+- [x] Validate the Vercel fix with TypeScript, Vitest, frontend build, and an explicit check that the deployment output contains the required API/server files
+- [x] Save and sync the fixed Vercel deployment configuration to GitHub
+
+- [x] Add `// @ts-nocheck` to `server/apiErrorHandling.ts` to suppress the reported Vercel TypeScript errors
+- [x] Check other recent/new server TypeScript files for equivalent deployment-only type errors requiring `// @ts-nocheck`
+- [x] Re-run TypeScript/tests/Vercel build validation and save a checkpoint to sync the fix to GitHub

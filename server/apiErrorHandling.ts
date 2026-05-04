@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { ErrorRequestHandler, NextFunction, Request, Response } from "express";
 
 function isApiRequest(req: Request) {
