@@ -81,4 +81,23 @@ describe("live production repair safeguards", () => {
     expect(drizzleConfigSource).toContain('dialect: "postgresql"');
     expect(drizzleConfigSource).not.toContain('dialect: "mysql"');
   });
+
+  it("keeps the Supabase production seed runner on the corrected project URL and public media bucket", () => {
+    const seedSource = readProjectFile("scripts/seed-supabase-content.ts");
+    const packageSource = readProjectFile("package.json");
+
+    expect(seedSource).toContain("https://jcyoipbiplzrocrrhwkp.supabase.co");
+    expect(seedSource).toContain("`${supabaseUrl}/rest/v1/${path}${query}`");
+    expect(seedSource).toContain('await upsertRows("services", serviceRows, "slug")');
+    expect(seedSource).toContain('await upsertRows("products", seedProducts, "slug")');
+    expect(seedSource).toContain('await upsertRows("websiteSections", seedWebsiteSections, "sectionKey")');
+    expect(seedSource).toContain('await insertRows("productVariants", rows)');
+    expect(seedSource).toContain('await insertRows("reviews", missing)');
+    expect(seedSource).toContain('await insertRows("galleryImages", [{ ...item, isPublished: "true" }])');
+    expect(seedSource).toContain('const BUCKET_NAME = "ebysplace-media"');
+    expect(seedSource).toContain("/storage/v1/object/public/${BUCKET_NAME}/");
+    expect(seedSource).not.toContain("jcyoipbiplzrocrnhwkp");
+    expect(seedSource).not.toContain("/manus-storage/");
+    expect(packageSource).toContain('"seed:supabase": "tsx scripts/seed-supabase-content.ts"');
+  });
 });

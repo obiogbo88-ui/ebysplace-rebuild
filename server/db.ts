@@ -111,7 +111,7 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
-const imageBySlug: Record<string, string> = {
+export const imageBySlug: Record<string, string> = {
   "knotless-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
   "box-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
   "goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
@@ -134,7 +134,7 @@ const imageBySlug: Record<string, string> = {
   "braid-takedown": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png"
 };
 
-const seedServices = [
+export const seedServices = [
   {
     name: "Knotless Braids",
     slug: "knotless-braids",
@@ -377,14 +377,14 @@ const seedServices = [
   },
 ];
 
-const seedProducts = [
+export const seedProducts = [
   { name: "Satin Edge Scarf", slug: "satin-edge-scarf", seoTitle: "Satin Edge Scarf for Braids | Eby’s Place", seoDescription: "Protect fresh braids overnight with a silky satin edge scarf from Eby’s Place, designed to preserve edges and reduce friction.", category: "Accessories" as const, description: "A silky black satin scarf for preserving edges and protecting fresh braids overnight.", price: "18.00", imageUrl: imageBySlug["edge-control-styling"], badge: "Best Seller", stockStatus: "in_stock" as const, stockQuantity: 34, isFeatured: "true" as const },
   { name: "Scalp Comfort Oil", slug: "scalp-comfort-oil", seoTitle: "Scalp Comfort Oil for Protective Styles | Eby’s Place", seoDescription: "Shop lightweight scalp comfort oil for braids, twists, and locs, created to support shine and comfort between salon appointments.", category: "Aftercare" as const, description: "A lightweight scalp oil for protective styles, designed to support comfort and shine.", price: "14.00", imageUrl: imageBySlug["hair-wash-prep"], badge: "Aftercare", stockStatus: "low_stock" as const, stockQuantity: 8, isFeatured: "true" as const },
   { name: "Premium Braiding Hair", slug: "premium-braiding-hair", seoTitle: "Premium Braiding Hair in Natural and Statement Shades | Eby’s Place", seoDescription: "Buy soft-touch premium braiding hair from Eby’s Place in natural tones and statement shades for protective styles.", category: "Hair Attachments" as const, description: "Soft-touch braiding hair available in classic natural tones and statement shades.", price: "6.50", imageUrl: imageBySlug["beads-accessories"], badge: "Salon Pick", stockStatus: "in_stock" as const, stockQuantity: 120, isFeatured: "true" as const },
   { name: "Braid Care Starter Kit", slug: "braid-care-starter-kit", seoTitle: "Braid Care Starter Kit | Eby’s Place", seoDescription: "A practical starter kit for maintaining fresh protective styles between Eby’s Place appointments.", category: "Aftercare" as const, description: "A simple aftercare bundle with satin protection, scalp comfort guidance, and braid maintenance essentials.", price: "28.00", imageUrl: imageBySlug["boho-goddess-braids"], badge: "New", stockStatus: "in_stock" as const, stockQuantity: 20, isFeatured: "true" as const },
 ];
 
-const seedReviews = [
+export const seedReviews = [
   { customerName: "Amara", rating: 5, reviewText: "The most comfortable braiding experience I have had. My scalp felt cared for and the finish was beautiful.", status: "approved" as const, source: "website" },
   { customerName: "Naomi", rating: 5, reviewText: "Eby’s Place feels premium from booking to the final look. The braids were neat, lightweight, and lasted so well.", status: "approved" as const, source: "website" },
   { customerName: "Tia", rating: 5, reviewText: "I booked for my daughter and the team was so patient and gentle. A truly family-friendly service.", status: "approved" as const, source: "website" },
@@ -423,7 +423,7 @@ async function ensureSeedReviews(db: Awaited<ReturnType<typeof getDb>>) {
   }
 }
 
-const seedGallery = [
+export const seedGallery = [
   { title: "Knotless Braids", category: "Braids" as const, imageUrl: imageBySlug["knotless-braids"], altText: "HD model wearing Knotless Braids by Eby’s Place", sortOrder: 1 },
   { title: "Box Braids", category: "Braids" as const, imageUrl: imageBySlug["box-braids"], altText: "HD model wearing Box Braids by Eby’s Place", sortOrder: 2 },
   { title: "Goddess Braids", category: "Braids" as const, imageUrl: imageBySlug["goddess-braids"], altText: "HD model wearing Goddess Braids by Eby’s Place", sortOrder: 3 },
@@ -481,7 +481,7 @@ async function ensureSeedGallery(db: Awaited<ReturnType<typeof getDb>>) {
   }
 }
 
-const seedWebsiteSections = [
+export const seedWebsiteSections = [
   {
     sectionKey: "about_us",
     eyebrow: "Our Story",

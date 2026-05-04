@@ -409,3 +409,13 @@
 - [x] Add or update focused regression coverage for PostgreSQL database connection behavior, `/api/trpc` JSON responses, and removal of the header video Manus-storage reference
 - [x] Validate tests, TypeScript checks, production build, local API route smoke checks, media-reference scan, and project health after the production API and header video fixes
 - [x] Save and sync a checkpoint for the Supabase PostgreSQL API fix and header video media-reference fix
+
+- [x] Seed the Supabase PostgreSQL production database with the full Eby’s Place services catalogue instead of the current limited three-card content set
+- [x] Seed the Supabase PostgreSQL production database with full products, approved reviews, gallery items, and editable website sections required by the public pages and admin dashboard
+- [x] Verify the production `DATABASE_URL` path uses the Supabase PostgreSQL database without falling back to seed-only in-memory content during production requests
+- [x] Verify the Supabase storage bucket `ebysplace-media` under project `https://jcyoipbiplzrocrrhwkp.supabase.co` contains the referenced media objects and serves them publicly
+- [x] Repair service, product, gallery, review, homepage, and website-section image URLs so they use correct public Supabase storage URLs and no broken project hostname
+- [x] Add or update regression coverage for full database seeding and public image URL accessibility expectations
+- [x] Validate tests, TypeScript checks, production build, local tRPC smoke checks, seeded record counts, and representative Supabase media URL HTTP checks after the seed/media repair
+- [x] Save and sync a checkpoint for the Supabase production seed and media URL repair
+- [x] Audit all current seed, migration, mapping, and validation steps to ensure they consistently use corrected Supabase URL `https://jcyoipbiplzrocrrhwkp.supabase.co` and not the earlier mistyped hostname
