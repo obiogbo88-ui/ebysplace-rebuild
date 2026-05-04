@@ -401,3 +401,11 @@
 - [x] Save and sync the Supabase media migration script, mapping, reference updates, and TODO completion to GitHub.
 
 - [x] Retry Supabase media migration with corrected project URL `https://jcyoipbiplzrocrrhwkp.supabase.co` and validate DNS, bucket access, and service-role authentication before replacing code references.
+
+- [x] Fix Vercel `/api/trpc` 500 responses by making the server database connection compatible with the Supabase PostgreSQL `DATABASE_URL`
+- [x] Check `server/_core/db.ts` and related database helpers for MySQL-only adapter or connection assumptions that break against Supabase PostgreSQL
+- [x] Preserve protected API, admin, booking, shop, checkout, notification, and public content behavior while fixing the PostgreSQL database connection
+- [x] Remove, migrate, or temporarily disable the remaining header video `/manus-storage/` reference so production no longer depends on Manus storage for that asset
+- [x] Add or update focused regression coverage for PostgreSQL database connection behavior, `/api/trpc` JSON responses, and removal of the header video Manus-storage reference
+- [x] Validate tests, TypeScript checks, production build, local API route smoke checks, media-reference scan, and project health after the production API and header video fixes
+- [x] Save and sync a checkpoint for the Supabase PostgreSQL API fix and header video media-reference fix

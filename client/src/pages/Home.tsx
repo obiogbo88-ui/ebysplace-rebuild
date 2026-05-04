@@ -5,7 +5,6 @@ import {
   Crown,
   Heart,
   Menu,
-  Play,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
@@ -17,7 +16,7 @@ import { useState } from "react";
 
 const LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
 const HEADER_LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png";
-const LANDING_VIDEO_SRC = "/manus-storage/ebysplace_header_video_64d5fea4.mp4";
+const LANDING_HERO_IMAGE_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_knotless_braids_7dbbea62-45d4296622.png";
 
 const navLinks = [
   { href: "/services", label: "Services" },
@@ -199,15 +198,13 @@ export default function Home() {
       <main>
         <section className="relative isolate overflow-hidden">
           <div className="hero-video-reference relative flex items-center">
-            <video
+            <img
               className="absolute inset-0 h-full w-full object-cover"
-              src={LANDING_VIDEO_SRC}
-              autoPlay
-              muted
-              loop
-              playsInline
-              poster="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_knotless_braids_7dbbea62-45d4296622.png"
-              aria-label="Eby’s Place landing video"
+              src={LANDING_HERO_IMAGE_SRC}
+              alt="Eby’s Place pain-free braiding hero style"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
             />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.34)_45%,rgba(247,238,222,.08)),linear-gradient(180deg,rgba(247,238,222,.06),rgba(20,12,5,.72))]" />
             <div className="container relative z-10 py-20 md:py-28">

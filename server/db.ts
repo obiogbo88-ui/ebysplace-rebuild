@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import {
   analyticsEvents,
   bookings,
@@ -18,16 +19,53 @@ import {
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
+let _pool: Pool | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 let _seeded = false;
+let _unsupportedDatabaseUrlWarned = false;
+let _databaseConnectionFailed = false;
+
+function isPostgresConnectionString(connectionString: string) {
+  try {
+    const parsed = new URL(connectionString);
+    return parsed.protocol === "postgres:" || parsed.protocol === "postgresql:";
+  } catch {
+    return false;
+  }
+}
+
+function requiresSsl(connectionString: string) {
+  return /supabase\.co|sslmode=require/i.test(connectionString);
+}
 
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) return null;
+  if (!isPostgresConnectionString(connectionString)) {
+    if (!_unsupportedDatabaseUrlWarned) {
+      console.warn("[Database] Ignoring non-PostgreSQL DATABASE_URL. The production app expects a Supabase PostgreSQL connection string and will use safe seed-data fallbacks until one is configured.");
+      _unsupportedDatabaseUrlWarned = true;
+    }
+    return null;
+  }
+  if (_databaseConnectionFailed) return null;
+  if (!_db) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _pool = new Pool({
+        connectionString,
+        max: 3,
+        idleTimeoutMillis: 10_000,
+        connectionTimeoutMillis: 10_000,
+        ssl: requiresSsl(connectionString) ? { rejectUnauthorized: false } : undefined,
+      });
+      await _pool.query("select 1");
+      _db = drizzle(_pool);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.warn("[Database] Failed to initialise PostgreSQL connection; falling back to seed data for public reads:", error);
+      await _pool?.end().catch(() => undefined);
+      _pool = null;
       _db = null;
+      _databaseConnectionFailed = true;
     }
   }
   return _db;
@@ -60,7 +98,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  await db
+    .insert(users)
+    .values(values)
+    .onConflictDoUpdate({ target: users.openId, set: { ...updateSet, updatedAt: new Date() } });
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -408,19 +449,21 @@ function isUsableImageUrl(value: unknown) {
 async function ensureSeedProducts(db: Awaited<ReturnType<typeof getDb>>) {
   if (!db) return;
   for (const product of seedProducts) {
-    await db.insert(products).values(product).onDuplicateKeyUpdate({
+    await db.insert(products).values(product).onConflictDoUpdate({
+      target: products.slug,
       set: {
-        name: sql`VALUES(name)`,
-        seoTitle: sql`VALUES(seoTitle)`,
-        seoDescription: sql`VALUES(seoDescription)`,
-        category: sql`VALUES(category)`,
-        description: sql`VALUES(description)`,
-        price: sql`VALUES(price)`,
-        imageUrl: sql`VALUES(imageUrl)`,
-        badge: sql`VALUES(badge)`,
-        stockStatus: sql`VALUES(stockStatus)`,
-        stockQuantity: sql`VALUES(stockQuantity)`,
-        isFeatured: sql`VALUES(isFeatured)`,
+        name: product.name,
+        seoTitle: product.seoTitle,
+        seoDescription: product.seoDescription,
+        category: product.category,
+        description: product.description,
+        price: product.price,
+        imageUrl: product.imageUrl,
+        badge: product.badge,
+        stockStatus: product.stockStatus,
+        stockQuantity: product.stockQuantity,
+        isFeatured: product.isFeatured,
+        updatedAt: new Date(),
       },
     });
   }
@@ -458,22 +501,23 @@ async function seedIfNeeded() {
   const db = await getDb();
   if (!db || _seeded) return;
   _seeded = true;
-  await db
-    .insert(services)
-    .values(seedServices)
-    .onDuplicateKeyUpdate({
+  for (const service of seedServices) {
+    await db.insert(services).values(service).onConflictDoUpdate({
+      target: services.slug,
       set: {
-        name: sql`VALUES(name)`,
-        category: sql`VALUES(category)`,
-        description: sql`VALUES(description)`,
-        duration: sql`VALUES(duration)`,
-        priceFrom: sql`VALUES(priceFrom)`,
-        badge: sql`VALUES(badge)`,
-        isFeatured: sql`VALUES(isFeatured)`,
-        imageUrl: sql`VALUES(imageUrl)`,
-        sortOrder: sql`VALUES(sortOrder)`,
+        name: service.name,
+        category: service.category,
+        description: service.description,
+        duration: service.duration,
+        priceFrom: service.priceFrom,
+        badge: service.badge,
+        isFeatured: service.isFeatured,
+        imageUrl: service.imageUrl,
+        sortOrder: service.sortOrder,
+        updatedAt: new Date(),
       },
     });
+  }
   await ensureSeedProducts(db);
   const productRows = await db.select().from(products);
   const variantRows = await db.select().from(productVariants);
@@ -535,14 +579,14 @@ export async function listApprovedReviews() {
 export async function submitReview(input: { customerName: string; rating: number; reviewText: string }) {
   const db = await getDb();
   if (!db) return { id: Date.now(), status: "pending" as const };
-  const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).$returningId();
+  const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).returning({ id: reviews.id });
   return { id: inserted[0]?.id ?? 0, status: "pending" as const };
 }
 
 export async function subscribeNewsletter(email: string, productAlerts = false) {
   const db = await getDb();
   if (!db) return { success: true };
-  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onDuplicateKeyUpdate({ set: { productAlerts: productAlerts ? "true" : "false" } });
+  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onConflictDoUpdate({ target: newsletterSubscribers.email, set: { productAlerts: productAlerts ? "true" : "false" } });
   return { success: true };
 }
 
@@ -561,7 +605,7 @@ export async function listGallery(category?: string) {
 export async function createBooking(input: typeof bookings.$inferInsert) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
-  const inserted = await db.insert(bookings).values(input).$returningId();
+  const inserted = await db.insert(bookings).values(input).returning({ id: bookings.id });
   return { id: inserted[0]?.id ?? 0 };
 }
 
@@ -580,7 +624,7 @@ export async function markBookingDepositPaid(stripeCheckoutSessionId: string, st
 export async function createOrderWithItems(input: { customerName: string; customerEmail: string; customerPhone?: string; addressLine1: string; city: string; county?: string; postcode: string; deliveryNote?: string; items: Array<{ productId: number; variantId?: number; productName: string; variantName?: string; quantity: number; unitPrice: string }> }) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
-  const inserted = await db.insert(orders).values({ customerName: input.customerName, customerEmail: input.customerEmail, customerPhone: input.customerPhone, addressLine1: input.addressLine1, city: input.city, county: input.county, postcode: input.postcode, deliveryNote: input.deliveryNote, status: "draft" }).$returningId();
+  const inserted = await db.insert(orders).values({ customerName: input.customerName, customerEmail: input.customerEmail, customerPhone: input.customerPhone, addressLine1: input.addressLine1, city: input.city, county: input.county, postcode: input.postcode, deliveryNote: input.deliveryNote, status: "draft" }).returning({ id: orders.id });
   const orderId = inserted[0]?.id ?? 0;
   if (orderId && input.items.length) await db.insert(orderItems).values(input.items.map((item) => ({ ...item, orderId })));
   return { id: orderId };
@@ -608,7 +652,7 @@ export async function recordAnalytics(eventName: string, pagePath: string, metad
 export async function createTryOnGeneration(input: { styleName: string; originalImageUrl: string; generatedImageUrl?: string; status?: "pending" | "completed" | "failed"; errorMessage?: string }) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
-  const inserted = await db.insert(tryOnGenerations).values({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, generatedImageUrl: input.generatedImageUrl, status: input.status ?? "pending", errorMessage: input.errorMessage }).$returningId();
+  const inserted = await db.insert(tryOnGenerations).values({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, generatedImageUrl: input.generatedImageUrl, status: input.status ?? "pending", errorMessage: input.errorMessage }).returning({ id: tryOnGenerations.id });
   return { id: inserted[0]?.id ?? 0 };
 }
 
@@ -671,7 +715,7 @@ export async function updateProduct(id: number, input: Partial<typeof products.$
 export async function createProduct(input: typeof products.$inferInsert, variants: Array<{ name: string; colourHex?: string; stockQuantity: number }> = []) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const inserted = await db.insert(products).values(input).$returningId();
+  const inserted = await db.insert(products).values(input).returning({ id: products.id });
   const productId = inserted[0]?.id;
   if (productId && variants.length) await db.insert(productVariants).values(variants.map((variant) => ({ ...variant, productId })));
   return { id: productId, ...input };
@@ -702,14 +746,14 @@ export async function updateProductStock(id: number, stockQuantity: number, stoc
 export async function addGalleryImage(input: typeof galleryImages.$inferInsert) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const result = await db.insert(galleryImages).values(input).$returningId();
+  const result = await db.insert(galleryImages).values(input).returning({ id: galleryImages.id });
   return { id: result[0]?.id, ...input };
 }
 
 export async function updateWebsiteSection(sectionKey: string, input: Partial<typeof websiteSections.$inferInsert>) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  await db.insert(websiteSections).values({ sectionKey, title: input.title ?? sectionKey, ...input }).onDuplicateKeyUpdate({ set: input });
+  await db.insert(websiteSections).values({ sectionKey, title: input.title ?? sectionKey, ...input }).onConflictDoUpdate({ target: websiteSections.sectionKey, set: { ...input, updatedAt: new Date() } });
   return { sectionKey, ...input };
 }
 
