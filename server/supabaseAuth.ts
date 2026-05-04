@@ -20,11 +20,23 @@ type SupabaseTokenResponse = {
   user: SupabaseAuthUser;
 };
 
+function toTrpcError(error: unknown, fallbackMessage: string) {
+  if (error instanceof TRPCError) return error;
+  const message = error instanceof Error && error.message ? error.message : fallbackMessage;
+  return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
+}
+
 function getSupabaseAuthConfig() {
   const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceRoleKey) {
+    console.error("[Auth] Supabase Auth configuration missing", {
+      hasSupabaseUrl: Boolean(url),
+      hasServiceRoleKey: Boolean(serviceRoleKey),
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV,
+    });
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "Supabase Auth is not configured. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to the deployment environment.",
@@ -35,7 +47,7 @@ function getSupabaseAuthConfig() {
 }
 
 function getBearerToken(req: Request) {
-  const header = req.headers.authorization;
+  const header = req.headers?.authorization;
   if (typeof header !== "string") return null;
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match?.[1]?.trim() || null;
@@ -48,21 +60,46 @@ function getDisplayName(user: SupabaseAuthUser, fallbackEmail: string) {
 
 async function supabaseAuthFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const { url, serviceRoleKey } = getSupabaseAuthConfig();
-  const response = await fetch(`${url}/auth/v1${path}`, {
-    ...init,
-    headers: {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
+  let response: Response;
+
+  try {
+    response = await fetch(`${url}/auth/v1${path}`, {
+      ...init,
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        "Content-Type": "application/json",
+        ...(init.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    console.error("[Auth] Supabase Auth network request failed", { path, method: init.method ?? "GET", error });
+    throw new TRPCError({ code: "BAD_GATEWAY", message: "Unable to reach Supabase Auth. Check SUPABASE_URL and network access." });
+  }
+
+  const body = await response.text().catch((error) => {
+    console.error("[Auth] Failed reading Supabase Auth response body", { path, status: response.status, error });
+    return "";
   });
 
-  const body = await response.text();
-  const json = body ? JSON.parse(body) : null;
+  let json: any = null;
+  if (body) {
+    try {
+      json = JSON.parse(body);
+    } catch (error) {
+      console.error("[Auth] Supabase Auth returned non-JSON response", {
+        path,
+        status: response.status,
+        bodyPreview: body.slice(0, 500),
+        error,
+      });
+      throw new TRPCError({ code: "BAD_GATEWAY", message: "Supabase Auth returned an invalid response." });
+    }
+  }
 
   if (!response.ok) {
     const message = typeof json?.msg === "string" ? json.msg : typeof json?.message === "string" ? json.message : "Supabase Auth request failed.";
+    console.error("[Auth] Supabase Auth request failed", { path, method: init.method ?? "GET", status: response.status, message });
     throw new TRPCError({ code: response.status === 401 || response.status === 400 ? "UNAUTHORIZED" : "BAD_REQUEST", message });
   }
 
@@ -71,38 +108,46 @@ async function supabaseAuthFetch<T>(path: string, init: RequestInit = {}): Promi
 
 export async function signInAdminWithPassword(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
-  if (normalizedEmail !== ADMIN_EMAIL) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Only the configured Eby’s Place administrator can sign in." });
-  }
+  try {
+    if (normalizedEmail !== ADMIN_EMAIL) {
+      console.error("[Auth] Rejected admin sign-in for non-admin email", { email: normalizedEmail });
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "Only the configured Eby’s Place administrator can sign in." });
+    }
 
-  const session = await supabaseAuthFetch<SupabaseTokenResponse>("/token?grant_type=password", {
-    method: "POST",
-    body: JSON.stringify({ email: normalizedEmail, password }),
-  });
+    const session = await supabaseAuthFetch<SupabaseTokenResponse>("/token?grant_type=password", {
+      method: "POST",
+      body: JSON.stringify({ email: normalizedEmail, password }),
+    });
 
-  if (!session.access_token || !session.user?.id) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Supabase did not return a valid session." });
-  }
+    if (!session.access_token || !session.user?.id) {
+      console.error("[Auth] Supabase returned an incomplete admin session", { email: normalizedEmail, hasAccessToken: Boolean(session.access_token), hasUserId: Boolean(session.user?.id) });
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "Supabase did not return a valid session." });
+    }
 
-  await upsertUser({
-    openId: session.user.id,
-    email: normalizedEmail,
-    name: getDisplayName(session.user, normalizedEmail),
-    loginMethod: "supabase_password",
-    role: "admin",
-    lastSignedIn: new Date(),
-  });
-
-  return {
-    accessToken: session.access_token,
-    expiresAt: session.expires_at ?? Math.floor(Date.now() / 1000) + session.expires_in,
-    user: {
+    await upsertUser({
       openId: session.user.id,
       email: normalizedEmail,
       name: getDisplayName(session.user, normalizedEmail),
-      role: "admin" as const,
-    },
-  };
+      loginMethod: "supabase_password",
+      role: "admin",
+      lastSignedIn: new Date(),
+    });
+
+    return {
+      accessToken: session.access_token,
+      expiresAt: session.expires_at ?? Math.floor(Date.now() / 1000) + session.expires_in,
+      user: {
+        openId: session.user.id,
+        email: normalizedEmail,
+        name: getDisplayName(session.user, normalizedEmail),
+        role: "admin" as const,
+      },
+    };
+  } catch (error) {
+    const safeError = toTrpcError(error, "Admin sign-in failed.");
+    console.error("[Auth] Admin sign-in failed", { email: normalizedEmail, code: safeError.code, message: safeError.message, stack: safeError.stack });
+    throw safeError;
+  }
 }
 
 export async function authenticateSupabaseRequest(req: Request) {
@@ -115,7 +160,11 @@ export async function authenticateSupabaseRequest(req: Request) {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    if (!user.id || !user.email) return null;
+    if (!user.id || !user.email) {
+      console.error("[Auth] Supabase bearer token returned an incomplete user", { hasUserId: Boolean(user.id), hasEmail: Boolean(user.email) });
+      return null;
+    }
+
     const normalizedEmail = user.email.trim().toLowerCase();
     const role = normalizedEmail === ADMIN_EMAIL ? "admin" : "user";
     const localUser = {
@@ -130,7 +179,7 @@ export async function authenticateSupabaseRequest(req: Request) {
     await upsertUser(localUser);
     return localUser;
   } catch (error) {
-    console.warn("[Auth] Supabase bearer token verification failed", error);
+    console.error("[Auth] Supabase bearer token verification failed", error);
     return null;
   }
 }

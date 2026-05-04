@@ -23,7 +23,9 @@ let _pool: Pool | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 let _seeded = false;
 let _unsupportedDatabaseUrlWarned = false;
+let _missingDatabaseUrlWarned = false;
 let _databaseConnectionFailed = false;
+let _lastDatabaseUrlFingerprint: string | null = null;
 
 function isPostgresConnectionString(connectionString: string) {
   try {
@@ -38,12 +40,48 @@ function requiresSsl(connectionString: string) {
   return /supabase\.co|sslmode=require/i.test(connectionString);
 }
 
+function getDatabaseUrl() {
+  return process.env.DATABASE_URL?.trim() || "";
+}
+
+function databaseUrlFingerprint(connectionString: string) {
+  try {
+    const parsed = new URL(connectionString);
+    return `${parsed.protocol}//${parsed.hostname}${parsed.port ? `:${parsed.port}` : ""}${parsed.pathname ? "/…" : ""}`;
+  } catch {
+    return "unparseable-url";
+  }
+}
+
 export async function getDb() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) return null;
+  const connectionString = getDatabaseUrl();
+  if (!connectionString) {
+    if (!_missingDatabaseUrlWarned) {
+      console.error("[Database] DATABASE_URL is missing. Public reads will use safe seed-data fallbacks and write operations will be skipped.", {
+        nodeEnv: process.env.NODE_ENV,
+        vercelEnv: process.env.VERCEL_ENV,
+      });
+      _missingDatabaseUrlWarned = true;
+    }
+    return null;
+  }
+
+  const fingerprint = databaseUrlFingerprint(connectionString);
+  if (_lastDatabaseUrlFingerprint !== fingerprint) {
+    _lastDatabaseUrlFingerprint = fingerprint;
+    _databaseConnectionFailed = false;
+    console.error("[Database] DATABASE_URL detected for PostgreSQL initialisation", {
+      fingerprint,
+      isPostgres: isPostgresConnectionString(connectionString),
+      requiresSsl: requiresSsl(connectionString),
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV,
+    });
+  }
+
   if (!isPostgresConnectionString(connectionString)) {
     if (!_unsupportedDatabaseUrlWarned) {
-      console.warn("[Database] Ignoring non-PostgreSQL DATABASE_URL. The production app expects a Supabase PostgreSQL connection string and will use safe seed-data fallbacks until one is configured.");
+      console.error("[Database] Ignoring non-PostgreSQL DATABASE_URL. The production app expects a Supabase PostgreSQL connection string and will use safe seed-data fallbacks until one is configured.", { fingerprint });
       _unsupportedDatabaseUrlWarned = true;
     }
     return null;
@@ -60,9 +98,10 @@ export async function getDb() {
       });
       await _pool.query("select 1");
       _db = drizzle(_pool);
+      console.error("[Database] PostgreSQL connection initialised", { fingerprint });
     } catch (error) {
-      console.warn("[Database] Failed to initialise PostgreSQL connection; falling back to seed data for public reads:", error);
-      await _pool?.end().catch(() => undefined);
+      console.error("[Database] Failed to initialise PostgreSQL connection; falling back to seed data for public reads.", { fingerprint, error });
+      await _pool?.end().catch((closeError) => console.error("[Database] Failed to close broken PostgreSQL pool", closeError));
       _pool = null;
       _db = null;
       _databaseConnectionFailed = true;

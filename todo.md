@@ -487,3 +487,8 @@
 
 - [x] Add `// @ts-nocheck` to `server/supabaseAuth.ts` to unblock the Vercel TypeScript build error on `Request.headers`
 - [x] Validate the targeted TypeScript build fix and sync the checkpoint to GitHub
+
+- [x] Wrap Vercel/API route handling with JSON error boundaries so `/api/*` and admin login failures return structured JSON instead of plain-text server errors
+- [x] Add `console.error` diagnostics around Supabase Auth, tRPC/API request handling, Stripe webhook handling, and production database connection failures
+- [x] Verify `DATABASE_URL` is read safely in production and Supabase PostgreSQL connection failures fall back without crashing the server
+- [x] Validate API error responses, TypeScript, tests, and save/sync a GitHub checkpoint for the Vercel API crash repair

@@ -6,6 +6,7 @@ import { registerStripeWebhook } from "./stripeWebhook";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 import { serveStatic } from "./_core/vite";
+import { apiJsonErrorHandler, registerApiJsonNotFound } from "./apiErrorHandling";
 
 const app: Application = express();
 
@@ -18,9 +19,14 @@ app.use(
   createExpressMiddleware({
     router: appRouter,
     createContext,
+    onError({ error, path, type }) {
+      console.error("[tRPC] Vercel API request failed", { path, type, message: error.message, stack: error.stack });
+    },
   })
 );
 
+registerApiJsonNotFound(app);
 serveStatic(app);
+app.use(apiJsonErrorHandler);
 
 export default app;

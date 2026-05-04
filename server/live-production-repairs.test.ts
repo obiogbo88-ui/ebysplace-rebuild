@@ -21,6 +21,9 @@ describe("live production repair safeguards", () => {
     expect(authHookSource).toContain("clearStoredAuthSession");
     expect(supabaseAuthSource).toContain('"/token?grant_type=password"');
     expect(supabaseAuthSource).toContain("authenticateSupabaseRequest");
+    expect(supabaseAuthSource).toContain("[Auth] Supabase Auth configuration missing");
+    expect(supabaseAuthSource).toContain("[Auth] Admin sign-in failed");
+    expect(supabaseAuthSource).toContain("[Auth] Supabase bearer token verification failed");
     expect(contextSource).toContain("authenticateSupabaseRequest(req)");
     expect(serverSource).not.toContain("registerOAuthRoutes");
     expect(vercelSource).not.toContain("registerOAuthRoutes");
@@ -84,7 +87,10 @@ describe("live production repair safeguards", () => {
     expect(dbSource).toContain("new Pool({");
     expect(dbSource).toContain("isPostgresConnectionString");
     expect(dbSource).toContain('parsed.protocol === "postgres:" || parsed.protocol === "postgresql:"');
+    expect(dbSource).toContain("DATABASE_URL is missing");
+    expect(dbSource).toContain("DATABASE_URL detected for PostgreSQL initialisation");
     expect(dbSource).toContain("Ignoring non-PostgreSQL DATABASE_URL");
+    expect(dbSource).toContain("Failed to initialise PostgreSQL connection");
     expect(dbSource).toContain("await _pool.query(\"select 1\")");
     expect(dbSource).toContain("ssl: requiresSsl(connectionString)");
     expect(dbSource).toContain("onConflictDoUpdate");

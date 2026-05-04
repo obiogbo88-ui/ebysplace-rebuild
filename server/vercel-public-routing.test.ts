@@ -52,12 +52,26 @@ describe("Vercel public frontend routing", () => {
     expect(staticServerSource).toContain("res.status(200).sendFile(indexPath");
   });
 
-  it("keeps a secondary public static fallback in the Vercel Express adapter after API middleware", () => {
+  it("keeps JSON API error handling before the secondary public static fallback in the Vercel Express adapter", () => {
     const vercelSource = readProjectFile("server/vercel.ts");
 
     expect(vercelSource).toContain('import { serveStatic } from "./_core/vite";');
-    expect(vercelSource.indexOf('app.use(\n  "/api/trpc"')).toBeLessThan(vercelSource.indexOf("serveStatic(app);"));
-    expect(vercelSource.trim()).toMatch(/serveStatic\(app\);\n\nexport default app;$/);
+    expect(vercelSource).toContain('import { apiJsonErrorHandler, registerApiJsonNotFound } from "./apiErrorHandling";');
+    expect(vercelSource).toContain("console.error(\"[tRPC] Vercel API request failed\"");
+    expect(vercelSource.indexOf('app.use(\n  "/api/trpc"')).toBeLessThan(vercelSource.indexOf("registerApiJsonNotFound(app);"));
+    expect(vercelSource.indexOf("registerApiJsonNotFound(app);")).toBeLessThan(vercelSource.indexOf("serveStatic(app);"));
+    expect(vercelSource.indexOf("serveStatic(app);")).toBeLessThan(vercelSource.indexOf("app.use(apiJsonErrorHandler);"));
+    expect(vercelSource.trim()).toMatch(/app\.use\(apiJsonErrorHandler\);\n\nexport default app;$/);
+  });
+
+  it("defines a reusable JSON response boundary for API 404s and API exceptions", () => {
+    const errorBoundarySource = readProjectFile("server/apiErrorHandling.ts");
+
+    expect(errorBoundarySource).toContain("export function registerApiJsonNotFound");
+    expect(errorBoundarySource).toContain("res.status(404).json");
+    expect(errorBoundarySource).toContain("export const apiJsonErrorHandler");
+    expect(errorBoundarySource).toContain("console.error(\"[API] Request failed\"");
+    expect(errorBoundarySource).toContain("res.status(status).json");
   });
 
   it("keeps server-level TypeScript config relaxed for Vercel server builds", () => {

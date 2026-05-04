@@ -7,6 +7,7 @@ import { registerStripeWebhook } from "../stripeWebhook";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { apiJsonErrorHandler, registerApiJsonNotFound } from "../apiErrorHandling";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,8 +41,13 @@ async function startServer() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
+      onError({ error, path, type }) {
+        console.error("[tRPC] Local API request failed", { path, type, message: error.message, stack: error.stack });
+      },
     })
   );
+  registerApiJsonNotFound(app);
+  app.use(apiJsonErrorHandler);
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
@@ -61,4 +67,7 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+startServer().catch((error) => {
+  console.error("[Server] Failed to start Express server", error);
+  process.exitCode = 1;
+});
