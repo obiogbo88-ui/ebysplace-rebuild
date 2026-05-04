@@ -1455,6 +1455,15 @@ function getDisplayName(user, fallbackEmail) {
   const metadataName = user.user_metadata?.name;
   return typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : fallbackEmail.split("@")[0];
 }
+function getSafeResetRedirect(origin) {
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("Unsupported protocol");
+    return parsed.origin + "/admin/reset-password";
+  } catch {
+    return "http://localhost:3000/admin/reset-password";
+  }
+}
 async function supabaseAuthFetch(path3, init = {}) {
   const { url, serviceRoleKey } = getSupabaseAuthConfig();
   let response;
@@ -1533,6 +1542,62 @@ async function signInAdminWithPassword(email, password) {
   } catch (error) {
     const safeError = toTrpcError(error, "Admin sign-in failed.");
     console.error("[Auth] Admin sign-in failed", { email: normalizedEmail, code: safeError.code, message: safeError.message, stack: safeError.stack });
+    throw safeError;
+  }
+}
+async function requestAdminPasswordReset(email, origin) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const genericResponse = {
+    success: true,
+    message: "If this email is the configured Eby\u2019s Place administrator, a Supabase password reset link has been sent."
+  };
+  if (normalizedEmail !== ADMIN_EMAIL) {
+    console.warn("[Auth] Ignored password reset request for non-admin email", { email: normalizedEmail });
+    return genericResponse;
+  }
+  try {
+    const redirectTo = getSafeResetRedirect(origin);
+    await supabaseAuthFetch("/recover?redirect_to=" + encodeURIComponent(redirectTo), {
+      method: "POST",
+      body: JSON.stringify({ email: normalizedEmail })
+    });
+    return genericResponse;
+  } catch (error) {
+    const safeError = toTrpcError(error, "Unable to send the Supabase password reset email.");
+    console.error("[Auth] Password reset request failed", { email: normalizedEmail, code: safeError.code, message: safeError.message });
+    throw safeError;
+  }
+}
+async function updateAdminPasswordWithRecoveryToken(accessToken, password) {
+  const token = accessToken.trim();
+  if (!token) throw new TRPCError3({ code: "BAD_REQUEST", message: "The password reset link is missing its recovery token." });
+  try {
+    const user = await supabaseAuthFetch("/user", {
+      method: "GET",
+      headers: { Authorization: "Bearer " + token }
+    });
+    const normalizedEmail = user.email?.trim().toLowerCase();
+    if (normalizedEmail !== ADMIN_EMAIL) {
+      console.error("[Auth] Rejected password update for non-admin recovery token", { email: normalizedEmail });
+      throw new TRPCError3({ code: "UNAUTHORIZED", message: "This reset link is not for the configured Eby\u2019s Place administrator." });
+    }
+    const updated = await supabaseAuthFetch("/user", {
+      method: "PUT",
+      headers: { Authorization: "Bearer " + token },
+      body: JSON.stringify({ password })
+    });
+    await upsertUser({
+      openId: updated.id || user.id,
+      email: ADMIN_EMAIL,
+      name: getDisplayName(updated.id ? updated : user, ADMIN_EMAIL),
+      loginMethod: "supabase_password",
+      role: "admin",
+      lastSignedIn: /* @__PURE__ */ new Date()
+    });
+    return { success: true, message: "Your admin password has been updated. Please sign in with the new password." };
+  } catch (error) {
+    const safeError = toTrpcError(error, "Unable to update the admin password from this reset link.");
+    console.error("[Auth] Password update failed", { code: safeError.code, message: safeError.message });
     throw safeError;
   }
 }
@@ -1645,6 +1710,8 @@ var appRouter = router({
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     login: publicProcedure.input(z2.object({ email: z2.string().email(), password: z2.string().min(8) })).mutation(({ input }) => signInAdminWithPassword(input.email, input.password)),
+    requestPasswordReset: publicProcedure.input(z2.object({ email: z2.string().email(), origin: z2.string().url() })).mutation(({ input }) => requestAdminPasswordReset(input.email, input.origin)),
+    updatePassword: publicProcedure.input(z2.object({ accessToken: z2.string().min(20), password: z2.string().min(8) })).mutation(({ input }) => updateAdminPasswordWithRecoveryToken(input.accessToken, input.password)),
     logout: publicProcedure.mutation(() => ({ success: true }))
   }),
   public: router({

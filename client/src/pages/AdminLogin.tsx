@@ -21,7 +21,18 @@ export default function AdminLogin() {
   const utils = trpc.useUtils();
   const [email, setEmail] = useState("info@ebysplace.com");
   const [password, setPassword] = useState("");
+  const [resetRequested, setResetRequested] = useState(false);
   const returnTo = useMemo(getReturnTarget, []);
+
+  const requestReset = trpc.auth.requestPasswordReset.useMutation({
+    onSuccess: (result) => {
+      setResetRequested(true);
+      toast.success(result.message);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Unable to send the password reset email.");
+    },
+  });
 
   const login = trpc.auth.login.useMutation({
     onSuccess: async (session) => {
@@ -45,6 +56,14 @@ export default function AdminLogin() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     login.mutate({ email, password });
+  };
+
+  const handleResetRequest = () => {
+    if (!email.trim()) {
+      toast.error("Enter the admin email address first.");
+      return;
+    }
+    requestReset.mutate({ email, origin: window.location.origin });
   };
 
   return (
@@ -87,7 +106,18 @@ export default function AdminLogin() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="admin-password">Password</Label>
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="admin-password">Password</Label>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0 text-sm text-primary"
+                      disabled={requestReset.isPending}
+                      onClick={handleResetRequest}
+                    >
+                      {requestReset.isPending ? "Sending..." : "Forgot password?"}
+                    </Button>
+                  </div>
                   <Input
                     id="admin-password"
                     type="password"
@@ -97,6 +127,11 @@ export default function AdminLogin() {
                     className="border-[#d8b66b]/50 bg-white text-[#2f2418]"
                     required
                   />
+                  {resetRequested ? (
+                    <p className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs leading-5 text-[#5f5142]">
+                      Check the Supabase admin inbox for a password reset link, then return here to sign in with the new password.
+                    </p>
+                  ) : null}
                 </div>
                 <Button type="submit" className="h-12 w-full shadow-lg" disabled={login.isPending}>
                   {login.isPending ? "Signing in..." : "Sign in"}

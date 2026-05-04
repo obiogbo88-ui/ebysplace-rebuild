@@ -58,6 +58,16 @@ function getDisplayName(user: SupabaseAuthUser, fallbackEmail: string) {
   return typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : fallbackEmail.split("@")[0];
 }
 
+function getSafeResetRedirect(origin: string) {
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("Unsupported protocol");
+    return parsed.origin + "/admin/reset-password";
+  } catch {
+    return "http://localhost:3000/admin/reset-password";
+  }
+}
+
 async function supabaseAuthFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const { url, serviceRoleKey } = getSupabaseAuthConfig();
   let response: Response;
@@ -146,6 +156,70 @@ export async function signInAdminWithPassword(email: string, password: string) {
   } catch (error) {
     const safeError = toTrpcError(error, "Admin sign-in failed.");
     console.error("[Auth] Admin sign-in failed", { email: normalizedEmail, code: safeError.code, message: safeError.message, stack: safeError.stack });
+    throw safeError;
+  }
+}
+
+export async function requestAdminPasswordReset(email: string, origin: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const genericResponse = {
+    success: true as const,
+    message: "If this email is the configured Eby’s Place administrator, a Supabase password reset link has been sent.",
+  };
+
+  if (normalizedEmail !== ADMIN_EMAIL) {
+    console.warn("[Auth] Ignored password reset request for non-admin email", { email: normalizedEmail });
+    return genericResponse;
+  }
+
+  try {
+    const redirectTo = getSafeResetRedirect(origin);
+    await supabaseAuthFetch<Record<string, unknown>>("/recover?redirect_to=" + encodeURIComponent(redirectTo), {
+      method: "POST",
+      body: JSON.stringify({ email: normalizedEmail }),
+    });
+    return genericResponse;
+  } catch (error) {
+    const safeError = toTrpcError(error, "Unable to send the Supabase password reset email.");
+    console.error("[Auth] Password reset request failed", { email: normalizedEmail, code: safeError.code, message: safeError.message });
+    throw safeError;
+  }
+}
+
+export async function updateAdminPasswordWithRecoveryToken(accessToken: string, password: string) {
+  const token = accessToken.trim();
+  if (!token) throw new TRPCError({ code: "BAD_REQUEST", message: "The password reset link is missing its recovery token." });
+
+  try {
+    const user = await supabaseAuthFetch<SupabaseAuthUser>("/user", {
+      method: "GET",
+      headers: { Authorization: "Bearer " + token },
+    });
+    const normalizedEmail = user.email?.trim().toLowerCase();
+    if (normalizedEmail !== ADMIN_EMAIL) {
+      console.error("[Auth] Rejected password update for non-admin recovery token", { email: normalizedEmail });
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "This reset link is not for the configured Eby’s Place administrator." });
+    }
+
+    const updated = await supabaseAuthFetch<SupabaseAuthUser>("/user", {
+      method: "PUT",
+      headers: { Authorization: "Bearer " + token },
+      body: JSON.stringify({ password }),
+    });
+
+    await upsertUser({
+      openId: updated.id || user.id,
+      email: ADMIN_EMAIL,
+      name: getDisplayName(updated.id ? updated : user, ADMIN_EMAIL),
+      loginMethod: "supabase_password",
+      role: "admin",
+      lastSignedIn: new Date(),
+    });
+
+    return { success: true as const, message: "Your admin password has been updated. Please sign in with the new password." };
+  } catch (error) {
+    const safeError = toTrpcError(error, "Unable to update the admin password from this reset link.");
+    console.error("[Auth] Password update failed", { code: safeError.code, message: safeError.message });
     throw safeError;
   }
 }

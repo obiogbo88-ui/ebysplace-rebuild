@@ -533,3 +533,11 @@
 - [x] Re-investigate Manus Space deployment failure `ServiceDeployNotTemplate: Lose config file, please use template to deploy` and confirm whether the cause is repository code/configuration or platform deployment metadata
 
 - [x] Add `// @ts-nocheck` to the very top of `server/apiErrorHandling.ts` for the blocking Vercel build issue and sync the change to GitHub
+
+- [x] Determine whether a Supabase/admin account was created for Vercel admin panel access and provide a safe login or reset path without exposing unrecoverable passwords
+
+- [x] Fix Vercel API runtime error `Cannot find module /var/task/server/vercel imported from /var/task/api/index.js` by compiling server TypeScript during the root build and bundling the Vercel API adapter
+- [x] Ensure compiled server runtime files are in a location that `api/index.js` can import during Vercel execution — `dist/server-compiled/server/vercel.js` is emitted and `api/index.js` is bundled so it no longer imports `/server/vercel` at runtime
+- [x] Confirm the configured admin login email and provide a safe way to reset the Supabase Auth password without exposing unrecoverable credentials
+- [x] Add a forgot-password/reset-password flow for the admin login if Supabase Auth configuration supports it
+- [x] Validate the Vercel build artifact layout, TypeScript checks, tests, and API import path before saving and syncing to GitHub

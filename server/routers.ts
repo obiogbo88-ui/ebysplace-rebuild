@@ -9,7 +9,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { sendCustomerSmsSafely } from "./customerNotifications";
-import { signInAdminWithPassword } from "./supabaseAuth";
+import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
 import * as db from "./db";
 
 const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Add-ons"]);
@@ -100,6 +100,12 @@ export const appRouter = router({
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string().min(8) }))
       .mutation(({ input }) => signInAdminWithPassword(input.email, input.password)),
+    requestPasswordReset: publicProcedure
+      .input(z.object({ email: z.string().email(), origin: z.string().url() }))
+      .mutation(({ input }) => requestAdminPasswordReset(input.email, input.origin)),
+    updatePassword: publicProcedure
+      .input(z.object({ accessToken: z.string().min(20), password: z.string().min(8) }))
+      .mutation(({ input }) => updateAdminPasswordWithRecoveryToken(input.accessToken, input.password)),
     logout: publicProcedure.mutation(() => ({ success: true } as const)),
   }),
 

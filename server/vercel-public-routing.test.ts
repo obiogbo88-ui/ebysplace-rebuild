@@ -11,6 +11,9 @@ describe("Vercel public frontend routing", () => {
 
     expect(vercelConfig.outputDirectory).toBe("public");
     expect(vercelConfig.buildCommand).toBe("pnpm run build:vercel");
+    const packageJson = JSON.parse(readProjectFile("package.json"));
+    expect(packageJson.scripts.build).toBe("tsc -p server/tsconfig.json && cd client && pnpm run build");
+    expect(packageJson.scripts["build:vercel"]).toBe("pnpm run build && pnpm run build:api");
     expect(vercelConfig.functions["api/index.js"].includeFiles).toBe("public/**");
     expect(vercelConfig.rewrites).toEqual([
       {

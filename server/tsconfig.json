@@ -1,32 +1,29 @@
 {
   "extends": "../tsconfig.json",
   "include": [
-    "./**/*",
-    "../shared/**/*",
-    "../drizzle/**/*",
-    "../storage/**/*"
+    "./**/*.ts",
+    "../shared/**/*.ts",
+    "../drizzle/**/*.ts"
   ],
   "exclude": [
     "../node_modules",
-    "../build",
     "../dist",
     "../public",
+    "../api",
     "**/*.test.ts"
   ],
   "compilerOptions": {
-    "baseUrl": "..",
-    "tsBuildInfoFile": "../node_modules/typescript/server.tsbuildinfo",
+    "noEmit": false,
+    "outDir": "../dist/server-compiled",
+    "rootDir": "..",
+    "declaration": false,
+    "sourceMap": false,
+    "incremental": false,
+    "tsBuildInfoFile": "../node_modules/typescript/server-tsbuildinfo",
+    "allowImportingTsExtensions": false,
     "skipLibCheck": true,
     "strict": false,
     "noImplicitAny": false,
-    "noEmitOnError": false,
-    "paths": {
-      "@/*": [
-        "./client/src/*"
-      ],
-      "@shared/*": [
-        "./shared/*"
-      ]
-    }
+    "noEmitOnError": false
   }
 }

@@ -16,6 +16,7 @@ const Reviews = lazy(() => import("./pages/Reviews"));
 const BookingSuccess = lazy(() => import("./pages/BookingSuccess"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminResetPassword = lazy(() => import("./pages/AdminResetPassword"));
 const PoliciesIndex = lazy(() => import("./pages/Policies"));
 const PrivacyPolicy = lazy(() => import("./pages/Policies").then((module) => ({ default: () => <module.PolicyPage type="privacy" /> })));
 const ShoppingPolicy = lazy(() => import("./pages/Policies").then((module) => ({ default: () => <module.PolicyPage type="shopping" /> })));
@@ -56,6 +57,7 @@ function Router() {
         <Route path="/gallery" component={Gallery} />
         <Route path="/reviews" component={Reviews} />
         <Route path="/admin/login" component={AdminLogin} />
+        <Route path="/admin/reset-password" component={AdminResetPassword} />
         <Route path="/admin" component={Admin} />
         <Route path="/policies" component={PoliciesIndex} />
         <Route path="/policies/privacy" component={PrivacyPolicy} />
