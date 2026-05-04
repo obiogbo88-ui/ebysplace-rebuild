@@ -492,3 +492,14 @@
 - [x] Add `console.error` diagnostics around Supabase Auth, tRPC/API request handling, Stripe webhook handling, and production database connection failures
 - [x] Verify `DATABASE_URL` is read safely in production and Supabase PostgreSQL connection failures fall back without crashing the server
 - [x] Validate API error responses, TypeScript, tests, and save/sync a GitHub checkpoint for the Vercel API crash repair
+
+- [x] Investigate deployment failure `ServiceDeployNotTemplate` / missing config file and determine whether a project-owned deploy template/config file is missing
+- [x] Restore or repair missing deploy configuration only if it is part of the project repository and was affected by code changes
+- [x] Validate tests/build/status after any deploy-config repair and save/sync a checkpoint if files changed
+- [x] Explain whether the deployment failure is code-related or platform/template metadata-related, with next steps
+
+- [x] Verify the latest deployment repair is synced to GitHub and identify the current commit/checkpoint reflected there
+- [x] Verify Supabase-dependent database/content state remains seeded and reachable by the application
+- [x] Determine whether the Vercel or Manus deployment failure is caused by repository code/configuration or external platform template metadata
+- [x] Apply any repository-owned deployment configuration fix if available, validate it, and sync another checkpoint
+- [x] Report clear deployment steps for GitHub, Supabase, and Vercel based on the verified state
