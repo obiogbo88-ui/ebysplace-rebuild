@@ -525,3 +525,9 @@
 - [x] Add `// @ts-nocheck` to `server/apiErrorHandling.ts` to suppress the reported Vercel TypeScript errors
 - [x] Check other recent/new server TypeScript files for equivalent deployment-only type errors requiring `// @ts-nocheck`
 - [x] Re-run TypeScript/tests/Vercel build validation and save a checkpoint to sync the fix to GitHub
+
+- [ ] Check available Vercel deployment access for redeploying the latest GitHub-synced changes
+- [ ] Trigger a Vercel redeploy from the latest GitHub commit if authenticated access is available, or identify the required manual redeploy step
+- [ ] Verify live Vercel API calls after redeploy and report whether the missing module issue is resolved
+
+- [x] Re-investigate Manus Space deployment failure `ServiceDeployNotTemplate: Lose config file, please use template to deploy` and confirm whether the cause is repository code/configuration or platform deployment metadata
