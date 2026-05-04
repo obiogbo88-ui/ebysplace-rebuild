@@ -426,8 +426,8 @@
 - [x] Fix the AI Try-On Vercel API failure that returns `Unexpected token A, A server e... is not valid JSON`
 - [x] Ensure the AI Try-On endpoint returns structured JSON errors/responses on Vercel and works with the configured OpenAI-compatible API key
 - [x] Add or update regression coverage for Supabase service count validation and AI Try-On Vercel JSON response handling
-- [ ] Validate tests, TypeScript checks, production build, service-count smoke checks, AI Try-On endpoint behavior, and project health after the fixes
-- [ ] Save and sync a checkpoint for the Vercel services and AI Try-On API repair
+- [x] Validate tests, TypeScript checks, production build, service-count smoke checks, AI Try-On endpoint behavior, and project health after the fixes
+- [x] Save and sync a checkpoint for the Vercel services and AI Try-On API repair
 
 - [x] Run a broader Vercel production audit beyond the currently visible service-list and AI Try-On failures
 - [x] Check all public pages and primary user flows for likely production-only runtime failures, including services, booking, shop, gallery, reviews, policies, admin entry, and AI Try-On
