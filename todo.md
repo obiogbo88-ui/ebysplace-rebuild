@@ -507,3 +507,7 @@
 - [x] Re-investigate the latest `ServiceDeployNotTemplate` / `DeployS3WebsiteActivityV2` failure and confirm whether any repository-owned template/config file is missing
 - [x] If a repository-owned deployment file is missing or malformed, repair it and validate tests/build/status before checkpointing
 - [x] If the deployment failure is platform/template metadata-related, document the cause and exact user-side next steps
+
+- [x] Diagnose the mobile 404 page shown after deployment and determine whether it is caused by app routing, build output, Vercel/Manus routing, or an unavailable deployment URL
+- [x] If repository routing or build output causes the 404, repair the project-owned configuration and add regression coverage
+- [x] Validate the 404 fix or hosting-side diagnosis with TypeScript, Vitest, production build, and route smoke checks before checkpointing
