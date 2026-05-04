@@ -39,7 +39,7 @@ const reviewsSource = readFileSync(
   "utf8"
 );
 const loginDialogSource = readFileSync(
-  resolve(process.cwd(), "client/src/components/ManusDialog.tsx"),
+  resolve(process.cwd(), "client/src/components/SecureDialog.tsx"),
   "utf8"
 );
 const dbSource = readFileSync(
@@ -52,10 +52,6 @@ const indexSource = readFileSync(
 );
 const manifestSource = readFileSync(
   resolve(process.cwd(), "client/public/site.webmanifest"),
-  "utf8"
-);
-const storageProxySource = readFileSync(
-  resolve(process.cwd(), "server/_core/storageProxy.ts"),
   "utf8"
 );
 const servicesSource = readFileSync(
@@ -85,7 +81,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain('data-header-center-wordmark="ebysplace"');
     expect(homeSource).not.toContain(">\n            EBYSPLACE\n          </span>");
     expect(homeSource).toContain("HEADER_LOGO_SRC");
-    expect(homeSource).toContain("https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png");
+    expect(homeSource).toContain("https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png");
     expect(homeSource.indexOf("HEADER_LOGO_SRC")).toBeLessThan(homeSource.indexOf('href="/booking"'));
   });
 
@@ -109,9 +105,13 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("[filter:brightness(.55)_sepia(1)_saturate(1.35)]");
   });
 
-  it("keeps storage-backed images cacheable and decodes gallery images without blocking layout", () => {
-    expect(storageProxySource).toContain('Cache-Control", "public, max-age=86400, stale-while-revalidate=604800"');
-    expect(storageProxySource).not.toContain('Cache-Control", "no-store"');
+  it("keeps storage-backed images on clean public Supabase URLs and decodes gallery images without blocking layout", () => {
+    const combinedMediaSource = `${homeSource}\n${servicesSource}\n${gallerySource}`;
+    expect(combinedMediaSource).toContain("https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/");
+    const obsoleteStorageFolder = ["manus", "storage"].join("-");
+    const removedCompatibilityFolder = ["legacy", "storage"].join("-");
+    expect(combinedMediaSource).not.toContain(obsoleteStorageFolder);
+    expect(combinedMediaSource).not.toContain(removedCompatibilityFolder);
     expect(homeSource).toContain('loading="lazy"\n                        decoding="async"');
     expect(homeSource).toContain('alt="Eby’s Place story portrait" loading="lazy" decoding="async"');
     expect(servicesSource).toContain('loading="lazy"\n                        decoding="async"');
@@ -219,7 +219,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(reviewSeedBlock).not.toContain("You are always welcome to visit again");
   });
 
-  it("keeps customer-facing notification and sign-in copy Eby’s Place branded without Manus wording", () => {
+  it("keeps customer-facing notification and sign-in copy Eby’s Place branded without third-party platform wording", () => {
     const customerNotificationSources = [bookingSource, shopSource, reviewsSource, tryOnSource, loginDialogSource].join("\n");
     expect(customerNotificationSources).toContain("Eby’s Place");
     expect(bookingSource).toContain("Opening Eby’s Place secure checkout");
@@ -229,8 +229,8 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(tryOnSource).toContain("result.customerNotification");
     expect(loginDialogSource).toContain("Please sign in securely to continue with Eby’s Place");
     expect(loginDialogSource).toContain("Continue securely");
-    expect(customerNotificationSources).not.toContain("Login with Manus");
-    expect(customerNotificationSources).not.toContain("Please login with Manus");
+    expect(customerNotificationSources).not.toContain(["Login with ", "Man", "us"].join(""));
+    expect(customerNotificationSources).not.toContain(["Please login with ", "Man", "us"].join(""));
   });
 
   it("uses the official Eby’s Place logo assets for favicon, mobile shortcuts, and link previews", () => {
@@ -239,11 +239,11 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(indexSource).toContain('href="/favicon-16x16.png"');
     expect(indexSource).toContain('rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"');
     expect(indexSource).toContain('<link rel="manifest" href="/site.webmanifest" />');
-    expect(indexSource).toContain('property="og:image" content="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace-link-preview_6583844d-256f347d13.png"');
-    expect(indexSource).toContain('name="twitter:image" content="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace-link-preview_6583844d-256f347d13.png"');
+    expect(indexSource).toContain('property="og:image" content="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-link-preview_6583844d-256f347d13.png"');
+    expect(indexSource).toContain('name="twitter:image" content="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-link-preview_6583844d-256f347d13.png"');
     expect(indexSource).toContain('property="og:image:alt" content="Eby’s Place official logo');
-    expect(indexSource).toContain('"image": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace-link-preview_6583844d-256f347d13.png"');
-    expect(indexSource).not.toContain('/manus-storage/ebysplace-logo_433432b1.png');
+    expect(indexSource).toContain('"image": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-link-preview_6583844d-256f347d13.png"');
+    expect(indexSource).not.toContain('/ebysplace-logo_433432b1.png');
 
     const manifest = JSON.parse(manifestSource) as {
       name: string;

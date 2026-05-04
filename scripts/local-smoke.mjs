@@ -12,7 +12,7 @@ const routes = [
   "/shopping-policy",
   "/returns-policy",
   "/terms",
-  "/manus-storage/smoke-test-missing-image.png",
+  "/smoke-test-missing-image.png",
 ];
 
 const base = "http://localhost:3000";

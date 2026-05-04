@@ -6,7 +6,7 @@ const projectRoot = resolve(__dirname, "..");
 const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf8");
 
 describe("Vercel public frontend routing", () => {
-  it("serves public frontend routes from the static HTML shell while preserving API and storage proxy routes", () => {
+  it("routes API requests to the backend and all non-API routes to the static React frontend shell", () => {
     const vercelConfig = JSON.parse(readProjectFile("vercel.json"));
 
     expect(vercelConfig.outputDirectory).toBe("public");
@@ -14,10 +14,6 @@ describe("Vercel public frontend routing", () => {
     expect(vercelConfig.rewrites).toEqual([
       {
         source: "/api/:path*",
-        destination: "/api/index",
-      },
-      {
-        source: "/manus-storage/:path*",
         destination: "/api/index",
       },
       {

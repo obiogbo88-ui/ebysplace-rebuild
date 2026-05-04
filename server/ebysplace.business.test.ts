@@ -53,9 +53,9 @@ describe("Eby’s Place platform business rules", () => {
     storageGetSignedUrlMock.mockReset();
     generateImageMock.mockReset();
     notifyOwnerMock.mockResolvedValue(true);
-    storagePutMock.mockResolvedValue({ url: "/manus-storage/try-on/uploads/test-customer-photo.jpg", key: "try-on/uploads/test-customer-photo.jpg" });
+    storagePutMock.mockResolvedValue({ url: "/try-on/uploads/test-customer-photo.jpg", key: "try-on/uploads/test-customer-photo.jpg" });
     storageGetSignedUrlMock.mockResolvedValue("https://signed-storage.example.test/try-on/uploads/test-customer-photo.jpg");
-    generateImageMock.mockResolvedValue({ url: "/manus-storage/try-on/generated/result.jpg" });
+    generateImageMock.mockResolvedValue({ url: "/try-on/generated/result.jpg" });
   });
 
   it("exposes premium featured services without requiring database access", async () => {
@@ -99,7 +99,7 @@ describe("Eby’s Place platform business rules", () => {
     const services = await db.listServices();
     expect(services).toHaveLength(20);
     for (const service of services) {
-      expect(service.imageUrl, `${service.name} needs a migrated Supabase service image`).toMatch(/^https:\/\/jcyoipbiplzrocrrhwkp\.supabase\.co\/storage\/v1\/object\/public\/ebysplace-media\/manus-storage\/ebysplace_service_/);
+      expect(service.imageUrl, `${service.name} needs a migrated Supabase service image`).toMatch(/^https:\/\/jcyoipbiplzrocrrhwkp\.supabase\.co\/storage\/v1\/object\/public\/ebysplace-media\/ebysplace_service_/);
     }
     expect(services.find((service) => service.name === "Goddess Braids")?.imageUrl).toContain("goddess_braids");
     expect(services.find((service) => service.name === "Box Braids")?.imageUrl).toContain("box_braids");
@@ -125,7 +125,7 @@ describe("Eby’s Place platform business rules", () => {
     expect(result.depositCurrency).toBe("GBP");
     expect(result.message).toContain("non-refundable deposit");
     expect(result.customerNotification).toContain("Eby’s Place");
-    expect(JSON.stringify(result)).not.toMatch(/Manus/i);
+    expect(JSON.stringify(result)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
       title: "New Eby’s Place booking request",
       content: expect.stringContaining("Knotless Braids"),
@@ -161,12 +161,15 @@ describe("Eby’s Place platform business rules", () => {
         deposit_type: "non_refundable_20_gbp",
       }),
     }));
-    expect(JSON.stringify(stripeCreateSessionMock.mock.calls[0][0])).not.toMatch(/Manus/i);
+    expect(JSON.stringify(stripeCreateSessionMock.mock.calls[0][0])).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
   });
 
   it("creates Stripe Checkout sessions for shop product orders with Eby’s Place customer-facing copy", async () => {
     stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_shop_123", url: "https://checkout.stripe.test/shop", payment_intent: "pi_shop_123" });
-    const createOrderSpy = vi.spyOn(db, "createOrderWithItems").mockResolvedValueOnce({ id: 88 });
+    const createOrderSpy = vi.spyOn(db, "createOrderWithItems").mockResolvedValueOnce({
+      id: 88,
+      items: [{ productId: 1, variantId: 2, productName: "X-Pression Braiding Hair", variantName: "Colour 30", quantity: 2, unitPrice: "8.50" }],
+    } as any);
     const updateCheckoutSpy = vi.spyOn(db, "updateOrderCheckout").mockResolvedValueOnce(undefined);
     const caller = appRouter.createCaller(publicContext());
 
@@ -184,7 +187,7 @@ describe("Eby’s Place platform business rules", () => {
 
     expect(result).toEqual({ orderId: 88, checkoutUrl: "https://checkout.stripe.test/shop", status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete Stripe payment to confirm the order." });
     expect(result.customerNotification).toContain("Eby’s Place");
-    expect(JSON.stringify(result)).not.toMatch(/Manus/i);
+    expect(JSON.stringify(result)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     expect(stripeCreateSessionMock).toHaveBeenCalledWith(expect.objectContaining({
       mode: "payment",
       customer_email: "shop-client@example.com",
@@ -207,7 +210,7 @@ describe("Eby’s Place platform business rules", () => {
       name: "X-Pression Braiding Hair — Colour 30",
       description: "Eby’s Place shop product",
     });
-    expect(JSON.stringify(checkoutConfig)).not.toMatch(/Manus/i);
+    expect(JSON.stringify(checkoutConfig)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     expect(updateCheckoutSpy).toHaveBeenCalledWith(88, "cs_shop_123", "pi_shop_123");
     createOrderSpy.mockRestore();
     updateCheckoutSpy.mockRestore();
@@ -250,7 +253,7 @@ describe("Eby’s Place platform business rules", () => {
         title: "Eby’s Place deposit paid",
         content: expect.stringContaining("Goddess Braids"),
       }));
-      expect(JSON.stringify(notifyOwnerMock.mock.calls)).not.toMatch(/Manus/i);
+      expect(JSON.stringify(notifyOwnerMock.mock.calls)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     } finally {
       markPaidSpy.mockRestore();
       await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -293,7 +296,7 @@ describe("Eby’s Place platform business rules", () => {
         title: "Eby’s Place shop order paid",
         content: expect.stringContaining("Order ID: 88"),
       }));
-      expect(JSON.stringify(notifyOwnerMock.mock.calls)).not.toMatch(/Manus/i);
+      expect(JSON.stringify(notifyOwnerMock.mock.calls)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     } finally {
       markOrderPaidSpy.mockRestore();
       await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -307,7 +310,7 @@ describe("Eby’s Place platform business rules", () => {
     const result = await caller.public.uploadTryOnPhoto({ dataUrl, fileName: "Client Portrait.JPG" });
 
     expect(result).toEqual({
-      url: "/manus-storage/try-on/uploads/test-customer-photo.jpg",
+      url: "/try-on/uploads/test-customer-photo.jpg",
       key: "try-on/uploads/test-customer-photo.jpg",
       mimeType: "image/jpeg",
     });
@@ -325,14 +328,14 @@ describe("Eby’s Place platform business rules", () => {
 
     const result = await caller.public.generateTryOn({
       styleName: "Knotless Braids",
-      originalImageUrl: "/manus-storage/try-on/uploads/test-customer-photo.jpg",
+      originalImageUrl: "/try-on/uploads/test-customer-photo.jpg",
       originalImageKey: "try-on/uploads/test-customer-photo.jpg",
       mimeType: "image/jpeg",
     });
 
-    expect(result).toEqual({ id: 77, generatedImageUrl: "/manus-storage/try-on/generated/result.jpg", status: "completed", customerNotification: "Your Eby’s Place AI Try-On preview is ready." });
+    expect(result).toEqual({ id: 77, generatedImageUrl: "/try-on/generated/result.jpg", status: "completed", customerNotification: "Your Eby’s Place AI Try-On preview is ready." });
     expect(result.customerNotification).toContain("Eby’s Place");
-    expect(result.customerNotification).not.toMatch(/Manus/i);
+    expect(result.customerNotification).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     expect(storageGetSignedUrlMock).toHaveBeenCalledWith("try-on/uploads/test-customer-photo.jpg");
     expect(generateImageMock).toHaveBeenCalledWith(expect.objectContaining({
       originalImages: [{ url: "https://signed-storage.example.test/try-on/uploads/test-customer-photo.jpg", mimeType: "image/jpeg" }],

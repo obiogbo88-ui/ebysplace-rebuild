@@ -3,6 +3,7 @@ import express, { type Application, type Request, type Response } from "express"
 import Stripe from "stripe";
 import * as db from "./db";
 import { notifyOwner } from "./_core/notification";
+import { sendCustomerSmsSafely } from "./customerNotifications";
 
 function getStripeWebhookConfig() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -47,6 +48,11 @@ export function registerStripeWebhook(app: Application) {
         if (session.metadata?.deposit_type === "non_refundable_20_gbp" && session.id) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await db.markBookingDepositPaid(session.id, paymentIntentId);
+          const booking = await db.getBookingByCheckoutSession(session.id);
+          await sendCustomerSmsSafely({
+            to: booking?.clientPhone,
+            body: `Your Eby’s Place £20 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured.`,
+          });
           await notifyOwner({
             title: "Eby’s Place deposit paid",
             content: [
@@ -63,6 +69,11 @@ export function registerStripeWebhook(app: Application) {
         if (session.metadata?.order_type === "shop_products" && session.id) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await db.markOrderPaid(session.id, paymentIntentId);
+          const order = await db.getOrderByCheckoutSession(session.id);
+          await sendCustomerSmsSafely({
+            to: order?.customerPhone,
+            body: `Eby’s Place has received payment for order #${order?.id ?? session.metadata?.order_id ?? ""}. We will prepare your items and keep you updated.`,
+          });
           await notifyOwner({
             title: "Eby’s Place shop order paid",
             content: [

@@ -189,8 +189,8 @@
 - [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking, gallery, admin, AI Try-On, payments, notifications, logos, services, testimonials, reviews, or other existing functionality while applying this shop refinement
 - [x] Audit every checkout point, including booking deposits and shop/cart checkout, to confirm Stripe coverage and gaps
 - [x] Fully integrate Stripe Checkout for any checkout point that is not already using Stripe without changing unrelated flows
-- [x] Remove Manus branding from customer-facing payment receipts, payment confirmations, and website notifications where the app controls the content
-- [x] Identify any Stripe Dashboard account settings needed to remove Manus branding from Stripe-hosted receipts, invoices, emails, or checkout branding
+- [x] Remove platform branding from customer-facing payment receipts, payment confirmations, and website notifications where the app controls the content
+- [x] Identify any Stripe Dashboard account settings needed to remove platform branding from Stripe-hosted receipts, invoices, emails, or checkout branding
 - [x] Add or update focused tests covering all Stripe checkout points and branded customer notification/receipt copy
 - [x] Do not tamper with unrelated homepage content, styling, layout, navigation, booking details, shop product display, gallery, admin areas unrelated to checkout/notifications, AI Try-On, logos, services, testimonials, reviews, or other existing functionality while applying Stripe and branding updates
 - [x] Preserve every unrelated website automation, including booking, reviews, AI Try-On, admin monitoring, notifications not tied to checkout branding, gallery, services, navigation, and existing business workflows while making Stripe-only updates
@@ -201,7 +201,7 @@
 - [x] Send an Eby’s Place confirmation email after successful Stripe payment where customer email is available
 - [x] Validate Stripe payment flow in test mode separately from the provided live keys
 - [x] Maintain automation across payment, booking, order, and notification processes while changing only checkout notification and receipt-related code paths
-- [x] Remove any remaining Manus branding from checkout notifications, payment confirmations, and receipt-related customer/owner messaging controlled by the website
+- [x] Remove any remaining platform branding from checkout notifications, payment confirmations, and receipt-related customer/owner messaging controlled by the website
 - [x] Ensure all checkout notifications, payment confirmations, and receipt-related messaging controlled by the website use Eby’s Place branding only
 - [x] Do not tamper with unrelated website content, design, products, services, navigation, booking details, shop display, admin areas, AI Try-On, gallery, reviews, or other flows while applying notification and receipt branding safeguards
 - [x] Improve loading speed across the entire Eby’s Place website with performance-only changes
@@ -216,10 +216,10 @@
 - [x] Run tests, TypeScript validation, production build, and project health checks after the custom notification change
 - [x] Add custom admin/owner notifications when a customer books, pays, places an order, submits a review, or uses AI Try-On
 - [x] Add customer-facing notifications or confirmations for booking, payment, order, review, and AI Try-On events where the website controls the message
-- [x] Keep all custom notification wording Eby’s Place branded and remove any Manus-branded wording from notification paths controlled by the website
+- [x] Keep all custom notification wording Eby’s Place branded and remove any platform-branded wording from notification paths controlled by the website
 - [x] Do not tamper with unrelated website content, design, products, services, navigation, performance optimizations, checkout behavior, admin areas, gallery, policies, or existing automation while adding custom notifications
 - [x] After custom notification work is completed and checkpointed, direct the user on how to point the website to ebysplace.com without changing unrelated website files
-- [x] Remove any Manus branding from customer-facing notification messages controlled by the website and use Eby’s Place branding instead
+- [x] Remove any platform branding from customer-facing notification messages controlled by the website and use Eby’s Place branding instead
 - [x] Update the website favicon to the official Eby’s Place logo/icon for browser tabs
 - [x] Add or update mobile shortcut icons so saved home-screen shortcuts use the Eby’s Place logo/icon
 - [x] Add or update link-preview metadata images so shared links present Eby’s Place branding
@@ -366,7 +366,7 @@
 - [x] Validate the Vercel 403 fix with production build, route smoke tests, TypeScript, and automated regression tests
 - [x] Save and sync a checkpoint for the production 403 public-index fallback fix to GitHub
 
-- [x] Investigate the admin panel `TypeError: Invalid URL` on Vercel by tracing use of `VITE_FRONTEND_FORGE_API_URL`, `BUILT_IN_FORGE_API_URL`, and any API base URL construction
+- [x] Investigate the admin panel `TypeError: Invalid URL` on Vercel by tracing use of `VITE_APP_ID and API base URL`, `server API base URL`, and any API base URL construction
 - [x] Fix admin URL handling so Vercel does not construct `new URL()` with an empty, relative, or undefined base
 - [x] Validate the admin route, TypeScript, automated tests, and production build after the Invalid URL fix
 - [x] Save and sync a checkpoint for the Vercel admin Invalid URL fix to GitHub
@@ -374,7 +374,7 @@
 - [x] Perform a comprehensive live Vercel audit of the Eby’s Place deployment across Home, Services, Booking, Shop, Gallery, AI Try-On, Reviews, Braiders Near Me, policy pages, admin, checkout, and API-backed content.
 - [x] Fix every visible live Vercel issue found during the audit, including broken images, missing seeded catalogue/content, page errors, layout regressions, broken links, and production-only runtime failures.
 - [x] Fix the admin dashboard `TypeError: Invalid URL` and ensure admin routes fail gracefully when optional production environment services are unavailable.
-- [x] Replace or proxy `/manus-storage/*` image references so production Vercel pages display all public images reliably outside the Manus preview environment.
+- [x] Replace or proxy `/legacy-storage/*` image references so production Vercel pages display all public images reliably outside the legacy preview environment.
 - [x] Seed production-compatible default services, products, gallery items, reviews, and website content so public pages are not empty or limited to one service.
 - [x] Validate booking deposit checkout and shop checkout against Stripe test mode using the standard test card path where possible without submitting real payments.
 - [x] Run automated tests, production build checks, local smoke tests, and live-route verification after the Vercel repair pass.
@@ -385,19 +385,19 @@
 - [x] Verify the media URL inventory is unique, categorized where useful, and suitable for Cloudflare R2 migration planning.
 - [x] Save and sync the `all-media-urls.txt` file to GitHub through the checkpoint workflow.
 
-- [x] Read `all-media-urls.txt` and identify every `/manus-storage/*` media URL that must be downloaded and migrated.
-- [x] Download every accessible image referenced by `/manus-storage/*` URLs in the media inventory into a local migration folder outside deployable app assets, with the inaccessible 403 About placeholder recorded for manual review.
+- [x] Read `all-media-urls.txt` and identify every `/legacy-storage/*` media URL that must be downloaded and migrated.
+- [x] Download every accessible image referenced by `/legacy-storage/*` URLs in the media inventory into a local migration folder outside deployable app assets, with the inaccessible 403 About placeholder recorded for manual review.
 - [x] Add `upload-to-supabase.js` to upload downloaded images to the Supabase `ebysplace-media` storage bucket for corrected project `https://jcyoipbiplzrocrrhwkp.supabase.co` using a secure service role key environment variable.
 - [x] Upload the downloaded media to Supabase and generate a deterministic old-to-new URL mapping file for the migration.
-- [x] Replace all codebase and seed-data references from `/manus-storage/*` URLs to the new Supabase public storage URLs where verified uploads exist.
+- [x] Replace all codebase and seed-data references from `/legacy-storage/*` URLs to the new Supabase public storage URLs where verified uploads exist.
 - [x] Validate tests, build, route smoke checks, and media-reference scans after the Supabase storage migration.
 - [x] Save and sync a checkpoint to GitHub after the Supabase media migration is complete.
 
-- [x] Create `upload-to-supabase.js` that reads `all-media-urls.txt`, downloads every accessible `/manus-storage/*` image, uploads each image to Supabase bucket `ebysplace-media`, and writes an old-to-new URL mapping.
+- [x] Create `upload-to-supabase.js` that reads `all-media-urls.txt`, downloads every accessible `/legacy-storage/*` image, uploads each image to Supabase bucket `ebysplace-media`, and writes an old-to-new URL mapping.
 - [x] Keep the Supabase service role key out of source control by reading it from `SUPABASE_SERVICE_ROLE_KEY`; do not hardcode the placeholder `YOUR_SERVICE_ROLE_KEY`.
 - [x] Use corrected Supabase project URL `https://jcyoipbiplzrocrrhwkp.supabase.co` in the migration script while preserving environment-variable override support.
-- [x] Update codebase image references from `/manus-storage/*` to Supabase public storage URLs only after the migration script creates a verified mapping.
-- [x] Validate that no intended `/manus-storage/*` site image references remain after the Supabase migration.
+- [x] Update codebase image references from `/legacy-storage/*` to Supabase public storage URLs only after the migration script creates a verified mapping.
+- [x] Validate that no intended `/legacy-storage/*` site image references remain after the Supabase migration.
 - [x] Save and sync the Supabase media migration script, mapping, reference updates, and TODO completion to GitHub.
 
 - [x] Retry Supabase media migration with corrected project URL `https://jcyoipbiplzrocrrhwkp.supabase.co` and validate DNS, bucket access, and service-role authentication before replacing code references.
@@ -405,8 +405,8 @@
 - [x] Fix Vercel `/api/trpc` 500 responses by making the server database connection compatible with the Supabase PostgreSQL `DATABASE_URL`
 - [x] Check `server/_core/db.ts` and related database helpers for MySQL-only adapter or connection assumptions that break against Supabase PostgreSQL
 - [x] Preserve protected API, admin, booking, shop, checkout, notification, and public content behavior while fixing the PostgreSQL database connection
-- [x] Remove, migrate, or temporarily disable the remaining header video `/manus-storage/` reference so production no longer depends on Manus storage for that asset
-- [x] Add or update focused regression coverage for PostgreSQL database connection behavior, `/api/trpc` JSON responses, and removal of the header video Manus-storage reference
+- [x] Remove, migrate, or temporarily disable the remaining header video `/legacy-storage/` reference so production no longer depends on legacy storage for that asset
+- [x] Add or update focused regression coverage for PostgreSQL database connection behavior, `/api/trpc` JSON responses, and removal of the header video legacy storage reference
 - [x] Validate tests, TypeScript checks, production build, local API route smoke checks, media-reference scan, and project health after the production API and header video fixes
 - [x] Save and sync a checkpoint for the Supabase PostgreSQL API fix and header video media-reference fix
 
@@ -419,3 +419,61 @@
 - [x] Validate tests, TypeScript checks, production build, local tRPC smoke checks, seeded record counts, and representative Supabase media URL HTTP checks after the seed/media repair
 - [x] Save and sync a checkpoint for the Supabase production seed and media URL repair
 - [x] Audit all current seed, migration, mapping, and validation steps to ensure they consistently use corrected Supabase URL `https://jcyoipbiplzrocrrhwkp.supabase.co` and not the earlier mistyped hostname
+
+- [x] Check the Supabase production database directly to confirm whether all Eby’s Place services are seeded, not only Knotless Braids
+- [x] Re-run the corrected Supabase seed process if any services, products, reviews, gallery items, or website sections are missing from production data
+- [x] Verify the production service list path returns all seeded services from Supabase on Vercel instead of showing only one service
+- [x] Fix the AI Try-On Vercel API failure that returns `Unexpected token A, A server e... is not valid JSON`
+- [x] Ensure the AI Try-On endpoint returns structured JSON errors/responses on Vercel and works with the configured OpenAI-compatible API key
+- [x] Add or update regression coverage for Supabase service count validation and AI Try-On Vercel JSON response handling
+- [ ] Validate tests, TypeScript checks, production build, service-count smoke checks, AI Try-On endpoint behavior, and project health after the fixes
+- [ ] Save and sync a checkpoint for the Vercel services and AI Try-On API repair
+
+- [x] Run a broader Vercel production audit beyond the currently visible service-list and AI Try-On failures
+- [x] Check all public pages and primary user flows for likely production-only runtime failures, including services, booking, shop, gallery, reviews, policies, admin entry, and AI Try-On
+- [x] Verify all public tRPC/API endpoints return valid JSON for both success and error states instead of HTML/text server errors
+- [x] Verify Vercel environment compatibility for database, Supabase storage, Stripe, AI/OpenAI-compatible image generation, file upload size handling, and serverless runtime assumptions
+- [x] Fix any additional hidden production issues discovered during the Vercel audit, not only the two initially reported issues
+- [x] Document every confirmed production issue found, the root cause, the implemented fix, and the validation result
+
+- [x] Fix the Vercel admin sign-in failure where the login flow reports `App ID is not set`
+- [x] Verify the deployed admin/auth path has the required OAuth App ID configuration or a safe fallback/error message that clearly identifies missing production configuration
+- [x] Add regression coverage or build-time validation to prevent shipping an admin sign-in flow without the required App ID configuration
+
+- [x] Prepare a production migration checklist for moving Eby’s Place to the final hosting environment and pointing `ebysplace.com`
+- [x] Identify all required production environment variables for Vercel/domain launch, including Supabase, OAuth App ID, Stripe, OpenAI-compatible AI Try-On, Twilio/notifications, and site URL settings
+- [x] Document the required DNS records and safe cutover sequence for `ebysplace.com` and `www.ebysplace.com`
+- [x] Verify application redirects, OAuth callback URLs, Stripe success/cancel URLs, webhook URLs, and CORS/origin-sensitive behavior are safe for the final `ebysplace.com` domain
+- [x] Include rollback and post-launch smoke-test steps for services, booking checkout, shop checkout, AI Try-On, admin sign-in, media loading, and contact/notification flows
+
+- [x] Re-run the Supabase production database seed and verify all Eby’s Place services, products, approved reviews, gallery items, and website sections exist in Supabase
+- [x] Confirm the production services database and public services endpoint return the full catalogue, not only Knotless Braids
+- [x] Fix the Vercel AI Try-On flow so upload/generation failures return valid JSON and the OpenAI-compatible API integration works in serverless production
+- [x] Fix the Vercel Admin panel Invalid URL/App ID sign-in failure and preserve a safe admin login flow for `ebysplace.com`
+- [x] Verify all Supabase storage image URLs use the corrected project URL and public `ebysplace-media` bucket, and repair any broken or stale media references
+- [x] Run production-oriented validation for database counts, media URL loading, public content APIs, AI Try-On error/response shape, admin auth configuration, tests, type checks, and build
+- [x] Save and sync a GitHub checkpoint after the Vercel production repairs are complete
+
+- [x] Include all production logic and automations in the repair pass, including booking submission, Stripe booking deposits, shop checkout/orders, owner notifications, customer confirmations, admin moderation, admin content/product/service workflows, AI Try-On, storage, and migration/domain readiness
+- [x] Verify automation behavior remains branded for Eby’s Place and does not expose platform-branded receipts, customer messages, or public-facing operational copy
+- [x] Add or update regression coverage for the repaired booking, payment, order, notification, admin, and customer-facing automation paths before final validation
+
+- [x] Ensure the completed production repair is synced to GitHub so Vercel can automatically redeploy from the connected branch
+- [x] Verify whether the repository has a Vercel deployment configuration suitable for automatic redeployment after GitHub sync
+- [x] Document the fallback manual redeployment steps if the Vercel project is not configured for automatic GitHub deployments
+
+- [x] Complete a fresh Vercel + Supabase production-readiness audit covering database, images, AI Try-On, admin, booking, Stripe, Twilio, proprietary service references, environment variables, and Vercel routing
+- [x] Re-seed Supabase PostgreSQL with all services, products, reviews, gallery images, and website sections, then verify each required table has data
+- [x] Audit every image reference and replace remaining `/legacy-storage/` URLs with public Supabase `ebysplace-media` storage URLs using the corrected project URL
+- [x] Update AI Try-On image generation to use OpenAI `gpt-image-1` directly with `OPENAI_API_KEY` on Vercel instead of legacy image generation
+- [x] Fix admin panel Invalid URL errors so admin uses production-safe API/auth URLs and Supabase-backed data paths
+- [x] Verify booking submissions persist to Supabase and trigger customer/owner SMS or WhatsApp notifications where Twilio is configured
+- [x] Verify Stripe checkout and `/api/stripe/webhook` operate with configured Stripe test keys and preserve Eby’s Place branded messaging
+- [x] Remove or replace remaining runtime references to legacy hosted storage, obsolete dialog names, and other proprietary services from production paths
+- [x] Generate a complete Vercel environment-variable checklist for Supabase, OpenAI, Stripe, Twilio, OAuth/admin, analytics, and app branding
+- [x] Validate `vercel.json` routes `/api/*` to the Express backend and all non-API routes to the React frontend
+- [x] Run full tests, TypeScript checks, production build, route/API smoke checks, media scans, seed-count checks, and proprietary-reference scans
+- [x] Save and sync the completed production-readiness fixes to GitHub so Vercel can automatically redeploy
+
+- [x] Complete a final no-leftovers cleanup pass for tracked production source, removing obsolete inventory files and stale proprietary-reference artifacts
+- [x] Prepare Cloudflare access guidance and domain/DNS handoff steps for `ebysplace.com`, without requesting passwords in chat

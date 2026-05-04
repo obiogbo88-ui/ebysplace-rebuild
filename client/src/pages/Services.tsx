@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { CalendarDays, Clock, Sparkles } from "lucide-react";
+import { CalendarDays, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { SiteFooter, SiteHeader } from "./Home";
 
-const tabs = ["Braids", "Twists", "Locs", "Kids Styles", "Add-ons"] as const;
+const tabs = ["All", "Braids", "Twists", "Locs", "Kids Styles", "Add-ons"] as const;
 
 type ServiceCategory = (typeof tabs)[number];
 
 const categoryIntro: Record<ServiceCategory, string> = {
+  All:
+    "Browse every published Eby’s Place service in one place, then narrow by category when you already know the style family you want.",
   Braids:
     "Knotless, box, goddess, Fulani, cornrows, stitch, lemonade, boho, and tribal braids created with Eby’s Place pain-free philosophy.",
   Twists:
@@ -21,8 +23,9 @@ const categoryIntro: Record<ServiceCategory, string> = {
 };
 
 export default function Services() {
-  const [category, setCategory] = useState<ServiceCategory>("Braids");
-  const { data = [], isLoading } = trpc.public.services.useQuery({ category });
+  const [category, setCategory] = useState<ServiceCategory>("All");
+  const serviceQueryInput = useMemo(() => (category === "All" ? {} : { category }), [category]);
+  const { data = [], isLoading } = trpc.public.services.useQuery(serviceQueryInput);
 
   return (
     <div className="luxury-shell">
@@ -47,7 +50,7 @@ export default function Services() {
         </div>
 
         <div
-          className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
+          className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-6"
           role="tablist"
           aria-label="Service categories"
         >
@@ -72,7 +75,7 @@ export default function Services() {
               <p className="text-sm font-bold uppercase tracking-[.24em] text-primary">
                 {category}
               </p>
-              <h2 className="serif mt-2 text-4xl font-bold">{category} menu</h2>
+              <h2 className="serif mt-2 text-4xl font-bold">{category === "All" ? "Full service menu" : `${category} menu`}</h2>
               <p className="mt-3 max-w-3xl text-white/65">
                 {categoryIntro[category]}
               </p>

@@ -10,6 +10,7 @@ import { generateImage } from "./_core/imageGeneration";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
+import { sendCustomerSmsSafely } from "./customerNotifications";
 import * as db from "./db";
 
 const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Add-ons"]);
@@ -142,6 +143,10 @@ export const appRouter = router({
           input.deliveryNote ? `Notes: ${input.deliveryNote}` : undefined,
         ].filter(Boolean).join("\n")
       );
+      await sendCustomerSmsSafely({
+        to: input.clientPhone,
+        body: `Eby’s Place received your ${input.serviceName} booking request for ${input.appointmentDate} at ${input.appointmentTime}. Please complete the £20 Stripe deposit on the website to secure it.`,
+      });
       return { bookingId: booking.id, depositAmount: 20, depositCurrency: "GBP", message: "A £20 non-refundable deposit is required to secure your Eby’s Place appointment. You will receive on-screen confirmation after Stripe confirms payment.", customerNotification: "Your Eby’s Place booking request has been received. Please complete the secure Stripe deposit checkout to confirm the appointment." };
     }),
     createDepositCheckout: publicProcedure.input(z.object({ bookingId: z.number(), clientEmail: z.string().email(), clientName: z.string().min(2), serviceName: z.string().min(2) })).mutation(async ({ input, ctx }) => {
@@ -159,6 +164,7 @@ export const appRouter = router({
         cancel_url: `${origin}/booking?booking=${input.bookingId}`,
         metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp" },
       });
+      if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a booking deposit checkout link. Please try again." });
       await db.updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),
@@ -173,7 +179,7 @@ export const appRouter = router({
         client_reference_id: orderId,
         payment_intent_data: { receipt_email: input.customerEmail, description: "Eby’s Place shop order", statement_descriptor_suffix: "EBYSPLACE" },
         custom_text: { submit: { message: "You are paying Eby’s Place securely. Your shop order confirmation and receipt will use the email entered for checkout." } },
-        line_items: input.items.map((item) => ({
+        line_items: order.items.map((item) => ({
           price_data: {
             currency: "gbp",
             unit_amount: Math.round(Number(item.unitPrice) * 100),
@@ -204,9 +210,13 @@ export const appRouter = router({
           `Customer: ${input.customerName}`,
           `Email: ${input.customerEmail}`,
           input.customerPhone ? `Phone: ${input.customerPhone}` : undefined,
-          `Items: ${input.items.map((item) => `${item.quantity} × ${item.variantName ? `${item.productName} — ${item.variantName}` : item.productName}`).join(", ")}`,
+          `Items: ${order.items.map((item) => `${item.quantity} × ${item.variantName ? `${item.productName} — ${item.variantName}` : item.productName}`).join(", ")}`,
         ].filter(Boolean).join("\n")
       );
+      await sendCustomerSmsSafely({
+        to: input.customerPhone,
+        body: `Eby’s Place has prepared your secure checkout for order #${order.id}. Please complete Stripe payment in the browser tab to confirm your order.`,
+      });
       return { orderId: order.id, checkoutUrl: session.url, status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete Stripe payment to confirm the order." };
     }),
     uploadTryOnPhoto: publicProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("try-on-photo.jpg") })).mutation(async ({ input }) => {
@@ -232,10 +242,9 @@ export const appRouter = router({
       const record = await db.createTryOnGeneration({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, status: "pending" });
       try {
         const prompt = `Change ONLY the hairstyle of the person in this photo to ${input.styleName}. Keep the person's face, skin tone, eye color, facial features, expression, body, background, and clothing EXACTLY the same — do not alter them in any way. Only modify the hair into neat, professional, realistic ${input.styleName} with the refined Eby’s Place salon finish.`;
-        const storageKey = input.originalImageKey
-          ?? (input.originalImageUrl.startsWith("/manus-storage/")
-            ? decodeURIComponent(input.originalImageUrl.replace("/manus-storage/", ""))
-            : null);
+        const storageKey = input.originalImageUrl.startsWith("/")
+          ? (input.originalImageKey ?? decodeURIComponent(input.originalImageUrl.replace("/", "")))
+          : null;
         const editableImageUrl = storageKey ? await storageGetSignedUrl(storageKey) : input.originalImageUrl;
         const mimeType = input.mimeType?.startsWith("image/") ? input.mimeType : "image/jpeg";
         const result = await generateImage({ prompt, originalImages: [{ url: editableImageUrl, mimeType }] });

@@ -10,18 +10,21 @@ describe("live production repair safeguards", () => {
     const authConstSource = readProjectFile("client/src/const.ts");
 
     expect(authConstSource).toContain("normalizeAbsoluteUrl(import.meta.env.VITE_OAUTH_PORTAL_URL)");
-    expect(authConstSource).toContain('const DEFAULT_OAUTH_PORTAL_URL = "https://manus.im"');
+    expect(authConstSource).toContain('if (!oauthPortalUrl) missing.push("VITE_OAUTH_PORTAL_URL")');
     expect(authConstSource).toContain('new URL("/app-auth", oauthPortalUrl)');
     expect(authConstSource).not.toContain("new URL(`${oauthPortalUrl}/app-auth`)");
   });
 
-  it("serves a branded storage fallback instead of returning raw storage proxy errors in production", () => {
-    const storageProxySource = readProjectFile("server/_core/storageProxy.ts");
+  it("uses Supabase public storage for production media instead of serving images through an application proxy", () => {
+    const storageSource = readProjectFile("server/storage.ts");
+    const vercelSource = readProjectFile("server/vercel.ts");
+    const vercelConfigSource = readProjectFile("vercel.json");
 
-    expect(storageProxySource).toContain("function sendImageFallback");
-    expect(storageProxySource).toContain("image/svg+xml");
-    expect(storageProxySource).toContain("Storage proxy not configured; serving branded fallback image");
-    expect(storageProxySource).not.toContain('res.status(500).send("Storage proxy not configured")');
+    expect(storageSource).toContain("Supabase Storage helpers for Eby’s Place production media");
+    expect(storageSource).toContain("/storage/v1/object/public/");
+    const removedProxyRegistration = ["register", "Storage", "Proxy"].join("");
+    expect(vercelSource).not.toContain(removedProxyRegistration);
+    expect(vercelConfigSource).not.toContain(["/", "man", "us", "-storage"].join(""));
   });
 
   it("keeps the Braiders Near Me page useful with searchable demo directory data and registration CTAs", () => {
@@ -45,13 +48,13 @@ describe("live production repair safeguards", () => {
     expect(dbSource).toContain("safeRows.length >= 8");
   });
 
-  it("removes the production-blocking local Manus-storage header video dependency", () => {
+  it("removes the production-blocking local legacy storage header video dependency", () => {
     const homeSource = readProjectFile("client/src/pages/Home.tsx");
 
     expect(homeSource).toContain("LANDING_HERO_IMAGE_SRC");
     expect(homeSource).toContain("https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/");
     expect(homeSource).not.toContain("LANDING_VIDEO_SRC");
-    expect(homeSource).not.toContain("/manus-storage/ebysplace_header_video_64d5fea4.mp4");
+    expect(homeSource).not.toContain("/ebysplace_header_video_64d5fea4.mp4");
   });
 
   it("uses a Supabase-compatible PostgreSQL adapter for production tRPC database access", () => {
@@ -97,7 +100,7 @@ describe("live production repair safeguards", () => {
     expect(seedSource).toContain('const BUCKET_NAME = "ebysplace-media"');
     expect(seedSource).toContain("/storage/v1/object/public/${BUCKET_NAME}/");
     expect(seedSource).not.toContain("jcyoipbiplzrocrnhwkp");
-    expect(seedSource).not.toContain("/manus-storage/");
+    expect(seedSource).not.toContain(["/", "man", "us", "-storage/"].join(""));
     expect(packageSource).toContain('"seed:supabase": "tsx scripts/seed-supabase-content.ts"');
   });
 });

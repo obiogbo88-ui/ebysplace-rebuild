@@ -19,7 +19,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getLoginUrl } from "@/const";
+import { getAuthConfigurationStatus, getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { CalendarDays, Home, Images, LayoutDashboard, LogOut, MessageSquare, Package, PanelLeft, Scissors, ShoppingBag, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -53,6 +53,7 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const { loading, user } = useAuth();
+  const authConfiguration = getAuthConfigurationStatus();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -64,24 +65,35 @@ export default function DashboardLayout({
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
+      <div className="flex items-center justify-center min-h-screen bg-[#fffaf0] px-4">
+        <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-3xl border border-[#d8b66b]/40 bg-white p-8 text-center shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
           <div className="flex flex-col items-center gap-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
-              Sign in to continue
+            <h1 className="text-2xl font-semibold tracking-tight text-[#2f2418]">
+              {authConfiguration.isConfigured ? "Sign in to continue" : "Admin sign-in needs configuration"}
             </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this dashboard requires authentication. Continue to launch the login flow.
+            <p className="max-w-sm text-sm leading-relaxed text-[#5f5142]">
+              {authConfiguration.isConfigured
+                ? "Access to this dashboard requires authentication. Continue to launch the secure login flow."
+                : authConfiguration.missingMessage}
             </p>
           </div>
-          <Button
-            onClick={() => {
-              window.location.href = getLoginUrl();
-            }}
-            size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
-          >
-            Sign in
+          {authConfiguration.isConfigured ? (
+            <Button
+              onClick={() => {
+                window.location.href = getLoginUrl();
+              }}
+              size="lg"
+              className="w-full shadow-lg transition-all hover:shadow-xl"
+            >
+              Sign in
+            </Button>
+          ) : (
+            <div className="w-full rounded-2xl border border-[#b42318]/25 bg-[#fff1f0] px-4 py-3 text-left text-sm leading-relaxed text-[#5a160f]">
+              Required Vercel environment variable: <strong>VITE_APP_ID</strong>. Keep <strong>VITE_OAUTH_PORTAL_URL</strong> set to a valid absolute URL, or the site will use the default OAuth login portal.
+            </div>
+          )}
+          <Button type="button" variant="outline" onClick={() => window.location.assign("/")} className="w-full border-[#d8b66b]/50 bg-white text-[#2f2418] hover:bg-[#fff7df]">
+            Back to website
           </Button>
         </div>
       </div>

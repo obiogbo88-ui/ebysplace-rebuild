@@ -112,26 +112,26 @@ export async function getUserByOpenId(openId: string) {
 }
 
 export const imageBySlug: Record<string, string> = {
-  "knotless-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
-  "box-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
-  "goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
-  "fulani-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
-  "cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
-  "stitch-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
-  "lemonade-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
-  "boho-goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
-  "tribal-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
-  "senegalese-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
-  "passion-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
-  "faux-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
-  "butterfly-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
-  "starter-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
-  "kids-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
-  "kids-cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
-  "hair-wash-prep": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
-  "beads-accessories": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_beads_accessories_05425a55-585b8bc439.png",
-  "edge-control-styling": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_edge_control_styling_675ed964-0d252ca79f.png",
-  "braid-takedown": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png"
+  "knotless-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+  "box-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+  "goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
+  "fulani-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+  "cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+  "stitch-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
+  "lemonade-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
+  "boho-goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
+  "tribal-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
+  "senegalese-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
+  "passion-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
+  "faux-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
+  "butterfly-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
+  "starter-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+  "kids-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+  "kids-cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
+  "hair-wash-prep": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
+  "beads-accessories": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png",
+  "edge-control-styling": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_edge_control_styling_675ed964-0d252ca79f.png",
+  "braid-takedown": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png"
 };
 
 export const seedServices = [
@@ -145,7 +145,7 @@ export const seedServices = [
     badge: "Signature",
     isFeatured: "true" as const,
     sortOrder: 1,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
   },
   {
     name: "Box Braids",
@@ -157,7 +157,7 @@ export const seedServices = [
     badge: "Classic",
     isFeatured: "true" as const,
     sortOrder: 2,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
   },
   {
     name: "Goddess Braids",
@@ -169,7 +169,7 @@ export const seedServices = [
     badge: "Luxury",
     isFeatured: "false" as const,
     sortOrder: 3,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
   },
   {
     name: "Fulani Braids",
@@ -181,7 +181,7 @@ export const seedServices = [
     badge: "Statement",
     isFeatured: "false" as const,
     sortOrder: 4,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
   },
   {
     name: "Cornrows",
@@ -193,7 +193,7 @@ export const seedServices = [
     badge: "Neat Finish",
     isFeatured: "false" as const,
     sortOrder: 5,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
   },
   {
     name: "Stitch Braids",
@@ -205,7 +205,7 @@ export const seedServices = [
     badge: "Defined",
     isFeatured: "false" as const,
     sortOrder: 6,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
   },
   {
     name: "Lemonade Braids",
@@ -217,7 +217,7 @@ export const seedServices = [
     badge: "Popular",
     isFeatured: "true" as const,
     sortOrder: 7,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
   },
   {
     name: "Boho Braids",
@@ -229,7 +229,7 @@ export const seedServices = [
     badge: "Popular",
     isFeatured: "true" as const,
     sortOrder: 8,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
   },
   {
     name: "Tribal Braids",
@@ -241,7 +241,7 @@ export const seedServices = [
     badge: "Artistry",
     isFeatured: "false" as const,
     sortOrder: 9,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
   },
   {
     name: "Senegalese Twists",
@@ -253,7 +253,7 @@ export const seedServices = [
     badge: "Protective",
     isFeatured: "true" as const,
     sortOrder: 10,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
   },
   {
     name: "Passion Twists",
@@ -265,7 +265,7 @@ export const seedServices = [
     badge: "Soft Texture",
     isFeatured: "false" as const,
     sortOrder: 11,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
   },
   {
     name: "Faux Locs",
@@ -277,7 +277,7 @@ export const seedServices = [
     badge: "Protective",
     isFeatured: "true" as const,
     sortOrder: 12,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
   },
   {
     name: "Butterfly Locs",
@@ -289,7 +289,7 @@ export const seedServices = [
     badge: "Trending",
     isFeatured: "false" as const,
     sortOrder: 13,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
   },
   {
     name: "Starter Locs",
@@ -301,7 +301,7 @@ export const seedServices = [
     badge: "Loc Journey",
     isFeatured: "false" as const,
     sortOrder: 14,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
   },
   {
     name: "Kids Braids",
@@ -313,7 +313,7 @@ export const seedServices = [
     badge: "Family Friendly",
     isFeatured: "false" as const,
     sortOrder: 15,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
   },
   {
     name: "Kids Cornrows",
@@ -325,7 +325,7 @@ export const seedServices = [
     badge: "Family Friendly",
     isFeatured: "false" as const,
     sortOrder: 16,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
   },
   {
     name: "Hair Wash & Prep",
@@ -337,7 +337,7 @@ export const seedServices = [
     badge: "Add-on",
     isFeatured: "false" as const,
     sortOrder: 17,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
   },
   {
     name: "Beads & Accessories",
@@ -349,7 +349,7 @@ export const seedServices = [
     badge: "Finishing",
     isFeatured: "false" as const,
     sortOrder: 18,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_beads_accessories_05425a55-585b8bc439.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png",
   },
   {
     name: "Edge Control & Styling",
@@ -361,7 +361,7 @@ export const seedServices = [
     badge: "Finishing",
     isFeatured: "false" as const,
     sortOrder: 19,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_edge_control_styling_675ed964-0d252ca79f.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_edge_control_styling_675ed964-0d252ca79f.png",
   },
   {
     name: "Braid Takedown",
@@ -373,7 +373,7 @@ export const seedServices = [
     badge: "Aftercare",
     isFeatured: "false" as const,
     sortOrder: 20,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png",
   },
 ];
 
@@ -443,7 +443,7 @@ function isPositivePrice(value: unknown) {
 }
 
 function isUsableImageUrl(value: unknown) {
-  return typeof value === "string" && (/^\/manus-storage\//.test(value) || /^https?:\/\//.test(value));
+  return typeof value === "string" && /^https?:\/\//.test(value);
 }
 
 async function ensureSeedProducts(db: Awaited<ReturnType<typeof getDb>>) {
@@ -531,18 +531,32 @@ async function seedIfNeeded() {
   await ensureSeedGallery(db);
 }
 
+function mergeWithSeedServices(rows: Array<typeof services.$inferSelect>, category?: string) {
+  const scopedRows = category ? rows.filter((row) => row.category === category) : rows;
+  const usableRows = scopedRows.map((row) => ({
+    ...row,
+    imageUrl: isUsableImageUrl(row.imageUrl) ? row.imageUrl : imageBySlug[row.slug] || row.imageUrl,
+  }));
+  const existingSlugs = new Set(usableRows.map((row) => row.slug));
+  const scopedSeeds = seedServices.filter((item) => (!category || item.category === category) && !existingSlugs.has(item.slug));
+  return [...usableRows, ...scopedSeeds].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+}
+
 export async function listServices(category?: string) {
   await seedIfNeeded();
   const db = await getDb();
-  if (!db) return seedServices;
-  return category ? db.select().from(services).where(eq(services.category, category as any)).orderBy(asc(services.sortOrder)) : db.select().from(services).orderBy(asc(services.sortOrder));
+  if (!db) return category ? seedServices.filter((item) => item.category === category) : seedServices;
+  const rows = await db.select().from(services).orderBy(asc(services.sortOrder));
+  return mergeWithSeedServices(rows, category);
 }
 
 export async function listFeaturedServices() {
   await seedIfNeeded();
   const db = await getDb();
   if (!db) return seedServices.filter((item) => item.isFeatured === "true");
-  return db.select().from(services).where(eq(services.isFeatured, "true")).orderBy(asc(services.sortOrder));
+  const rows = await db.select().from(services).where(eq(services.isFeatured, "true")).orderBy(asc(services.sortOrder));
+  const safeRows = mergeWithSeedServices(rows).filter((item) => item.isFeatured === "true");
+  return safeRows.length ? safeRows : seedServices.filter((item) => item.isFeatured === "true");
 }
 
 export async function listWebsiteSections() {
@@ -621,13 +635,45 @@ export async function markBookingDepositPaid(stripeCheckoutSessionId: string, st
   await db.update(bookings).set({ depositStatus: "paid", status: "confirmed", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId));
 }
 
-export async function createOrderWithItems(input: { customerName: string; customerEmail: string; customerPhone?: string; addressLine1: string; city: string; county?: string; postcode: string; deliveryNote?: string; items: Array<{ productId: number; variantId?: number; productName: string; variantName?: string; quantity: number; unitPrice: string }> }) {
+export async function getBookingByCheckoutSession(stripeCheckoutSessionId: string) {
   const db = await getDb();
-  if (!db) return { id: Date.now() };
+  if (!db) return null;
+  const rows = await db.select().from(bookings).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createOrderWithItems(input: { customerName: string; customerEmail: string; customerPhone?: string; addressLine1: string; city: string; county?: string; postcode: string; deliveryNote?: string; items: Array<{ productId: number; variantId?: number; productName: string; variantName?: string; quantity: number; unitPrice: string }> }) {
+  await seedIfNeeded();
+  const db = await getDb();
+  if (!db) return { id: Date.now(), items: input.items };
+
+  const [productRows, variantRows] = await Promise.all([
+    db.select().from(products),
+    db.select().from(productVariants),
+  ]);
+  const validatedItems = input.items.map((item) => {
+    const product = productRows.find((row) => row.id === item.productId);
+    if (!product) throw new Error(`Product ${item.productId} is no longer available.`);
+    if (product.stockStatus === "out_of_stock") throw new Error(`${product.name} is currently out of stock.`);
+    const quantity = Math.max(1, Math.min(25, Math.floor(Number(item.quantity) || 1)));
+    const variant = item.variantId ? variantRows.find((row) => row.id === item.variantId && row.productId === product.id) : undefined;
+    if (item.variantId && !variant) throw new Error(`Selected variant for ${product.name} is no longer available.`);
+    const stockQuantity = variant ? Number(variant.stockQuantity ?? 0) : Number(product.stockQuantity ?? 0);
+    if (stockQuantity > 0 && quantity > stockQuantity) throw new Error(`Only ${stockQuantity} ${variant ? `${product.name} — ${variant.name}` : product.name} item(s) are available.`);
+    return {
+      productId: product.id,
+      variantId: variant?.id,
+      productName: product.name,
+      variantName: variant?.name,
+      quantity,
+      unitPrice: Number(product.price).toFixed(2),
+    };
+  });
+
   const inserted = await db.insert(orders).values({ customerName: input.customerName, customerEmail: input.customerEmail, customerPhone: input.customerPhone, addressLine1: input.addressLine1, city: input.city, county: input.county, postcode: input.postcode, deliveryNote: input.deliveryNote, status: "draft" }).returning({ id: orders.id });
   const orderId = inserted[0]?.id ?? 0;
-  if (orderId && input.items.length) await db.insert(orderItems).values(input.items.map((item) => ({ ...item, orderId })));
-  return { id: orderId };
+  if (orderId && validatedItems.length) await db.insert(orderItems).values(validatedItems.map((item) => ({ ...item, orderId })));
+  return { id: orderId, items: validatedItems };
 }
 
 export async function updateOrderCheckout(id: number, stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
@@ -640,6 +686,13 @@ export async function markOrderPaid(stripeCheckoutSessionId: string, stripePayme
   const db = await getDb();
   if (!db) return;
   await db.update(orders).set({ status: "paid", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId));
+}
+
+export async function getOrderByCheckoutSession(stripeCheckoutSessionId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(orders).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
+  return rows[0] ?? null;
 }
 
 export async function recordAnalytics(eventName: string, pagePath: string, metadata?: unknown) {
