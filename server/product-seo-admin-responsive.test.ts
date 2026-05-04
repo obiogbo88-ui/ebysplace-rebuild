@@ -110,7 +110,9 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(adminSource).not.toContain("publicSectionLinks");
     expect(adminSource).not.toContain("Add or replace website section image");
     expect(adminSource).not.toContain("Content & analytics");
-    expect(shopSource).toContain("product.imageUrl ? <img src={product.imageUrl}");
+    expect(shopSource).toContain("PRODUCT_IMAGE_FALLBACK_SRC");
+    expect(shopSource).toContain("src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}");
+    expect(shopSource).toContain("onError={(event) =>");
     expect(appSource).toContain("document.getElementById(hash.slice(1))?.scrollIntoView");
   });
 

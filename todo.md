@@ -545,3 +545,7 @@
 - [x] Fix Vercel Rollup native runtime failure by externalizing Rollup and native optional packages from the serverless API bundle.
 - [x] Validate that the Vercel API bundle no longer contains `rollup/dist/native.js` or Rollup native package imports.
 - [x] Save checkpoint and sync the Rollup externalization fix to GitHub.
+
+- [x] Trace the Vercel product image URLs and verify whether the referenced files exist in the Supabase `ebysplace-media` bucket.
+- [x] Trace the CEO/About portrait image URL and verify whether the referenced file exists in the Supabase `ebysplace-media` bucket.
+- [x] Upload or repair any missing product and CEO/About portrait media references, then validate image loading and sync the fix to GitHub.

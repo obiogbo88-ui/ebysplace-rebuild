@@ -573,11 +573,13 @@ var seedServices = [
     imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png"
   }
 ];
+var PRODUCT_IMAGE_FALLBACK_URL = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
+var ABOUT_PORTRAIT_FALLBACK_URL = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-about-story-portrait.png";
 var seedProducts = [
-  { name: "Satin Edge Scarf", slug: "satin-edge-scarf", seoTitle: "Satin Edge Scarf for Braids | Eby\u2019s Place", seoDescription: "Protect fresh braids overnight with a silky satin edge scarf from Eby\u2019s Place, designed to preserve edges and reduce friction.", category: "Accessories", description: "A silky black satin scarf for preserving edges and protecting fresh braids overnight.", price: "18.00", imageUrl: imageBySlug["edge-control-styling"], badge: "Best Seller", stockStatus: "in_stock", stockQuantity: 34, isFeatured: "true" },
-  { name: "Scalp Comfort Oil", slug: "scalp-comfort-oil", seoTitle: "Scalp Comfort Oil for Protective Styles | Eby\u2019s Place", seoDescription: "Shop lightweight scalp comfort oil for braids, twists, and locs, created to support shine and comfort between salon appointments.", category: "Aftercare", description: "A lightweight scalp oil for protective styles, designed to support comfort and shine.", price: "14.00", imageUrl: imageBySlug["hair-wash-prep"], badge: "Aftercare", stockStatus: "low_stock", stockQuantity: 8, isFeatured: "true" },
-  { name: "Premium Braiding Hair", slug: "premium-braiding-hair", seoTitle: "Premium Braiding Hair in Natural and Statement Shades | Eby\u2019s Place", seoDescription: "Buy soft-touch premium braiding hair from Eby\u2019s Place in natural tones and statement shades for protective styles.", category: "Hair Attachments", description: "Soft-touch braiding hair available in classic natural tones and statement shades.", price: "6.50", imageUrl: imageBySlug["beads-accessories"], badge: "Salon Pick", stockStatus: "in_stock", stockQuantity: 120, isFeatured: "true" },
-  { name: "Braid Care Starter Kit", slug: "braid-care-starter-kit", seoTitle: "Braid Care Starter Kit | Eby\u2019s Place", seoDescription: "A practical starter kit for maintaining fresh protective styles between Eby\u2019s Place appointments.", category: "Aftercare", description: "A simple aftercare bundle with satin protection, scalp comfort guidance, and braid maintenance essentials.", price: "28.00", imageUrl: imageBySlug["boho-goddess-braids"], badge: "New", stockStatus: "in_stock", stockQuantity: 20, isFeatured: "true" }
+  { name: "Satin Edge Scarf", slug: "satin-edge-scarf", seoTitle: "Satin Edge Scarf for Braids | Eby\u2019s Place", seoDescription: "Protect fresh braids overnight with a silky satin edge scarf from Eby\u2019s Place, designed to preserve edges and reduce friction.", category: "Accessories", description: "A silky black satin scarf for preserving edges and protecting fresh braids overnight.", price: "18.00", imageUrl: imageBySlug["edge-control-styling"] || PRODUCT_IMAGE_FALLBACK_URL, badge: "Best Seller", stockStatus: "in_stock", stockQuantity: 34, isFeatured: "true" },
+  { name: "Scalp Comfort Oil", slug: "scalp-comfort-oil", seoTitle: "Scalp Comfort Oil for Protective Styles | Eby\u2019s Place", seoDescription: "Shop lightweight scalp comfort oil for braids, twists, and locs, created to support shine and comfort between salon appointments.", category: "Aftercare", description: "A lightweight scalp oil for protective styles, designed to support comfort and shine.", price: "14.00", imageUrl: imageBySlug["hair-wash-prep"] || PRODUCT_IMAGE_FALLBACK_URL, badge: "Aftercare", stockStatus: "low_stock", stockQuantity: 8, isFeatured: "true" },
+  { name: "Premium Braiding Hair", slug: "premium-braiding-hair", seoTitle: "Premium Braiding Hair in Natural and Statement Shades | Eby\u2019s Place", seoDescription: "Buy soft-touch premium braiding hair from Eby\u2019s Place in natural tones and statement shades for protective styles.", category: "Hair Attachments", description: "Soft-touch braiding hair available in classic natural tones and statement shades.", price: "6.50", imageUrl: imageBySlug["beads-accessories"] || PRODUCT_IMAGE_FALLBACK_URL, badge: "Salon Pick", stockStatus: "in_stock", stockQuantity: 120, isFeatured: "true" },
+  { name: "Braid Care Starter Kit", slug: "braid-care-starter-kit", seoTitle: "Braid Care Starter Kit | Eby\u2019s Place", seoDescription: "A practical starter kit for maintaining fresh protective styles between Eby\u2019s Place appointments.", category: "Aftercare", description: "A simple aftercare bundle with satin protection, scalp comfort guidance, and braid maintenance essentials.", price: "28.00", imageUrl: imageBySlug["boho-goddess-braids"] || PRODUCT_IMAGE_FALLBACK_URL, badge: "New", stockStatus: "in_stock", stockQuantity: 20, isFeatured: "true" }
 ];
 var seedReviews = [
   { customerName: "Amara", rating: 5, reviewText: "The most comfortable braiding experience I have had. My scalp felt cared for and the finish was beautiful.", status: "approved", source: "website" },
@@ -673,8 +675,8 @@ var seedWebsiteSections = [
     body: "Eby\u2019s Place was born from a love for braiding and a belief that beautiful hair should never come with pain, pulling, or damage. What began as a passion for helping women and families feel confident has grown into a premium braid-care experience built on gentle hands, neat finishing, protective styling, and genuine customer care.",
     ctaLabel: "Read our services",
     ctaHref: "/services",
-    imageUrl: "",
-    portraitImageUrl: "",
+    imageUrl: ABOUT_PORTRAIT_FALLBACK_URL,
+    portraitImageUrl: ABOUT_PORTRAIT_FALLBACK_URL,
     portraitDescription: "Eberechi Ogbo | Founder & Service Lead",
     sortOrder: 1,
     isPublished: "true"
@@ -775,7 +777,7 @@ async function listProducts() {
     const safeRows = publicRows.length ? publicRows : seedProducts;
     return safeRows.map((product) => ({
       ...product,
-      imageUrl: isUsableImageUrl(product.imageUrl) ? product.imageUrl : imageBySlug["beads-accessories"],
+      imageUrl: isUsableImageUrl(product.imageUrl) ? product.imageUrl : PRODUCT_IMAGE_FALLBACK_URL,
       seoTitle: product.seoTitle || `${product.name} | Eby\u2019s Place`,
       seoDescription: product.seoDescription || product.description,
       variants: "id" in product ? variantRows.filter((variant) => variant.productId === product.id) : []

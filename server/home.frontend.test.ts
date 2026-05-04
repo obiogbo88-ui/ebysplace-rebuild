@@ -113,7 +113,9 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(combinedMediaSource).not.toContain(obsoleteStorageFolder);
     expect(combinedMediaSource).not.toContain(removedCompatibilityFolder);
     expect(homeSource).toContain('loading="lazy"\n                        decoding="async"');
-    expect(homeSource).toContain('alt="Eby’s Place story portrait" loading="lazy" decoding="async"');
+    expect(homeSource).toContain('alt="Eby’s Place story portrait"');
+    expect(homeSource).toContain("ABOUT_PORTRAIT_FALLBACK_SRC");
+    expect(homeSource).toContain("onError={(event) =>");
     expect(servicesSource).toContain('loading="lazy"\n                        decoding="async"');
     expect(gallerySource).toContain('loading="lazy" decoding="async"');
     expect(gallerySource).toContain('loading="eager" decoding="async"');

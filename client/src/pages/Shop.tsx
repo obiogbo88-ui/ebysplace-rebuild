@@ -32,6 +32,7 @@ type ShopProduct = {
 };
 
 const fallbackVariant: ProductVariant = { name: "Default", colourHex: "#c8a95a" };
+const PRODUCT_IMAGE_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
 
 function previewDescription(description: string) {
   const trimmed = description.trim();
@@ -64,7 +65,16 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
           background: `radial-gradient(circle at 30% 20%, ${selectedColour} 0%, ${selectedColour}dd 24%, rgba(255,255,255,.08) 25%, rgba(14,9,6,.96) 62%), linear-gradient(135deg, ${selectedColour}55, rgba(200,169,90,.18))`,
         }}
       >
-        {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="absolute inset-0 h-full w-full object-cover" /> : null}
+        <img
+          src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}
+          alt={product.name}
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+          onError={(event) => {
+            if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
+          }}
+        />
         <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,.18),transparent_38%,rgba(0,0,0,.45))]" />
         <div className="absolute left-5 top-5 flex flex-wrap gap-2">
           <span className="pill bg-black/55 text-xs text-primary">{product.badge || "Eby’s Pick"}</span>

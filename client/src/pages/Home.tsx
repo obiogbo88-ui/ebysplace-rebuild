@@ -2,7 +2,6 @@ import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import {
   CalendarDays,
-  Crown,
   Heart,
   Menu,
   ShieldCheck,
@@ -17,6 +16,7 @@ import { useState } from "react";
 const LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
 const HEADER_LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png";
 const LANDING_HERO_IMAGE_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_7dbbea62-45d4296622.png";
+const ABOUT_PORTRAIT_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-about-story-portrait.png";
 
 const navLinks = [
   { href: "/services", label: "Services" },
@@ -407,14 +407,16 @@ export default function Home() {
                 </div>
                 <aside className="justify-self-start text-center lg:justify-self-end" aria-label="Eby’s Place round story portrait">
                   <div className="relative mx-auto h-32 w-32 overflow-hidden rounded-full border border-[#d8bd74]/75 bg-[#efe0c7] p-2 shadow-[0_18px_48px_rgba(74,48,20,.2)] sm:h-36 sm:w-36">
-                    {aboutSection.portraitImageUrl || aboutSection.imageUrl ? (
-                      <img className="h-full w-full rounded-full object-cover object-[center_18%]" src={aboutSection.portraitImageUrl || aboutSection.imageUrl} alt="Eby’s Place story portrait" loading="lazy" decoding="async" />
-                    ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-dashed border-[#b88b2d]/75 bg-[#f7eddc] p-4 text-center">
-                        <Crown className="h-7 w-7 text-[#8a641e]" />
-                        <p className="mt-2 text-[0.62rem] font-black uppercase tracking-[.18em] text-[#6f4b16]">Story image</p>
-                      </div>
-                    )}
+                    <img
+                      className="h-full w-full rounded-full object-cover object-[center_18%]"
+                      src={aboutSection.portraitImageUrl || aboutSection.imageUrl || ABOUT_PORTRAIT_FALLBACK_SRC}
+                      alt="Eby’s Place story portrait"
+                      loading="lazy"
+                      decoding="async"
+                      onError={(event) => {
+                        if (event.currentTarget.src !== ABOUT_PORTRAIT_FALLBACK_SRC) event.currentTarget.src = ABOUT_PORTRAIT_FALLBACK_SRC;
+                      }}
+                    />
                   </div>
                 </aside>
               </div>
