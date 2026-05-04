@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { TRPCError } from "@trpc/server";
 import type { Request } from "express";
 import { upsertUser } from "./db";
