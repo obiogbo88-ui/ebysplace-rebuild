@@ -384,3 +384,20 @@
 - [x] Generate a complete `all-media-urls.txt` inventory covering every image and media URL used across services, products, gallery, hero sections, logos, favicons, metadata, static assets, seed data, and source code.
 - [x] Verify the media URL inventory is unique, categorized where useful, and suitable for Cloudflare R2 migration planning.
 - [x] Save and sync the `all-media-urls.txt` file to GitHub through the checkpoint workflow.
+
+- [x] Read `all-media-urls.txt` and identify every `/manus-storage/*` media URL that must be downloaded and migrated.
+- [x] Download every accessible image referenced by `/manus-storage/*` URLs in the media inventory into a local migration folder outside deployable app assets, with the inaccessible 403 About placeholder recorded for manual review.
+- [x] Add `upload-to-supabase.js` to upload downloaded images to the Supabase `ebysplace-media` storage bucket for corrected project `https://jcyoipbiplzrocrrhwkp.supabase.co` using a secure service role key environment variable.
+- [x] Upload the downloaded media to Supabase and generate a deterministic old-to-new URL mapping file for the migration.
+- [x] Replace all codebase and seed-data references from `/manus-storage/*` URLs to the new Supabase public storage URLs where verified uploads exist.
+- [x] Validate tests, build, route smoke checks, and media-reference scans after the Supabase storage migration.
+- [x] Save and sync a checkpoint to GitHub after the Supabase media migration is complete.
+
+- [x] Create `upload-to-supabase.js` that reads `all-media-urls.txt`, downloads every accessible `/manus-storage/*` image, uploads each image to Supabase bucket `ebysplace-media`, and writes an old-to-new URL mapping.
+- [x] Keep the Supabase service role key out of source control by reading it from `SUPABASE_SERVICE_ROLE_KEY`; do not hardcode the placeholder `YOUR_SERVICE_ROLE_KEY`.
+- [x] Use corrected Supabase project URL `https://jcyoipbiplzrocrrhwkp.supabase.co` in the migration script while preserving environment-variable override support.
+- [x] Update codebase image references from `/manus-storage/*` to Supabase public storage URLs only after the migration script creates a verified mapping.
+- [x] Validate that no intended `/manus-storage/*` site image references remain after the Supabase migration.
+- [x] Save and sync the Supabase media migration script, mapping, reference updates, and TODO completion to GitHub.
+
+- [x] Retry Supabase media migration with corrected project URL `https://jcyoipbiplzrocrrhwkp.supabase.co` and validate DNS, bucket access, and service-role authentication before replacing code references.

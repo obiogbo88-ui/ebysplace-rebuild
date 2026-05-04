@@ -1,0 +1,6 @@
+Supabase media migration completed with failures.
+Uploaded 24 of 25 Manus storage image references.
+Downloaded only 0 of 25 Manus storage image references.
+Mapping JSON: supabase-media-url-map.json
+Mapping text: supabase-media-url-map.txt
+Changed files: 1

@@ -71,26 +71,26 @@ export async function getUserByOpenId(openId: string) {
 }
 
 const imageBySlug: Record<string, string> = {
-  "knotless-braids": "/manus-storage/ebysplace_service_knotless_braids_ee7bcfb0.png",
-  "box-braids": "/manus-storage/ebysplace_service_box_braids_c219e578.png",
-  "goddess-braids": "/manus-storage/ebysplace_service_goddess_braids_da92cf33.png",
-  "fulani-braids": "/manus-storage/ebysplace_service_fulani_braids_0575047c.png",
-  "cornrows": "/manus-storage/ebysplace_service_cornrows_2b5007dd.png",
-  "stitch-braids": "/manus-storage/ebysplace_service_stitch_braids_562f3424.png",
-  "lemonade-braids": "/manus-storage/ebysplace_service_lemonade_braids_71001277.png",
-  "boho-goddess-braids": "/manus-storage/ebysplace_service_boho_braids_ee8557bc.png",
-  "tribal-braids": "/manus-storage/ebysplace_service_tribal_braids_f0ce8622.png",
-  "senegalese-twists": "/manus-storage/ebysplace_service_senegalese_twists_d58a9d66.png",
-  "passion-twists": "/manus-storage/ebysplace_service_passion_twists_fb79128f.png",
-  "faux-locs": "/manus-storage/ebysplace_service_faux_locs_b738d17e.png",
-  "butterfly-locs": "/manus-storage/ebysplace_service_butterfly_locs_642d7503.png",
-  "starter-locs": "/manus-storage/ebysplace_service_starter_locs_3cfa3435.png",
-  "kids-braids": "/manus-storage/ebysplace_service_kids_braids_066faa86.png",
-  "kids-cornrows": "/manus-storage/ebysplace_service_kids_cornrows_e12e1096.png",
-  "hair-wash-prep": "/manus-storage/ebysplace_service_hair_wash_prep_ccec3da2.png",
-  "beads-accessories": "/manus-storage/ebysplace_service_beads_accessories_05425a55.png",
-  "edge-control-styling": "/manus-storage/ebysplace_service_edge_control_styling_675ed964.png",
-  "braid-takedown": "/manus-storage/ebysplace_service_braid_takedown_6240fcb4.png"
+  "knotless-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+  "box-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+  "goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
+  "fulani-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+  "cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+  "stitch-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
+  "lemonade-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
+  "boho-goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
+  "tribal-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
+  "senegalese-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
+  "passion-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
+  "faux-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
+  "butterfly-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
+  "starter-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+  "kids-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+  "kids-cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
+  "hair-wash-prep": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
+  "beads-accessories": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_beads_accessories_05425a55-585b8bc439.png",
+  "edge-control-styling": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_edge_control_styling_675ed964-0d252ca79f.png",
+  "braid-takedown": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png"
 };
 
 const seedServices = [
@@ -104,7 +104,7 @@ const seedServices = [
     badge: "Signature",
     isFeatured: "true" as const,
     sortOrder: 1,
-    imageUrl: "/manus-storage/ebysplace_service_knotless_braids_ee7bcfb0.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
   },
   {
     name: "Box Braids",
@@ -116,7 +116,7 @@ const seedServices = [
     badge: "Classic",
     isFeatured: "true" as const,
     sortOrder: 2,
-    imageUrl: "/manus-storage/ebysplace_service_box_braids_c219e578.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
   },
   {
     name: "Goddess Braids",
@@ -128,7 +128,7 @@ const seedServices = [
     badge: "Luxury",
     isFeatured: "false" as const,
     sortOrder: 3,
-    imageUrl: "/manus-storage/ebysplace_service_goddess_braids_da92cf33.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
   },
   {
     name: "Fulani Braids",
@@ -140,7 +140,7 @@ const seedServices = [
     badge: "Statement",
     isFeatured: "false" as const,
     sortOrder: 4,
-    imageUrl: "/manus-storage/ebysplace_service_fulani_braids_0575047c.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
   },
   {
     name: "Cornrows",
@@ -152,7 +152,7 @@ const seedServices = [
     badge: "Neat Finish",
     isFeatured: "false" as const,
     sortOrder: 5,
-    imageUrl: "/manus-storage/ebysplace_service_cornrows_2b5007dd.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
   },
   {
     name: "Stitch Braids",
@@ -164,7 +164,7 @@ const seedServices = [
     badge: "Defined",
     isFeatured: "false" as const,
     sortOrder: 6,
-    imageUrl: "/manus-storage/ebysplace_service_stitch_braids_562f3424.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
   },
   {
     name: "Lemonade Braids",
@@ -176,7 +176,7 @@ const seedServices = [
     badge: "Popular",
     isFeatured: "true" as const,
     sortOrder: 7,
-    imageUrl: "/manus-storage/ebysplace_service_lemonade_braids_71001277.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
   },
   {
     name: "Boho Braids",
@@ -188,7 +188,7 @@ const seedServices = [
     badge: "Popular",
     isFeatured: "true" as const,
     sortOrder: 8,
-    imageUrl: "/manus-storage/ebysplace_service_boho_braids_ee8557bc.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
   },
   {
     name: "Tribal Braids",
@@ -200,7 +200,7 @@ const seedServices = [
     badge: "Artistry",
     isFeatured: "false" as const,
     sortOrder: 9,
-    imageUrl: "/manus-storage/ebysplace_service_tribal_braids_f0ce8622.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
   },
   {
     name: "Senegalese Twists",
@@ -212,7 +212,7 @@ const seedServices = [
     badge: "Protective",
     isFeatured: "true" as const,
     sortOrder: 10,
-    imageUrl: "/manus-storage/ebysplace_service_senegalese_twists_d58a9d66.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
   },
   {
     name: "Passion Twists",
@@ -224,7 +224,7 @@ const seedServices = [
     badge: "Soft Texture",
     isFeatured: "false" as const,
     sortOrder: 11,
-    imageUrl: "/manus-storage/ebysplace_service_passion_twists_fb79128f.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
   },
   {
     name: "Faux Locs",
@@ -236,7 +236,7 @@ const seedServices = [
     badge: "Protective",
     isFeatured: "true" as const,
     sortOrder: 12,
-    imageUrl: "/manus-storage/ebysplace_service_faux_locs_b738d17e.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
   },
   {
     name: "Butterfly Locs",
@@ -248,7 +248,7 @@ const seedServices = [
     badge: "Trending",
     isFeatured: "false" as const,
     sortOrder: 13,
-    imageUrl: "/manus-storage/ebysplace_service_butterfly_locs_642d7503.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
   },
   {
     name: "Starter Locs",
@@ -260,7 +260,7 @@ const seedServices = [
     badge: "Loc Journey",
     isFeatured: "false" as const,
     sortOrder: 14,
-    imageUrl: "/manus-storage/ebysplace_service_starter_locs_3cfa3435.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
   },
   {
     name: "Kids Braids",
@@ -272,7 +272,7 @@ const seedServices = [
     badge: "Family Friendly",
     isFeatured: "false" as const,
     sortOrder: 15,
-    imageUrl: "/manus-storage/ebysplace_service_kids_braids_066faa86.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
   },
   {
     name: "Kids Cornrows",
@@ -284,7 +284,7 @@ const seedServices = [
     badge: "Family Friendly",
     isFeatured: "false" as const,
     sortOrder: 16,
-    imageUrl: "/manus-storage/ebysplace_service_kids_cornrows_e12e1096.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
   },
   {
     name: "Hair Wash & Prep",
@@ -296,7 +296,7 @@ const seedServices = [
     badge: "Add-on",
     isFeatured: "false" as const,
     sortOrder: 17,
-    imageUrl: "/manus-storage/ebysplace_service_hair_wash_prep_ccec3da2.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
   },
   {
     name: "Beads & Accessories",
@@ -308,7 +308,7 @@ const seedServices = [
     badge: "Finishing",
     isFeatured: "false" as const,
     sortOrder: 18,
-    imageUrl: "/manus-storage/ebysplace_service_beads_accessories_05425a55.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_beads_accessories_05425a55-585b8bc439.png",
   },
   {
     name: "Edge Control & Styling",
@@ -320,7 +320,7 @@ const seedServices = [
     badge: "Finishing",
     isFeatured: "false" as const,
     sortOrder: 19,
-    imageUrl: "/manus-storage/ebysplace_service_edge_control_styling_675ed964.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_edge_control_styling_675ed964-0d252ca79f.png",
   },
   {
     name: "Braid Takedown",
@@ -332,7 +332,7 @@ const seedServices = [
     badge: "Aftercare",
     isFeatured: "false" as const,
     sortOrder: 20,
-    imageUrl: "/manus-storage/ebysplace_service_braid_takedown_6240fcb4.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png",
   },
 ];
 

@@ -99,7 +99,7 @@ describe("Eby’s Place platform business rules", () => {
     const services = await db.listServices();
     expect(services).toHaveLength(20);
     for (const service of services) {
-      expect(service.imageUrl, `${service.name} needs an uploaded image`).toMatch(/^\/manus-storage\/ebysplace_service_/);
+      expect(service.imageUrl, `${service.name} needs a migrated Supabase service image`).toMatch(/^https:\/\/jcyoipbiplzrocrrhwkp\.supabase\.co\/storage\/v1\/object\/public\/ebysplace-media\/manus-storage\/ebysplace_service_/);
     }
     expect(services.find((service) => service.name === "Goddess Braids")?.imageUrl).toContain("goddess_braids");
     expect(services.find((service) => service.name === "Box Braids")?.imageUrl).toContain("box_braids");

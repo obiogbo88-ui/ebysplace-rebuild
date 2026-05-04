@@ -1,8 +1,8 @@
 Eby’s Place Complete Media URL Inventory
 Generated for Cloudflare R2 migration planning.
 
-Total category-specific media usages: 58
-Total unique media URLs/paths: 40
+Total category-specific media usages: 41
+Total unique media URLs/paths: 39
 
 Scope: runtime frontend source, server seed data, tRPC/server routes, metadata, manifests, CSS, deploy configuration, shared/storage code, and local media files in client/public. Test files, audit notes, generated build output, dependencies, and scanner implementation artifacts are excluded so this file reflects media used by the site itself. Shared service images reused by products or gallery are intentionally repeated under each relevant category.
 
@@ -10,16 +10,16 @@ Scope: runtime frontend source, server seed data, tRPC/server routes, metadata, 
 Hero Images And Homepage Media
 ========================================================================================
 
-1. /manus-storage/ebysplace-logo-gold-cropped_721223da.png
-   Sources: client/src/pages/Home.tsx:18
-
-2. /manus-storage/ebysplace_header_video_64d5fea4.mp4
+1. /manus-storage/ebysplace_header_video_64d5fea4.mp4
    Sources: client/src/pages/Home.tsx:20
 
-3. /manus-storage/ebysplace_service_knotless_braids_7dbbea62.png
+2. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png
+   Sources: client/src/pages/Home.tsx:18
+
+3. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_knotless_braids_7dbbea62-45d4296622.png
    Sources: client/src/pages/Home.tsx:209
 
-4. /manus-storage/top-header-logo-1000220440-cropped-transparent_777ea202.png
+4. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png
    Sources: client/src/pages/Home.tsx:19
 
 ========================================================================================
@@ -48,72 +48,71 @@ Logo, Favicon, Metadata, And Brand Assets
    Sources: client/index.html:23, client/public/favicon.ico:1
    Notes: Local repository media file; migrate/upload if this path is used by deployed pages.
 
-7. /manus-storage/ebysplace-link-preview_6583844d.png
+7. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace-link-preview_6583844d-256f347d13.png
    Sources: client/index.html:11, client/index.html:18, client/index.html:35
 
 ========================================================================================
 Service Images
 ========================================================================================
 
-1. /manus-storage/ebysplace_service_beads_accessories_05425a55.png
-   Sources: server/db.ts:311, server/db.ts:521, server/db.ts:91
-   Notes: Resolved from imageBySlug["beads-accessories"].
+1. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_beads_accessories_05425a55-585b8bc439.png
+   Sources: server/db.ts:311, server/db.ts:91
 
-2. /manus-storage/ebysplace_service_boho_braids_ee8557bc.png
+2. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png
    Sources: server/db.ts:191, server/db.ts:81
 
-3. /manus-storage/ebysplace_service_box_braids_c219e578.png
+3. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_box_braids_c219e578-5ddc057b3d.png
    Sources: server/db.ts:119, server/db.ts:75
 
-4. /manus-storage/ebysplace_service_braid_takedown_6240fcb4.png
+4. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png
    Sources: server/db.ts:335, server/db.ts:93
 
-5. /manus-storage/ebysplace_service_butterfly_locs_642d7503.png
+5. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png
    Sources: server/db.ts:251, server/db.ts:86
 
-6. /manus-storage/ebysplace_service_cornrows_2b5007dd.png
+6. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_cornrows_2b5007dd-7637e158cc.png
    Sources: server/db.ts:155, server/db.ts:78
 
-7. /manus-storage/ebysplace_service_edge_control_styling_675ed964.png
+7. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_edge_control_styling_675ed964-0d252ca79f.png
    Sources: server/db.ts:323, server/db.ts:92
 
-8. /manus-storage/ebysplace_service_faux_locs_b738d17e.png
+8. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_faux_locs_b738d17e-eb99412a43.png
    Sources: server/db.ts:239, server/db.ts:85
 
-9. /manus-storage/ebysplace_service_fulani_braids_0575047c.png
+9. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png
    Sources: server/db.ts:143, server/db.ts:77
 
-10. /manus-storage/ebysplace_service_goddess_braids_da92cf33.png
+10. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png
    Sources: server/db.ts:131, server/db.ts:76
 
-11. /manus-storage/ebysplace_service_hair_wash_prep_ccec3da2.png
+11. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png
    Sources: server/db.ts:299, server/db.ts:90
 
-12. /manus-storage/ebysplace_service_kids_braids_066faa86.png
+12. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_kids_braids_066faa86-8d44891ba5.png
    Sources: server/db.ts:275, server/db.ts:88
 
-13. /manus-storage/ebysplace_service_kids_cornrows_e12e1096.png
+13. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png
    Sources: server/db.ts:287, server/db.ts:89
 
-14. /manus-storage/ebysplace_service_knotless_braids_ee7bcfb0.png
+14. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png
    Sources: server/db.ts:107, server/db.ts:74
 
-15. /manus-storage/ebysplace_service_lemonade_braids_71001277.png
+15. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_lemonade_braids_71001277-04350dddc8.png
    Sources: server/db.ts:179, server/db.ts:80
 
-16. /manus-storage/ebysplace_service_passion_twists_fb79128f.png
+16. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png
    Sources: server/db.ts:227, server/db.ts:84
 
-17. /manus-storage/ebysplace_service_senegalese_twists_d58a9d66.png
+17. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png
    Sources: server/db.ts:215, server/db.ts:83
 
-18. /manus-storage/ebysplace_service_starter_locs_3cfa3435.png
+18. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png
    Sources: server/db.ts:263, server/db.ts:87
 
-19. /manus-storage/ebysplace_service_stitch_braids_562f3424.png
+19. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_stitch_braids_562f3424-edda69b630.png
    Sources: server/db.ts:167, server/db.ts:79
 
-20. /manus-storage/ebysplace_service_tribal_braids_f0ce8622.png
+20. https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png
    Sources: server/db.ts:203, server/db.ts:82
 
 21. service-image.png
@@ -123,78 +122,14 @@ Service Images
 Product Images
 ========================================================================================
 
-1. /manus-storage/ebysplace_service_beads_accessories_05425a55.png
-   Sources: server/db.ts:342
-   Notes: Resolved from imageBySlug["beads-accessories"].
-
-2. /manus-storage/ebysplace_service_boho_braids_ee8557bc.png
-   Sources: server/db.ts:343
-   Notes: Resolved from imageBySlug["boho-goddess-braids"].
-
-3. /manus-storage/ebysplace_service_edge_control_styling_675ed964.png
-   Sources: server/db.ts:340
-   Notes: Resolved from imageBySlug["edge-control-styling"].
-
-4. /manus-storage/ebysplace_service_hair_wash_prep_ccec3da2.png
-   Sources: server/db.ts:341
-   Notes: Resolved from imageBySlug["hair-wash-prep"].
-
-5. product-image.png
+1. product-image.png
    Sources: server/routers.ts:281
 
 ========================================================================================
 Gallery Images
 ========================================================================================
 
-1. /manus-storage/ebysplace_service_boho_braids_ee8557bc.png
-   Sources: server/db.ts:391
-   Notes: Resolved from imageBySlug["boho-goddess-braids"].
-
-2. /manus-storage/ebysplace_service_box_braids_c219e578.png
-   Sources: server/db.ts:387
-   Notes: Resolved from imageBySlug["box-braids"].
-
-3. /manus-storage/ebysplace_service_butterfly_locs_642d7503.png
-   Sources: server/db.ts:395
-   Notes: Resolved from imageBySlug["butterfly-locs"].
-
-4. /manus-storage/ebysplace_service_faux_locs_b738d17e.png
-   Sources: server/db.ts:394
-   Notes: Resolved from imageBySlug["faux-locs"].
-
-5. /manus-storage/ebysplace_service_fulani_braids_0575047c.png
-   Sources: server/db.ts:389
-   Notes: Resolved from imageBySlug["fulani-braids"].
-
-6. /manus-storage/ebysplace_service_goddess_braids_da92cf33.png
-   Sources: server/db.ts:388
-   Notes: Resolved from imageBySlug["goddess-braids"].
-
-7. /manus-storage/ebysplace_service_kids_braids_066faa86.png
-   Sources: server/db.ts:396
-   Notes: Resolved from imageBySlug["kids-braids"].
-
-8. /manus-storage/ebysplace_service_knotless_braids_ee7bcfb0.png
-   Sources: server/db.ts:386
-   Notes: Resolved from imageBySlug["knotless-braids"].
-
-9. /manus-storage/ebysplace_service_lemonade_braids_71001277.png
-   Sources: server/db.ts:390
-   Notes: Resolved from imageBySlug["lemonade-braids"].
-
-10. /manus-storage/ebysplace_service_passion_twists_fb79128f.png
-   Sources: server/db.ts:393
-   Notes: Resolved from imageBySlug["passion-twists"].
-
-11. /manus-storage/ebysplace_service_senegalese_twists_d58a9d66.png
-   Sources: server/db.ts:392
-   Notes: Resolved from imageBySlug["senegalese-twists"].
-
-12. /manus-storage/ebysplace_service_starter_locs_3cfa3435.png
-   Sources: server/db.ts:397
-   Notes: Resolved from imageBySlug["starter-locs"].
-
-13. gallery-image.png
+1. gallery-image.png
    Sources: server/routers.ts:292
 
 ========================================================================================
@@ -216,9 +151,6 @@ Storage, Proxy, And Runtime Media Paths
 
 3. /manus-storage/:path*
    Sources: vercel.json:15
-
-4. /manus-storage/about-round-image.png
-   Sources: client/src/pages/Admin.tsx:511
 
 ========================================================================================
 Other Site Media References

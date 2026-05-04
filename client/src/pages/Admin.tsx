@@ -508,7 +508,7 @@ export default function Admin() {
                     </div>
                     <div className="grid gap-3">
                       <label className="btn-dark cursor-pointer justify-start"><UploadCloud className="mr-2 h-4 w-4" /> {uploadWebsiteSectionImage.isPending ? "Uploading About Us round image…" : "Upload About Us round image"}<input className="sr-only" type="file" accept="image/*" disabled={uploadWebsiteSectionImage.isPending} onChange={(event) => handleAboutPortraitUpload(event.target.files?.[0])} /></label>
-                      <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Round image URL<input id="about-portrait-image" defaultValue={about.portraitImageUrl || about.imageUrl || ""} placeholder="/manus-storage/about-round-image.png" /></label>
+                      <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Round image URL<input id="about-portrait-image" defaultValue={about.portraitImageUrl || about.imageUrl || ""} placeholder="Supabase Storage public image URL" /></label>
                       <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Description beneath round image<textarea id="about-portrait-description" defaultValue={about.portraitDescription || "Eberechi Ogbo | Founder & Service Lead"} rows={3} /></label>
                     </div>
                   </div>

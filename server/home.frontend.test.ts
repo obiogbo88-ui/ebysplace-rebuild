@@ -85,7 +85,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain('data-header-center-wordmark="ebysplace"');
     expect(homeSource).not.toContain(">\n            EBYSPLACE\n          </span>");
     expect(homeSource).toContain("HEADER_LOGO_SRC");
-    expect(homeSource).toContain("/manus-storage/top-header-logo-1000220440-cropped-transparent_777ea202.png");
+    expect(homeSource).toContain("https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png");
     expect(homeSource.indexOf("HEADER_LOGO_SRC")).toBeLessThan(homeSource.indexOf('href="/booking"'));
   });
 
@@ -239,10 +239,10 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(indexSource).toContain('href="/favicon-16x16.png"');
     expect(indexSource).toContain('rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"');
     expect(indexSource).toContain('<link rel="manifest" href="/site.webmanifest" />');
-    expect(indexSource).toContain('property="og:image" content="/manus-storage/ebysplace-link-preview_6583844d.png"');
-    expect(indexSource).toContain('name="twitter:image" content="/manus-storage/ebysplace-link-preview_6583844d.png"');
+    expect(indexSource).toContain('property="og:image" content="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace-link-preview_6583844d-256f347d13.png"');
+    expect(indexSource).toContain('name="twitter:image" content="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace-link-preview_6583844d-256f347d13.png"');
     expect(indexSource).toContain('property="og:image:alt" content="Eby’s Place official logo');
-    expect(indexSource).toContain('"image": "/manus-storage/ebysplace-link-preview_6583844d.png"');
+    expect(indexSource).toContain('"image": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/manus-storage/ebysplace-link-preview_6583844d-256f347d13.png"');
     expect(indexSource).not.toContain('/manus-storage/ebysplace-logo_433432b1.png');
 
     const manifest = JSON.parse(manifestSource) as {
