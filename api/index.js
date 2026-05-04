@@ -1464,11 +1464,11 @@ function getSafeResetRedirect(origin) {
     return "http://localhost:3000/admin/reset-password";
   }
 }
-async function supabaseAuthFetch(path3, init = {}) {
+async function supabaseAuthFetch(path2, init = {}) {
   const { url, serviceRoleKey } = getSupabaseAuthConfig();
   let response;
   try {
-    response = await fetch(`${url}/auth/v1${path3}`, {
+    response = await fetch(`${url}/auth/v1${path2}`, {
       ...init,
       headers: {
         apikey: serviceRoleKey,
@@ -1478,11 +1478,11 @@ async function supabaseAuthFetch(path3, init = {}) {
       }
     });
   } catch (error) {
-    console.error("[Auth] Supabase Auth network request failed", { path: path3, method: init.method ?? "GET", error });
+    console.error("[Auth] Supabase Auth network request failed", { path: path2, method: init.method ?? "GET", error });
     throw new TRPCError3({ code: "BAD_GATEWAY", message: "Unable to reach Supabase Auth. Check SUPABASE_URL and network access." });
   }
   const body = await response.text().catch((error) => {
-    console.error("[Auth] Failed reading Supabase Auth response body", { path: path3, status: response.status, error });
+    console.error("[Auth] Failed reading Supabase Auth response body", { path: path2, status: response.status, error });
     return "";
   });
   let json = null;
@@ -1491,7 +1491,7 @@ async function supabaseAuthFetch(path3, init = {}) {
       json = JSON.parse(body);
     } catch (error) {
       console.error("[Auth] Supabase Auth returned non-JSON response", {
-        path: path3,
+        path: path2,
         status: response.status,
         bodyPreview: body.slice(0, 500),
         error
@@ -1501,7 +1501,7 @@ async function supabaseAuthFetch(path3, init = {}) {
   }
   if (!response.ok) {
     const message = typeof json?.msg === "string" ? json.msg : typeof json?.message === "string" ? json.message : "Supabase Auth request failed.";
-    console.error("[Auth] Supabase Auth request failed", { path: path3, method: init.method ?? "GET", status: response.status, message });
+    console.error("[Auth] Supabase Auth request failed", { path: path2, method: init.method ?? "GET", status: response.status, message });
     throw new TRPCError3({ code: response.status === 401 || response.status === 400 ? "UNAUTHORIZED" : "BAD_REQUEST", message });
   }
   return json;
@@ -1931,74 +1931,19 @@ async function createContext(opts) {
   return { req, res, user };
 }
 
-// server/_core/vite.ts
+// server/static.ts
 import express2 from "express";
 import fs from "fs";
-import { nanoid } from "nanoid";
-import path2 from "path";
-import { createServer as createViteServer } from "vite";
-
-// vite.config.ts
-import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
-import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
-import path from "node:path";
-import { defineConfig } from "vite";
-var isProductionBuild = process.env.NODE_ENV === "production";
-var plugins = [
-  react(),
-  tailwindcss(),
-  ...isProductionBuild ? [] : [jsxLocPlugin()]
-];
-var vite_config_default = defineConfig({
-  plugins,
-  resolve: {
-    alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets")
-    }
-  },
-  envDir: path.resolve(import.meta.dirname),
-  root: path.resolve(import.meta.dirname, "client"),
-  publicDir: path.resolve(import.meta.dirname, "client", "public"),
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return void 0;
-          if (id.includes("heic2any")) return "heic2any";
-          if (id.includes("react") || id.includes("scheduler")) return "vendor-react";
-          if (id.includes("@trpc") || id.includes("@tanstack") || id.includes("superjson")) return "vendor-data";
-          if (id.includes("@radix-ui") || id.includes("lucide-react") || id.includes("sonner") || id.includes("cmdk") || id.includes("vaul")) return "vendor-ui";
-          if (id.includes("stripe") || id.includes("recharts") || id.includes("date-fns")) return "vendor-feature";
-          return "vendor-core";
-        }
-      }
-    }
-  },
-  server: {
-    host: true,
-    allowedHosts: ["localhost", "127.0.0.1"],
-    fs: {
-      strict: true,
-      deny: ["**/.*"]
-    }
-  }
-});
-
-// server/_core/vite.ts
+import path from "path";
 function resolveProductionStaticPath() {
   const candidates = [
-    path2.resolve(process.cwd(), "public"),
-    path2.resolve(import.meta.dirname, "..", "public"),
-    path2.resolve(import.meta.dirname, "../..", "public"),
-    path2.resolve(import.meta.dirname, "public"),
-    path2.resolve(import.meta.dirname, "../..", "dist", "public")
+    path.resolve(process.cwd(), "public"),
+    path.resolve(import.meta.dirname, "..", "public"),
+    path.resolve(import.meta.dirname, "../..", "public"),
+    path.resolve(import.meta.dirname, "public"),
+    path.resolve(import.meta.dirname, "../..", "dist", "public")
   ];
-  return candidates.find((candidate) => fs.existsSync(path2.resolve(candidate, "index.html"))) ?? candidates[0];
+  return candidates.find((candidate) => fs.existsSync(path.resolve(candidate, "index.html"))) ?? candidates[0];
 }
 function isBackendApiRequest(url) {
   const pathname = url.split("?")[0] ?? "/";
@@ -2008,8 +1953,8 @@ function isBackendApiRequest(url) {
   return pathname === "/api" || pathname.startsWith("/api/");
 }
 function serveStatic(app2) {
-  const distPath = process.env.NODE_ENV === "development" ? path2.resolve(import.meta.dirname, "../..", "dist", "public") : resolveProductionStaticPath();
-  const indexPath = path2.resolve(distPath, "index.html");
+  const distPath = process.env.NODE_ENV === "development" ? path.resolve(import.meta.dirname, "..", "dist", "public") : resolveProductionStaticPath();
+  const indexPath = path.resolve(distPath, "index.html");
   if (!fs.existsSync(indexPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
@@ -2080,8 +2025,8 @@ app.use(
   createExpressMiddleware({
     router: appRouter,
     createContext,
-    onError({ error, path: path3, type }) {
-      console.error("[tRPC] Vercel API request failed", { path: path3, type, message: error.message, stack: error.stack });
+    onError({ error, path: path2, type }) {
+      console.error("[tRPC] Vercel API request failed", { path: path2, type, message: error.message, stack: error.stack });
     }
   })
 );

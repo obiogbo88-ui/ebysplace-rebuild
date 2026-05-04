@@ -37,7 +37,7 @@ describe("Vercel public frontend routing", () => {
   });
 
   it("serves production frontend assets from the root public build output before legacy locations", () => {
-    const staticServerSource = readProjectFile("server/_core/vite.ts");
+    const staticServerSource = readProjectFile("server/static.ts");
 
     expect(staticServerSource).toContain('path.resolve(process.cwd(), "public")');
     expect(staticServerSource.indexOf('path.resolve(process.cwd(), "public")')).toBeLessThan(
@@ -47,7 +47,7 @@ describe("Vercel public frontend routing", () => {
   });
 
   it("keeps real API paths out of the SPA fallback while allowing Vercel's internal adapter path to serve the frontend", () => {
-    const staticServerSource = readProjectFile("server/_core/vite.ts");
+    const staticServerSource = readProjectFile("server/static.ts");
 
     expect(staticServerSource).toContain("function isBackendApiRequest(url: string)");
     expect(staticServerSource).toContain('pathname === "/api/index" || pathname === "/api/index/"');
@@ -62,7 +62,8 @@ describe("Vercel public frontend routing", () => {
   it("keeps JSON API error handling before the secondary public static fallback in the Vercel Express adapter", () => {
     const vercelSource = readProjectFile("server/vercel.ts");
 
-    expect(vercelSource).toContain('import { serveStatic } from "./_core/vite";');
+    expect(vercelSource).toContain('import { serveStatic } from "./static";');
+    expect(vercelSource).not.toContain('import { serveStatic } from "./_core/vite";');
     expect(vercelSource).toContain('import { apiJsonErrorHandler, registerApiJsonNotFound } from "./apiErrorHandling";');
     expect(vercelSource).toContain("console.error(\"[tRPC] Vercel API request failed\"");
     expect(vercelSource.indexOf('app.use(\n  "/api/trpc"')).toBeLessThan(vercelSource.indexOf("registerApiJsonNotFound(app);"));

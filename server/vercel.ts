@@ -5,7 +5,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerStripeWebhook } from "./stripeWebhook";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
-import { serveStatic } from "./_core/vite";
+import { serveStatic } from "./static";
 import { apiJsonErrorHandler, registerApiJsonNotFound } from "./apiErrorHandling";
 
 const app: Application = express();

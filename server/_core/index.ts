@@ -6,7 +6,8 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerStripeWebhook } from "../stripeWebhook";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
+import { setupVite } from "./vite";
+import { serveStatic } from "../static";
 import { apiJsonErrorHandler, registerApiJsonNotFound } from "../apiErrorHandling";
 
 function isPortAvailable(port: number): Promise<boolean> {

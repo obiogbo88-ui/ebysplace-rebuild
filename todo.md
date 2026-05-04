@@ -541,3 +541,7 @@
 - [x] Confirm the configured admin login email and provide a safe way to reset the Supabase Auth password without exposing unrecoverable credentials
 - [x] Add a forgot-password/reset-password flow for the admin login if Supabase Auth configuration supports it
 - [x] Validate the Vercel build artifact layout, TypeScript checks, tests, and API import path before saving and syncing to GitHub
+
+- [x] Fix Vercel Rollup native runtime failure by externalizing Rollup and native optional packages from the serverless API bundle.
+- [x] Validate that the Vercel API bundle no longer contains `rollup/dist/native.js` or Rollup native package imports.
+- [x] Save checkpoint and sync the Rollup externalization fix to GitHub.
