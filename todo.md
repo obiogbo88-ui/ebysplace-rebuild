@@ -511,3 +511,8 @@
 - [x] Diagnose the mobile 404 page shown after deployment and determine whether it is caused by app routing, build output, Vercel/Manus routing, or an unavailable deployment URL
 - [x] If repository routing or build output causes the 404, repair the project-owned configuration and add regression coverage
 - [x] Validate the 404 fix or hosting-side diagnosis with TypeScript, Vitest, production build, and route smoke checks before checkpointing
+
+- [x] Check the exact live Manus domain `https://ebysplace.manus.space` and capture whether it returns a platform 404, app 404, redirect, or deployment error
+- [x] Determine whether `https://ebysplace.manus.space` is bound to the current `ebysplace-rebuild` checkpoint or still points to an unavailable/unpublished deployment
+- [x] If the live Manus domain 404 can be fixed in repository code or routing configuration, apply the fix and validate it before checkpointing
+- [x] If the live Manus domain 404 is caused by publishing/domain binding/platform state, explain the exact user-side steps to republish or rebind the domain
