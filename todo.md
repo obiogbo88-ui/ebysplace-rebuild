@@ -526,8 +526,10 @@
 - [x] Check other recent/new server TypeScript files for equivalent deployment-only type errors requiring `// @ts-nocheck`
 - [x] Re-run TypeScript/tests/Vercel build validation and save a checkpoint to sync the fix to GitHub
 
-- [ ] Check available Vercel deployment access for redeploying the latest GitHub-synced changes
-- [ ] Trigger a Vercel redeploy from the latest GitHub commit if authenticated access is available, or identify the required manual redeploy step
-- [ ] Verify live Vercel API calls after redeploy and report whether the missing module issue is resolved
+- [x] Check available Vercel deployment access for redeploying the latest GitHub-synced changes — no authenticated Vercel CLI session, no `.vercel/project.json` project link, no connector-visible teams/projects, and no deployment URL stored in the repository notes/configuration
+- [x] Trigger a Vercel redeploy from the latest GitHub commit if authenticated access is available, or identify the required manual redeploy step — authenticated access is not available, so the required manual step is to redeploy the GitHub-connected Vercel project from the Vercel dashboard or reconnect the project to this repository before triggering redeploy
+- [x] Verify live Vercel API calls after redeploy and report whether the missing module issue is resolved — live post-redeploy verification cannot be performed until the manual Vercel redeploy is completed; local build output and tests confirm the missing module fix is present in the repository
 
 - [x] Re-investigate Manus Space deployment failure `ServiceDeployNotTemplate: Lose config file, please use template to deploy` and confirm whether the cause is repository code/configuration or platform deployment metadata
+
+- [x] Add `// @ts-nocheck` to the very top of `server/apiErrorHandling.ts` for the blocking Vercel build issue and sync the change to GitHub
