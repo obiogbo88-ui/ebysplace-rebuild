@@ -7,7 +7,7 @@ This note records the final production-readiness pass for **Eby’s Place**. The
 | Database seed | Supabase/PostgreSQL has been re-seeded with the full service catalogue, shop products, product variants, approved reviews, gallery images, and website sections. | Seed verification returned **20 services**, **4 products**, **5 product variants**, **24 reviews**, **12 gallery images**, **1 website section**, and **0 inaccessible checked media URLs**. |
 | Media storage | Runtime media now uses clean Supabase public URLs under `https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/`. Obsolete local/proxy storage routes were removed from Vercel routing and server startup. | Source scans found no remaining active production references to obsolete proprietary storage routes. Public services and products returned clean Supabase media URLs during local production API smoke checks. |
 | AI Try-On | `server/_core/imageGeneration.ts` calls OpenAI Images directly with `OPENAI_API_KEY` and uploads generated output to Supabase storage. | Tests, TypeScript validation, production build, and source scans passed after the helper rewrite. |
-| Admin panel | Admin sign-in URL generation is environment-driven and avoids invalid URL crashes when OAuth configuration is missing. Admin data routes remain API-backed and Supabase-backed. | `/admin` returned the React production shell locally, and auth configuration is documented below for Vercel. |
+| Admin panel | Admin authentication now uses a local `/admin/login` email/password flow backed by Supabase Auth bearer tokens. The deployment no longer depends on Manus OAuth variables. | The configured Supabase admin account was created, legacy OAuth route registration was removed, and Vercel auth requirements are documented below. |
 | Booking system | Booking submissions create Supabase-backed records, trigger best-effort owner/customer notifications, and keep the £20 Stripe deposit flow server-side. | Regression tests cover booking creation, Stripe deposit session behavior, webhook confirmation, and non-blocking notifications. |
 | Stripe payments | Stripe checkout is server-side for booking deposits and shop orders. Shop order prices, product names, variants, and stock are validated against database records before checkout creation. The webhook endpoint remains `/api/stripe/webhook`. | Webhook route returned a controlled JSON error for an invalid signature locally, and tests cover live-style and `evt_test_` webhook handling. |
 | Twilio SMS/WhatsApp | Twilio requests are best-effort, use a short timeout, validate sender configuration, and do not block booking, checkout, or webhook processing. | Notification tests passed, including failure and invalid phone scenarios. |
@@ -27,12 +27,9 @@ The following environment variables should be configured in Vercel before the pr
 | `STRIPE_SECRET_KEY` | Yes | Server-side Stripe Checkout sessions and webhook handling. | Use test keys until Stripe live mode is ready. |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | Yes | Browser-side Stripe publishable key. | Must match the same Stripe mode as `STRIPE_SECRET_KEY`. |
 | `STRIPE_WEBHOOK_SECRET` | Yes | Verifies `/api/stripe/webhook` signatures. | Configure the webhook URL in Stripe as `https://<production-domain>/api/stripe/webhook`. |
-| `VITE_APP_ID` | Required for admin OAuth | Admin authentication application ID. | Without this, `/admin` shows a configuration warning instead of opening a broken sign-in URL. |
-| `VITE_OAUTH_PORTAL_URL` | Required for admin OAuth | OAuth portal base URL. | Must be a valid HTTPS URL in Vercel. |
-| `JWT_SECRET` | Yes | Signs/validates server session cookies. | Use a long random value. |
-| `OAUTH_SERVER_URL` | Required for admin OAuth | Server-side OAuth backend URL. | Must match the OAuth provider used for the admin app. |
+| `EBYSPLACE_ADMIN_EMAIL` | Optional | Restricts Supabase Auth login to the configured admin email. | Defaults to `info@ebysplace.com` when unset. The password is stored in Supabase Auth, not in the repository. |
+| `JWT_SECRET` | Optional legacy compatibility | Retained only for template compatibility if older session cookies are present. | The new admin login uses Supabase bearer tokens instead of server session cookies. |
 | `OWNER_NAME` | Recommended | Owner display name in admin/session contexts. | Used for owner/account-facing copy. |
-| `OWNER_OPEN_ID` | Required for owner admin session flows | Owner identity mapping. | Required if OAuth owner role checks are used. |
 | `EBYSPLACE_OWNER_PHONE_E164` | Recommended | Owner phone for operational notifications. | Use E.164 format, for example `+447...`. |
 | `TWILIO_ACCOUNT_SID` | Recommended | Twilio account identifier. | Required for SMS/WhatsApp notifications. |
 | `TWILIO_AUTH_TOKEN` | Recommended | Twilio API credential. | Required for SMS/WhatsApp notifications. |
@@ -62,7 +59,7 @@ Vercel custom domains are added from a project’s **Settings → Domains** area
 
 ## Final validation performed
 
-The final validation pass completed successfully after the cleanup and production rewrites. Automated regression tests passed with **12 test files** and **63 tests** passing. TypeScript validation completed with `tsc --noEmit`, and the Vite/esbuild production build completed successfully. Local production route smoke checks returned HTTP 200 for the primary React routes, while public tRPC smoke checks confirmed that `public.services` and `public.products` return Supabase-backed data and clean Supabase media URLs.
+The final validation pass should be repeated after each production change. Current safeguards cover Supabase-backed public content, Supabase password-based admin authentication, Vercel routing, Stripe checkout, and media storage. TypeScript, regression tests, production build, and local route/API smoke checks should all pass before redeploying from GitHub.
 
 > Deployment note: If Vercel is connected to the GitHub production branch, pushing the final commit to GitHub should trigger automatic redeployment. If Vercel is not connected or automatic deployments are disabled, redeploy from the Vercel dashboard after the GitHub sync completes.
 

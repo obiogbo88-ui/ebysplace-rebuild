@@ -366,7 +366,7 @@
 - [x] Validate the Vercel 403 fix with production build, route smoke tests, TypeScript, and automated regression tests
 - [x] Save and sync a checkpoint for the production 403 public-index fallback fix to GitHub
 
-- [x] Investigate the admin panel `TypeError: Invalid URL` on Vercel by tracing use of `VITE_APP_ID and API base URL`, `server API base URL`, and any API base URL construction
+- [x] Investigate the admin panel `TypeError: Invalid URL` on Vercel by tracing legacy auth URL construction, server API base URL, and API base URL construction
 - [x] Fix admin URL handling so Vercel does not construct `new URL()` with an empty, relative, or undefined base
 - [x] Validate the admin route, TypeScript, automated tests, and production build after the Invalid URL fix
 - [x] Save and sync a checkpoint for the Vercel admin Invalid URL fix to GitHub
@@ -477,3 +477,10 @@
 
 - [x] Complete a final no-leftovers cleanup pass for tracked production source, removing obsolete inventory files and stale proprietary-reference artifacts
 - [x] Prepare Cloudflare access guidance and domain/DNS handoff steps for `ebysplace.com`, without requesting passwords in chat
+
+- [x] Replace all remaining Manus OAuth admin authentication with Supabase Auth email/password login and remove legacy OAuth deployment dependencies
+- [x] Fix Supabase PostgreSQL content loading so services, products, images, reviews, gallery, and website sections appear on the frontend in production
+- [x] Add or update regression coverage for Supabase Auth admin login and seeded content visibility
+- [x] Validate tests, TypeScript, production build, local smoke checks, and Vercel-ready environment behavior after the auth/content repair
+- [x] Save and sync a checkpoint to GitHub for the Supabase Auth and content-loading repair
+- [x] Create or verify the Supabase Auth admin account for info@ebysplace.com and map it to an admin role without exposing the password in source code

@@ -19,7 +19,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getAuthConfigurationStatus, getLoginUrl } from "@/const";
+import { getAdminLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { CalendarDays, Home, Images, LayoutDashboard, LogOut, MessageSquare, Package, PanelLeft, Scissors, ShoppingBag, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -53,7 +53,6 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const { loading, user } = useAuth();
-  const authConfiguration = getAuthConfigurationStatus();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -69,29 +68,21 @@ export default function DashboardLayout({
         <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-3xl border border-[#d8b66b]/40 bg-white p-8 text-center shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
           <div className="flex flex-col items-center gap-6">
             <h1 className="text-2xl font-semibold tracking-tight text-[#2f2418]">
-              {authConfiguration.isConfigured ? "Sign in to continue" : "Admin sign-in needs configuration"}
+              Sign in to continue
             </h1>
             <p className="max-w-sm text-sm leading-relaxed text-[#5f5142]">
-              {authConfiguration.isConfigured
-                ? "Access to this dashboard requires authentication. Continue to launch the secure login flow."
-                : authConfiguration.missingMessage}
+              Access to this dashboard requires the Eby’s Place Supabase admin email and password.
             </p>
           </div>
-          {authConfiguration.isConfigured ? (
-            <Button
-              onClick={() => {
-                window.location.href = getLoginUrl();
-              }}
-              size="lg"
-              className="w-full shadow-lg transition-all hover:shadow-xl"
-            >
-              Sign in
-            </Button>
-          ) : (
-            <div className="w-full rounded-2xl border border-[#b42318]/25 bg-[#fff1f0] px-4 py-3 text-left text-sm leading-relaxed text-[#5a160f]">
-              Required Vercel environment variable: <strong>VITE_APP_ID</strong>. Keep <strong>VITE_OAUTH_PORTAL_URL</strong> set to a valid absolute URL, or the site will use the default OAuth login portal.
-            </div>
-          )}
+          <Button
+            onClick={() => {
+              window.location.href = getAdminLoginUrl("/admin");
+            }}
+            size="lg"
+            className="w-full shadow-lg transition-all hover:shadow-xl"
+          >
+            Sign in with email
+          </Button>
           <Button type="button" variant="outline" onClick={() => window.location.assign("/")} className="w-full border-[#d8b66b]/50 bg-white text-[#2f2418] hover:bg-[#fff7df]">
             Back to website
           </Button>

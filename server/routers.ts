@@ -1,16 +1,15 @@
 // @ts-nocheck
-import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import type { Request } from "express";
 import Stripe from "stripe";
 import { z } from "zod";
 import { storageGetSignedUrl, storagePut } from "./storage";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { generateImage } from "./_core/imageGeneration";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { sendCustomerSmsSafely } from "./customerNotifications";
+import { signInAdminWithPassword } from "./supabaseAuth";
 import * as db from "./db";
 
 const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Add-ons"]);
@@ -98,11 +97,10 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true } as const;
-    }),
+    login: publicProcedure
+      .input(z.object({ email: z.string().email(), password: z.string().min(8) }))
+      .mutation(({ input }) => signInAdminWithPassword(input.email, input.password)),
+    logout: publicProcedure.mutation(() => ({ success: true } as const)),
   }),
 
   public: router({

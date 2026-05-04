@@ -92,9 +92,6 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (user.role !== undefined) {
     values.role = user.role;
     updateSet.role = user.role;
-  } else if (user.openId === ENV.ownerOpenId) {
-    values.role = "admin";
-    updateSet.role = "admin";
   }
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
@@ -543,51 +540,82 @@ function mergeWithSeedServices(rows: Array<typeof services.$inferSelect>, catego
 }
 
 export async function listServices(category?: string) {
-  await seedIfNeeded();
-  const db = await getDb();
-  if (!db) return category ? seedServices.filter((item) => item.category === category) : seedServices;
-  const rows = await db.select().from(services).orderBy(asc(services.sortOrder));
-  return mergeWithSeedServices(rows, category);
+  const fallback = category ? seedServices.filter((item) => item.category === category) : seedServices;
+  try {
+    await seedIfNeeded();
+    const db = await getDb();
+    if (!db) return fallback;
+    const rows = await db.select().from(services).orderBy(asc(services.sortOrder));
+    return mergeWithSeedServices(rows, category);
+  } catch (error) {
+    console.warn("[Database] Falling back to seeded services", error);
+    return fallback;
+  }
 }
 
 export async function listFeaturedServices() {
-  await seedIfNeeded();
-  const db = await getDb();
-  if (!db) return seedServices.filter((item) => item.isFeatured === "true");
-  const rows = await db.select().from(services).where(eq(services.isFeatured, "true")).orderBy(asc(services.sortOrder));
-  const safeRows = mergeWithSeedServices(rows).filter((item) => item.isFeatured === "true");
-  return safeRows.length ? safeRows : seedServices.filter((item) => item.isFeatured === "true");
+  const fallback = seedServices.filter((item) => item.isFeatured === "true");
+  try {
+    await seedIfNeeded();
+    const db = await getDb();
+    if (!db) return fallback;
+    const rows = await db.select().from(services).where(eq(services.isFeatured, "true")).orderBy(asc(services.sortOrder));
+    const safeRows = mergeWithSeedServices(rows).filter((item) => item.isFeatured === "true");
+    return safeRows.length ? safeRows : fallback;
+  } catch (error) {
+    console.warn("[Database] Falling back to seeded featured services", error);
+    return fallback;
+  }
 }
 
 export async function listWebsiteSections() {
-  await seedIfNeeded();
-  const db = await getDb();
-  if (!db) return seedWebsiteSections.filter((section) => section.isPublished === "true");
-  return db.select().from(websiteSections).where(eq(websiteSections.isPublished, "true")).orderBy(asc(websiteSections.sortOrder));
+  const fallback = seedWebsiteSections.filter((section) => section.isPublished === "true");
+  try {
+    await seedIfNeeded();
+    const db = await getDb();
+    if (!db) return fallback;
+    const rows = await db.select().from(websiteSections).where(eq(websiteSections.isPublished, "true")).orderBy(asc(websiteSections.sortOrder));
+    return rows.length ? rows : fallback;
+  } catch (error) {
+    console.warn("[Database] Falling back to seeded website sections", error);
+    return fallback;
+  }
 }
 
 export async function listProducts() {
-  await seedIfNeeded();
-  const db = await getDb();
-  if (!db) return seedProducts.map((product) => ({ ...product, variants: [] }));
-  const productRows = await db.select().from(products).orderBy(desc(products.isFeatured), asc(products.name));
-  const variantRows = await db.select().from(productVariants);
-  const publicRows = productRows.filter((product) => isPositivePrice(product.price));
-  const safeRows = publicRows.length ? publicRows : seedProducts;
-  return safeRows.map((product) => ({
-    ...product,
-    imageUrl: isUsableImageUrl(product.imageUrl) ? product.imageUrl : imageBySlug["beads-accessories"],
-    seoTitle: product.seoTitle || `${product.name} | Eby’s Place`,
-    seoDescription: product.seoDescription || product.description,
-    variants: "id" in product ? variantRows.filter((variant) => variant.productId === product.id) : [],
-  }));
+  const fallback = seedProducts.map((product) => ({ ...product, variants: [] }));
+  try {
+    await seedIfNeeded();
+    const db = await getDb();
+    if (!db) return fallback;
+    const productRows = await db.select().from(products).orderBy(desc(products.isFeatured), asc(products.name));
+    const variantRows = await db.select().from(productVariants);
+    const publicRows = productRows.filter((product) => isPositivePrice(product.price));
+    const safeRows = publicRows.length ? publicRows : seedProducts;
+    return safeRows.map((product) => ({
+      ...product,
+      imageUrl: isUsableImageUrl(product.imageUrl) ? product.imageUrl : imageBySlug["beads-accessories"],
+      seoTitle: product.seoTitle || `${product.name} | Eby’s Place`,
+      seoDescription: product.seoDescription || product.description,
+      variants: "id" in product ? variantRows.filter((variant) => variant.productId === product.id) : [],
+    }));
+  } catch (error) {
+    console.warn("[Database] Falling back to seeded products", error);
+    return fallback;
+  }
 }
 
 export async function listApprovedReviews() {
-  await seedIfNeeded();
-  const db = await getDb();
-  if (!db) return seedReviews;
-  return db.select().from(reviews).where(eq(reviews.status, "approved")).orderBy(desc(reviews.createdAt));
+  try {
+    await seedIfNeeded();
+    const db = await getDb();
+    if (!db) return seedReviews;
+    const rows = await db.select().from(reviews).where(eq(reviews.status, "approved")).orderBy(desc(reviews.createdAt));
+    return rows.length ? rows : seedReviews;
+  } catch (error) {
+    console.warn("[Database] Falling back to seeded reviews", error);
+    return seedReviews;
+  }
 }
 
 export async function submitReview(input: { customerName: string; rating: number; reviewText: string }) {
@@ -605,15 +633,21 @@ export async function subscribeNewsletter(email: string, productAlerts = false) 
 }
 
 export async function listGallery(category?: string) {
-  await seedIfNeeded();
-  const db = await getDb();
-  if (!db) return category && category !== "All" ? seedGallery.filter((item) => item.category === category) : seedGallery;
-  const filter = category && category !== "All" ? and(eq(galleryImages.isPublished, "true"), eq(galleryImages.category, category as any)) : eq(galleryImages.isPublished, "true");
-  const rows = await db.select().from(galleryImages).where(filter).orderBy(asc(galleryImages.sortOrder), desc(galleryImages.createdAt));
-  const safeRows = rows.filter((row) => isUsableImageUrl(row.imageUrl));
-  if (safeRows.length >= 8 || (category && category !== "All")) return safeRows;
-  const existingTitles = new Set(safeRows.map((row) => row.title));
-  return [...safeRows, ...seedGallery.filter((item) => !existingTitles.has(item.title))];
+  const fallback = category && category !== "All" ? seedGallery.filter((item) => item.category === category) : seedGallery;
+  try {
+    await seedIfNeeded();
+    const db = await getDb();
+    if (!db) return fallback;
+    const filter = category && category !== "All" ? and(eq(galleryImages.isPublished, "true"), eq(galleryImages.category, category as any)) : eq(galleryImages.isPublished, "true");
+    const rows = await db.select().from(galleryImages).where(filter).orderBy(asc(galleryImages.sortOrder), desc(galleryImages.createdAt));
+    const safeRows = rows.filter((row) => isUsableImageUrl(row.imageUrl));
+    if (safeRows.length >= 8 || (category && category !== "All")) return safeRows.length ? safeRows : fallback;
+    const existingTitles = new Set(safeRows.map((row) => row.title));
+    return [...safeRows, ...seedGallery.filter((item) => !existingTitles.has(item.title))];
+  } catch (error) {
+    console.warn("[Database] Falling back to seeded gallery", error);
+    return fallback;
+  }
 }
 
 export async function createBooking(input: typeof bookings.$inferInsert) {

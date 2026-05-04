@@ -6,13 +6,29 @@ const projectRoot = resolve(__dirname, "..");
 const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf8");
 
 describe("live production repair safeguards", () => {
-  it("guards admin login URL generation against missing or malformed Vercel OAuth configuration", () => {
+  it("uses local Supabase email/password admin auth with no Manus OAuth Vite variables", () => {
     const authConstSource = readProjectFile("client/src/const.ts");
+    const mainSource = readProjectFile("client/src/main.tsx");
+    const authHookSource = readProjectFile("client/src/_core/hooks/useAuth.ts");
+    const supabaseAuthSource = readProjectFile("server/supabaseAuth.ts");
+    const contextSource = readProjectFile("server/_core/context.ts");
+    const serverSource = readProjectFile("server/_core/index.ts");
+    const vercelSource = readProjectFile("server/vercel.ts");
 
-    expect(authConstSource).toContain("normalizeAbsoluteUrl(import.meta.env.VITE_OAUTH_PORTAL_URL)");
-    expect(authConstSource).toContain('if (!oauthPortalUrl) missing.push("VITE_OAUTH_PORTAL_URL")');
-    expect(authConstSource).toContain('new URL("/app-auth", oauthPortalUrl)');
-    expect(authConstSource).not.toContain("new URL(`${oauthPortalUrl}/app-auth`)");
+    expect(authConstSource).toContain('ADMIN_LOGIN_PATH = "/admin/login"');
+    expect(authConstSource).toContain("AUTH_TOKEN_STORAGE_KEY");
+    expect(mainSource).toContain('headers.set("Authorization", `Bearer ${token}`)');
+    expect(authHookSource).toContain("clearStoredAuthSession");
+    expect(supabaseAuthSource).toContain('"/token?grant_type=password"');
+    expect(supabaseAuthSource).toContain("authenticateSupabaseRequest");
+    expect(contextSource).toContain("authenticateSupabaseRequest(req)");
+    expect(serverSource).not.toContain("registerOAuthRoutes");
+    expect(vercelSource).not.toContain("registerOAuthRoutes");
+
+    const combined = [authConstSource, mainSource, authHookSource, supabaseAuthSource, contextSource, serverSource, vercelSource].join("\n");
+    expect(combined).not.toContain("VITE_APP_ID");
+    expect(combined).not.toContain("VITE_OAUTH_PORTAL_URL");
+    expect(combined).not.toContain("getLoginUrl");
   });
 
   it("uses Supabase public storage for production media instead of serving images through an application proxy", () => {
