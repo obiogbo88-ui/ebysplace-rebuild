@@ -503,3 +503,7 @@
 - [x] Determine whether the Vercel or Manus deployment failure is caused by repository code/configuration or external platform template metadata
 - [x] Apply any repository-owned deployment configuration fix if available, validate it, and sync another checkpoint
 - [x] Report clear deployment steps for GitHub, Supabase, and Vercel based on the verified state
+
+- [x] Re-investigate the latest `ServiceDeployNotTemplate` / `DeployS3WebsiteActivityV2` failure and confirm whether any repository-owned template/config file is missing
+- [x] If a repository-owned deployment file is missing or malformed, repair it and validate tests/build/status before checkpointing
+- [x] If the deployment failure is platform/template metadata-related, document the cause and exact user-side next steps
