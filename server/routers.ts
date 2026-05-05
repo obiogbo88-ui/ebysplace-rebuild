@@ -44,7 +44,7 @@ const bookingInput = z.object({
   addressLine2: z.string().optional(),
   city: z.string().optional(),
   county: z.string().optional(),
-  postcode: z.string().min(3),
+  postcode: z.string().min(1),
   deliveryNote: z.string().optional(),
   appointmentDate: z.string().min(8),
   appointmentTime: z.string().min(4),
@@ -60,7 +60,7 @@ const orderInput = z.object({
   addressLine2: z.string().optional(),
   city: z.string().optional(),
   county: z.string().optional(),
-  postcode: z.string().min(3),
+  postcode: z.string().min(1),
   deliveryNote: z.string().optional(),
   items: z.array(z.object({
     productId: z.number(),
