@@ -63,6 +63,7 @@ export default function Booking() {
   const [step, setStep] = useState(0);
   const [selectedAddOns, setSelectedAddOns] = useState<AddOnOption[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<BookingProductSelection[]>([]);
+  const [travelTimePostcode, setTravelTimePostcode] = useState("");
   const { data: services = [], isLoading: servicesLoading } = trpc.public.services.useQuery({});
   const { data: products = [], isLoading: productsLoading } = trpc.public.products.useQuery();
   const serviceOptions = useMemo(
@@ -77,6 +78,10 @@ export default function Booking() {
   const create = trpc.public.createBooking.useMutation();
   const checkout = trpc.public.createDepositCheckout.useMutation();
   const availability = trpc.public.availability.useQuery();
+  const { data: travelTimeData, isLoading: travelTimeLoading, error: travelTimeError } = trpc.public.travelTime.useQuery(
+    { customerPostcode: travelTimePostcode },
+    { enabled: Boolean(travelTimePostcode), staleTime: 5 * 60 * 1000 }
+  );
   const bookingBlockedSlots = availability.data?.blockedSlots || [];
   const homeServiceSurcharge = Number(availability.data?.homeServiceSurcharge || 0);
   const selectedSlotBlocked = bookingBlockedSlots.some((slot: any) => slot.date === form.appointmentDate && (!slot.time || slot.time === form.appointmentTime));
@@ -315,6 +320,41 @@ export default function Booking() {
                   <label>Postcode<input required value={form.postcode} onChange={event => set("postcode", event.target.value)} /></label>
                 </>) : null}
               </div>
+              {homeAddressRequired ? (
+                <div className="rounded-3xl border border-primary/25 bg-primary/10 p-5">
+                  <p className="font-semibold text-primary">Estimated travel time to your address</p>
+                  <p className="mt-1 text-sm text-white/68">Enter your postcode above, then check how long the trip to your home will take from our studio.</p>
+                  <button
+                    type="button"
+                    className="btn-dark mt-4"
+                    disabled={!form.postcode || travelTimeLoading}
+                    onClick={() => setTravelTimePostcode(form.postcode)}
+                  >
+                    {travelTimeLoading ? "Checking…" : "Check estimated travel time"}
+                  </button>
+                  {travelTimeData && (
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      {travelTimeData.driving ? (
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary/80">By car</p>
+                          <p className="mt-1 text-lg font-bold text-white">{travelTimeData.driving.durationText}</p>
+                          <p className="text-sm text-white/55">{travelTimeData.driving.distanceText}</p>
+                        </div>
+                      ) : null}
+                      {travelTimeData.transit ? (
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary/80">By public transport</p>
+                          <p className="mt-1 text-lg font-bold text-white">{travelTimeData.transit.durationText}</p>
+                          <p className="text-sm text-white/55">{travelTimeData.transit.distanceText}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                  {travelTimeError ? (
+                    <p className="mt-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{travelTimeError.message}</p>
+                  ) : null}
+                </div>
+              ) : null}
               <textarea placeholder="Delivery or appointment notes" value={form.deliveryNote} onChange={event => set("deliveryNote", event.target.value)} />
               <div className="flex flex-wrap gap-3">
                 <button type="button" className="btn-dark" onClick={() => setStep(2)}>Back to products</button>

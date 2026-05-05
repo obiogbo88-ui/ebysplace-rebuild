@@ -5,4 +5,5 @@ export const ENV = {
   openAiApiKey: process.env.OPENAI_API_KEY ?? "",
   openAiBaseUrl: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? "",
+  studioPostcode: process.env.STUDIO_POSTCODE ?? "",
 };

@@ -8,6 +8,9 @@ import { generateImage } from "./_core/imageGeneration";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
+import { makeRequest } from "./_core/map";
+import type { DistanceMatrixResult } from "./_core/map";
+import { ENV } from "./_core/env";
 import { sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely } from "./customerNotifications";
 import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
 import * as db from "./db";
@@ -345,6 +348,32 @@ export const appRouter = router({
       }
     }),
     track: publicProcedure.input(z.object({ eventName: z.string().min(2), pagePath: z.string().min(1), metadata: z.unknown().optional() })).mutation(({ input }) => db.recordAnalytics(input.eventName, input.pagePath, input.metadata)),
+    travelTime: publicProcedure
+      .input(z.object({ customerPostcode: z.string().min(3).max(12) }))
+      .query(async ({ input }) => {
+        if (!ENV.studioPostcode) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Travel time estimates are not available at this time." });
+        if (!ENV.googleMapsApiKey) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Travel time estimates are not available at this time." });
+        const sanitizedPostcode = input.customerPostcode.trim().toUpperCase();
+        async function fetchMode(mode: "driving" | "transit") {
+          try {
+            const data = await makeRequest<DistanceMatrixResult>("distancematrix/json", {
+              origins: ENV.studioPostcode,
+              destinations: sanitizedPostcode,
+              mode,
+              region: "gb",
+              units: "metric",
+            });
+            const element = data.rows?.[0]?.elements?.[0];
+            if (element?.status !== "OK") return null;
+            return { durationText: element.duration.text, durationSeconds: element.duration.value, distanceText: element.distance.text };
+          } catch {
+            return null;
+          }
+        }
+        const [driving, transit] = await Promise.all([fetchMode("driving"), fetchMode("transit")]);
+        if (!driving && !transit) throw new TRPCError({ code: "NOT_FOUND", message: "Could not calculate travel time for that postcode. Please check it is correct." });
+        return { driving, transit, customerPostcode: sanitizedPostcode };
+      }),
   }),
 
   admin: router({
