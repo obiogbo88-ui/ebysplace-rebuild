@@ -646,7 +646,7 @@
 - [x] Audit homepage, services, booking, shop, gallery, reviews, AI try-on, and admin on mobile viewport and fix any small-screen layout issues found.
 - [x] Update or add Vitest coverage for live Stripe configuration, booking location workflow, home-service surcharge, confirmation email content, public navigation cleanup, review page behavior, and homepage live search.
 - [x] Run tests, production build, runtime health checks, and responsive smoke validation before checkpointing.
-- [ ] Save checkpoint and sync all completed updates to GitHub.
+- [x] Save checkpoint and sync all completed updates to GitHub.
 
 - [x] Redesign the sitewide colour scheme to use warm cream #FAF7F2 as the main background, #FFFFFF alternating sections, deep charcoal #1A1A1A body text, secondary #4A4A4A text, and gold #C9A84C accents.
 - [x] Update CTA booking buttons to use deep black #111111 backgrounds with gold #C9A84C text and a gold hover treatment.
