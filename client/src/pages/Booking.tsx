@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { SiteFooter, SiteHeader } from "./Home";
+import { ChevronLeft } from "lucide-react";
 
 type ServiceLocation = "studio" | "home_service";
 
@@ -20,7 +21,7 @@ const initial: {
   appointmentDate: string;
   appointmentTime: string;
 } = {
-  serviceName: "Knotless Braids",
+  serviceName: "",
   clientName: "",
   clientEmail: "",
   clientPhone: "",
@@ -35,12 +36,14 @@ const initial: {
   appointmentTime: "10:00",
 };
 
-const steps = [
-  { id: 0, label: "Service & slot" },
-  { id: 1, label: "Optional add-ons" },
-  { id: 2, label: "Optional products" },
-  { id: 3, label: "Customer details" },
-  { id: 4, label: "Payment" },
+const STEPS = [
+  { id: 0, label: "Choose Service" },
+  { id: 1, label: "Date & Time" },
+  { id: 2, label: "Location" },
+  { id: 3, label: "Your Details" },
+  { id: 4, label: "Add-ons" },
+  { id: 5, label: "Shop Products" },
+  { id: 6, label: "Review & Pay" },
 ];
 
 const addOnOptions = [
@@ -58,6 +61,41 @@ type BookingProductSelection = {
   unitPrice: string;
 };
 
+function StepIndicator({ step, total }: { step: number; total: number }) {
+  return (
+    <div className="mb-8">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-sm font-bold uppercase tracking-[0.18em] text-primary">
+          Step {step + 1} of {total}
+        </span>
+        <span className="text-sm font-semibold text-[#4a3014]">{STEPS[step]?.label}</span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-[#e8d5b0]">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[#c8a95a] to-[#f5d98a] transition-all duration-500"
+          style={{ width: `${((step + 1) / total) * 100}%` }}
+        />
+      </div>
+      <div className="mt-4 hidden grid-cols-7 gap-1 sm:grid">
+        {STEPS.map(item => (
+          <div
+            key={item.id}
+            className={`rounded-xl px-1 py-2 text-center text-[0.6rem] font-bold uppercase tracking-wide transition ${
+              item.id === step
+                ? "bg-primary text-primary-foreground"
+                : item.id < step
+                  ? "bg-primary/20 text-primary"
+                  : "bg-[#e8d5b0]/60 text-[#6f4b16]/50"
+            }`}
+          >
+            {item.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Booking() {
   const [form, setForm] = useState(initial);
   const [step, setStep] = useState(0);
@@ -73,7 +111,6 @@ export default function Booking() {
     () => (products as any[]).filter(product => product.stockStatus !== "out_of_stock").slice(0, 6),
     [products]
   );
-  const selectedService = serviceOptions.find(service => service.name === form.serviceName);
   const create = trpc.public.createBooking.useMutation();
   const checkout = trpc.public.createDepositCheckout.useMutation();
   const availability = trpc.public.availability.useQuery();
@@ -84,19 +121,15 @@ export default function Booking() {
   const set = (key: string, value: string) => setForm(current => ({ ...current, [key]: value }));
 
   useEffect(() => {
-    const selectedService = new URLSearchParams(window.location.search).get("service");
-    if (selectedService) {
-      set("serviceName", selectedService);
+    const preselected = new URLSearchParams(window.location.search).get("service");
+    if (preselected) {
+      set("serviceName", preselected);
+      setStep(1);
     }
   }, []);
 
-  useEffect(() => {
-    if (!form.serviceName && serviceOptions[0]?.name) set("serviceName", serviceOptions[0].name);
-  }, [form.serviceName, serviceOptions]);
-
-  const canContinueFromServiceSlot = Boolean(form.serviceName && form.serviceLocation && form.appointmentDate && form.appointmentTime);
-  const canContinueFromDate = canContinueFromServiceSlot;
   const homeAddressRequired = form.serviceLocation === "home_service";
+  const canContinueFromDate = Boolean(form.appointmentDate && form.appointmentTime && !selectedSlotBlocked);
   const canContinueFromDetails = Boolean(
     form.clientName && form.clientEmail && form.clientPhone && (!homeAddressRequired || (form.addressLine1 && form.city && form.county && form.postcode))
   );
@@ -112,27 +145,24 @@ export default function Booking() {
       : [...current, { productId, productName: product.name, quantity: 1, unitPrice: product.price }]);
   }
 
-  function continueTo(nextStep: number) {
-    if (step === 0 && (!canContinueFromServiceSlot || selectedSlotBlocked)) {
-      toast.error("Choose your service, date and time", {
-        description: selectedSlotBlocked ? "That slot has been blocked by Eby’s Place. Please choose another date or time." : "Step 1 must include the service and appointment slot before optional extras.",
+  function goBack() {
+    if (step > 0) setStep(s => s - 1);
+  }
+
+  function continueToAddons() {
+    if (!canContinueFromDetails) {
+      toast.error("Complete your details", {
+        description: "Name, email, phone" + (homeAddressRequired ? ", and full address" : "") + " are required.",
       });
       return;
     }
-    if (step === 3 && !canContinueFromDetails) {
-      toast.error("Complete your customer details", {
-        description: "Name, email, phone, address, city, and postcode are required before deposit payment.",
-      });
-      return;
-    }
-    setStep(nextStep);
+    setStep(4);
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!canContinueFromServiceSlot || selectedSlotBlocked || !canContinueFromDetails) {
-      setStep(!canContinueFromServiceSlot ? 0 : 3);
-      toast.error(!canContinueFromServiceSlot ? "Choose your service, date and time" : selectedSlotBlocked ? "This slot is unavailable" : "Complete your customer details");
+    if (!form.serviceName || !form.appointmentDate || !form.appointmentTime || selectedSlotBlocked || !canContinueFromDetails) {
+      toast.error("Please complete all required steps before paying.");
       return;
     }
     try {
@@ -142,8 +172,8 @@ export default function Booking() {
         bookingProducts: selectedProducts,
       });
       toast.success(booking.customerNotification);
-      toast.message("Opening Eby’s Place secure checkout", {
-        description: "Your £20 non-refundable Eby’s Place deposit page will open in a new tab.",
+      toast.message("Opening Eby's Place secure checkout", {
+        description: "Your £20 non-refundable Eby's Place deposit page will open in a new tab.",
       });
       const session = await checkout.mutateAsync({
         bookingId: booking.bookingId,
@@ -165,106 +195,102 @@ export default function Booking() {
       <main className="container section-pad">
         <p className="pill w-fit">Appointment booking</p>
         <h1 className="serif mt-4 text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">
-          Secure your appointment with a <span className="gold-text">£20 non-refundable deposit.</span>
+          Secure your appointment with a <span className="gold-text">£20 deposit.</span>
         </h1>
         <p className="mt-4 max-w-3xl text-white/70">
-          Follow five clear steps: choose your service and slot, optionally add prep extras, optionally add shop products, enter your customer details, then pay the £20 Stripe deposit.
+          Seven simple steps — choose your service, pick a date and time, select your location, enter your details, add optional extras, and pay a £20 Stripe deposit to confirm.
         </p>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-5">
-          {steps.map(item => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => item.id <= step && setStep(item.id)}
-              className={`rounded-2xl border px-4 py-3 text-left text-sm font-bold transition ${
-                item.id === step
-                  ? "border-primary bg-primary text-primary-foreground shadow-[0_16px_40px_rgba(189,140,52,.28)]"
-                  : item.id < step
-                    ? "border-primary/40 bg-primary/12 text-primary"
-                    : "border-white/10 bg-white/[0.04] text-white/55"
-              }`}
-            >
-              <span className="block text-xs uppercase tracking-[0.24em] opacity-70">Step {item.id + 1}</span>
-              {item.label}
-            </button>
-          ))}
+        <div className="mt-6 rounded-3xl border border-primary/30 bg-primary/10 p-5 text-white/85">
+          <b className="text-primary">48-hour cancellation policy</b>
+          <p className="mt-2 text-sm leading-6">Cancel 48 hours or more before your appointment for a full deposit refund. Cancellations under 48 hours are non-refundable — please choose your date and time carefully.</p>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-primary/30 bg-primary/10 p-5 text-white/85"><b className="text-primary">48-hour cancellation policy</b><p className="mt-2 text-sm leading-6">Customers can cancel up to 48 hours before the appointment for a deposit refund. Cancellations under 48 hours before the appointment are non-refundable, so please choose your date and time carefully.</p></div>
-        <form onSubmit={submit} className="lux-card mt-8 grid gap-6">
+        <div className="lux-card mt-8 grid gap-6">
+          <StepIndicator step={step} total={STEPS.length} />
+
           {step === 0 ? (
-            <section className="booking-style-panel grid gap-5">
+            <section className="grid gap-5">
               <div>
-                <h2 className="serif text-3xl font-bold text-primary">Step 1: Choose location, service and date/time</h2>
-                <p className="mt-2 text-white/68">Choose whether you are visiting the studio or requesting a home service, then select the braid service and appointment slot.</p>
+                <h2 className="serif text-3xl font-bold text-primary">Choose your service</h2>
+                <p className="mt-2 text-[#4a3014]">Select the braid service you would like. Tap a service card to continue automatically.</p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[
-                  { value: "studio", title: "Visit the Studio", note: "Choose this for a studio appointment. The studio address is shared only in the paid confirmation email." },
-                  { value: "home_service", title: "Home Service", note: `Requires your full address at checkout${homeServiceSurcharge > 0 ? ` and adds a £${homeServiceSurcharge.toFixed(2)} travel fee` : ""}.` },
-                ].map((option) => (
-                  <button key={option.value} type="button" onClick={() => set("serviceLocation", option.value)} className={`rounded-3xl border p-5 text-left transition ${form.serviceLocation === option.value ? "border-primary bg-primary/15 text-white" : "border-white/10 bg-white/[0.04] text-white/72 hover:border-primary/45"}`}>
-                    <span className="pill text-xs">{form.serviceLocation === option.value ? "Selected" : "Location"}</span>
-                    <b className="mt-3 block text-xl text-primary">{option.title}</b>
-                    <small className="mt-2 block leading-5 text-white/58">{option.note}</small>
-                  </button>
-                ))}
-              </div>
-              <div className="input-grid">
-                <label>
-                  Service
-                  <select className="booking-style-select" value={form.serviceName} onChange={event => set("serviceName", event.target.value)} disabled={servicesLoading}>
-                    {serviceOptions.map(service => (
-                      <option key={service.id ?? service.slug} value={service.name}>{service.category} — {service.name} from £{service.priceFrom}</option>
-                    ))}
-                    {serviceOptions.length === 0 ? <option value="Knotless Braids">Knotless Braids</option> : null}
-                  </select>
-                </label>
-                <label>
-                  Date
-                  <input type="date" required value={form.appointmentDate} onChange={event => set("appointmentDate", event.target.value)} />
-                </label>
-                <label>
-                  Time
-                  <input type="time" required value={form.appointmentTime} onChange={event => set("appointmentTime", event.target.value)} />
-                  {selectedSlotBlocked ? <p className="mt-2 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">This slot is unavailable because it has been blocked by Eby’s Place. Please choose another date or time.</p> : null}
-                </label>
-              </div>
-              {selectedService ? (
-                <div className="booking-selected-service rounded-3xl border border-primary/25 bg-primary/10 p-5 text-[#3a2615]">
-                  <strong className="text-primary">Selected:</strong> {selectedService.name} from £{selectedService.priceFrom}. Optional extras are shown next and can be skipped.
+              {servicesLoading ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[1, 2, 3, 4].map(n => <div key={n} className="h-28 animate-pulse rounded-2xl bg-[#f5ead7]" />)}
                 </div>
-              ) : null}
-              <div className="flex flex-wrap gap-3">
-                <button type="button" className="btn-gold" onClick={() => continueTo(1)}>Continue to optional add-ons</button>
-              </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {serviceOptions.map((service: any) => (
+                    <button
+                      key={service.id ?? service.slug}
+                      type="button"
+                      onClick={() => { set("serviceName", service.name); setStep(1); }}
+                      className={`rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 ${form.serviceName === service.name ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/60"}`}
+                    >
+                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{service.category}</span>
+                      <h3 className="serif mt-2 text-2xl font-bold text-[#24170d]">{service.name}</h3>
+                      {service.description ? <p className="mt-1 line-clamp-2 text-sm text-[#4a3014]">{service.description}</p> : null}
+                      <div className="mt-3 flex items-center justify-between">
+                        <span className="text-sm text-[#6f4b16]">{service.duration}</span>
+                        <b className="text-xl text-primary">from £{service.priceFrom}</b>
+                      </div>
+                    </button>
+                  ))}
+                  {serviceOptions.length === 0 ? (
+                    <button type="button" onClick={() => { set("serviceName", "Knotless Braids"); setStep(1); }} className="rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-5 text-left">
+                      <h3 className="serif text-2xl font-bold text-[#24170d]">Knotless Braids</h3>
+                      <b className="mt-2 block text-xl text-primary">from £80</b>
+                    </button>
+                  ) : null}
+                </div>
+              )}
             </section>
           ) : null}
 
           {step === 1 ? (
             <section className="grid gap-5">
               <div>
-                <h2 className="serif text-3xl font-bold text-primary">Step 2: Optional add-ons selection</h2>
-                <p className="mt-2 text-white/68">Choose prep extras such as hair wash prep, beads, or edge control. You can skip this step without blocking checkout.</p>
+                <h2 className="serif text-3xl font-bold text-primary">Choose date and time</h2>
+                <p className="mt-2 text-[#4a3014]">Select your preferred appointment date and time, then tap Confirm Date and Time to continue.</p>
+                {form.serviceName ? <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-bold text-primary">{form.serviceName}</div> : null}
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {addOnOptions.map(addOn => {
-                  const selected = selectedAddOns.some(item => item.id === addOn.id);
-                  return (
-                    <button key={addOn.id} type="button" onClick={() => toggleAddOn(addOn)} className={`rounded-3xl border p-5 text-left transition ${selected ? "border-primary bg-primary/15 text-white" : "border-white/10 bg-white/[0.04] text-white/72 hover:border-primary/45"}`}>
-                      <span className="pill text-xs">{selected ? "Selected" : "Optional"}</span>
-                      <h3 className="serif mt-3 text-2xl font-bold text-primary">{addOn.name}</h3>
-                      <p className="mt-2 text-sm leading-6">{addOn.description}</p>
-                      <b className="mt-3 block text-xl text-primary">£{addOn.price}</b>
-                    </button>
-                  );
-                })}
+              <div className="input-grid">
+                <label className="font-semibold text-[#24170d]">
+                  Appointment Date
+                  <input
+                    type="date"
+                    required
+                    value={form.appointmentDate}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={event => set("appointmentDate", event.target.value)}
+                  />
+                </label>
+                <label className="font-semibold text-[#24170d]">
+                  Appointment Time
+                  <input
+                    type="time"
+                    required
+                    value={form.appointmentTime}
+                    onChange={event => set("appointmentTime", event.target.value)}
+                  />
+                </label>
               </div>
+              {selectedSlotBlocked ? (
+                <div className="rounded-2xl border border-red-400/40 bg-red-50 p-4 text-sm font-semibold text-red-800">
+                  This slot has been blocked by Eby's Place. Please choose a different date or time.
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-3">
-                <button type="button" className="btn-dark" onClick={() => setStep(0)}>Back to service</button>
-                <button type="button" className="btn-dark" onClick={() => setStep(2)}>Skip add-ons</button>
-                <button type="button" className="btn-gold" onClick={() => setStep(2)}>Continue to optional products</button>
+                <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
+                <button
+                  type="button"
+                  className="btn-gold"
+                  disabled={!canContinueFromDate}
+                  onClick={() => { if (canContinueFromDate) setStep(2); }}
+                >
+                  Confirm Date and Time
+                </button>
               </div>
             </section>
           ) : null}
@@ -272,27 +298,38 @@ export default function Booking() {
           {step === 2 ? (
             <section className="grid gap-5">
               <div>
-                <h2 className="serif text-3xl font-bold text-primary">Step 3: Optional shop products to add to order</h2>
-                <p className="mt-2 text-white/68">Add hair, aftercare products, or accessories to your appointment order if needed. This step is optional and can be skipped.</p>
+                <h2 className="serif text-3xl font-bold text-primary">Choose your location</h2>
+                <p className="mt-2 text-[#4a3014]">Will you visit the studio or would you like a home service? Tap your choice to continue automatically.</p>
               </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                {productOptions.map(product => {
-                  const selected = selectedProducts.some(item => item.productId === Number(product.id));
-                  return (
-                    <button key={product.id ?? product.slug} type="button" onClick={() => toggleProduct(product)} className={`rounded-3xl border p-5 text-left transition ${selected ? "border-primary bg-primary/15 text-white" : "border-white/10 bg-white/[0.04] text-white/72 hover:border-primary/45"}`}>
-                      <span className="pill text-xs">{selected ? "Added" : product.badge || "Optional"}</span>
-                      <h3 className="serif mt-3 text-2xl font-bold text-primary">{product.name}</h3>
-                      <p className="mt-2 text-sm leading-6">{product.description}</p>
-                      <b className="mt-3 block text-xl text-primary">£{product.price}</b>
-                    </button>
-                  );
-                })}
-                {!productsLoading && productOptions.length === 0 ? <p className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-white/72">No shop products are available to add right now. You can continue to details.</p> : null}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[
+                  {
+                    value: "studio" as ServiceLocation,
+                    title: "Visit the Studio",
+                    emoji: "🏛️",
+                    note: "Come to the Eby's Place studio. The studio address is shared only in your post-payment confirmation — it is never published on the website.",
+                  },
+                  {
+                    value: "home_service" as ServiceLocation,
+                    title: "Home Service",
+                    emoji: "🏠",
+                    note: "Eby's Place comes to you. Requires your full address at the next step" + (homeServiceSurcharge > 0 ? " and includes a travel surcharge of £" + homeServiceSurcharge.toFixed(2) : "") + ".",
+                  },
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => { set("serviceLocation", option.value); setStep(3); }}
+                    className="flex min-h-[160px] flex-col gap-3 rounded-3xl border border-[#d8bd74]/45 bg-white/70 p-7 text-left transition hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_16px_40px_rgba(189,140,52,.18)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <span className="text-4xl">{option.emoji}</span>
+                    <h3 className="serif text-2xl font-bold text-[#24170d]">{option.title}</h3>
+                    <p className="text-sm leading-6 text-[#4a3014]">{option.note}</p>
+                  </button>
+                ))}
               </div>
               <div className="flex flex-wrap gap-3">
-                <button type="button" className="btn-dark" onClick={() => setStep(1)}>Back to add-ons</button>
-                <button type="button" className="btn-dark" onClick={() => setStep(3)}>Skip shop products</button>
-                <button type="button" className="btn-gold" onClick={() => setStep(3)}>Continue to customer details</button>
+                <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
               </div>
             </section>
           ) : null}
@@ -300,25 +337,62 @@ export default function Booking() {
           {step === 3 ? (
             <section className="grid gap-5">
               <div>
-                <h2 className="serif text-3xl font-bold text-primary">Step 4: Customer and location details</h2>
-                <p className="mt-2 text-white/68">These details are required so Eby’s Place can confirm the appointment and send payment confirmation after Stripe succeeds. Home Service bookings require the customer address; studio bookings receive the studio address only after payment.</p>
+                <h2 className="serif text-3xl font-bold text-primary">Your details</h2>
+                <p className="mt-2 text-[#4a3014]">
+                  {homeAddressRequired
+                    ? "Please enter your full home address and contact details so we can confirm your appointment."
+                    : "Please enter your contact details so we can send your confirmation after payment."}
+                </p>
               </div>
               <div className="input-grid">
-                <label>Name<input required value={form.clientName} onChange={event => set("clientName", event.target.value)} /></label>
-                <label>Email<input type="email" required value={form.clientEmail} onChange={event => set("clientEmail", event.target.value)} /></label>
-                <label>Phone<input required value={form.clientPhone} onChange={event => set("clientPhone", event.target.value)} /></label>
-                {homeAddressRequired ? (<>
-                  <label>Address line 1<input required value={form.addressLine1} onChange={event => set("addressLine1", event.target.value)} /></label>
-                  <label>Address line 2<input value={form.addressLine2} onChange={event => set("addressLine2", event.target.value)} /></label>
-                  <label>City<input required value={form.city} onChange={event => set("city", event.target.value)} /></label>
-                  <label>County<input required value={form.county} onChange={event => set("county", event.target.value)} /></label>
-                  <label>Postcode<input required value={form.postcode} onChange={event => set("postcode", event.target.value)} /></label>
-                </>) : null}
+                <label className="font-semibold text-[#24170d]">
+                  Full Name
+                  <input required value={form.clientName} onChange={event => set("clientName", event.target.value)} placeholder="Your full name" />
+                </label>
+                <label className="font-semibold text-[#24170d]">
+                  Email Address
+                  <input type="email" required value={form.clientEmail} onChange={event => set("clientEmail", event.target.value)} placeholder="your@email.com" />
+                </label>
+                <label className="font-semibold text-[#24170d]">
+                  Phone Number
+                  <input required value={form.clientPhone} onChange={event => set("clientPhone", event.target.value)} placeholder="+44 7700 000000" />
+                </label>
+                {homeAddressRequired ? (
+                  <>
+                    <label className="font-semibold text-[#24170d]">
+                      Address Line 1
+                      <input required value={form.addressLine1} onChange={event => set("addressLine1", event.target.value)} placeholder="House number and street name" />
+                    </label>
+                    <label className="font-semibold text-[#24170d]">
+                      Address Line 2 (optional)
+                      <input value={form.addressLine2} onChange={event => set("addressLine2", event.target.value)} placeholder="Flat, apartment, building (optional)" />
+                    </label>
+                    <label className="font-semibold text-[#24170d]">
+                      City / Town
+                      <input required value={form.city} onChange={event => set("city", event.target.value)} placeholder="City or town" />
+                    </label>
+                    <label className="font-semibold text-[#24170d]">
+                      County
+                      <input required value={form.county} onChange={event => set("county", event.target.value)} placeholder="County" />
+                    </label>
+                    <label className="font-semibold text-[#24170d]">
+                      Postcode
+                      <input required value={form.postcode} onChange={event => set("postcode", event.target.value)} placeholder="e.g. TA7 8HD" />
+                    </label>
+                  </>
+                ) : null}
               </div>
-              <textarea placeholder="Delivery or appointment notes" value={form.deliveryNote} onChange={event => set("deliveryNote", event.target.value)} />
+              <label className="font-semibold text-[#24170d]">
+                Notes (optional)
+                <textarea
+                  placeholder="Any appointment notes or special requests"
+                  value={form.deliveryNote}
+                  onChange={event => set("deliveryNote", event.target.value)}
+                />
+              </label>
               <div className="flex flex-wrap gap-3">
-                <button type="button" className="btn-dark" onClick={() => setStep(2)}>Back to products</button>
-                <button type="button" className="btn-gold" onClick={() => continueTo(4)}>Continue to payment</button>
+                <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
+                <button type="button" className="btn-gold" onClick={continueToAddons}>Continue to Add-ons</button>
               </div>
             </section>
           ) : null}
@@ -326,34 +400,129 @@ export default function Booking() {
           {step === 4 ? (
             <section className="grid gap-5">
               <div>
-                <h2 className="serif text-3xl font-bold text-primary">Step 5: Payment - £20 deposit via Stripe checkout</h2>
-                <p className="mt-2 text-white/68">The final button opens Stripe Checkout for the required £20 non-refundable deposit. Optional add-ons and shop products do not block checkout if skipped.</p>
+                <h2 className="serif text-3xl font-bold text-primary">Optional add-ons</h2>
+                <p className="mt-2 text-[#4a3014]">Enhance your appointment with optional extras. Tap to select or deselect. This step is optional.</p>
               </div>
-              <div className="grid gap-3 rounded-3xl border border-primary/25 bg-primary/10 p-5 text-white/78 sm:grid-cols-2">
-                <p><strong className="text-primary">Style:</strong> {form.serviceName}</p>
-                <p><strong className="text-primary">Slot:</strong> {form.appointmentDate} at {form.appointmentTime}</p>
-                <p><strong className="text-primary">Location:</strong> {form.serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}</p>
-                <p><strong className="text-primary">Add-ons:</strong> {selectedAddOns.length ? selectedAddOns.map(item => item.name).join(", ") : "Skipped"}</p>
-                <p><strong className="text-primary">Products:</strong> {selectedProducts.length ? selectedProducts.map(item => `${item.quantity} × ${item.productName}`).join(", ") : "Skipped"}</p>
-                <p><strong className="text-primary">Client:</strong> {form.clientName}</p>
-                <p><strong className="text-primary">Email:</strong> {form.clientEmail}</p>
-                <p><strong className="text-primary">Phone:</strong> {form.clientPhone}</p>
-                {form.serviceLocation === "home_service" ? <p><strong className="text-primary">Postcode:</strong> {form.postcode}</p> : null}
-                {form.serviceLocation === "home_service" && homeServiceSurcharge > 0 ? <p><strong className="text-primary">Travel fee:</strong> £{homeServiceSurcharge.toFixed(2)}</p> : null}
-              </div>
-              <div className="rounded-2xl border border-primary/30 bg-primary/10 p-5 text-primary">
-                Stripe Checkout will show the exact £20 non-refundable deposit and any Home Service travel fee before payment. After successful payment, Eby’s Place sends confirmation by email and WhatsApp/SMS when those delivery channels are available.
+              <div className="grid gap-4 md:grid-cols-2">
+                {addOnOptions.map(addOn => {
+                  const selected = selectedAddOns.some(item => item.id === addOn.id);
+                  return (
+                    <button
+                      key={addOn.id}
+                      type="button"
+                      onClick={() => toggleAddOn(addOn)}
+                      className={`rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 ${selected ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/50"}`}
+                    >
+                      <span className="text-xs font-bold uppercase tracking-wide text-primary">{selected ? "Selected" : "Optional"}</span>
+                      <h3 className="serif mt-2 text-2xl font-bold text-[#24170d]">{addOn.name}</h3>
+                      <p className="mt-1 text-sm leading-6 text-[#4a3014]">{addOn.description}</p>
+                      <b className="mt-3 block text-xl text-primary">£{addOn.price}</b>
+                    </button>
+                  );
+                })}
               </div>
               <div className="flex flex-wrap gap-3">
-                <button type="button" className="btn-dark" onClick={() => setStep(3)}>Back to details</button>
-                <button className="btn-gold" disabled={create.isPending || checkout.isPending || servicesLoading}>{checkout.isPending ? "Opening Stripe…" : "Continue to £20 Deposit"}</button>
+                <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
+                <button type="button" className="btn-dark" onClick={() => setStep(5)}>Skip add-ons</button>
+                <button type="button" className="btn-gold" onClick={() => setStep(5)}>
+                  {selectedAddOns.length > 0 ? "Continue with " + selectedAddOns.length + " add-on" + (selectedAddOns.length > 1 ? "s" : "") : "Continue"}
+                </button>
               </div>
             </section>
           ) : null}
 
-          {create.error && <p className="rounded-2xl border border-red-500/40 bg-red-50 p-4 font-semibold text-red-900">{create.error.message}</p>}
-          {checkout.error && <p className="rounded-2xl border border-red-500/40 bg-red-50 p-4 font-semibold text-red-900">{checkout.error.message}</p>}
-        </form>
+          {step === 5 ? (
+            <section className="grid gap-5">
+              <div>
+                <h2 className="serif text-3xl font-bold text-primary">Optional shop products</h2>
+                <p className="mt-2 text-[#4a3014]">Add hair care or accessories to your appointment order. This step is optional.</p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                {productOptions.map((product: any) => {
+                  const selected = selectedProducts.some(item => item.productId === Number(product.id));
+                  return (
+                    <button
+                      key={product.id ?? product.slug}
+                      type="button"
+                      onClick={() => toggleProduct(product)}
+                      className={`overflow-hidden rounded-3xl border text-left transition hover:-translate-y-0.5 ${selected ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/50"}`}
+                    >
+                      {product.imageUrl ? (
+                        <div className="h-36 overflow-hidden">
+                          <img src={product.imageUrl} alt={`Shop product: ${product.name}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                        </div>
+                      ) : null}
+                      <div className="p-4">
+                        <span className="text-xs font-bold uppercase tracking-wide text-primary">{selected ? "Added" : product.badge || "Optional"}</span>
+                        <h3 className="serif mt-2 text-xl font-bold text-[#24170d]">{product.name}</h3>
+                        <b className="mt-2 block text-lg text-primary">£{product.price}</b>
+                      </div>
+                    </button>
+                  );
+                })}
+                {!productsLoading && productOptions.length === 0 ? (
+                  <p className="rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-5 text-[#4a3014]">No shop products available right now. Continue to review your booking.</p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
+                <button type="button" className="btn-dark" onClick={() => setStep(6)}>Skip products</button>
+                <button type="button" className="btn-gold" onClick={() => setStep(6)}>
+                  {selectedProducts.length > 0 ? "Continue with " + selectedProducts.length + " product" + (selectedProducts.length > 1 ? "s" : "") : "Continue"}
+                </button>
+              </div>
+            </section>
+          ) : null}
+
+          {step === 6 ? (
+            <form onSubmit={submit} className="grid gap-5">
+              <div>
+                <h2 className="serif text-3xl font-bold text-primary">Review and Pay</h2>
+                <p className="mt-2 text-[#4a3014]">Please review your booking summary. Click Pay £20 Deposit to open Stripe secure checkout and confirm your appointment.</p>
+              </div>
+              <div className="grid gap-3 rounded-3xl border border-primary/25 bg-primary/10 p-5 text-[#3a2615] sm:grid-cols-2">
+                <p><strong className="text-primary">Service:</strong> {form.serviceName}</p>
+                <p><strong className="text-primary">Date:</strong> {form.appointmentDate}</p>
+                <p><strong className="text-primary">Time:</strong> {form.appointmentTime}</p>
+                <p><strong className="text-primary">Location:</strong> {form.serviceLocation === "home_service" ? "Home Service" : "Studio Visit"}</p>
+                {form.serviceLocation === "home_service" ? (
+                  <p className="sm:col-span-2"><strong className="text-primary">Address:</strong> {[form.addressLine1, form.addressLine2, form.city, form.county, form.postcode].filter(Boolean).join(", ")}</p>
+                ) : null}
+                <p><strong className="text-primary">Name:</strong> {form.clientName}</p>
+                <p><strong className="text-primary">Email:</strong> {form.clientEmail}</p>
+                <p><strong className="text-primary">Phone:</strong> {form.clientPhone}</p>
+                {selectedAddOns.length > 0 ? (
+                  <p className="sm:col-span-2"><strong className="text-primary">Add-ons:</strong> {selectedAddOns.map(item => item.name + " (£" + item.price + ")").join(", ")}</p>
+                ) : null}
+                {selectedProducts.length > 0 ? (
+                  <p className="sm:col-span-2"><strong className="text-primary">Shop products:</strong> {selectedProducts.map(item => item.quantity + " x " + item.productName + " (£" + item.unitPrice + ")").join(", ")}</p>
+                ) : null}
+                {homeServiceSurcharge > 0 && form.serviceLocation === "home_service" ? (
+                  <p><strong className="text-primary">Travel surcharge:</strong> £{homeServiceSurcharge.toFixed(2)}</p>
+                ) : null}
+                <p className="font-bold text-primary sm:col-span-2">Deposit due now: £20.00</p>
+              </div>
+              <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm text-primary">
+                After successful payment you will receive a confirmation email, WhatsApp, and SMS.
+                {form.serviceLocation === "studio"
+                  ? " The studio address is included in your confirmation — it is never shown on the website."
+                  : " Your confirmed home address will be included in the confirmation message."}
+              </div>
+              {create.error && <p className="rounded-2xl border border-red-400/40 bg-red-50 p-4 font-semibold text-red-900">{create.error.message}</p>}
+              {checkout.error && <p className="rounded-2xl border border-red-400/40 bg-red-50 p-4 font-semibold text-red-900">{checkout.error.message}</p>}
+              <div className="flex flex-wrap gap-3">
+                <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
+                <button
+                  type="submit"
+                  className="btn-gold min-h-12 px-8 text-base"
+                  disabled={create.isPending || checkout.isPending}
+                >
+                  {create.isPending || checkout.isPending ? "Opening Stripe..." : "Pay £20 Deposit"}
+                </button>
+              </div>
+            </form>
+          ) : null}
+        </div>
       </main>
       <SiteFooter />
     </div>
