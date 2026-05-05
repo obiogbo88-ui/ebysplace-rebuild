@@ -27,4 +27,14 @@ describe("public media fallbacks", () => {
     expect(homeSource).toContain("ABOUT_PORTRAIT_FALLBACK_SRC");
     expect(homeSource).toContain("onError={(event) =>");
   });
+
+  it("lazy-loads every product image surface to reduce initial page weight", () => {
+    const shopSource = readFileSync(join(root, "client/src/pages/Shop.tsx"), "utf8");
+    const adminSource = readFileSync(join(root, "client/src/pages/Admin.tsx"), "utf8");
+
+    expect(shopSource).toContain('loading="lazy"');
+    expect(shopSource).toContain('decoding="async"');
+    expect(adminSource).toContain('alt="New product preview" loading="lazy" decoding="async"');
+    expect(adminSource).toContain('alt={product.name} loading="lazy" decoding="async"');
+  });
 });

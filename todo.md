@@ -549,3 +549,7 @@
 - [x] Trace the Vercel product image URLs and verify whether the referenced files exist in the Supabase `ebysplace-media` bucket.
 - [x] Trace the CEO/About portrait image URL and verify whether the referenced file exists in the Supabase `ebysplace-media` bucket.
 - [x] Upload or repair any missing product and CEO/About portrait media references, then validate image loading and sync the fix to GitHub.
+
+- [x] Implement lazy loading for every product image rendered on public product surfaces to improve initial page load speed.
+- [x] Add or update regression coverage confirming product images use `loading="lazy"` and async decoding where appropriate.
+- [x] Validate TypeScript, tests, and production build before saving and syncing the lazy-loading change to GitHub.
