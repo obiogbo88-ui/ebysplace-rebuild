@@ -626,3 +626,41 @@
 - [x] Validate mobile viewport behavior for homepage, services, booking, shop, gallery, reviews, AI try-on, and admin before checkpointing.
 - [x] Push the completed update set to GitHub after tests, build, runtime health, and TODO verification.
 - [x] Fix the compact mobile public header so the booking button and menu control do not clip or overflow at 390px width.
+
+- [x] Remove any repository-side Stripe sandbox/test-key fallback or test-mode wording so live Vercel `STRIPE_SECRET_KEY` and `VITE_STRIPE_PUBLISHABLE_KEY` drive booking and shop checkout.
+- [x] Verify booking deposit checkout and shop checkout create Stripe sessions from configured live environment variables without hardcoded test keys.
+- [x] Add booking service-location choice at the start of the booking process with Visit the Studio and Home Service options.
+- [x] Require full home-service customer address fields during checkout: name, address line 1, address line 2, city, county, and postcode.
+- [x] Hide the studio address everywhere on public pages and throughout the customer booking flow before payment confirmation.
+- [x] Include the studio address only in the customer booking confirmation email after successful payment for studio bookings.
+- [x] Include the customer’s home-service address in the customer booking confirmation email for home-service bookings.
+- [x] Add an admin-configurable home service surcharge amount field and apply it to home-service booking checkout totals.
+- [x] Show studio versus home-service booking location type clearly in the admin bookings panel.
+- [x] Re-confirm Reviews and Admin links are removed from public desktop and mobile navigation.
+- [x] Re-confirm homepage testimonial carousel stays sliding, uses approved reviews only, and the Live Testimonials heading is a Leave a Review button linking to `/reviews`.
+- [x] Re-confirm `/reviews` contains only the review submission form, thank-you state, pending approval behavior, and WhatsApp/Facebook/copy-link sharing.
+- [x] Re-confirm Join Eby’s List remains slimmer and more compact across mobile, tablet, and desktop.
+- [x] Re-confirm original CEO portrait is restored from durable media storage in the About Us homepage section and displays correctly on mobile and desktop.
+- [x] Add a prominent homepage product/service live search bar that searches across services and products while the customer types.
+- [x] Show instant homepage search results and route clicked service/product results directly to the relevant service or product destination.
+- [x] Audit homepage, services, booking, shop, gallery, reviews, AI try-on, and admin on mobile viewport and fix any small-screen layout issues found.
+- [x] Update or add Vitest coverage for live Stripe configuration, booking location workflow, home-service surcharge, confirmation email content, public navigation cleanup, review page behavior, and homepage live search.
+- [x] Run tests, production build, runtime health checks, and responsive smoke validation before checkpointing.
+- [ ] Save checkpoint and sync all completed updates to GitHub.
+
+- [x] Redesign the sitewide colour scheme to use warm cream #FAF7F2 as the main background, #FFFFFF alternating sections, deep charcoal #1A1A1A body text, secondary #4A4A4A text, and gold #C9A84C accents.
+- [x] Update CTA booking buttons to use deep black #111111 backgrounds with gold #C9A84C text and a gold hover treatment.
+- [x] Update sitewide links to use gold #C9A84C with underline on hover and strong contrast on warm/light backgrounds.
+- [x] Update typography to use a premium serif heading font and a clean sans-serif body font from Google Fonts.
+- [x] Ensure minimum body text size is 16px on desktop and 15px on mobile with no low-contrast light-grey text on white or cream backgrounds.
+- [x] Make headings bold, prominent, and readable across homepage, services, booking, shop, gallery, reviews, AI try-on, policies, and admin.
+- [x] Make Book Now CTA visible and prominent on every public page.
+- [x] Add a sticky mobile booking button that remains visible while customers scroll.
+- [x] Make service prices clearly visible across homepage search results and services/booking journeys.
+- [x] Add trust signals for happy clients, years of experience, and pain-free guarantee badge in lead-generating homepage/public-page placements.
+- [x] Validate the redesigned warm visual system on mobile, tablet, and desktop before checkpointing.
+
+- [x] Add at least 80px top and bottom padding around the homepage Gallery section for a more premium layout rhythm.
+- [x] Add at least 60px top and bottom padding around the homepage live product/service search bar.
+- [x] Give the homepage search bar more breathing room from surrounding sections so it no longer feels cramped.
+- [x] Increase white space between homepage sections overall for a more premium luxury feel across mobile, tablet, and desktop.

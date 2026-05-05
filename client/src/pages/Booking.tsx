@@ -3,12 +3,30 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { SiteFooter, SiteHeader } from "./Home";
 
-const initial = {
+type ServiceLocation = "studio" | "home_service";
+
+const initial: {
+  serviceName: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  serviceLocation: ServiceLocation;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  county: string;
+  postcode: string;
+  deliveryNote: string;
+  appointmentDate: string;
+  appointmentTime: string;
+} = {
   serviceName: "Knotless Braids",
   clientName: "",
   clientEmail: "",
   clientPhone: "",
+  serviceLocation: "studio",
   addressLine1: "",
+  addressLine2: "",
   city: "",
   county: "",
   postcode: "",
@@ -60,6 +78,7 @@ export default function Booking() {
   const checkout = trpc.public.createDepositCheckout.useMutation();
   const availability = trpc.public.availability.useQuery();
   const bookingBlockedSlots = availability.data?.blockedSlots || [];
+  const homeServiceSurcharge = Number(availability.data?.homeServiceSurcharge || 0);
   const selectedSlotBlocked = bookingBlockedSlots.some((slot: any) => slot.date === form.appointmentDate && (!slot.time || slot.time === form.appointmentTime));
   // Regression anchors: Choose style, Date & time, Your details, Deposit, setStep(1), Selecting a style automatically moves you to appointment timing., canContinueFromDate, Continue to deposit.
   const set = (key: string, value: string) => setForm(current => ({ ...current, [key]: value }));
@@ -75,10 +94,11 @@ export default function Booking() {
     if (!form.serviceName && serviceOptions[0]?.name) set("serviceName", serviceOptions[0].name);
   }, [form.serviceName, serviceOptions]);
 
-  const canContinueFromServiceSlot = Boolean(form.serviceName && form.appointmentDate && form.appointmentTime);
+  const canContinueFromServiceSlot = Boolean(form.serviceName && form.serviceLocation && form.appointmentDate && form.appointmentTime);
   const canContinueFromDate = canContinueFromServiceSlot;
+  const homeAddressRequired = form.serviceLocation === "home_service";
   const canContinueFromDetails = Boolean(
-    form.clientName && form.clientEmail && form.clientPhone && form.addressLine1 && form.city && form.postcode
+    form.clientName && form.clientEmail && form.clientPhone && (!homeAddressRequired || (form.addressLine1 && form.city && form.county && form.postcode))
   );
 
   function toggleAddOn(addOn: AddOnOption) {
@@ -176,8 +196,20 @@ export default function Booking() {
           {step === 0 ? (
             <section className="booking-style-panel grid gap-5">
               <div>
-                <h2 className="serif text-3xl font-bold text-primary">Step 1: Choose service and date/time</h2>
-                <p className="mt-2 text-white/68">Select the braid service and the appointment slot you want to request.</p>
+                <h2 className="serif text-3xl font-bold text-primary">Step 1: Choose location, service and date/time</h2>
+                <p className="mt-2 text-white/68">Choose whether you are visiting the studio or requesting a home service, then select the braid service and appointment slot.</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  { value: "studio", title: "Visit the Studio", note: "Choose this for a studio appointment. The studio address is shared only in the paid confirmation email." },
+                  { value: "home_service", title: "Home Service", note: `Requires your full address at checkout${homeServiceSurcharge > 0 ? ` and adds a £${homeServiceSurcharge.toFixed(2)} travel fee` : ""}.` },
+                ].map((option) => (
+                  <button key={option.value} type="button" onClick={() => set("serviceLocation", option.value)} className={`rounded-3xl border p-5 text-left transition ${form.serviceLocation === option.value ? "border-primary bg-primary/15 text-white" : "border-white/10 bg-white/[0.04] text-white/72 hover:border-primary/45"}`}>
+                    <span className="pill text-xs">{form.serviceLocation === option.value ? "Selected" : "Location"}</span>
+                    <b className="mt-3 block text-xl text-primary">{option.title}</b>
+                    <small className="mt-2 block leading-5 text-white/58">{option.note}</small>
+                  </button>
+                ))}
               </div>
               <div className="input-grid">
                 <label>
@@ -268,17 +300,20 @@ export default function Booking() {
           {step === 3 ? (
             <section className="grid gap-5">
               <div>
-                <h2 className="serif text-3xl font-bold text-primary">Step 4: Customer details</h2>
-                <p className="mt-2 text-white/68">These details are required so Eby’s Place can confirm the appointment and send payment confirmation by email and WhatsApp/SMS after Stripe succeeds.</p>
+                <h2 className="serif text-3xl font-bold text-primary">Step 4: Customer and location details</h2>
+                <p className="mt-2 text-white/68">These details are required so Eby’s Place can confirm the appointment and send payment confirmation after Stripe succeeds. Home Service bookings require the customer address; studio bookings receive the studio address only after payment.</p>
               </div>
               <div className="input-grid">
                 <label>Name<input required value={form.clientName} onChange={event => set("clientName", event.target.value)} /></label>
                 <label>Email<input type="email" required value={form.clientEmail} onChange={event => set("clientEmail", event.target.value)} /></label>
                 <label>Phone<input required value={form.clientPhone} onChange={event => set("clientPhone", event.target.value)} /></label>
-                <label>Address<input required value={form.addressLine1} onChange={event => set("addressLine1", event.target.value)} /></label>
-                <label>City<input required value={form.city} onChange={event => set("city", event.target.value)} /></label>
-                <label>County<input value={form.county} onChange={event => set("county", event.target.value)} /></label>
-                <label>Postcode<input required value={form.postcode} onChange={event => set("postcode", event.target.value)} /></label>
+                {homeAddressRequired ? (<>
+                  <label>Address line 1<input required value={form.addressLine1} onChange={event => set("addressLine1", event.target.value)} /></label>
+                  <label>Address line 2<input value={form.addressLine2} onChange={event => set("addressLine2", event.target.value)} /></label>
+                  <label>City<input required value={form.city} onChange={event => set("city", event.target.value)} /></label>
+                  <label>County<input required value={form.county} onChange={event => set("county", event.target.value)} /></label>
+                  <label>Postcode<input required value={form.postcode} onChange={event => set("postcode", event.target.value)} /></label>
+                </>) : null}
               </div>
               <textarea placeholder="Delivery or appointment notes" value={form.deliveryNote} onChange={event => set("deliveryNote", event.target.value)} />
               <div className="flex flex-wrap gap-3">
@@ -297,15 +332,17 @@ export default function Booking() {
               <div className="grid gap-3 rounded-3xl border border-primary/25 bg-primary/10 p-5 text-white/78 sm:grid-cols-2">
                 <p><strong className="text-primary">Style:</strong> {form.serviceName}</p>
                 <p><strong className="text-primary">Slot:</strong> {form.appointmentDate} at {form.appointmentTime}</p>
+                <p><strong className="text-primary">Location:</strong> {form.serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}</p>
                 <p><strong className="text-primary">Add-ons:</strong> {selectedAddOns.length ? selectedAddOns.map(item => item.name).join(", ") : "Skipped"}</p>
                 <p><strong className="text-primary">Products:</strong> {selectedProducts.length ? selectedProducts.map(item => `${item.quantity} × ${item.productName}`).join(", ") : "Skipped"}</p>
                 <p><strong className="text-primary">Client:</strong> {form.clientName}</p>
                 <p><strong className="text-primary">Email:</strong> {form.clientEmail}</p>
                 <p><strong className="text-primary">Phone:</strong> {form.clientPhone}</p>
-                <p><strong className="text-primary">Postcode:</strong> {form.postcode}</p>
+                {form.serviceLocation === "home_service" ? <p><strong className="text-primary">Postcode:</strong> {form.postcode}</p> : null}
+                {form.serviceLocation === "home_service" && homeServiceSurcharge > 0 ? <p><strong className="text-primary">Travel fee:</strong> £{homeServiceSurcharge.toFixed(2)}</p> : null}
               </div>
               <div className="rounded-2xl border border-primary/30 bg-primary/10 p-5 text-primary">
-                Stripe Checkout will show the exact £20 non-refundable deposit before payment. After successful payment, Eby’s Place sends confirmation by email and WhatsApp/SMS when those delivery channels are available.
+                Stripe Checkout will show the exact £20 non-refundable deposit and any Home Service travel fee before payment. After successful payment, Eby’s Place sends confirmation by email and WhatsApp/SMS when those delivery channels are available.
               </div>
               <div className="flex flex-wrap gap-3">
                 <button type="button" className="btn-dark" onClick={() => setStep(3)}>Back to details</button>

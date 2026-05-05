@@ -25,7 +25,7 @@ type AdminListData = {
   services?: any[];
   gallery?: any[];
   sections?: any[];
-  availability?: { blockedSlots?: any[] };
+  availability?: { blockedSlots?: any[]; homeServiceSurcharge?: string };
   instagram?: { handle?: string; feedUrl?: string; enabled?: boolean; note?: string };
 };
 
@@ -123,6 +123,7 @@ export default function Admin() {
   const unblockAvailabilitySlot = trpc.admin.unblockAvailabilitySlot.useMutation({ onSuccess: () => { toast.success("Availability slot unblocked"); refresh(); } });
   const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => toast.success("Review request sent") });
   const updateInstagram = trpc.admin.updateInstagramSettings.useMutation({ onSuccess: () => toast.success("Instagram feed settings saved") });
+  const updateHomeServiceSurcharge = trpc.admin.updateHomeServiceSurcharge.useMutation({ onSuccess: () => { toast.success("Home service surcharge saved"); refresh(); }, onError: (error: any) => toast.error(error.message) });
   const updateBooking = trpc.admin.updateBookingStatus.useMutation(opts);
   const updateOrder = trpc.admin.updateOrderStatus.useMutation(opts);
   const updateStock = trpc.admin.updateProductStock.useMutation(opts);
@@ -353,13 +354,14 @@ export default function Admin() {
           <div className="mt-5 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-primary">
-                <tr><th>Client</th><th>Service</th><th>Date</th><th>Deposit</th><th>Status</th><th>Change status</th></tr>
+                <tr><th>Client</th><th>Service</th><th>Location</th><th>Date</th><th>Deposit</th><th>Status</th><th>Change status</th></tr>
               </thead>
               <tbody>
                 {(data.bookings || []).map((booking: any) => (
                   <tr className="border-t border-white/10" key={booking.id}>
                     <td className="py-3">{booking.clientName}<small className="block text-white/45">{booking.clientEmail}</small></td>
                     <td>{booking.serviceName}</td>
+                    <td>{booking.serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}<small className="block text-white/45">{booking.serviceLocation === "home_service" ? [booking.addressLine1, booking.addressLine2, booking.city, booking.county, booking.postcode].filter(Boolean).join(", ") : "Studio address hidden until paid confirmation"}</small></td>
                     <td>{booking.appointmentDate} {booking.appointmentTime}</td>
                     <td>{booking.depositStatus}</td>
                     <td>{booking.status}</td>
@@ -378,6 +380,10 @@ export default function Admin() {
 
 
           <AdminPanel id="availability" eyebrow="Calendar controls" title="Availability calendar" description="Block and unblock specific appointment dates or individual time slots. Customers cannot book blocked slots." icon={CalendarDays} open={isPanelOpen("availability")} onToggle={() => togglePanel("availability")}>
+            <form className="mt-5 grid gap-3 rounded-2xl border border-primary/20 bg-black/20 p-4 md:grid-cols-[1fr_auto]" onSubmit={(event) => { event.preventDefault(); const value = readAdminPrice("home-service-surcharge", "Home service surcharge"); if (value) updateHomeServiceSurcharge.mutate({ homeServiceSurcharge: value }); }}>
+              <label className="grid gap-2 text-sm text-white/70">Home service surcharge (£)<input id="home-service-surcharge" defaultValue={data.availability?.homeServiceSurcharge || "0.00"} inputMode="decimal" /></label>
+              <button className="btn-gold self-end py-2" type="submit">Save surcharge</button>
+            </form>
             <form className="mt-5 grid gap-3 rounded-2xl border border-primary/20 bg-black/20 p-4 md:grid-cols-4" onSubmit={(event) => { event.preventDefault(); blockAvailabilitySlot.mutate(availabilitySlot); }}>
               <input required type="date" value={availabilitySlot.date} onChange={(event) => setAvailabilitySlot({ ...availabilitySlot, date: event.target.value })} />
               <input type="time" value={availabilitySlot.time} onChange={(event) => setAvailabilitySlot({ ...availabilitySlot, time: event.target.value })} />

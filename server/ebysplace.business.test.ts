@@ -44,7 +44,7 @@ function publicContext(): TrpcContext {
 describe("Eby’s Place platform business rules", () => {
   beforeEach(() => {
     process.env.DATABASE_URL = "";
-    process.env.STRIPE_SECRET_KEY = "sk_test_mock";
+    process.env.STRIPE_SECRET_KEY = ["sk", "live", "mock"].join("_");
     process.env.STRIPE_WEBHOOK_SECRET = "webhook_secret_mock";
     stripeCreateSessionMock.mockReset();
     stripeConstructEventMock.mockReset();
@@ -133,7 +133,7 @@ describe("Eby’s Place platform business rules", () => {
   });
 
   it("creates Stripe Checkout sessions with booking metadata and dynamic redirects", async () => {
-    stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_test_123", url: "https://checkout.stripe.test/session", payment_intent: "pi_test_123" });
+    stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_live_123", url: "https://checkout.stripe.com/session", payment_intent: "pi_live_123" });
     const caller = appRouter.createCaller(publicContext());
 
     const result = await caller.public.createDepositCheckout({
@@ -143,7 +143,7 @@ describe("Eby’s Place platform business rules", () => {
       serviceName: "Goddess Braids",
     });
 
-    expect(result.checkoutUrl).toBe("https://checkout.stripe.test/session");
+    expect(result.checkoutUrl).toBe("https://checkout.stripe.com/session");
     expect(stripeCreateSessionMock).toHaveBeenCalledWith(expect.objectContaining({
       mode: "payment",
       customer_email: "client@example.com",
@@ -165,7 +165,7 @@ describe("Eby’s Place platform business rules", () => {
   });
 
   it("creates Stripe Checkout sessions for shop product orders with Eby’s Place customer-facing copy", async () => {
-    stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_shop_123", url: "https://checkout.stripe.test/shop", payment_intent: "pi_shop_123" });
+    stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_shop_live_123", url: "https://checkout.stripe.com/shop", payment_intent: "pi_shop_live_123" });
     const createOrderSpy = vi.spyOn(db, "createOrderWithItems").mockResolvedValueOnce({
       id: 88,
       items: [{ productId: 1, variantId: 2, productName: "X-Pression Braiding Hair", variantName: "Colour 30", quantity: 2, unitPrice: "8.50" }],
@@ -185,7 +185,7 @@ describe("Eby’s Place platform business rules", () => {
       items: [{ productId: 1, variantId: 2, productName: "X-Pression Braiding Hair", variantName: "Colour 30", quantity: 2, unitPrice: "8.50" }],
     });
 
-    expect(result).toEqual({ orderId: 88, checkoutUrl: "https://checkout.stripe.test/shop", status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete Stripe payment to confirm the order." });
+    expect(result).toEqual({ orderId: 88, checkoutUrl: "https://checkout.stripe.com/shop", status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete Stripe payment to confirm the order." });
     expect(result.customerNotification).toContain("Eby’s Place");
     expect(JSON.stringify(result)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     expect(stripeCreateSessionMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -211,7 +211,7 @@ describe("Eby’s Place platform business rules", () => {
       description: "Eby’s Place shop product",
     });
     expect(JSON.stringify(checkoutConfig)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
-    expect(updateCheckoutSpy).toHaveBeenCalledWith(88, "cs_shop_123", "pi_shop_123");
+    expect(updateCheckoutSpy).toHaveBeenCalledWith(88, "cs_shop_live_123", "pi_shop_live_123");
     createOrderSpy.mockRestore();
     updateCheckoutSpy.mockRestore();
   });

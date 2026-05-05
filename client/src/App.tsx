@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { lazy, Suspense, useEffect } from "react";
-import { Route, Switch, useLocation } from "wouter";
+import { Link, Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
@@ -43,6 +43,19 @@ function ScrollToTop() {
   return null;
 }
 
+function MobileStickyBookingCta() {
+  const [location] = useLocation();
+  const isAdmin = location.startsWith("/admin");
+  if (isAdmin) return null;
+  return (
+    <div className="mobile-sticky-booking fixed inset-x-0 bottom-0 z-50 px-4 py-3 md:hidden" aria-label="Sticky mobile booking action">
+      <Link href="/booking" className="flex min-h-12 w-full items-center justify-center rounded-full bg-[#111111] px-5 py-3 text-center text-sm font-extrabold uppercase tracking-[0.18em] text-[#C9A84C] shadow-[0_14px_30px_rgba(17,17,17,.26)] transition hover:bg-[#C9A84C] hover:text-[#111111]">
+        Book Now · Secure £20 Deposit
+      </Link>
+    </div>
+  );
+}
+
 function Router() {
   return (
     <Suspense fallback={<RouteLoading />}>
@@ -74,11 +87,12 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <ScrollToTop />
           <Router />
+          <MobileStickyBookingCta />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

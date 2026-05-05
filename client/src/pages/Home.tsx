@@ -12,7 +12,7 @@ import {
   MessageCircle,
   X,
 } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 
 const LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
 const HEADER_LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png";
@@ -208,6 +208,38 @@ export function SiteFooter() {
         </p>
       </div>
     </footer>
+  );
+}
+
+function HomepageLiveSearch() {
+  const [query, setQuery] = useState("");
+  const { data: services = [] } = trpc.public.services.useQuery({});
+  const { data: products = [] } = trpc.public.products.useQuery();
+  const results = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (term.length < 2) return [];
+    const serviceResults = (services as any[]).filter((service) => [service.name, service.category, service.description, service.badge].filter(Boolean).join(" ").toLowerCase().includes(term)).slice(0, 4).map((service) => ({ type: "Service", title: service.name, detail: `${service.category} · from £${service.priceFrom}`, href: `/booking?service=${encodeURIComponent(service.name)}` }));
+    const productResults = (products as any[]).filter((product) => [product.name, product.category, product.description, product.badge].filter(Boolean).join(" ").toLowerCase().includes(term)).slice(0, 4).map((product) => ({ type: "Product", title: product.name, detail: `${product.category} · £${product.price}`, href: `/shop?search=${encodeURIComponent(product.name)}` }));
+    return [...serviceResults, ...productResults].slice(0, 6);
+  }, [query, services, products]);
+  return (
+    <section className="container relative z-20 py-[3.75rem] md:py-20">
+      <div className="rounded-[2rem] border border-primary/25 bg-white p-5 shadow-[0_24px_80px_rgba(26,26,26,.12)] sm:p-7 md:p-8">
+        <label className="block text-sm font-bold uppercase tracking-[0.24em] text-primary">Find a service or product</label>
+        <input className="mt-3 w-full rounded-2xl border border-primary/20 bg-white px-4 py-3 text-base text-[#2e1b10] outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 sm:text-lg" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search braids, twists, aftercare, accessories..." />
+        {query.trim().length >= 2 ? (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {results.length ? results.map((result) => (
+              <a key={`${result.type}-${result.title}`} href={result.href} className="rounded-2xl border border-white/10 bg-[#FAF7F2] p-4 transition hover:border-primary/50 hover:bg-[#fff8df]">
+                <span className="pill text-[0.65rem]">{result.type}</span>
+                <b className="mt-2 block text-primary">{result.title}</b>
+                <small className="mt-1 block text-[#4A4A4A]">{result.detail}</small>
+              </a>
+            )) : <p className="rounded-2xl border border-primary/20 bg-[#FAF7F2] p-4 text-sm text-[#4A4A4A] sm:col-span-2 lg:col-span-3">No matching services or products yet. Try “braids”, “twists”, or “aftercare”.</p>}
+          </div>
+        ) : <p className="mt-3 text-sm font-medium text-[#4A4A4A]">Start typing to search services and shop products instantly.</p>}
+      </div>
+    </section>
   );
 }
 

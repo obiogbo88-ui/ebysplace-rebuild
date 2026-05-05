@@ -49,7 +49,7 @@ export default function Reviews() {
                 <div className="rounded-[1.5rem] border border-primary/30 bg-white/8 p-6 text-center sm:p-8">
                   <CheckCircle2 className="mx-auto h-12 w-12 text-primary" aria-hidden="true" />
                   <h2 className="serif mt-4 text-3xl font-bold">Thank you for your review.</h2>
-                  <p className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-7 text-white/68">
+                  <p className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-7 text-[#1A1A1A]/68">
                     Your review has been submitted for approval. Once approved, it may appear in the Eby’s Place homepage testimonials carousel.
                   </p>
                 </div>
@@ -58,7 +58,7 @@ export default function Reviews() {
                   <label className="grid gap-2 text-sm font-bold uppercase tracking-[.18em] text-primary">
                     Customer name
                     <input
-                      className="min-h-12 rounded-2xl border border-primary/25 bg-white/10 px-4 py-3 text-base font-semibold normal-case tracking-normal text-white outline-none transition placeholder:text-white/35 focus:border-primary focus:ring-2 focus:ring-primary/25"
+                      className="min-h-12 rounded-2xl border border-primary/25 bg-white/10 px-4 py-3 text-base font-semibold normal-case tracking-normal text-[#1A1A1A] outline-none transition placeholder:text-[#1A1A1A]/35 focus:border-primary focus:ring-2 focus:ring-primary/25"
                       value={customerName}
                       onChange={(event) => setCustomerName(event.target.value)}
                       placeholder="Your name"
@@ -87,7 +87,7 @@ export default function Reviews() {
                   <label className="grid gap-2 text-sm font-bold uppercase tracking-[.18em] text-primary">
                     Review text
                     <textarea
-                      className="min-h-40 rounded-2xl border border-primary/25 bg-white/10 px-4 py-3 text-base font-semibold normal-case leading-7 tracking-normal text-white outline-none transition placeholder:text-white/35 focus:border-primary focus:ring-2 focus:ring-primary/25"
+                      className="min-h-40 rounded-2xl border border-primary/25 bg-white/10 px-4 py-3 text-base font-semibold normal-case leading-7 tracking-normal text-[#1A1A1A] outline-none transition placeholder:text-[#1A1A1A]/35 focus:border-primary focus:ring-2 focus:ring-primary/25"
                       value={reviewText}
                       onChange={(event) => setReviewText(event.target.value)}
                       placeholder="Tell us about your appointment, style, comfort, or care experience."

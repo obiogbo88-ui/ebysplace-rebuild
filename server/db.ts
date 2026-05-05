@@ -705,7 +705,13 @@ async function setWebsiteJsonSection(sectionKey: string, value: unknown) {
 }
 
 export async function getAvailabilitySettings() {
-  return getWebsiteJsonSection<{ blockedSlots: BlockedBookingSlot[] }>('availability_settings', { blockedSlots: [] });
+  const settings = await getWebsiteJsonSection<{ blockedSlots: BlockedBookingSlot[]; homeServiceSurcharge?: string }>('availability_settings', { blockedSlots: [], homeServiceSurcharge: "0.00" });
+  return { blockedSlots: settings.blockedSlots || [], homeServiceSurcharge: settings.homeServiceSurcharge || "0.00" };
+}
+
+export async function updateHomeServiceSurcharge(homeServiceSurcharge: string) {
+  const settings = await getAvailabilitySettings();
+  return setWebsiteJsonSection('availability_settings', { ...settings, homeServiceSurcharge });
 }
 
 export async function blockBookingSlot(input: BlockedBookingSlot) {
@@ -713,13 +719,13 @@ export async function blockBookingSlot(input: BlockedBookingSlot) {
   const nextSlot = { date: input.date, time: input.time || '', reason: input.reason || 'Unavailable' };
   const blockedSlots = settings.blockedSlots.filter((slot) => !(slot.date === nextSlot.date && (slot.time || '') === nextSlot.time));
   blockedSlots.push(nextSlot);
-  return setWebsiteJsonSection('availability_settings', { blockedSlots });
+  return setWebsiteJsonSection('availability_settings', { ...settings, blockedSlots });
 }
 
 export async function unblockBookingSlot(input: { date: string; time?: string }) {
   const settings = await getAvailabilitySettings();
   const blockedSlots = settings.blockedSlots.filter((slot) => !(slot.date === input.date && (slot.time || '') === (input.time || '')));
-  return setWebsiteJsonSection('availability_settings', { blockedSlots });
+  return setWebsiteJsonSection('availability_settings', { ...settings, blockedSlots });
 }
 
 export async function isBookingSlotBlocked(date: string, time: string) {
@@ -743,6 +749,7 @@ export async function updateInstagramSettings(input: { handle: string; feedUrl: 
 export async function getBookingById(id: number) {
   const db = await getDb();
   if (!db) return null;
+  await ensureBookingLocationColumns();
   const rows = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
   return rows[0] ?? null;
 }
@@ -772,9 +779,25 @@ export async function listGallery(category?: string) {
   }
 }
 
+async function ensureBookingLocationColumns() {
+  const db = await getDb();
+  if (!db || !_pool) return;
+  await _pool.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_location_type_enum') THEN
+        CREATE TYPE booking_location_type_enum AS ENUM ('studio', 'home_service');
+      END IF;
+    END $$;
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "serviceLocation" booking_location_type_enum NOT NULL DEFAULT 'studio';
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "addressLine2" varchar(255);
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "homeServiceSurcharge" numeric(10,2) NOT NULL DEFAULT '0.00';
+  `);
+}
+
 export async function createBooking(input: typeof bookings.$inferInsert) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
+  await ensureBookingLocationColumns();
   const inserted = await db.insert(bookings).values(input).returning({ id: bookings.id });
   return { id: inserted[0]?.id ?? 0 };
 }
@@ -794,6 +817,7 @@ export async function markBookingDepositPaid(stripeCheckoutSessionId: string, st
 export async function getBookingByCheckoutSession(stripeCheckoutSessionId: string) {
   const db = await getDb();
   if (!db) return null;
+  await ensureBookingLocationColumns();
   const rows = await db.select().from(bookings).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
   return rows[0] ?? null;
 }
@@ -882,6 +906,7 @@ export async function adminSummary() {
 export async function adminLists() {
   await seedIfNeeded();
   const db = await getDb();
+  if (db) await ensureBookingLocationColumns();
   if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: seedProducts.map((product) => ({ ...product, variants: [] })), services: seedServices, gallery: [], tryOns: [], sections: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   const [bookingRows, orderRows, reviewRows, productRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder))]);
   const productsWithVariants = productRows.map((product) => ({

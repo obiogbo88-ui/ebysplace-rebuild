@@ -15,6 +15,7 @@ export const userRoleEnum = pgEnum("user_role_enum", ["user", "admin"]);
 export const trueFalseEnum = pgEnum("true_false_enum", ["true", "false"]);
 export const serviceCategoryEnum = pgEnum("service_category_enum", ["Braids", "Twists", "Locs", "Kids Styles", "Add-ons"]);
 export const bookingStatusEnum = pgEnum("booking_status_enum", ["pending", "confirmed", "completed", "cancelled"]);
+export const bookingLocationTypeEnum = pgEnum("booking_location_type_enum", ["studio", "home_service"]);
 export const depositStatusEnum = pgEnum("deposit_status_enum", ["unpaid", "checkout_started", "paid", "failed", "refunded"]);
 export const productCategoryEnum = pgEnum("product_category_enum", ["Accessories", "Aftercare", "Hair Attachments"]);
 export const stockStatusEnum = pgEnum("stock_status_enum", ["in_stock", "low_stock", "out_of_stock"]);
@@ -81,11 +82,14 @@ export const bookings = pgTable("bookings", {
   clientName: varchar("clientName", { length: 180 }).notNull(),
   clientEmail: varchar("clientEmail", { length: 320 }).notNull(),
   clientPhone: varchar("clientPhone", { length: 80 }).notNull(),
+  serviceLocation: bookingLocationTypeEnum("serviceLocation").default("studio").notNull(),
   addressLine1: varchar("addressLine1", { length: 255 }).notNull(),
+  addressLine2: varchar("addressLine2", { length: 255 }),
   city: varchar("city", { length: 120 }).notNull(),
   county: varchar("county", { length: 120 }),
   postcode: varchar("postcode", { length: 40 }).notNull(),
   deliveryNote: text("deliveryNote"),
+  homeServiceSurcharge: numeric("homeServiceSurcharge", { precision: 10, scale: 2 }).default("0.00").notNull(),
   appointmentDate: varchar("appointmentDate", { length: 20 }).notNull(),
   appointmentTime: varchar("appointmentTime", { length: 20 }).notNull(),
   status: bookingStatusEnum("status").default("pending").notNull(),
@@ -128,7 +132,9 @@ export const orders = pgTable("orders", {
   customerName: varchar("customerName", { length: 180 }).notNull(),
   customerEmail: varchar("customerEmail", { length: 320 }).notNull(),
   customerPhone: varchar("customerPhone", { length: 80 }),
+  serviceLocation: bookingLocationTypeEnum("serviceLocation").default("studio").notNull(),
   addressLine1: varchar("addressLine1", { length: 255 }).notNull(),
+  addressLine2: varchar("addressLine2", { length: 255 }),
   city: varchar("city", { length: 120 }).notNull(),
   county: varchar("county", { length: 120 }),
   postcode: varchar("postcode", { length: 40 }).notNull(),

@@ -35,12 +35,14 @@ const bookingProductInput = z.object({
 
 const bookingInput = z.object({
   serviceId: z.number().optional(),
+  serviceLocation: z.enum(["studio", "home_service"]).default("studio"),
   serviceName: z.string().min(2),
   clientName: z.string().min(2),
   clientEmail: z.string().email(),
   clientPhone: z.string().min(6),
-  addressLine1: z.string().min(3),
-  city: z.string().min(2),
+  addressLine1: z.string().optional(),
+  addressLine2: z.string().optional(),
+  city: z.string().optional(),
   county: z.string().optional(),
   postcode: z.string().min(3),
   deliveryNote: z.string().optional(),
@@ -54,8 +56,9 @@ const orderInput = z.object({
   customerName: z.string().min(2),
   customerEmail: z.string().email(),
   customerPhone: z.string().optional(),
-  addressLine1: z.string().min(3),
-  city: z.string().min(2),
+  addressLine1: z.string().optional(),
+  addressLine2: z.string().optional(),
+  city: z.string().optional(),
   county: z.string().optional(),
   postcode: z.string().min(3),
   deliveryNote: z.string().optional(),
@@ -70,9 +73,16 @@ const orderInput = z.object({
 });
 
 function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
   if (!key) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Stripe is not configured yet." });
+  if (!key.startsWith("sk_live_")) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Live Stripe payments require the live STRIPE_SECRET_KEY environment variable." });
+  }
   return new Stripe(key);
+}
+
+function getLivePaymentMode() {
+  return { stripeMode: "live" as const, publishableKeyConfigured: Boolean(process.env.VITE_STRIPE_PUBLISHABLE_KEY?.trim()?.startsWith("pk_live_")) };
 }
 
 function getOrigin(req: Request) {
@@ -98,10 +108,12 @@ function formatBookingExtras(input: { addOns?: Array<{ name: string; price: stri
   return { addOns, bookingProducts };
 }
 
-function buildBookingNote(input: { deliveryNote?: string; addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
+function buildBookingNote(input: { deliveryNote?: string; serviceLocation?: "studio" | "home_service"; homeServiceSurcharge?: string; addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
   const extras = formatBookingExtras(input);
   return [
     input.deliveryNote?.trim() ? input.deliveryNote.trim() : undefined,
+    `Service location: ${input.serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}`,
+    input.homeServiceSurcharge && Number(input.homeServiceSurcharge) > 0 ? `Home service surcharge: £${input.homeServiceSurcharge}` : undefined,
     `Optional add-ons: ${extras.addOns}`,
     `Optional shop products for appointment order: ${extras.bookingProducts}`,
   ].filter(Boolean).join("\n");
@@ -148,6 +160,7 @@ export const appRouter = router({
     featuredServices: publicProcedure.query(() => db.listFeaturedServices()),
     products: publicProcedure.query(() => db.listProducts()),
     availability: publicProcedure.query(() => db.getAvailabilitySettings()),
+    paymentMode: publicProcedure.query(() => getLivePaymentMode()),
     instagramSettings: publicProcedure.query(() => db.getInstagramSettings()),
     websiteSections: publicProcedure.query(() => db.listWebsiteSections()),
     reviews: publicProcedure.query(() => db.listApprovedReviews()),
@@ -169,12 +182,22 @@ export const appRouter = router({
     }),
     createBooking: publicProcedure.input(bookingInput).mutation(async ({ input }) => {
       const { addOns, bookingProducts, ...bookingFields } = input;
-      const bookingNote = buildBookingNote(input);
+      const serviceLocation = input.serviceLocation || "studio";
+      const settings = await db.getAvailabilitySettings();
+      const homeServiceSurcharge = serviceLocation === "home_service" ? Number(settings.homeServiceSurcharge || 0).toFixed(2) : "0.00";
+      if (serviceLocation === "home_service") {
+        const missing = [input.clientName, input.addressLine1, input.city, input.county, input.postcode].some((value) => !value?.trim());
+        if (missing) throw new TRPCError({ code: "BAD_REQUEST", message: "Home Service bookings require the customer name, full address, city, county, and postcode." });
+      }
+      const sanitizedBookingFields = serviceLocation === "studio"
+        ? { ...bookingFields, serviceLocation, addressLine1: "Studio visit", addressLine2: null, city: "Studio", county: null, postcode: "STUDIO", homeServiceSurcharge }
+        : { ...bookingFields, serviceLocation, addressLine1: input.addressLine1!.trim(), addressLine2: input.addressLine2?.trim() || null, city: input.city!.trim(), county: input.county?.trim() || null, postcode: input.postcode!.trim(), homeServiceSurcharge };
+      const bookingNote = buildBookingNote({ ...input, serviceLocation, homeServiceSurcharge });
       if (await db.isBookingSlotBlocked(input.appointmentDate, input.appointmentTime)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "That date or time has been blocked by Eby’s Place. Please choose another slot." });
       }
       // Regression anchor for the original contract: db.createBooking({ ...input, status: "pending", depositStatus: "unpaid" })
-      const booking = await db.createBooking({ ...bookingFields, deliveryNote: bookingNote, status: "pending", depositStatus: "unpaid" });
+      const booking = await db.createBooking({ ...sanitizedBookingFields, deliveryNote: bookingNote, status: "pending", depositStatus: "unpaid" });
       const extras = formatBookingExtras({ addOns, bookingProducts });
       await notifyOwnerSafely(
         "New Eby’s Place booking request",
@@ -186,7 +209,9 @@ export const appRouter = router({
           `Email: ${input.clientEmail}`,
           `Phone: ${input.clientPhone}`,
           `Appointment: ${input.appointmentDate} at ${input.appointmentTime}`,
-          `Address: ${input.addressLine1}, ${input.city}${input.county ? `, ${input.county}` : ""}, ${input.postcode}`,
+          `Location type: ${serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}`,
+          serviceLocation === "home_service" ? `Customer address: ${[input.addressLine1, input.addressLine2, input.city, input.county, input.postcode].filter(Boolean).join(", ")}` : undefined,
+          serviceLocation === "home_service" ? `Home service surcharge: £${homeServiceSurcharge}` : undefined,
           `Optional add-ons: ${extras.addOns}`,
           `Optional shop products: ${extras.bookingProducts}`,
           input.deliveryNote ? `Notes: ${input.deliveryNote}` : undefined,
@@ -196,22 +221,28 @@ export const appRouter = router({
         to: input.clientPhone,
         body: `Eby’s Place received your ${input.serviceName} booking request for ${input.appointmentDate} at ${input.appointmentTime}. Please complete the £20 Stripe deposit on the website to secure it. Optional add-ons/products are recorded only when selected.`,
       });
-      return { bookingId: booking.id, depositAmount: 20, depositCurrency: "GBP", message: "A £20 non-refundable deposit is required to secure your Eby’s Place appointment. You will receive on-screen confirmation after Stripe confirms payment.", customerNotification: "Your Eby’s Place booking request has been received. Add-ons and shop products are optional, and you can complete the secure Stripe deposit checkout now." };
+      return { bookingId: booking.id, depositAmount: 20, homeServiceSurcharge: Number(homeServiceSurcharge), depositCurrency: "GBP", serviceLocation, message: "A £20 non-refundable deposit is required to secure your Eby’s Place appointment. You will receive on-screen confirmation after Stripe confirms payment.", customerNotification: "Your Eby’s Place booking request has been received. Add-ons and shop products are optional, and you can complete the secure Stripe deposit checkout now." };
     }),
     createDepositCheckout: publicProcedure.input(z.object({ bookingId: z.number(), clientEmail: z.string().email(), clientName: z.string().min(2), serviceName: z.string().min(2) })).mutation(async ({ input, ctx }) => {
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
+      const booking = await db.getBookingById(input.bookingId);
+      const homeServiceSurcharge = Number(booking?.homeServiceSurcharge || 0);
+      const lineItems = [
+        { price_data: { currency: "gbp", unit_amount: 2000, product_data: { name: "Eby’s Place £20 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 },
+        ...(homeServiceSurcharge > 0 ? [{ price_data: { currency: "gbp", unit_amount: Math.round(homeServiceSurcharge * 100), product_data: { name: "Eby’s Place Home Service travel surcharge", description: "Additional travel fee for a home-service appointment" } }, quantity: 1 }] : []),
+      ];
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         customer_email: input.clientEmail,
         client_reference_id: input.bookingId.toString(),
         payment_intent_data: { receipt_email: input.clientEmail, description: `Eby’s Place booking deposit for ${input.serviceName}`, statement_descriptor_suffix: "EBYSPLACE" },
         custom_text: { submit: { message: "You are paying Eby’s Place securely. Your booking deposit confirmation and receipt will use the email entered for checkout." } },
-        line_items: [{ price_data: { currency: "gbp", unit_amount: 2000, product_data: { name: "Eby’s Place £20 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 }],
+        line_items: lineItems,
         allow_promotion_codes: true,
         success_url: `${origin}/booking/success?booking=${input.bookingId}`,
         cancel_url: `${origin}/booking?booking=${input.bookingId}`,
-        metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp" },
+        metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2) },
       });
       if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a booking deposit checkout link. Please try again." });
       await db.updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
@@ -325,6 +356,7 @@ export const appRouter = router({
     blockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional(), reason: z.string().optional() })).mutation(({ input }) => db.blockBookingSlot(input)),
     unblockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional() })).mutation(({ input }) => db.unblockBookingSlot(input)),
     updateInstagramSettings: adminProcedure.input(z.object({ handle: z.string().min(2), feedUrl: z.string().url(), enabled: z.boolean(), note: z.string().optional() })).mutation(({ input }) => db.updateInstagramSettings(input)),
+    updateHomeServiceSurcharge: adminProcedure.input(z.object({ homeServiceSurcharge: z.string().regex(/^\d+(\.\d{2})?$/) })).mutation(({ input }) => db.updateHomeServiceSurcharge(input.homeServiceSurcharge)),
     sendReviewRequest: adminProcedure.input(z.object({ bookingId: z.number() })).mutation(async ({ input }) => {
       const booking = await db.getBookingById(input.bookingId);
       if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });

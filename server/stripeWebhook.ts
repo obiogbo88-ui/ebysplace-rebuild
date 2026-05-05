@@ -5,6 +5,8 @@ import * as db from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendCustomerEmailSafely, sendCustomerSmsSafely, sendCustomerWhatsAppSafely, sendOwnerSmsAndWhatsAppSafely } from "./customerNotifications";
 
+const STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
+
 function getStripeWebhookConfig() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -50,6 +52,11 @@ export function registerStripeWebhook(app: Application) {
           await db.markBookingDepositPaid(session.id, paymentIntentId);
           const booking = await db.getBookingByCheckoutSession(session.id);
           const customerConfirmation = `Your Eby’s Place £20 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured. Stripe will also email the payment receipt to the checkout email address.`;
+          const bookingLocation = booking?.serviceLocation ?? session.metadata?.service_location ?? "studio";
+          const homeServiceAddress = [booking?.addressLine1, booking?.addressLine2, booking?.city, booking?.county, booking?.postcode].filter(Boolean).join(", ");
+          const locationConfirmation = bookingLocation === "home_service"
+            ? `Home service address: ${homeServiceAddress || "the address provided during booking"}`
+            : `Studio visit address: ${STUDIO_CONFIRMATION_ADDRESS}`;
           await Promise.allSettled([
             sendCustomerSmsSafely({
               to: booking?.clientPhone,
@@ -65,6 +72,7 @@ export function registerStripeWebhook(app: Application) {
               body: [
                 "Thank you for booking with Eby’s Place.",
                 customerConfirmation,
+                locationConfirmation,
                 booking?.deliveryNote ? `Booking notes and optional selections:\n${booking.deliveryNote}` : undefined,
                 "If anything needs changing, please contact Eby’s Place before your appointment.",
               ].filter(Boolean).join("\n\n"),
