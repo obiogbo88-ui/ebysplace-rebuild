@@ -111,7 +111,9 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("src={HEADER_LOGO_SRC}");
     expect(homeSource).toContain('fetchPriority="high"');
     expect(homeSource).toContain('decoding="async"');
-    expect(homeSource).toContain("h-20 w-[14rem] object-contain mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]");
+    expect(homeSource).toContain("h-16 w-[10.5rem] object-contain object-left mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]");
+    expect(homeSource).toContain('<div className="hidden sm:block">');
+    expect(homeSource).toContain("btn-gold px-2.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm");
     expect(homeSource).not.toContain("h-24 w-[16rem] object-contain mix-blend-multiply sm:h-28 sm:w-[22rem] lg:h-24 lg:w-[18rem] xl:w-[20rem]");
     expect(homeSource).not.toContain("h-52 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
     expect(homeSource).not.toContain("h-36 w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-40");

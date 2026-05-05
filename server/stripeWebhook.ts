@@ -89,17 +89,24 @@ export function registerStripeWebhook(app: Application) {
           await db.markOrderPaid(session.id, paymentIntentId);
           const order = await db.getOrderByCheckoutSession(session.id);
           const deliveryAddress = [order?.addressLine1, order?.addressLine2, order?.city, order?.county, order?.postcode].filter(Boolean).join(", ");
+          const orderReference = order?.id ?? session.metadata?.order_id ?? "";
+          const orderEmailBody = [
+            "Thank you for shopping with Eby's Place.",
+            `Order reference: #${orderReference}`,
+            `Delivery address: ${deliveryAddress || "provided during checkout"}`,
+            "Estimated delivery: 3-5 working days after dispatch.",
+          ].join("\n\n");
           await Promise.allSettled([
             sendCustomerSmsSafely({
               to: order?.customerPhone,
-              body: `Eby’s Place has received payment for order #${order?.id ?? session.metadata?.order_id ?? ""}. We will prepare your items and keep you updated.`,
+              body: `Eby's Place has received payment for order #${orderReference}. We will prepare your items and keep you updated.`,
             }),
             sendCustomerEmailSafely({
               to: order?.customerEmail ?? session.customer_email,
-              subject: "Eby’s Place order confirmed",
-              body: [`Thank you for shopping with Eby’s Place.`, `Order reference: #${order?.id ?? session.metadata?.order_id ?? ""}`, `Delivery address: ${deliveryAddress || "provided during checkout"}`, "Estimated delivery: 3–5 working days after dispatch."].join("\n\n"),
+              subject: "Eby's Place order confirmed",
+              body: orderEmailBody,
             }),
-            sendOwnerSmsAndWhatsAppSafely(`New Eby’s Place shop order paid: ${order?.customerName ?? session.metadata?.customer_name ?? "Customer"}, order #${order?.id ?? session.metadata?.order_id ?? ""}, deliver to ${deliveryAddress || "address on order"}.`),
+            sendOwnerSmsAndWhatsAppSafely(`New Eby's Place shop order paid: ${order?.customerName ?? session.metadata?.customer_name ?? "Customer"}, order #${orderReference}, deliver to ${deliveryAddress || "address on order"}.`),
           ]);
           await notifyOwner({
             title: "Eby’s Place shop order paid",

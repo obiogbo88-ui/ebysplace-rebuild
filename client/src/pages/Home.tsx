@@ -28,7 +28,6 @@ const navLinks = [
   { href: "/ai-try-on", label: "AI Try-On" },
   { href: "/braiders-near-me", label: "Braiders Near Me" },
   { href: "/gallery", label: "Gallery" },
-  { href: "/reviews", label: "Reviews" },
 ];
 
 export function SiteHeader() {
@@ -45,16 +44,16 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#d8bd74]/55 bg-[#f5ead7]/92 shadow-[0_10px_36px_rgba(66,42,18,.12)] backdrop-blur-xl">
-      <div className="container flex h-28 items-center justify-between gap-4">
+      <div className="container flex h-24 items-center justify-between gap-2 sm:h-28 sm:gap-4">
         <Link
           href="/"
-          className="flex flex-1 items-center py-1 lg:flex-none"
+          className="flex min-w-0 flex-1 items-center py-1 lg:flex-none"
           aria-label="Eby’s Place home"
         >
           <img
             src={HEADER_LOGO_SRC}
             alt="Eby’s Place"
-            className="h-20 w-[14rem] object-contain mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]"
+            className="h-16 w-[10.5rem] object-contain object-left mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]"
             loading="eager"
             decoding="async"
             fetchPriority="high"
@@ -85,7 +84,7 @@ export function SiteHeader() {
           </form>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3 2xl:hidden">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3 2xl:hidden">
           <form className="relative hidden w-44 md:block xl:w-56" role="search" aria-label="Compact product search" onSubmit={handleProductSearch}>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
             <input
@@ -96,12 +95,14 @@ export function SiteHeader() {
               placeholder="Search products"
             />
           </form>
-          <Link className="btn-gold px-3 py-2.5 text-sm sm:px-4" href="/booking">
-            Book
-          </Link>
+          <div className="hidden sm:block">
+            <Link className="btn-gold px-2.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm" href="/booking">
+              Book
+            </Link>
+          </div>
           <button
             type="button"
-            className="rounded-full border border-[#c8a95a]/45 bg-[#2a1a0b]/90 p-3 text-[#f7e3a3]"
+            className="rounded-full border border-[#c8a95a]/45 bg-[#2a1a0b]/90 p-2.5 text-[#f7e3a3] sm:p-3"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(value => !value)}
@@ -418,7 +419,9 @@ export default function Home() {
 
         <section className="py-8 overflow-hidden bg-[#efe0c7]/78 text-[#24170d] md:py-10">
           <div className="container">
-            <p className="pill w-fit border-[#d8bd74]/70 bg-white text-[#5b3a12]">Live testimonials</p>
+            <Link className="btn-gold w-fit px-5 py-3 text-sm" href="/reviews" aria-label="Leave a review for Eby’s Place">
+              <span className="sr-only">Live testimonials </span>Leave a Review
+            </Link>
           </div>
           <div className="review-marquee mt-5" aria-label="Moving Eby’s Place customer reviews">
             <div className="review-marquee-track">
@@ -433,19 +436,18 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="container pb-24">
-          <div className="lux-card grid gap-8 md:grid-cols-[1fr_auto]">
+        <section className="container pb-14 md:pb-18">
+          <div className="lux-card grid items-center gap-5 rounded-[1.5rem] px-5 py-5 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto] md:py-6">
             <div>
-              <h2 className="serif text-4xl font-bold leading-tight md:text-5xl">
+              <h2 className="serif text-2xl font-bold leading-tight md:text-3xl">
                 Join the Eby’s Place list.
               </h2>
-              <p className="mt-3 text-white/65">
-                Get style openings, product drops, and premium braid care
-                guidance.
+              <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-white/62 md:text-[0.95rem]">
+                Get style openings, product drops, and premium braid care guidance.
               </p>
             </div>
             <form
-              className="flex flex-col gap-3 sm:flex-row"
+              className="flex w-full flex-col gap-2 sm:flex-row md:w-auto"
               onSubmit={e => {
                 e.preventDefault();
                 newsletter.mutate({ email, productAlerts: true });
@@ -459,7 +461,7 @@ export default function Home() {
                 type="email"
                 required
               />
-              <button className="btn-gold" type="submit">
+              <button className="btn-gold px-5 py-3 text-sm" type="submit">
                 Sign up
               </button>
             </form>
@@ -478,10 +480,10 @@ export default function Home() {
                   {aboutSection.ctaHref && <Link className="btn-gold mt-8" href={aboutSection.ctaHref}>{aboutSection.ctaLabel || "Explore Eby’s Place"}</Link>}
                 </div>
                 <aside className="justify-self-start text-center lg:justify-self-end" aria-label="Eby’s Place round story portrait">
-                  <div className="relative mx-auto h-32 w-32 overflow-hidden rounded-full border border-[#d8bd74]/75 bg-[#efe0c7] p-2 shadow-[0_18px_48px_rgba(74,48,20,.2)] sm:h-36 sm:w-36">
+                  <div className="relative mx-auto h-32 w-32 overflow-hidden rounded-full border border-[#d8bd74]/75 bg-[#efe0c7] p-2 shadow-[0_18px_48px_rgba(74,48,20,.2)] sm:h-36 sm:w-36 lg:h-48 lg:w-48">
                     <img
                       className="h-full w-full rounded-full object-cover object-[center_18%]"
-                      src={aboutSection.portraitImageUrl || aboutSection.imageUrl || ABOUT_PORTRAIT_FALLBACK_SRC}
+                      src={ABOUT_PORTRAIT_FALLBACK_SRC || aboutSection.portraitImageUrl || aboutSection.imageUrl}
                       alt="Eby’s Place story portrait"
                       loading="lazy"
                       decoding="async"

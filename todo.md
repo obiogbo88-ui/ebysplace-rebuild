@@ -611,3 +611,18 @@
 - [x] Strengthen AI try-on prompt to preserve face, skin tone, and facial features while changing only hairstyle
 - [x] Remove Admin link from public navigation menu
 - [x] Push expanded automation release to GitHub after validation
+
+- [x] Remove the Reviews link from the public navigation menu completely.
+- [x] Remove the Admin link from the public navigation menu completely.
+- [x] Keep the homepage sliding testimonials carousel while making the Live Testimonials heading a Leave a Review button linking to `/reviews`.
+- [x] Add a dedicated `/reviews` page containing only a review submission form for customer name, 1–5 star rating, and review text.
+- [x] Show a thank-you message after review submission and keep submitted reviews pending admin approval.
+- [x] Add WhatsApp, Facebook, and copy-link share actions on the `/reviews` page.
+- [x] Ensure admin can approve or reject reviews and only approved reviews appear in the homepage testimonials carousel.
+- [x] Make the homepage Join Eby’s List newsletter section slimmer, more compact, and elegant across devices.
+- [x] Locate and restore the original CEO portrait image in the About Us / From Passion to Power homepage section.
+- [x] Upload or reference the CEO portrait through durable media storage and ensure it displays correctly on mobile and desktop.
+- [x] Audit and fix responsive layout issues across homepage, services, booking, shop, gallery, reviews, AI try-on, and admin.
+- [x] Validate mobile viewport behavior for homepage, services, booking, shop, gallery, reviews, AI try-on, and admin before checkpointing.
+- [x] Push the completed update set to GitHub after tests, build, runtime health, and TODO verification.
+- [x] Fix the compact mobile public header so the booking button and menu control do not clip or overflow at 390px width.
