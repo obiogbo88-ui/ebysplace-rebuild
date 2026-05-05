@@ -13,7 +13,7 @@ import {
 
 export const userRoleEnum = pgEnum("user_role_enum", ["user", "admin"]);
 export const trueFalseEnum = pgEnum("true_false_enum", ["true", "false"]);
-export const serviceCategoryEnum = pgEnum("service_category_enum", ["Braids", "Twists", "Locs", "Kids Styles", "Add-ons"]);
+export const serviceCategoryEnum = pgEnum("service_category_enum", ["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
 export const bookingStatusEnum = pgEnum("booking_status_enum", ["pending", "confirmed", "completed", "cancelled"]);
 export const bookingLocationTypeEnum = pgEnum("booking_location_type_enum", ["studio", "home_service"]);
 export const depositStatusEnum = pgEnum("deposit_status_enum", ["unpaid", "checkout_started", "paid", "failed", "refunded"]);

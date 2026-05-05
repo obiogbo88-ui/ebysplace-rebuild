@@ -12,7 +12,7 @@ import { sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsApp
 import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
 import * as db from "./db";
 
-const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Add-ons"]);
+const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
 const bookingStatus = z.enum(["pending", "confirmed", "completed", "cancelled"]);
 const reviewStatus = z.enum(["approved", "rejected"]);
 const orderStatus = z.enum(["draft", "pending_payment", "paid", "fulfilling", "shipped", "completed", "cancelled"]);
@@ -318,10 +318,14 @@ export const appRouter = router({
       originalImageUrl: z.string().min(5),
       originalImageKey: z.string().min(3).optional(),
       mimeType: z.string().optional(),
+      gender: z.enum(["woman", "man", "child"]).optional(),
+      ageGroup: z.enum(["child", "teen", "adult", "mature"]).optional(),
     })).mutation(async ({ input }) => {
       const record = await db.createTryOnGeneration({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, status: "pending" });
       try {
-        const prompt = `Change ONLY the hairstyle of the person in this photo to ${input.styleName}. Keep the person's face, skin tone, eye color, facial features, expression, body, background, and clothing EXACTLY the same — do not alter them in any way. Only modify the hair into neat, professional, realistic ${input.styleName} with the refined Eby’s Place salon finish.`;
+        const subjectDescription = input.gender === "man" ? "man" : input.gender === "child" ? "child" : "woman";
+        const ageDescription = input.ageGroup === "child" ? " (child)" : input.ageGroup === "teen" ? " (teenager)" : input.ageGroup === "mature" ? " (mature adult)" : "";
+        const prompt = `Change ONLY the hairstyle of the ${subjectDescription}${ageDescription} in this photo to ${input.styleName}. Preserve the person’s skin tone, facial features, eye colour, expression, body, clothing, and background exactly — do not alter them in any way. Only modify the hair into neat, professional, realistic ${input.styleName} with the refined Eby’s Place salon finish. This style works beautifully on all skin tones, all genders, and all ages.`;
         const storageKey = input.originalImageUrl.startsWith("/")
           ? (input.originalImageKey ?? decodeURIComponent(input.originalImageUrl.replace("/", "")))
           : null;
@@ -335,7 +339,9 @@ export const appRouter = router({
             `A visitor generated an AI Try-On preview on the website.`,
             `Try-On ID: ${record.id}`,
             `Style: ${input.styleName}`,
-          ].join("\n")
+            input.gender ? `Gender: ${input.gender}` : undefined,
+            input.ageGroup ? `Age group: ${input.ageGroup}` : undefined,
+          ].filter(Boolean).join("\n")
         );
         return { id: record.id, generatedImageUrl: result.url, status: "completed" as const, customerNotification: "Your Eby’s Place AI Try-On preview is ready." };
       } catch (error) {

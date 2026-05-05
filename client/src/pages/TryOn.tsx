@@ -24,9 +24,16 @@ const styles = [
   "Faux Locs",
   "Butterfly Locs",
   "Starter Locs",
+  "Men Cornrows",
+  "Men Box Braids",
+  "Men Twists",
   "Kids Braids",
   "Kids Cornrows",
+  "Kids Box Braids",
 ];
+
+type Gender = "woman" | "man" | "child";
+type AgeGroup = "child" | "teen" | "adult" | "mature";
 
 type UploadedPhoto = {
   dataUrl: string;
@@ -146,6 +153,8 @@ export default function TryOn() {
   const [photo, setPhoto] = useState<UploadedPhoto>();
   const [storedPhoto, setStoredPhoto] = useState<StoredPhoto>();
   const [style, setStyle] = useState(styles[0]);
+  const [gender, setGender] = useState<Gender>("woman");
+  const [ageGroup, setAgeGroup] = useState<AgeGroup>("adult");
   const [error, setError] = useState<string>();
   const [isPreparing, setIsPreparing] = useState(false);
 
@@ -196,6 +205,8 @@ export default function TryOn() {
         originalImageUrl: uploaded.url,
         originalImageKey: uploaded.key,
         mimeType: uploaded.mimeType,
+        gender,
+        ageGroup,
       });
       toast.success("AI Try-On preview generated", {
         description: result.customerNotification ?? "Your hairstyle preview is ready below.",
@@ -217,10 +228,10 @@ export default function TryOn() {
       <main className="container section-pad">
         <p className="pill w-fit">AI hairstyle try-on</p>
         <h1 className="serif mt-4 max-w-5xl text-4xl font-bold leading-tight text-[#2f2418] sm:text-5xl md:text-6xl">
-          Preview braid styles while preserving your face.
+          See yourself in any braid style.
         </h1>
         <p className="mt-5 max-w-3xl text-[#5f5142]">
-          Upload a clear portrait photo, choose a braid style, and generate a visual preview. iPhone HEIC photos, JPEGs, PNGs, and WebP images are prepared before upload so the AI can read them more reliably.
+          Upload a clear portrait photo, choose your style, and see an AI preview. Works for women, men, and children of all ages, skin tones, and backgrounds. The AI changes only the hair — your face, features, and clothing stay exactly as they are.
         </p>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
@@ -237,6 +248,42 @@ export default function TryOn() {
                 onChange={(event) => onFile(event.target.files?.[0])}
               />
             </label>
+
+            <div className="mt-6 grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]" htmlFor="try-on-gender">
+                  I am a
+                </label>
+                <select
+                  id="try-on-gender"
+                  className="mt-3 w-full rounded-full border border-[#d8b66b]/50 bg-white px-5 py-3 text-[#2f2418] outline-none ring-[#c8a552]/25 focus:ring-4"
+                  value={gender}
+                  onChange={(event) => setGender(event.target.value as Gender)}
+                  disabled={isBusy}
+                >
+                  <option value="woman">Woman</option>
+                  <option value="man">Man</option>
+                  <option value="child">Child</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]" htmlFor="try-on-age">
+                  Age group
+                </label>
+                <select
+                  id="try-on-age"
+                  className="mt-3 w-full rounded-full border border-[#d8b66b]/50 bg-white px-5 py-3 text-[#2f2418] outline-none ring-[#c8a552]/25 focus:ring-4"
+                  value={ageGroup}
+                  onChange={(event) => setAgeGroup(event.target.value as AgeGroup)}
+                  disabled={isBusy}
+                >
+                  <option value="child">Child</option>
+                  <option value="teen">Teenager</option>
+                  <option value="adult">Adult</option>
+                  <option value="mature">Mature adult</option>
+                </select>
+              </div>
+            </div>
 
             <label className="mt-6 block text-sm font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]" htmlFor="try-on-style">
               Choose style
@@ -269,7 +316,7 @@ export default function TryOn() {
               </p>
             )}
             <p className="mt-4 text-sm text-[#6e604f]">
-              For best results, use a bright portrait where your hair and face are visible. This is a preview before booking, not a guarantee of an exact finished salon result.
+              For best results, use a bright portrait where your hair and face are clearly visible. This is a visual preview before booking, not a guarantee of an exact finished salon result.
             </p>
           </section>
 
@@ -278,7 +325,7 @@ export default function TryOn() {
               <h2 className="serif text-3xl font-bold text-[#2f2418]">Original</h2>
               <div className="mt-4 flex aspect-[3/4] min-h-[24rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-2">
                 {photo ? (
-                  <img className="h-full w-full rounded-xl object-contain" src={photo.dataUrl} alt="Uploaded customer portrait preview" />
+                  <img className="h-full w-full rounded-xl object-contain" src={photo.dataUrl} alt="Uploaded portrait preview" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
                     Your uploaded portrait will appear here.
@@ -296,6 +343,39 @@ export default function TryOn() {
                     Your AI result will appear here after upload and generation.
                   </div>
                 )}
+              </div>
+            </div>
+
+            <div className="lux-card col-span-2 border-[#d8b66b]/35 bg-[#fffaf0]/90 shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
+              <h2 className="serif text-2xl font-bold text-[#2f2418]">Works for everyone</h2>
+              <p className="mt-2 text-sm text-[#6e604f]">
+                AI Try-On is designed for women, men, and children of all skin tones, ages, and backgrounds. Select your gender and age group above so the AI understands who it is styling.
+              </p>
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs font-semibold text-[#5f5142]">
+                <div className="rounded-2xl border border-[#d8b66b]/40 bg-white/70 px-3 py-3">
+                  <div className="text-xl">👩🏿</div>
+                  <div className="mt-1">Black woman</div>
+                </div>
+                <div className="rounded-2xl border border-[#d8b66b]/40 bg-white/70 px-3 py-3">
+                  <div className="text-xl">👩🏻</div>
+                  <div className="mt-1">White woman</div>
+                </div>
+                <div className="rounded-2xl border border-[#d8b66b]/40 bg-white/70 px-3 py-3">
+                  <div className="text-xl">👩🏽</div>
+                  <div className="mt-1">Mixed race</div>
+                </div>
+                <div className="rounded-2xl border border-[#d8b66b]/40 bg-white/70 px-3 py-3">
+                  <div className="text-xl">👩🏾</div>
+                  <div className="mt-1">South Asian</div>
+                </div>
+                <div className="rounded-2xl border border-[#d8b66b]/40 bg-white/70 px-3 py-3">
+                  <div className="text-xl">👨🏾</div>
+                  <div className="mt-1">Man</div>
+                </div>
+                <div className="rounded-2xl border border-[#d8b66b]/40 bg-white/70 px-3 py-3">
+                  <div className="text-xl">🧒🏽</div>
+                  <div className="mt-1">Child</div>
+                </div>
               </div>
             </div>
           </section>

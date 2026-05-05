@@ -4,7 +4,7 @@ import { CalendarDays, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { SiteFooter, SiteHeader } from "./Home";
 
-const tabs = ["All", "Braids", "Twists", "Locs", "Kids Styles", "Add-ons"] as const;
+const tabs = ["All", "Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"] as const;
 
 type ServiceCategory = (typeof tabs)[number];
 
@@ -17,7 +17,9 @@ const categoryIntro: Record<ServiceCategory, string> = {
     "Soft rope and passion twist services designed for lightweight movement, protection, and comfort.",
   Locs: "Loc-inspired protective options, from faux and butterfly locs through to starter loc support.",
   "Kids Styles":
-    "Gentle children’s braid and cornrow appointments with patience, comfort, and neat finishing at the centre.",
+    "Gentle children’s braid, cornrow, and twist appointments for boys and girls of all ages and all backgrounds — comfort, patience, and neat finishing at the centre. Lower pricing for our youngest clients.",
+  "Men Styles":
+    "Cornrows, box braids, twists, Fulani braids, and locs for men — clean, precise, and bookable through the same simple flow.",
   "Add-ons":
     "Preparation, finishing, accessories, edge styling, and takedown services to complete the appointment journey.",
 };
@@ -50,7 +52,7 @@ export default function Services() {
         </div>
 
         <div
-          className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-6"
+          className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7"
           role="tablist"
           aria-label="Service categories"
         >
