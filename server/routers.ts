@@ -349,7 +349,7 @@ export const appRouter = router({
     }),
     track: publicProcedure.input(z.object({ eventName: z.string().min(2), pagePath: z.string().min(1), metadata: z.unknown().optional() })).mutation(({ input }) => db.recordAnalytics(input.eventName, input.pagePath, input.metadata)),
     travelTime: publicProcedure
-      .input(z.object({ customerPostcode: z.string().min(3).max(12) }))
+      .input(z.object({ customerPostcode: z.string().min(5).max(12) }))
       .query(async ({ input }) => {
         if (!ENV.studioPostcode) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Travel time estimates are not available at this time." });
         if (!ENV.googleMapsApiKey) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Travel time estimates are not available at this time." });

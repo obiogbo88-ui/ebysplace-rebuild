@@ -327,10 +327,10 @@ export default function Booking() {
                   <button
                     type="button"
                     className="btn-dark mt-4"
-                    disabled={!form.postcode || travelTimeLoading}
+                    disabled={!form.postcode || travelTimeLoading || (travelTimePostcode === form.postcode && Boolean(travelTimeData))}
                     onClick={() => setTravelTimePostcode(form.postcode)}
                   >
-                    {travelTimeLoading ? "Checking…" : "Check estimated travel time"}
+                    {travelTimeLoading ? "Checking…" : travelTimePostcode === form.postcode && travelTimeData ? "Travel time loaded" : "Check estimated travel time"}
                   </button>
                   {travelTimeData && (
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
