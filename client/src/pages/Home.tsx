@@ -358,21 +358,29 @@ export default function Home() {
         </section>
 
         <section className="section-pad bg-white/[0.04]">
-          <div className="container grid gap-8 lg:grid-cols-[.8fr_1.2fr]">
-            <div className="flex flex-col items-start justify-center">
-              <p className="pill w-fit">
-                <ShoppingBag className="mr-2 inline h-4 w-4" /> Shop preview
-              </p>
-              <Link className="btn-gold mt-7" href="/shop">
+          <div className="container">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <Link className="btn-gold order-2 md:order-1" href="/shop">
                 Shop products
               </Link>
+              <div className="order-1 w-full text-left md:order-2 md:w-auto md:text-right">
+                <p className="pill w-fit md:ml-auto">
+                  <ShoppingBag className="mr-2 inline h-4 w-4" /> Shop preview
+                </p>
+                <h2 className="serif mt-4 text-4xl font-bold leading-tight md:text-5xl">
+                  Shop
+                </h2>
+                <p className="mt-3 text-base font-semibold text-white/72">
+                  Premium braid care and accessories
+                </p>
+              </div>
             </div>
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="mt-10 grid gap-5 md:grid-cols-3">
               {(products as any[]).slice(0, 3).map(p => (
                 <div className="lux-card" key={p.id ?? p.slug}>
                   <span className="pill text-xs">{p.badge}</span>
                   <h3 className="serif mt-4 text-2xl font-bold">{p.name}</h3>
-                  <p className="mt-2 text-sm text-white/60">{p.description}</p>
+                  <p className="mt-2 text-sm font-medium leading-6 text-[#4a3014]">{p.description}</p>
                   <b className="mt-5 block text-2xl text-primary">£{p.price}</b>
                 </div>
               ))}

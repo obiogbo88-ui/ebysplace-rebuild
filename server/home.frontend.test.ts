@@ -152,6 +152,16 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("rgba(247,238,222,.72)");
     expect(cssSource).toContain("text-[#2a1a0b]/82");
     expect(homeSource).toContain("text-white sm:text-lg");
+    expect(cssSource).not.toContain(".section-pad .text-white\\/65");
+    expect(cssSource).toContain(".lux-card .text-white\\/65");
+  });
+
+  it("renders the homepage Shop preview heading in the requested Signature menu format", () => {
+    expect(homeSource).toContain('<ShoppingBag className="mr-2 inline h-4 w-4" /> Shop preview');
+    expect(homeSource).toContain('className="order-1 w-full text-left md:order-2 md:w-auto md:text-right"');
+    expect(homeSource).toContain('className="serif mt-4 text-4xl font-bold leading-tight md:text-5xl"');
+    expect(homeSource).toContain("Premium braid care and accessories");
+    expect(homeSource).toContain('className="mt-10 grid gap-5 md:grid-cols-3"');
   });
 
   it("uses the requested three homepage card write-ups without changing the card structure", () => {

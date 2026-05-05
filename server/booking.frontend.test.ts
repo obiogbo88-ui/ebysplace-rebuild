@@ -41,9 +41,9 @@ describe("Eby’s Place staged booking frontend", () => {
     expect(cssSource).toContain("@media (max-width: 640px)");
   });
 
-  it("maps low-contrast white text utilities on light sections to readable brand colours", () => {
+  it("maps low-contrast white text utilities on light surfaces to readable brand colours", () => {
     expect(cssSource).toContain(".lux-card .text-white\\/68");
-    expect(cssSource).toContain(".section-pad .text-white\\/70");
+    expect(cssSource).not.toContain(".section-pad .text-white\\/70");
     expect(cssSource).toContain(".bg-background .text-white\\/68");
     expect(cssSource).toContain("{ color: #4a3014; }");
   });

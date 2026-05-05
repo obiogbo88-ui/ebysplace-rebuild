@@ -572,3 +572,8 @@
 - [x] Connect navigation search submissions to the shop page with a readable filtered product-results state.
 - [x] Add or update regression coverage for the public navigation product search flow.
 - [x] Validate TypeScript, tests, production build, and project health before saving and syncing the navigation search change to GitHub.
+
+- [x] Fix homepage font colour contrast issues so text remains readable against branded backgrounds.
+- [x] Update the homepage Shop section header to place “Shop” above “Premium braid care and accessories” on the right-hand side, matching the Signature braid menu heading format.
+- [x] Add or update regression coverage for readable homepage colour treatment and the revised Shop section heading layout.
+- [x] Validate TypeScript, tests, production build, and project health before saving and syncing the contrast and Shop heading changes to GitHub.
