@@ -553,3 +553,17 @@
 - [x] Implement lazy loading for every product image rendered on public product surfaces to improve initial page load speed.
 - [x] Add or update regression coverage confirming product images use `loading="lazy"` and async decoding where appropriate.
 - [x] Validate TypeScript, tests, and production build before saving and syncing the lazy-loading change to GitHub.
+
+- [x] Add responsive `sizes` attributes to all product thumbnail images to optimize mobile loading.
+- [x] Add or update regression coverage confirming product thumbnails include responsive sizing hints with lazy loading.
+- [x] Validate TypeScript, tests, and production build before saving and syncing the responsive thumbnail sizing change to GitHub.
+
+- [x] Study ebysplace.com directly and document the live brand colours, background treatments, fonts, and imagery patterns for this project.
+- [x] Align the project colours, fonts, backgrounds, and pictures with ebysplace.com while preserving existing functionality.
+- [x] Show the About Us description beneath the round About homepage image.
+- [x] Preserve and complete responsive product thumbnail sizing while applying the brand-alignment update.
+- [x] Validate TypeScript, tests, visual health, and production build before saving and syncing the brand-alignment changes to GitHub.
+
+- [x] Remove visible `Admin` links from the public desktop and mobile navigation while preserving direct `/admin` route access.
+- [x] Add or update regression coverage confirming public navigation does not expose the admin URL.
+- [x] Validate and sync the hidden-admin navigation change to GitHub.

@@ -85,6 +85,13 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource.indexOf("HEADER_LOGO_SRC")).toBeLessThan(homeSource.indexOf('href="/booking"'));
   });
 
+  it("keeps admin access hidden from public navigation while preserving direct admin routes", () => {
+    expect(homeSource).not.toContain('href="/admin"');
+    expect(homeSource).not.toContain("Admin Dashboard");
+    expect(appSource).toContain('<Route path="/admin" component={Admin} />');
+    expect(appSource).toContain('<Route path="/admin/login" component={AdminLogin} />');
+  });
+
   it("uses the supplied stretched and blended clickable top logo while matching the lower logo colour", () => {
     expect(homeSource).toContain('href="/"');
     expect(homeSource).toContain("src={HEADER_LOGO_SRC}");
@@ -112,7 +119,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     const removedCompatibilityFolder = ["legacy", "storage"].join("-");
     expect(combinedMediaSource).not.toContain(obsoleteStorageFolder);
     expect(combinedMediaSource).not.toContain(removedCompatibilityFolder);
-    expect(homeSource).toContain('loading="lazy"\n                        decoding="async"');
+    expect(homeSource).toContain('sizes={PRODUCT_THUMBNAIL_SIZES}\n                        loading="lazy"\n                        decoding="async"');
     expect(homeSource).toContain('alt="Eby’s Place story portrait"');
     expect(homeSource).toContain("ABOUT_PORTRAIT_FALLBACK_SRC");
     expect(homeSource).toContain("onError={(event) =>");
@@ -121,7 +128,12 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(gallerySource).toContain('loading="eager" decoding="async"');
   });
 
-  it("applies a lighter landing treatment with readable navigation contrast", () => {
+  it("applies live-site brand typography and luxury palette tokens with readable navigation contrast", () => {
+    expect(indexSource).toContain("family=Lexend");
+    expect(indexSource).toContain("family=Playfair+Display");
+    expect(cssSource).toContain("font-family: 'Montserrat', 'Lexend', system-ui, sans-serif");
+    expect(cssSource).toContain("font-family: 'Playfair Display', Georgia, serif");
+    expect(cssSource).toContain("linear-gradient(135deg, #1A1A1A 0%, #2A1A12 46%, #52201C 100%)");
     expect(homeSource).toContain("bg-[#f5ead7]/92");
     expect(homeSource).toContain("rgba(247,238,222,.72)");
     expect(cssSource).toContain("text-[#2a1a0b]/82");
@@ -159,6 +171,8 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("rounded-full");
     expect(homeSource).toContain("portraitImageUrl");
     expect(homeSource).toContain("Eberechi Ogbo | Founder & Service Lead");
+    expect(homeSource).toContain("aboutSection.portraitDescription || \"Eberechi Ogbo | Founder & Service Lead\"");
+    expect(homeSource).toContain("mx-auto mt-4 max-w-[13rem] text-sm font-bold leading-6 text-[#5b3a12]");
     expect(homeSource).toContain("object-[center_18%]");
     expect(homeSource).not.toContain("low-tension styling");
     expect(homeSource).not.toContain("clean salon finish");

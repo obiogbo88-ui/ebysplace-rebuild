@@ -33,6 +33,7 @@ type ShopProduct = {
 
 const fallbackVariant: ProductVariant = { name: "Default", colourHex: "#c8a95a" };
 const PRODUCT_IMAGE_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
+const PRODUCT_THUMBNAIL_SIZES = "(max-width: 767px) calc(100vw - 2rem), (max-width: 1023px) calc((100vw - 4rem) / 2), calc((100vw - 34rem) / 2)";
 
 function previewDescription(description: string) {
   const trimmed = description.trim();
@@ -69,6 +70,7 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
           src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}
           alt={product.name}
           className="absolute inset-0 h-full w-full object-cover"
+          sizes={PRODUCT_THUMBNAIL_SIZES}
           loading="lazy"
           decoding="async"
           onError={(event) => {

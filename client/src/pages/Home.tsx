@@ -17,6 +17,7 @@ const LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/pub
 const HEADER_LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png";
 const LANDING_HERO_IMAGE_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_7dbbea62-45d4296622.png";
 const ABOUT_PORTRAIT_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-about-story-portrait.png";
+const PRODUCT_THUMBNAIL_SIZES = "(max-width: 767px) calc(100vw - 2rem), (max-width: 1023px) calc((100vw - 4rem) / 2), (max-width: 1279px) calc((100vw - 5rem) / 4), 18rem";
 
 const navLinks = [
   { href: "/services", label: "Services" },
@@ -58,9 +59,6 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          <Link className="btn-gold py-2.5" href="/admin">
-            Admin
-          </Link>
         </nav>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3 lg:hidden">
@@ -99,13 +97,6 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <Link
-              className="btn-dark justify-center"
-              href="/admin"
-              onClick={() => setMenuOpen(false)}
-            >
-              Admin Dashboard
-            </Link>
           </div>
         </nav>
       ) : null}
@@ -296,6 +287,7 @@ export default function Home() {
                       <img
                         src={s.imageUrl}
                         alt={`${s.name} hairstyle by Eby’s Place`}
+                        sizes={PRODUCT_THUMBNAIL_SIZES}
                         loading="lazy"
                         decoding="async"
                       />
@@ -418,6 +410,9 @@ export default function Home() {
                       }}
                     />
                   </div>
+                  <p className="mx-auto mt-4 max-w-[13rem] text-sm font-bold leading-6 text-[#5b3a12]">
+                    {aboutSection.portraitDescription || "Eberechi Ogbo | Founder & Service Lead"}
+                  </p>
                 </aside>
               </div>
             </div>
