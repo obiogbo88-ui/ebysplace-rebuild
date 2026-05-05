@@ -92,6 +92,20 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(appSource).toContain('<Route path="/admin/login" component={AdminLogin} />');
   });
 
+  it("adds a public product search form to navigation and routes searches to filtered shop results", () => {
+    expect(homeSource).toContain('role="search" aria-label="Product search"');
+    expect(homeSource).toContain('role="search" aria-label="Compact product search"');
+    expect(homeSource).toContain('role="search" aria-label="Mobile product search"');
+    expect(homeSource).toContain('placeholder="Search products"');
+    expect(homeSource).toContain('`/shop?search=${encodeURIComponent(query)}`');
+    expect(homeSource).toContain('window.location.assign(target)');
+    expect(shopSource).toContain('new URLSearchParams(window.location.search).get("search")');
+    expect(shopSource).toContain('function productMatchesSearch(product: ShopProduct, query: string)');
+    expect(shopSource).toContain('Showing {visibleProducts.length} result');
+    expect(shopSource).toContain('No products found');
+    expect(shopSource).toContain('href="/shop">Clear search</a>');
+  });
+
   it("uses the supplied stretched and blended clickable top logo while matching the lower logo colour", () => {
     expect(homeSource).toContain('href="/"');
     expect(homeSource).toContain("src={HEADER_LOGO_SRC}");

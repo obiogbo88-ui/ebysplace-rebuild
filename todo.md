@@ -567,3 +567,8 @@
 - [x] Remove visible `Admin` links from the public desktop and mobile navigation while preserving direct `/admin` route access.
 - [x] Add or update regression coverage confirming public navigation does not expose the admin URL.
 - [x] Validate and sync the hidden-admin navigation change to GitHub.
+
+- [x] Add a simple product search bar to the public navigation menu so customers can quickly find shop products.
+- [x] Connect navigation search submissions to the shop page with a readable filtered product-results state.
+- [x] Add or update regression coverage for the public navigation product search flow.
+- [x] Validate TypeScript, tests, production build, and project health before saving and syncing the navigation search change to GitHub.

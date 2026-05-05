@@ -47,6 +47,17 @@ function readableColourLabel(variant: ProductVariant) {
   return variant.name === "Default" ? "Signature finish" : variant.name;
 }
 
+function productMatchesSearch(product: ShopProduct, query: string) {
+  const searchableText = [
+    product.name,
+    product.description,
+    product.badge || "",
+    product.stockStatus || "",
+    ...(product.variants || []).map((variant) => variant.name),
+  ].join(" ").toLowerCase();
+  return searchableText.includes(query.toLowerCase());
+}
+
 function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product: ShopProduct, variant?: ProductVariant) => void }) {
   const variants = product.variants?.length ? product.variants : [fallbackVariant];
   const [selectedVariantKey, setSelectedVariantKey] = useState(String(variants[0]?.id ?? variants[0]?.name ?? "Default"));
@@ -149,11 +160,20 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
 }
 
 export default function Shop() {
-  const { data = [] } = trpc.public.products.useQuery();
+  const { data } = trpc.public.products.useQuery();
   const order = trpc.public.createOrder.useMutation();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [delivery, setDelivery] = useState({ customerName: "", customerEmail: "", customerPhone: "", addressLine1: "", city: "", county: "", postcode: "", deliveryNote: "" });
   const total = useMemo(() => cart.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0), [cart]);
+  const searchQuery = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("search")?.trim() || "";
+  }, []);
+  const products = useMemo(() => (data ?? []) as ShopProduct[], [data]);
+  const visibleProducts = useMemo(
+    () => searchQuery ? products.filter((product) => productMatchesSearch(product, searchQuery)) : products,
+    [products, searchQuery]
+  );
   const checkoutReturn = useMemo(() => {
     if (typeof window === "undefined") return null;
     const params = new URLSearchParams(window.location.search);
@@ -196,6 +216,18 @@ export default function Shop() {
 
         </div>
 
+        {searchQuery ? (
+          <div className="mt-8 rounded-3xl border border-primary/30 bg-black/25 p-5 text-white" role="status" aria-live="polite">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/85">Product search</p>
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-lg font-semibold">
+                Showing {visibleProducts.length} result{visibleProducts.length === 1 ? "" : "s"} for <span className="text-primary">“{searchQuery}”</span>
+              </p>
+              <a className="btn-dark w-fit bg-white/90 px-4 py-2 text-sm" href="/shop">Clear search</a>
+            </div>
+          </div>
+        ) : null}
+
         {checkoutReturn ? (
           <div className={`mt-8 rounded-3xl border p-5 ${checkoutReturn.status === "success" ? "border-primary/35 bg-primary/10 text-primary" : "border-white/15 bg-white/[0.05] text-white/78"}`} role="status">
             <p className="font-semibold">{checkoutReturn.status === "success" ? "Stripe payment successful" : "Stripe checkout cancelled"}</p>
@@ -209,7 +241,16 @@ export default function Shop() {
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid gap-6 md:grid-cols-2">
-            {(data as ShopProduct[]).map((product) => <ProductCard key={product.id} product={product} onAdd={add} />)}
+            {visibleProducts.length ? (
+              visibleProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={add} />)
+            ) : (
+              <div className="lux-card md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">No products found</p>
+                <h2 className="serif mt-2 text-3xl font-bold">Try another search term.</h2>
+                <p className="mt-3 text-white/72">Search by product name, care need, colour, or braid accessory. You can also clear the search to see every Eby’s Place product.</p>
+                <a className="btn-gold mt-5" href="/shop">View all products</a>
+              </div>
+            )}
           </div>
 
           <aside className="lux-card h-fit min-w-0 lg:sticky lg:top-24">

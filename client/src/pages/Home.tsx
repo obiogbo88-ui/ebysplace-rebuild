@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Heart,
   Menu,
+  Search,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
@@ -11,7 +12,7 @@ import {
   MessageCircle,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 
 const LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
 const HEADER_LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png";
@@ -31,6 +32,15 @@ const navLinks = [
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+
+  const handleProductSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = productSearch.trim();
+    const target = query ? `/shop?search=${encodeURIComponent(query)}` : "/shop";
+    setMenuOpen(false);
+    window.location.assign(target);
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#d8bd74]/55 bg-[#f5ead7]/92 shadow-[0_10px_36px_rgba(66,42,18,.12)] backdrop-blur-xl">
@@ -50,18 +60,41 @@ export function SiteHeader() {
           />
         </Link>
 
-        <nav
-          className="hidden items-center gap-6 lg:flex"
-          aria-label="Main navigation"
-        >
-          {navLinks.map(item => (
-            <Link key={item.href} className="nav-link" href={item.href}>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 xl:gap-5 2xl:flex">
+          <nav
+            className="flex min-w-0 items-center gap-3 xl:gap-5"
+            aria-label="Main navigation"
+          >
+            {navLinks.map(item => (
+              <Link key={item.href} className="nav-link whitespace-nowrap text-[0.72rem] tracking-[.12em] xl:text-sm xl:tracking-[.18em]" href={item.href}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <form className="relative w-40 xl:w-56" role="search" aria-label="Product search" onSubmit={handleProductSearch}>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
+            <input
+              className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
+              type="search"
+              value={productSearch}
+              onChange={(event) => setProductSearch(event.target.value)}
+              placeholder="Search products"
+              aria-label="Search Eby’s Place products"
+            />
+          </form>
+        </div>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3 lg:hidden">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3 2xl:hidden">
+          <form className="relative hidden w-44 md:block xl:w-56" role="search" aria-label="Compact product search" onSubmit={handleProductSearch}>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
+            <input
+              className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
+              type="search"
+              value={productSearch}
+              onChange={(event) => setProductSearch(event.target.value)}
+              placeholder="Search products"
+            />
+          </form>
           <Link className="btn-gold px-3 py-2.5 text-sm sm:px-4" href="/booking">
             Book
           </Link>
@@ -83,10 +116,21 @@ export function SiteHeader() {
 
       {menuOpen ? (
         <nav
-          className="border-t border-[#d8bd74]/45 bg-[#f5ead7]/98 px-5 py-5 shadow-[0_18px_45px_rgba(66,42,18,.14)] lg:hidden"
+          className="border-t border-[#d8bd74]/45 bg-[#f5ead7]/98 px-5 py-5 shadow-[0_18px_45px_rgba(66,42,18,.14)] 2xl:hidden"
           aria-label="Mobile navigation"
         >
           <div className="container grid gap-3 p-0">
+            <form className="relative" role="search" aria-label="Mobile product search" onSubmit={handleProductSearch}>
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
+              <input
+                className="h-12 w-full rounded-2xl border border-[#d8bd74]/45 bg-white/60 py-3 pl-11 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
+                type="search"
+                value={productSearch}
+                onChange={(event) => setProductSearch(event.target.value)}
+                placeholder="Search products"
+                aria-label="Search Eby’s Place products"
+              />
+            </form>
             {navLinks.map(item => (
               <Link
                 key={item.href}
