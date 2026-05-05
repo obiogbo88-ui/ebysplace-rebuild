@@ -449,7 +449,7 @@ export default function Booking() {
                     >
                       {product.imageUrl ? (
                         <div className="h-36 overflow-hidden">
-                          <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                          <img src={product.imageUrl} alt={`Shop product: ${product.name}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                         </div>
                       ) : null}
                       <div className="p-4">
