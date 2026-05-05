@@ -19,6 +19,7 @@ const HEADER_LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/obj
 const LANDING_HERO_IMAGE_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_7dbbea62-45d4296622.png";
 const ABOUT_PORTRAIT_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-about-story-portrait.png";
 const PRODUCT_THUMBNAIL_SIZES = "(max-width: 767px) calc(100vw - 2rem), (max-width: 1023px) calc((100vw - 4rem) / 2), (max-width: 1279px) calc((100vw - 5rem) / 4), 18rem";
+const PRODUCT_IMAGE_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
 
 const navLinks = [
   { href: "/services", label: "Services" },
@@ -226,6 +227,10 @@ export default function Home() {
     portraitImageUrl: "",
     portraitDescription: "Eberechi Ogbo | Founder & Service Lead",
   };
+  const featuredShopProducts = ((products as any[]).filter(product => product.isFeatured === "true" || product.isFeatured === true).length
+    ? (products as any[]).filter(product => product.isFeatured === "true" || product.isFeatured === true)
+    : (products as any[])
+  ).slice(0, 4);
 
   return (
     <div className="luxury-shell">
@@ -376,13 +381,36 @@ export default function Home() {
               </div>
             </div>
             <div className="mt-10 grid gap-5 md:grid-cols-3">
-              {(products as any[]).slice(0, 3).map(p => (
-                <div className="lux-card" key={p.id ?? p.slug}>
-                  <span className="pill text-xs">{p.badge}</span>
-                  <h3 className="serif mt-4 text-2xl font-bold">{p.name}</h3>
-                  <p className="mt-2 text-sm font-medium leading-6 text-[#4a3014]">{p.description}</p>
-                  <b className="mt-5 block text-2xl text-primary">£{p.price}</b>
-                </div>
+              {featuredShopProducts.map(product => (
+                <Link
+                  className="lux-card group block min-w-0 overflow-hidden p-0 transition hover:-translate-y-1 hover:border-primary/55 hover:shadow-[0_22px_55px_rgba(189,140,52,.24)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  href="/shop"
+                  key={product.id ?? product.slug}
+                  aria-label={`View ${product.name} and all Eby’s Place shop products`}
+                >
+                  <div className="relative min-h-[210px] overflow-hidden rounded-t-[1.75rem] border-b border-primary/20 bg-[#130c07]">
+                    <img
+                      src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}
+                      alt={product.name}
+                      className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      sizes={PRODUCT_THUMBNAIL_SIZES}
+                      loading="lazy"
+                      decoding="async"
+                      onError={(event) => {
+                        if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,.02),rgba(0,0,0,.58))]" />
+                    <span className="pill absolute left-4 top-4 bg-black/60 text-xs text-primary">{product.badge || "Featured"}</span>
+                  </div>
+                  <div className="p-5">
+                    <h3 className="serif text-2xl font-bold text-[#2a1a0b] transition group-hover:text-primary">{product.name}</h3>
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <b className="text-2xl text-primary">£{product.price}</b>
+                      <span className="text-sm font-bold text-[#4a3014]">View shop</span>
+                    </div>
+                  </div>
+                </Link>
               ))}
             </div>
           </div>

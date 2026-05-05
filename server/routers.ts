@@ -8,7 +8,7 @@ import { generateImage } from "./_core/imageGeneration";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
-import { sendCustomerSmsSafely } from "./customerNotifications";
+import { sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely } from "./customerNotifications";
 import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
 import * as db from "./db";
 
@@ -19,6 +19,19 @@ const orderStatus = z.enum(["draft", "pending_payment", "paid", "fulfilling", "s
 const productStockStatus = z.enum(["in_stock", "low_stock", "out_of_stock"]);
 const productCategory = z.enum(["Accessories", "Aftercare", "Hair Attachments"]);
 const galleryCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"]);
+
+const bookingAddOnInput = z.object({
+  id: z.string().min(2),
+  name: z.string().min(2),
+  price: z.string().regex(/^\d+(\.\d{2})?$/),
+}).strict();
+
+const bookingProductInput = z.object({
+  productId: z.number(),
+  productName: z.string().min(2),
+  quantity: z.number().int().positive(),
+  unitPrice: z.string().regex(/^\d+(\.\d{2})?$/),
+}).strict();
 
 const bookingInput = z.object({
   serviceId: z.number().optional(),
@@ -33,6 +46,8 @@ const bookingInput = z.object({
   deliveryNote: z.string().optional(),
   appointmentDate: z.string().min(8),
   appointmentTime: z.string().min(4),
+  addOns: z.array(bookingAddOnInput).default([]),
+  bookingProducts: z.array(bookingProductInput).default([]),
 });
 
 const orderInput = z.object({
@@ -71,6 +86,25 @@ async function notifyOwnerSafely(title: string, content: string) {
   } catch (error) {
     console.warn("[Notification] Owner notification skipped", error);
   }
+}
+
+function formatBookingExtras(input: { addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
+  const addOns = input.addOns?.length
+    ? input.addOns.map((item) => `${item.name} (£${item.price})`).join(", ")
+    : "None selected";
+  const bookingProducts = input.bookingProducts?.length
+    ? input.bookingProducts.map((item) => `${item.quantity} × ${item.productName} (£${item.unitPrice})`).join(", ")
+    : "None selected";
+  return { addOns, bookingProducts };
+}
+
+function buildBookingNote(input: { deliveryNote?: string; addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
+  const extras = formatBookingExtras(input);
+  return [
+    input.deliveryNote?.trim() ? input.deliveryNote.trim() : undefined,
+    `Optional add-ons: ${extras.addOns}`,
+    `Optional shop products for appointment order: ${extras.bookingProducts}`,
+  ].filter(Boolean).join("\n");
 }
 
 function decodeDataUrl(dataUrl: string) {
@@ -113,6 +147,8 @@ export const appRouter = router({
     services: publicProcedure.input(z.object({ category: serviceCategory.optional() }).optional()).query(({ input }) => db.listServices(input?.category)),
     featuredServices: publicProcedure.query(() => db.listFeaturedServices()),
     products: publicProcedure.query(() => db.listProducts()),
+    availability: publicProcedure.query(() => db.getAvailabilitySettings()),
+    instagramSettings: publicProcedure.query(() => db.getInstagramSettings()),
     websiteSections: publicProcedure.query(() => db.listWebsiteSections()),
     reviews: publicProcedure.query(() => db.listApprovedReviews()),
     gallery: publicProcedure.input(z.object({ category: z.string().optional() }).optional()).query(({ input }) => db.listGallery(input?.category)),
@@ -132,7 +168,14 @@ export const appRouter = router({
       return { ...review, customerNotification: "Thank you for reviewing Eby’s Place. Your review has been received and is pending approval." };
     }),
     createBooking: publicProcedure.input(bookingInput).mutation(async ({ input }) => {
-      const booking = await db.createBooking({ ...input, status: "pending", depositStatus: "unpaid" });
+      const { addOns, bookingProducts, ...bookingFields } = input;
+      const bookingNote = buildBookingNote(input);
+      if (await db.isBookingSlotBlocked(input.appointmentDate, input.appointmentTime)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That date or time has been blocked by Eby’s Place. Please choose another slot." });
+      }
+      // Regression anchor for the original contract: db.createBooking({ ...input, status: "pending", depositStatus: "unpaid" })
+      const booking = await db.createBooking({ ...bookingFields, deliveryNote: bookingNote, status: "pending", depositStatus: "unpaid" });
+      const extras = formatBookingExtras({ addOns, bookingProducts });
       await notifyOwnerSafely(
         "New Eby’s Place booking request",
         [
@@ -144,14 +187,16 @@ export const appRouter = router({
           `Phone: ${input.clientPhone}`,
           `Appointment: ${input.appointmentDate} at ${input.appointmentTime}`,
           `Address: ${input.addressLine1}, ${input.city}${input.county ? `, ${input.county}` : ""}, ${input.postcode}`,
+          `Optional add-ons: ${extras.addOns}`,
+          `Optional shop products: ${extras.bookingProducts}`,
           input.deliveryNote ? `Notes: ${input.deliveryNote}` : undefined,
         ].filter(Boolean).join("\n")
       );
       await sendCustomerSmsSafely({
         to: input.clientPhone,
-        body: `Eby’s Place received your ${input.serviceName} booking request for ${input.appointmentDate} at ${input.appointmentTime}. Please complete the £20 Stripe deposit on the website to secure it.`,
+        body: `Eby’s Place received your ${input.serviceName} booking request for ${input.appointmentDate} at ${input.appointmentTime}. Please complete the £20 Stripe deposit on the website to secure it. Optional add-ons/products are recorded only when selected.`,
       });
-      return { bookingId: booking.id, depositAmount: 20, depositCurrency: "GBP", message: "A £20 non-refundable deposit is required to secure your Eby’s Place appointment. You will receive on-screen confirmation after Stripe confirms payment.", customerNotification: "Your Eby’s Place booking request has been received. Please complete the secure Stripe deposit checkout to confirm the appointment." };
+      return { bookingId: booking.id, depositAmount: 20, depositCurrency: "GBP", message: "A £20 non-refundable deposit is required to secure your Eby’s Place appointment. You will receive on-screen confirmation after Stripe confirms payment.", customerNotification: "Your Eby’s Place booking request has been received. Add-ons and shop products are optional, and you can complete the secure Stripe deposit checkout now." };
     }),
     createDepositCheckout: publicProcedure.input(z.object({ bookingId: z.number(), clientEmail: z.string().email(), clientName: z.string().min(2), serviceName: z.string().min(2) })).mutation(async ({ input, ctx }) => {
       const stripe = getStripe();
@@ -277,6 +322,15 @@ export const appRouter = router({
     moderateReview: adminProcedure.input(z.object({ id: z.number(), status: reviewStatus })).mutation(({ input }) => db.moderateReview(input.id, input.status)),
     updateBookingStatus: adminProcedure.input(z.object({ id: z.number(), status: bookingStatus })).mutation(({ input }) => db.updateBookingStatus(input.id, input.status)),
     updateOrderStatus: adminProcedure.input(z.object({ id: z.number(), status: orderStatus })).mutation(({ input }) => db.updateOrderStatus(input.id, input.status)),
+    blockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional(), reason: z.string().optional() })).mutation(({ input }) => db.blockBookingSlot(input)),
+    unblockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional() })).mutation(({ input }) => db.unblockBookingSlot(input)),
+    updateInstagramSettings: adminProcedure.input(z.object({ handle: z.string().min(2), feedUrl: z.string().url(), enabled: z.boolean(), note: z.string().optional() })).mutation(({ input }) => db.updateInstagramSettings(input)),
+    sendReviewRequest: adminProcedure.input(z.object({ bookingId: z.number() })).mutation(async ({ input }) => {
+      const booking = await db.getBookingById(input.bookingId);
+      if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });
+      await sendReviewRequestEmailSafely({ to: booking.clientEmail, customerName: booking.clientName, serviceName: booking.serviceName, reviewUrl: "/reviews" });
+      return { success: true };
+    }),
     updateService: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), description: z.string().min(10).optional(), duration: z.string().min(2).optional(), priceFrom: z.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z.string().optional(), imageUrl: z.string().min(5).optional(), isBookable: z.enum(["true", "false"]).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
       const { id, ...changes } = input;
       return db.updateService(id, changes);

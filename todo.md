@@ -577,3 +577,37 @@
 - [x] Update the homepage Shop section header to place “Shop” above “Premium braid care and accessories” on the right-hand side, matching the Signature braid menu heading format.
 - [x] Add or update regression coverage for readable homepage colour treatment and the revised Shop section heading layout.
 - [x] Validate TypeScript, tests, production build, and project health before saving and syncing the contrast and Shop heading changes to GitHub.
+
+- [x] Add a homepage Shop Preview section with 3–4 featured product cards showing image, product name, and price.
+- [x] Make each homepage Shop Preview product card link users to the full `/shop` page.
+- [x] Update booking Step 1 to choose service and date/time.
+- [x] Add optional booking Step 2 for add-ons such as hair wash prep, beads, and edge control, with skip allowed.
+- [x] Add optional booking Step 3 for shop products such as hair and aftercare products, with skip allowed.
+- [x] Update booking Step 4 to collect customer name, email, phone, and address.
+- [x] Update booking Step 5 to start a £20 Stripe deposit checkout.
+- [x] Ensure skipping add-ons and shop products never blocks booking checkout.
+- [x] Send booking confirmation after successful payment via email and WhatsApp/SMS using available messaging integrations.
+- [x] Add or update regression coverage for the homepage Shop Preview and optional multi-step booking checkout flow.
+- [x] Validate TypeScript, tests, production build, and project health before saving and syncing the Shop Preview and booking checkout changes to GitHub.
+
+- [x] Send customer booking confirmation email after successful Stripe booking deposit, including booking details, date, time, service, and price
+- [x] Send owner WhatsApp and SMS notification to info@ebysplace.com / +447864585110 after successful booking payment with customer name, service, date, and time
+- [x] Show clear 48-hour cancellation and deposit refund policy on the booking page
+- [x] Add admin availability controls to block and unblock specific dates and time slots
+- [x] Prevent customers from booking admin-blocked slots
+- [x] Send customer order confirmation email after purchase with order details, delivery address, and estimated delivery
+- [x] Collect full delivery address during shop checkout, including address line 2
+- [x] Add admin product inventory table with stock quantities and stock-level editing
+- [x] Mark products as out of stock when stock quantity reaches zero
+- [x] Send owner WhatsApp/SMS notification when a new shop order is placed
+- [x] Send review request email automatically when an admin marks a booking as completed
+- [x] Add manual review-request button on completed booking detail/admin area
+- [x] Keep reviews admin-approved before public display
+- [x] Add admin gallery image upload workflow
+- [x] Add Instagram feed section and admin Instagram feed settings
+- [x] Persist newsletter subscriber emails and send welcome email to new subscribers
+- [x] Send owner notification when someone subscribes to newsletter
+- [x] Limit AI try-on to 3 free attempts per session/device
+- [x] Strengthen AI try-on prompt to preserve face, skin tone, and facial features while changing only hairstyle
+- [x] Remove Admin link from public navigation menu
+- [x] Push expanded automation release to GitHub after validation

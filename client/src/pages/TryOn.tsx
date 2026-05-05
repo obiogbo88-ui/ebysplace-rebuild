@@ -136,9 +136,13 @@ function friendlyTryOnError(error: unknown) {
   return message;
 }
 
+const TRY_ON_ATTEMPT_LIMIT = 3;
+const TRY_ON_ATTEMPT_KEY = "ebysplace_tryon_attempts";
+
 export default function TryOn() {
   const upload = trpc.public.uploadTryOnPhoto.useMutation();
   const generate = trpc.public.generateTryOn.useMutation();
+  const [attemptsUsed, setAttemptsUsed] = useState(() => Number(localStorage.getItem(TRY_ON_ATTEMPT_KEY) || "0"));
   const [photo, setPhoto] = useState<UploadedPhoto>();
   const [storedPhoto, setStoredPhoto] = useState<StoredPhoto>();
   const [style, setStyle] = useState(styles[0]);
@@ -186,6 +190,7 @@ export default function TryOn() {
       });
       setStoredPhoto(uploaded);
 
+      if (attemptsUsed >= TRY_ON_ATTEMPT_LIMIT) { toast.error("You have used your 3 free AI try-on attempts on this device."); return; }
       const result = await generate.mutateAsync({
         styleName: style,
         originalImageUrl: uploaded.url,

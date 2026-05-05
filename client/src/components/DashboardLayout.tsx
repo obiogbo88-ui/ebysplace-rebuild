@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getAdminLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { CalendarDays, Home, Images, LayoutDashboard, LogOut, MessageSquare, Package, PanelLeft, Scissors, ShoppingBag, Users } from "lucide-react";
+import { CalendarDays, Home, Images, Instagram, LayoutDashboard, LogOut, MessageSquare, Package, PanelLeft, Scissors, ShoppingBag, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -30,10 +30,12 @@ import { Button } from "./ui/button";
 const menuItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/admin" },
   { icon: CalendarDays, label: "Bookings", path: "/admin#bookings" },
+  { icon: CalendarDays, label: "Availability", path: "/admin#availability" },
   { icon: ShoppingBag, label: "Orders", path: "/admin#orders" },
   { icon: Package, label: "Products", path: "/admin#products" },
   { icon: Scissors, label: "Services", path: "/admin#services" },
   { icon: Images, label: "Gallery", path: "/admin#gallery" },
+  { icon: Instagram, label: "Instagram", path: "/admin#instagram" },
   { icon: MessageSquare, label: "Reviews", path: "/admin#reviews" },
   { icon: Users, label: "Admin Users", path: "/admin#users" },
 ];

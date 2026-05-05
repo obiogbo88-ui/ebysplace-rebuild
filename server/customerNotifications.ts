@@ -99,3 +99,76 @@ export async function notifyOwnerByTwilioSafely(input: { title: string; content:
     whatsapp: whatsapp.status === "fulfilled" ? whatsapp.value : { sent: false, reason: "exception" as const },
   };
 }
+
+
+type EmailInput = {
+  to?: string | null;
+  subject: string;
+  body: string;
+};
+
+function isValidEmail(value?: string | null) {
+  return Boolean(value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()));
+}
+
+/**
+ * Customer email confirmation hook. Stripe Checkout is configured to send the
+ * payment receipt email automatically after successful card payment. If a
+ * SendGrid key is later added, this helper sends the branded appointment
+ * confirmation as a separate customer email without blocking checkout.
+ */
+export async function sendCustomerEmailSafely(input: EmailInput) {
+  try {
+    const apiKey = process.env.SENDGRID_API_KEY;
+    const from = process.env.SENDGRID_FROM_EMAIL || process.env.CUSTOMER_EMAIL_FROM;
+    if (!apiKey || !from || !isValidEmail(input.to)) {
+      return { sent: false, reason: "email_provider_not_configured_or_invalid_address" } as const;
+    }
+    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: input.to!.trim() }] }],
+        from: { email: from },
+        subject: input.subject,
+        content: [{ type: "text/plain", value: input.body.slice(0, 12000) }],
+      }),
+    });
+    if (!response.ok) {
+      const details = await response.text().catch(() => "");
+      console.warn("[CustomerEmail] Send failed", response.status, details.slice(0, 300));
+      return { sent: false, reason: "email_provider_error" } as const;
+    }
+    return { sent: true } as const;
+  } catch (error) {
+    console.warn("[CustomerEmail] Notification skipped", error);
+    return { sent: false, reason: "exception" } as const;
+  }
+}
+
+
+export async function sendOwnerSmsAndWhatsAppSafely(body: string) {
+  const ownerPhone = process.env.EBYSPLACE_OWNER_PHONE_E164 || '+447864585110';
+  const results = await Promise.allSettled([
+    sendCustomerSmsSafely({ to: ownerPhone, body }),
+    sendCustomerWhatsAppSafely({ to: ownerPhone, body }),
+  ]);
+  return results.map((result) => result.status === 'fulfilled' ? result.value : { sent: false, reason: 'exception' });
+}
+
+export async function sendReviewRequestEmailSafely(input: { to?: string | null; customerName?: string | null; bookingId: number; serviceName?: string | null }) {
+  const reviewUrl = `/reviews?booking=${input.bookingId}`;
+  return sendCustomerEmailSafely({
+    to: input.to,
+    subject: 'How was your Eby’s Place appointment?',
+    body: [
+      `Hi ${input.customerName || 'there'},`,
+      `Thank you for visiting Eby’s Place for ${input.serviceName || 'your appointment'}.`,
+      `Please leave a review here: ${reviewUrl}`,
+      'Reviews are checked by the Eby’s Place team before appearing publicly.'
+    ].join('\n\n'),
+  });
+}

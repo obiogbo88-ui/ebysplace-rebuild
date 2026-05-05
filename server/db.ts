@@ -667,10 +667,90 @@ export async function submitReview(input: { customerName: string; rating: number
   return { id: inserted[0]?.id ?? 0, status: "pending" as const };
 }
 
+
+export type BlockedBookingSlot = { date: string; time?: string; reason?: string };
+
+function safeParseJson<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+async function getWebsiteJsonSection<T>(sectionKey: string, fallback: T): Promise<T> {
+  try {
+    await seedIfNeeded();
+    const db = await getDb();
+    if (!db) return fallback;
+    const rows = await db.select().from(websiteSections).where(eq(websiteSections.sectionKey, sectionKey)).limit(1);
+    return safeParseJson(rows[0]?.body, fallback);
+  } catch (error) {
+    console.warn(`[Database] Falling back for website JSON section ${sectionKey}`, error);
+    return fallback;
+  }
+}
+
+async function setWebsiteJsonSection(sectionKey: string, value: unknown) {
+  const db = await getDb();
+  const body = JSON.stringify(value);
+  if (!db) return { success: true };
+  await db.insert(websiteSections).values({
+    sectionKey,
+    title: sectionKey,
+    body,
+  }).onConflictDoUpdate({ target: websiteSections.sectionKey, set: { body, updatedAt: sql`CURRENT_TIMESTAMP` } });
+  return { success: true };
+}
+
+export async function getAvailabilitySettings() {
+  return getWebsiteJsonSection<{ blockedSlots: BlockedBookingSlot[] }>('availability_settings', { blockedSlots: [] });
+}
+
+export async function blockBookingSlot(input: BlockedBookingSlot) {
+  const settings = await getAvailabilitySettings();
+  const nextSlot = { date: input.date, time: input.time || '', reason: input.reason || 'Unavailable' };
+  const blockedSlots = settings.blockedSlots.filter((slot) => !(slot.date === nextSlot.date && (slot.time || '') === nextSlot.time));
+  blockedSlots.push(nextSlot);
+  return setWebsiteJsonSection('availability_settings', { blockedSlots });
+}
+
+export async function unblockBookingSlot(input: { date: string; time?: string }) {
+  const settings = await getAvailabilitySettings();
+  const blockedSlots = settings.blockedSlots.filter((slot) => !(slot.date === input.date && (slot.time || '') === (input.time || '')));
+  return setWebsiteJsonSection('availability_settings', { blockedSlots });
+}
+
+export async function isBookingSlotBlocked(date: string, time: string) {
+  const settings = await getAvailabilitySettings();
+  return settings.blockedSlots.some((slot) => slot.date === date && (!(slot.time || '').trim() || slot.time === time));
+}
+
+export async function getInstagramSettings() {
+  return getWebsiteJsonSection('instagram_settings', {
+    handle: '@ebysplace',
+    feedUrl: 'https://www.instagram.com/ebysplace/',
+    enabled: true,
+    note: 'Connect the official Instagram feed provider when production social credentials are available.',
+  });
+}
+
+export async function updateInstagramSettings(input: { handle: string; feedUrl: string; enabled: boolean; note?: string }) {
+  return setWebsiteJsonSection('instagram_settings', input);
+}
+
+export async function getBookingById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function subscribeNewsletter(email: string, productAlerts = false) {
   const db = await getDb();
   if (!db) return { success: true };
-  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onConflictDoUpdate({ target: newsletterSubscribers.email, set: { productAlerts: productAlerts ? "true" : "false" } });
+  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onConflictDoUpdate({ target: newsletterSubscribers.email, set: { productAlerts: productAlerts ? "true" : "false", createdAt: sql`CURRENT_TIMESTAMP` } });
   return { success: true };
 }
 
@@ -802,7 +882,7 @@ export async function adminSummary() {
 export async function adminLists() {
   await seedIfNeeded();
   const db = await getDb();
-  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: seedProducts.map((product) => ({ ...product, variants: [] })), services: seedServices, gallery: [], tryOns: [], sections: [] };
+  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: seedProducts.map((product) => ({ ...product, variants: [] })), services: seedServices, gallery: [], tryOns: [], sections: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   const [bookingRows, orderRows, reviewRows, productRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder))]);
   const productsWithVariants = productRows.map((product) => ({
     ...product,
@@ -810,7 +890,7 @@ export async function adminLists() {
     seoDescription: product.seoDescription || product.description,
     variants: variantRows.filter((variant) => variant.productId === product.id),
   }));
-  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows };
+  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows, availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
 }
 
 export async function moderateReview(id: number, status: "approved" | "rejected") {

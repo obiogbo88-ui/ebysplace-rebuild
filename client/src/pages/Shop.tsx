@@ -163,7 +163,7 @@ export default function Shop() {
   const { data } = trpc.public.products.useQuery();
   const order = trpc.public.createOrder.useMutation();
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [delivery, setDelivery] = useState({ customerName: "", customerEmail: "", customerPhone: "", addressLine1: "", city: "", county: "", postcode: "", deliveryNote: "" });
+  const [delivery, setDelivery] = useState({ customerName: "", customerEmail: "", customerPhone: "", addressLine1: "", addressLine2: "", city: "", county: "", postcode: "", deliveryNote: "" });
   const total = useMemo(() => cart.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0), [cart]);
   const searchQuery = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -291,7 +291,8 @@ export default function Shop() {
               <input placeholder="Phone" value={delivery.customerPhone} onChange={(event) => setDelivery({ ...delivery, customerPhone: event.target.value })} />
               <input required placeholder="Delivery address" value={delivery.addressLine1} onChange={(event) => setDelivery({ ...delivery, addressLine1: event.target.value })} />
               <div className="grid gap-3 sm:grid-cols-2">
-                <input required placeholder="City" value={delivery.city} onChange={(event) => setDelivery({ ...delivery, city: event.target.value })} />
+                <input required placeholder="Address line 2 (optional)" value={delivery.addressLine2} onChange={(event) => setDelivery({ ...delivery, addressLine2: event.target.value })} />
+              <input required placeholder="City" value={delivery.city} onChange={(event) => setDelivery({ ...delivery, city: event.target.value })} />
                 <input placeholder="County" value={delivery.county} onChange={(event) => setDelivery({ ...delivery, county: event.target.value })} />
               </div>
               <input required placeholder="Postcode" value={delivery.postcode} onChange={(event) => setDelivery({ ...delivery, postcode: event.target.value })} />

@@ -3,7 +3,7 @@ import express, { type Application, type Request, type Response } from "express"
 import Stripe from "stripe";
 import * as db from "./db";
 import { notifyOwner } from "./_core/notification";
-import { sendCustomerSmsSafely } from "./customerNotifications";
+import { sendCustomerEmailSafely, sendCustomerSmsSafely, sendCustomerWhatsAppSafely, sendOwnerSmsAndWhatsAppSafely } from "./customerNotifications";
 
 function getStripeWebhookConfig() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -49,10 +49,28 @@ export function registerStripeWebhook(app: Application) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await db.markBookingDepositPaid(session.id, paymentIntentId);
           const booking = await db.getBookingByCheckoutSession(session.id);
-          await sendCustomerSmsSafely({
-            to: booking?.clientPhone,
-            body: `Your Eby’s Place £20 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured.`,
-          });
+          const customerConfirmation = `Your Eby’s Place £20 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured. Stripe will also email the payment receipt to the checkout email address.`;
+          await Promise.allSettled([
+            sendCustomerSmsSafely({
+              to: booking?.clientPhone,
+              body: customerConfirmation,
+            }),
+            sendCustomerWhatsAppSafely({
+              to: booking?.clientPhone,
+              body: customerConfirmation,
+            }),
+            sendCustomerEmailSafely({
+              to: booking?.clientEmail ?? session.customer_email,
+              subject: "Eby’s Place booking deposit confirmed",
+              body: [
+                "Thank you for booking with Eby’s Place.",
+                customerConfirmation,
+                booking?.deliveryNote ? `Booking notes and optional selections:\n${booking.deliveryNote}` : undefined,
+                "If anything needs changing, please contact Eby’s Place before your appointment.",
+              ].filter(Boolean).join("\n\n"),
+            }),
+          ]);
+          await sendOwnerSmsAndWhatsAppSafely(`Booking deposit paid: ${booking?.clientName ?? session.metadata?.customer_name ?? "Customer"} booked ${booking?.serviceName ?? session.metadata?.service_name ?? "a service"} on ${booking?.appointmentDate ?? "date TBC"} at ${booking?.appointmentTime ?? "time TBC"}. Email: ${booking?.clientEmail ?? session.customer_email ?? "not provided"}`);
           await notifyOwner({
             title: "Eby’s Place deposit paid",
             content: [
@@ -70,10 +88,19 @@ export function registerStripeWebhook(app: Application) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await db.markOrderPaid(session.id, paymentIntentId);
           const order = await db.getOrderByCheckoutSession(session.id);
-          await sendCustomerSmsSafely({
-            to: order?.customerPhone,
-            body: `Eby’s Place has received payment for order #${order?.id ?? session.metadata?.order_id ?? ""}. We will prepare your items and keep you updated.`,
-          });
+          const deliveryAddress = [order?.addressLine1, order?.addressLine2, order?.city, order?.county, order?.postcode].filter(Boolean).join(", ");
+          await Promise.allSettled([
+            sendCustomerSmsSafely({
+              to: order?.customerPhone,
+              body: `Eby’s Place has received payment for order #${order?.id ?? session.metadata?.order_id ?? ""}. We will prepare your items and keep you updated.`,
+            }),
+            sendCustomerEmailSafely({
+              to: order?.customerEmail ?? session.customer_email,
+              subject: "Eby’s Place order confirmed",
+              body: [`Thank you for shopping with Eby’s Place.`, `Order reference: #${order?.id ?? session.metadata?.order_id ?? ""}`, `Delivery address: ${deliveryAddress || "provided during checkout"}`, "Estimated delivery: 3–5 working days after dispatch."].join("\n\n"),
+            }),
+            sendOwnerSmsAndWhatsAppSafely(`New Eby’s Place shop order paid: ${order?.customerName ?? session.metadata?.customer_name ?? "Customer"}, order #${order?.id ?? session.metadata?.order_id ?? ""}, deliver to ${deliveryAddress || "address on order"}.`),
+          ]);
           await notifyOwner({
             title: "Eby’s Place shop order paid",
             content: [

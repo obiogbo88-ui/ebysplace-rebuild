@@ -25,6 +25,8 @@ type AdminListData = {
   services?: any[];
   gallery?: any[];
   sections?: any[];
+  availability?: { blockedSlots?: any[] };
+  instagram?: { handle?: string; feedUrl?: string; enabled?: boolean; note?: string };
 };
 
 function Stat({ label, value, icon: Icon }: { label: string; value: number | string; icon: any }) {
@@ -117,6 +119,10 @@ export default function Admin() {
   };
 
   const moderate = trpc.admin.moderateReview.useMutation(opts);
+  const blockAvailabilitySlot = trpc.admin.blockAvailabilitySlot.useMutation({ onSuccess: () => { toast.success("Availability slot blocked"); refresh(); } });
+  const unblockAvailabilitySlot = trpc.admin.unblockAvailabilitySlot.useMutation({ onSuccess: () => { toast.success("Availability slot unblocked"); refresh(); } });
+  const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => toast.success("Review request sent") });
+  const updateInstagram = trpc.admin.updateInstagramSettings.useMutation({ onSuccess: () => toast.success("Instagram feed settings saved") });
   const updateBooking = trpc.admin.updateBookingStatus.useMutation(opts);
   const updateOrder = trpc.admin.updateOrderStatus.useMutation(opts);
   const updateStock = trpc.admin.updateProductStock.useMutation(opts);
@@ -170,6 +176,8 @@ export default function Admin() {
     },
     onError: (error: any) => toast.error(error.message),
   });
+  const [availabilitySlot, setAvailabilitySlot] = useState({ date: "", time: "", reason: "Unavailable" });
+  const [instagramSettings, setInstagramSettings] = useState({ handle: "@ebysplace", feedUrl: "https://www.instagram.com/ebysplace/", enabled: true, note: "Latest Eby’s Place Instagram posts appear here once the production feed is connected." });
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
@@ -359,12 +367,26 @@ export default function Admin() {
                       <select value={booking.status} onChange={(event) => updateBooking.mutate({ id: booking.id, status: event.target.value as any })}>
                         <option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
                       </select>
+                      {booking.status === "completed" ? <button className="btn-dark mt-2 py-2 text-xs" type="button" onClick={() => sendReviewRequest.mutate({ bookingId: booking.id })}>Send review request</button> : null}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          </AdminPanel>
+
+
+          <AdminPanel id="availability" eyebrow="Calendar controls" title="Availability calendar" description="Block and unblock specific appointment dates or individual time slots. Customers cannot book blocked slots." icon={CalendarDays} open={isPanelOpen("availability")} onToggle={() => togglePanel("availability")}>
+            <form className="mt-5 grid gap-3 rounded-2xl border border-primary/20 bg-black/20 p-4 md:grid-cols-4" onSubmit={(event) => { event.preventDefault(); blockAvailabilitySlot.mutate(availabilitySlot); }}>
+              <input required type="date" value={availabilitySlot.date} onChange={(event) => setAvailabilitySlot({ ...availabilitySlot, date: event.target.value })} />
+              <input type="time" value={availabilitySlot.time} onChange={(event) => setAvailabilitySlot({ ...availabilitySlot, time: event.target.value })} />
+              <input placeholder="Reason" value={availabilitySlot.reason} onChange={(event) => setAvailabilitySlot({ ...availabilitySlot, reason: event.target.value })} />
+              <button className="btn-gold py-2" type="submit">Block slot</button>
+            </form>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {(data.availability?.blockedSlots || []).length ? (data.availability?.blockedSlots || []).map((slot: any) => <div className="rounded-2xl border border-white/10 p-4" key={`${slot.date}-${slot.time || 'day'}`}><b className="text-primary">{slot.date} {slot.time || 'All day'}</b><p className="text-sm text-white/55">{slot.reason || 'Unavailable'}</p><button className="btn-dark mt-3 py-2 text-sm" type="button" onClick={() => unblockAvailabilitySlot.mutate({ date: slot.date, time: slot.time || undefined })}>Unblock</button></div>) : <p className="text-sm text-white/55">No blocked slots yet.</p>}
+            </div>
           </AdminPanel>
 
           <AdminPanel id="orders" eyebrow="Fulfilment" title="Shop orders and delivery" description="Review paid orders, customer delivery details, and fulfilment statuses in a protected Eby’s Place order workspace." icon={ShoppingBag} open={isPanelOpen("orders")} onToggle={() => togglePanel("orders")}>
@@ -538,6 +560,17 @@ export default function Admin() {
             </details>
             <b className="mt-4 block text-primary">{data.gallery?.length || 0} images</b>
           </AdminPanel>
+
+          <AdminPanel id="instagram" eyebrow="Social feed" title="Instagram feed settings" description="Store the official Eby’s Place Instagram handle and feed URL used by the public gallery section." icon={Images} open={isPanelOpen("instagram")} onToggle={() => togglePanel("instagram")}>
+            <form className="mt-5 grid gap-3" onSubmit={(event) => { event.preventDefault(); updateInstagram.mutate(instagramSettings); }}>
+              <input required placeholder="Instagram handle" value={instagramSettings.handle} onChange={(event) => setInstagramSettings({ ...instagramSettings, handle: event.target.value })} />
+              <input required placeholder="Instagram feed URL" value={instagramSettings.feedUrl} onChange={(event) => setInstagramSettings({ ...instagramSettings, feedUrl: event.target.value })} />
+              <textarea placeholder="Integration note" value={instagramSettings.note} onChange={(event) => setInstagramSettings({ ...instagramSettings, note: event.target.value })} />
+              <label className="flex items-center gap-2 text-sm text-white/70"><input type="checkbox" checked={instagramSettings.enabled} onChange={(event) => setInstagramSettings({ ...instagramSettings, enabled: event.target.checked })} /> Show Instagram feed section</label>
+              <button className="btn-gold w-fit py-2" type="submit">Save Instagram settings</button>
+            </form>
+          </AdminPanel>
+
 
           <AdminPanel id="users" eyebrow="Owner access" title="Admin users" description="Review secure owner access guidance and keep role-protected management controls separate from customer-facing pages." icon={Users} open={isPanelOpen("users")} onToggle={() => togglePanel("users")}>
             <p className="text-white/60">
