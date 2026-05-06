@@ -178,6 +178,7 @@ export default function Booking() {
   const create = trpc.public.createBooking.useMutation();
   const checkout = trpc.public.createDepositCheckout.useMutation();
   const availability = trpc.public.availability.useQuery();
+  const paymentMode = trpc.public.paymentMode.useQuery();
   const bookingBlockedSlots = availability.data?.blockedSlots || [];
   const homeServiceSurcharge = Number(availability.data?.homeServiceSurcharge || 0);
   const checkoutReturn = useMemo(() => {
@@ -299,6 +300,19 @@ export default function Booking() {
         <p className="mt-4 max-w-3xl text-white/70">
           Seven simple steps — choose your service, pick a date and time, select your location, enter your details, add optional extras, and pay a £20 deposit securely to confirm.
         </p>
+
+        {!paymentMode.isLoading && paymentMode.data && !paymentMode.data.publishableKeyConfigured ? (
+          <div className="mt-6 rounded-3xl border border-red-400/40 bg-red-50 p-5" role="alert">
+            <p className="font-semibold text-red-900">Online payment is currently unavailable</p>
+            <p className="mt-2 text-sm text-red-800">
+              Secure card payment is temporarily offline. Please{" "}
+              <a href="https://wa.me/447864585110" className="font-bold underline" target="_blank" rel="noopener noreferrer" aria-label="Contact Eby's Place on WhatsApp (opens in new window)">
+                contact Eby's Place on WhatsApp
+              </a>{" "}
+              or email us directly to complete your booking deposit.
+            </p>
+          </div>
+        ) : null}
 
         {checkoutReturn ? (
           <div className="mt-6 rounded-3xl border border-amber-300/35 bg-amber-300/10 p-5 text-amber-50" role="status">
