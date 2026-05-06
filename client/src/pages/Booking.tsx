@@ -306,7 +306,7 @@ export default function Booking() {
             <p className="font-semibold text-red-900">Online payment is currently unavailable</p>
             <p className="mt-2 text-sm text-red-800">
               Secure card payment is temporarily offline. Please{" "}
-              <a href="https://wa.me/447864585110" className="font-bold underline" target="_blank" rel="noopener noreferrer">
+              <a href="https://wa.me/447864585110" className="font-bold underline" target="_blank" rel="noopener noreferrer" aria-label="Contact Eby's Place on WhatsApp (opens in new window)">
                 contact Eby's Place on WhatsApp
               </a>{" "}
               or email us directly to complete your booking deposit.
