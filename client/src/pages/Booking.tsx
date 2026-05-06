@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { smoothScrollToTop } from "@/lib/smoothScroll";
+import { smoothScrollToElement } from "@/lib/smoothScroll";
 import { SiteFooter, SiteHeader } from "./Home";
 import { ChevronLeft } from "lucide-react";
 
@@ -235,7 +235,7 @@ export default function Booking() {
 
   function goToStep(nextStep: number) {
     setStep(nextStep);
-    smoothScrollToTop(60);
+    smoothScrollToElement("booking-card", 60);
   }
 
   function goBack() {
@@ -328,7 +328,7 @@ export default function Booking() {
           <p className="mt-2 text-sm leading-6">Cancel 48 hours or more before your appointment for a full deposit refund. Cancellations under 48 hours are non-refundable — please choose your date and time carefully.</p>
         </div>
 
-        <div className="lux-card mt-8 grid gap-6">
+        <div id="booking-card" className="lux-card mt-8 grid gap-6 scroll-mt-28">
           <StepIndicator step={step} total={STEPS.length} />
 
           {step === 0 ? (
