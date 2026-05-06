@@ -1573,7 +1573,7 @@ async function sendShopOrderPaidEmailSafely(input) {
       input.deliveryAddress ? `Delivery address: ${input.deliveryAddress}` : "Delivery address: provided during checkout.",
       input.itemsSummary ? `Items:
 ${input.itemsSummary}` : "The Eby\u2019s Place team is preparing your order.",
-      "Stripe will send your payment receipt to the email used at checkout."
+      "Your payment receipt will be sent to the email used at checkout."
     ].join("\n\n")
   });
 }
@@ -1727,7 +1727,7 @@ async function sendAndLogEmail(payload, mode = "initial", existingLogId) {
     return { status: "failed", logId, errorMessage };
   }
 }
-function money(value, fallback = "confirmed in your Stripe receipt") {
+function money(value, fallback = "confirmed in your payment receipt") {
   const numberValue = Number(value);
   if (!Number.isFinite(numberValue)) return fallback;
   return `\xA3${numberValue.toFixed(2)}`;
@@ -1776,7 +1776,7 @@ function buildBookingEmailPayloads(booking, session) {
   ].join("\n");
   const customerBody = [
     `Hi ${customerName},`,
-    "Thank you for booking with Eby\u2019s Place. Your Stripe payment has been received and your appointment is secured.",
+    "Thank you for booking with Eby\u2019s Place. Your secure payment has been received and your appointment is secured.",
     `Booking reference: ${reference}`,
     `Service/hairstyle booked: ${serviceName}`,
     `Booking date and time: ${dateTime}`,
@@ -1794,8 +1794,8 @@ function buildOrderEmailPayloads(order, items, session) {
   const config = getSmtpConfig();
   const reference = orderReference(order);
   const customerName = order?.customerName ?? session?.metadata?.customer_name ?? "Customer";
-  const itemsSummary = items.length ? items.map((item) => `${item.quantity} \xD7 ${item.variantName ? `${item.productName} \u2014 ${item.variantName}` : item.productName} (${money(Number(item.unitPrice) * Number(item.quantity))})`).join("\n") : "Products recorded in Stripe checkout.";
-  const totalPaid = items.length ? money(items.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity), 0)) : session?.amount_total != null ? money(Number(session.amount_total) / 100) : "confirmed in your Stripe receipt";
+  const itemsSummary = items.length ? items.map((item) => `${item.quantity} \xD7 ${item.variantName ? `${item.productName} \u2014 ${item.variantName}` : item.productName} (${money(Number(item.unitPrice) * Number(item.quantity))})`).join("\n") : "Products recorded during checkout.";
+  const totalPaid = items.length ? money(items.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity), 0)) : session?.amount_total != null ? money(Number(session.amount_total) / 100) : "confirmed in your payment receipt";
   const deliveryText = orderDeliveryText(order);
   const paymentStatus = order?.status === "paid" ? "Paid" : "Stripe payment confirmed";
   const ownerBody = [
@@ -1904,10 +1904,10 @@ function registerStripeWebhook(app2) {
           await markBookingDepositPaid(session.id, paymentIntentId);
           const booking = await getBookingByCheckoutSession(session.id);
           if (booking) {
-            await sendBookingPaymentEmailsSafely(booking, session).catch((error) => console.warn("[StripeWebhook] SMTP booking email workflow failed", error));
+            void sendBookingPaymentEmailsSafely(booking, session).catch((error) => console.warn("[StripeWebhook] SMTP booking email workflow failed", error));
           }
           const remainingBalance = booking?.estimatedPrice != null ? Math.max(Number(booking.estimatedPrice || 0) + Number(booking.homeServiceSurcharge || 0) - 20, 0).toFixed(2) : null;
-          const customerConfirmation = `Your Eby\u2019s Place \xA320 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured. Stripe will also email the payment receipt to the checkout email address.`;
+          const customerConfirmation = `Your Eby\u2019s Place \xA320 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured. Your payment receipt will also be emailed to the checkout email address.`;
           const bookingLocation = booking?.serviceLocation ?? session.metadata?.service_location ?? "studio";
           const homeServiceAddress = [booking?.addressLine1, booking?.addressLine2, booking?.city, booking?.county, booking?.postcode].filter(Boolean).join(", ");
           const locationConfirmation = bookingLocation === "home_service" ? `Home service address: ${homeServiceAddress || "the address provided during booking"}` : `Studio visit address: ${STUDIO_CONFIRMATION_ADDRESS2}`;
@@ -1961,9 +1961,9 @@ ${booking.deliveryNote}` : void 0,
           const orderReference2 = order?.id ?? session.metadata?.order_id ?? "";
           const orderItems2 = order?.id ? await getOrderItemsByOrderId(order.id) : [];
           if (order) {
-            await sendOrderPaymentEmailsSafely(order, orderItems2, session).catch((error) => console.warn("[StripeWebhook] SMTP order email workflow failed", error));
+            void sendOrderPaymentEmailsSafely(order, orderItems2, session).catch((error) => console.warn("[StripeWebhook] SMTP order email workflow failed", error));
           }
-          const itemsSummary = orderItems2.length ? orderItems2.map((item) => `${item.quantity} \xD7 ${item.variantName ? `${item.productName} \u2014 ${item.variantName}` : item.productName} (\xA3${(Number(item.unitPrice) * Number(item.quantity)).toFixed(2)})`).join("\n") : "Items recorded in your Stripe checkout.";
+          const itemsSummary = orderItems2.length ? orderItems2.map((item) => `${item.quantity} \xD7 ${item.variantName ? `${item.productName} \u2014 ${item.variantName}` : item.productName} (\xA3${(Number(item.unitPrice) * Number(item.quantity)).toFixed(2)})`).join("\n") : "Items recorded during checkout.";
           const totalPaid = orderItems2.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity), 0).toFixed(2);
           const orderEmailBody = [
             `Hi ${order?.customerName ?? session.metadata?.customer_name ?? "there"},`,
@@ -1971,7 +1971,7 @@ ${booking.deliveryNote}` : void 0,
             `Order reference: #${orderReference2}`,
             `Products and quantities:
 ${itemsSummary}`,
-            orderItems2.length ? `Total paid: \xA3${totalPaid}` : "Total paid: confirmed in your Stripe receipt.",
+            orderItems2.length ? `Total paid: \xA3${totalPaid}` : "Total paid: confirmed in your payment receipt.",
             `Delivery address: ${deliveryAddress || "provided during checkout"}`,
             "Estimated delivery: 3-5 working days after dispatch."
           ].join("\n\n");
@@ -1987,7 +1987,7 @@ ${itemsSummary}`,
               deliveryAddress: deliveryAddress || "provided during checkout",
               itemsSummary: `${itemsSummary}
 
-${orderItems2.length ? `Total paid: \xA3${totalPaid}` : "Total paid: confirmed in your Stripe receipt."}
+${orderItems2.length ? `Total paid: \xA3${totalPaid}` : "Total paid: confirmed in your payment receipt."}
 Estimated delivery: 3-5 working days after dispatch.`
             }),
             sendOwnerSmsAndWhatsAppSafely(`New Eby's Place shop order paid: ${order?.customerName ?? session.metadata?.customer_name ?? "Customer"}, order #${orderReference2}, deliver to ${deliveryAddress || "address on order"}.`)
@@ -2497,9 +2497,13 @@ function getLiveStripePublishableKey() {
 }
 function getStripe() {
   const key = getLiveStripeSecretKey();
-  if (!key) throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Stripe is not configured yet." });
+  if (!key) {
+    console.warn("[Payments] Live payment checkout attempted without a configured secret key. Configure EBYSPLACE_LIVE_STRIPE_SECRET_KEY in deployment settings.");
+    throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Payment is currently unavailable. Please contact us to complete your booking." });
+  }
   if (!key.startsWith("sk_live_")) {
-    throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Live Stripe payments require a live Stripe secret key. Add EBYSPLACE_LIVE_STRIPE_SECRET_KEY or configure STRIPE_SECRET_KEY with a key that starts with sk_live_." });
+    console.warn("[Payments] Live payment checkout attempted without a live secret key. Configure EBYSPLACE_LIVE_STRIPE_SECRET_KEY in deployment settings.");
+    throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Payment is currently unavailable. Please contact us to complete your booking." });
   }
   return new Stripe2(key);
 }
@@ -2538,7 +2542,6 @@ function poundsToMinorUnits(value) {
 function buildBookingCheckoutLineItems(input) {
   return [
     { price_data: { currency: "gbp", unit_amount: 2e3, product_data: { name: "Eby\u2019s Place \xA320 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 },
-    ...input.homeServiceSurcharge > 0 ? [{ price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(input.homeServiceSurcharge), product_data: { name: "Eby\u2019s Place Home Service travel surcharge", description: "Additional travel fee for a home-service appointment" } }, quantity: 1 }] : [],
     ...(input.addOns || []).map((item) => ({
       price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(item.price), product_data: { name: `Add-on: ${item.name}`, description: "Selected Eby\u2019s Place appointment add-on" } },
       quantity: 1
@@ -2635,7 +2638,7 @@ var appRouter = router({
       await notifyOwnerSafely(
         "New Eby\u2019s Place booking request",
         [
-          `A customer has submitted a booking request and needs to complete the \xA320 Stripe deposit.`,
+          `A customer has submitted a booking request and needs to complete the \xA320 secure deposit.`,
           `Booking ID: ${booking.id}`,
           `Service: ${input.serviceName}`,
           `Customer: ${input.clientName}`,
@@ -2652,9 +2655,9 @@ var appRouter = router({
       );
       await sendCustomerSmsSafely({
         to: input.clientPhone,
-        body: `Eby\u2019s Place received your ${input.serviceName} booking request for ${input.appointmentDate} at ${input.appointmentTime}. Please complete the \xA320 Stripe deposit on the website to secure it. Optional add-ons/products are recorded only when selected.`
+        body: `Eby\u2019s Place received your ${input.serviceName} booking request for ${input.appointmentDate} at ${input.appointmentTime}. Please complete the \xA320 secure deposit on the website to secure it. Optional add-ons/products are recorded only when selected.`
       });
-      return { bookingId: booking.id, depositAmount: 20, homeServiceSurcharge: Number(homeServiceSurcharge), depositCurrency: "GBP", serviceLocation, message: "A \xA320 non-refundable deposit is required to secure your Eby\u2019s Place appointment. You will receive on-screen confirmation after Stripe confirms payment.", customerNotification: "Your Eby\u2019s Place booking request has been received. Add-ons and shop products are optional, and you can complete the secure Stripe deposit checkout now." };
+      return { bookingId: booking.id, depositAmount: 20, homeServiceSurcharge: Number(homeServiceSurcharge), depositCurrency: "GBP", serviceLocation, message: "A \xA320 non-refundable deposit is required to secure your Eby\u2019s Place appointment. You will receive on-screen confirmation after payment is confirmed.", customerNotification: "Your Eby\u2019s Place booking request has been received. Add-ons and shop products are optional, and you can complete the secure deposit payment now." };
     }),
     createDepositCheckout: publicProcedure.input(z2.object({
       bookingId: z2.number(),
@@ -2671,7 +2674,6 @@ var appRouter = router({
       const extrasTotal = bookingExtrasTotal(input);
       const lineItems = buildBookingCheckoutLineItems({
         serviceName: input.serviceName,
-        homeServiceSurcharge,
         addOns: input.addOns,
         bookingProducts: input.bookingProducts
       });
@@ -2687,7 +2689,7 @@ var appRouter = router({
         cancel_url: `${origin}/booking?payment=cancelled&booking=${input.bookingId}`,
         metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) }
       });
-      if (!session.url) throw new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a booking deposit checkout link. Please try again." });
+      if (!session.url) throw new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: "Payment is currently unavailable. Please contact us to complete your booking." });
       await updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),
