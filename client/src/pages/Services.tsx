@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { CalendarDays, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { navigateWithSmoothScroll, smoothScrollToTop } from "@/lib/smoothScroll";
+import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { SiteFooter, SiteHeader } from "./Home";
 
 const tabs = ["All", "Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"] as const;
@@ -71,7 +71,7 @@ export default function Services() {
               type="button"
               onClick={() => {
                 setCategory(tab);
-                smoothScrollToTop(40);
+                smoothScrollToElement("services-section", 40);
               }}
               className={
                 category === tab ? "btn-gold" : "btn-dark"
@@ -83,7 +83,7 @@ export default function Services() {
           ))}
         </div>
 
-        <section className="mt-10 rounded-[2rem] border border-primary/25 bg-white/[0.045] p-6 md:p-8">
+        <section id="services-section" className="mt-10 rounded-[2rem] border border-primary/25 bg-white/[0.045] p-6 md:p-8 scroll-mt-28">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-sm font-bold uppercase tracking-[.24em] text-primary">
