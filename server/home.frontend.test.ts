@@ -100,8 +100,12 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain('`/shop?search=${encodeURIComponent(query)}`');
     expect(homeSource).toContain('navigateWithSmoothScroll(target, setLocation)');
     expect(homeSource).toContain('<HomepageLiveSearch />');
-    expect(homeSource).toContain('Search services, hairstyles, products, and food items');
-    expect(homeSource).toContain('placeholder="Search braids, twists, aftercare, products, food items..."');
+      expect(homeSource).toContain('Search services, styles, and shop products');
+      expect(homeSource).toContain('placeholder="Search braids, twists, aftercare, or shop products..."');
+      expect(homeSource).toContain('href: `/services?search=${encodeURIComponent(service.name)}`');
+      expect(servicesSource).toContain('new URLSearchParams(window.location.search).get("search")');
+      expect(servicesSource).toContain('Showing services matching');
+      expect(servicesSource).toContain('visibleServices.map(service => {');
     expect(homeSource).toContain('-mt-10 pb-[3.75rem] md:-mt-12 md:pb-20');
     expect(shopSource).toContain('new URLSearchParams(window.location.search).get("search")');
     expect(shopSource).toContain('function productMatchesSearch(product: ShopProduct, query: string)');
@@ -117,10 +121,12 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain('decoding="async"');
     expect(homeSource).toContain("h-16 w-[10.5rem] object-contain object-left mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]");
     expect(homeSource).toContain('<div className="hidden sm:block">');
-    expect(homeSource).toContain("btn-gold px-2.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm");
-    expect(homeSource).toContain('navigateWithSmoothScroll("/shop", setLocation)');
-    expect(homeSource).toContain('Shop\n            </button>');
-    expect(homeSource).toContain('const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking");');
+      expect(homeSource).toContain("btn-gold px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm");
+      expect(homeSource).toContain('navigateWithSmoothScroll("/shop", setLocation)');
+      expect(homeSource).toContain('Shop Now\n            </button>');
+      expect(homeSource).toContain('className="btn-gold px-4 py-2.5 text-xs uppercase tracking-[.16em] xl:px-5 xl:text-sm" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}');
+      expect(homeSource).toContain('className="btn-gold px-4 py-2.5 text-xs uppercase tracking-[.16em] xl:px-5 xl:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}');
+      expect(homeSource).toContain('const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking" && item.href !== "/shop");');
     expect(homeSource).not.toContain("h-24 w-[16rem] object-contain mix-blend-multiply sm:h-28 sm:w-[22rem] lg:h-24 lg:w-[18rem] xl:w-[20rem]");
     expect(homeSource).not.toContain("h-52 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
     expect(homeSource).not.toContain("h-36 w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-40");
@@ -274,7 +280,7 @@ describe("Eby’s Place landing page visual refinements", () => {
   it("keeps customer-facing notification and sign-in copy Eby’s Place branded without third-party platform wording", () => {
     const customerNotificationSources = [bookingSource, shopSource, reviewsSource, tryOnSource, loginDialogSource].join("\n");
     expect(customerNotificationSources).toContain("Eby’s Place");
-    expect(bookingSource).toContain("Opening Eby's Place secure checkout");
+    expect(bookingSource).toContain("Opening Eby's Place secure payment");
     expect(bookingSource).toContain("booking.customerNotification");
     expect(shopSource).toContain("result.customerNotification");
     expect(reviewsSource).toContain("result.customerNotification");
@@ -340,7 +346,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(appSource).toContain('className="sticky-booking-cta-accent">Secure £20 Deposit</span>');
     expect(cssSource).toContain(".mobile-sticky-booking .sticky-booking-cta-button");
     expect(cssSource).toContain("color: #C9A84C !important;");
-    expect(cssSource).toContain(".mobile-sticky-booking .sticky-booking-cta-accent { color: #C9A84C !important; font-size: .875rem; line-height: 1.2; }");
+    expect(cssSource).toContain(".mobile-sticky-booking .sticky-booking-cta-accent { line-height: 1.25; }");
     expect(cssSource).toContain("visibility: visible !important;");
   });
 
@@ -356,6 +362,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(appSource).toContain("/policies/returns");
     expect(appSource).toContain("/policies/terms");
     expect(policiesSource).not.toContain("This page is a practical website policy summary and not a substitute for independent legal advice.");
-    expect(policiesSource).toContain("Payment details are handled securely by Stripe");
+    expect(policiesSource).toContain("Payment details are handled securely by our payment provider");
+    expect(policiesSource).not.toContain("Payment details are handled securely by Stripe");
   });
 });

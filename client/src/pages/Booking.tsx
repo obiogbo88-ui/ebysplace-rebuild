@@ -62,6 +62,69 @@ type BookingProductSelection = {
   unitPrice: string;
 };
 
+type BookingShopProduct = {
+  id?: number | string;
+  productId?: number | string;
+  slug?: string;
+  name: string;
+  price: string;
+  badge?: string | null;
+  imageUrl?: string | null;
+  stockStatus?: string;
+};
+
+function parsePositiveInteger(value: unknown) {
+  const productId = Number.parseInt(String(value ?? ""), 10);
+  return Number.isInteger(productId) && productId > 0 ? productId : null;
+}
+
+function normalizeProductId(product: BookingShopProduct) {
+  return parsePositiveInteger(product.id ?? product.productId);
+}
+
+function normalizeBookingProductsForCheckout(products: BookingProductSelection[]) {
+  return products.map((item) => {
+    const productId = parsePositiveInteger(item.productId);
+    return {
+      ...item,
+      productId: productId ?? Number.NaN,
+      quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
+    };
+  });
+}
+
+function moneyToNumber(value: string | number | undefined) {
+  const amount = Number(value || 0);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function formatMoney(value: number) {
+  return value.toFixed(2);
+}
+
+function calculateBookingCheckoutTotal(input: {
+  selectedAddOns: AddOnOption[];
+  selectedProducts: BookingProductSelection[];
+  homeServiceSurcharge: number;
+  includeHomeServiceSurcharge: boolean;
+}) {
+  const addOnsTotal = input.selectedAddOns.reduce((sum, item) => sum + moneyToNumber(item.price), 0);
+  const productsTotal = input.selectedProducts.reduce((sum, item) => sum + moneyToNumber(item.unitPrice) * Math.max(1, Math.floor(Number(item.quantity) || 1)), 0);
+  const surchargeTotal = input.includeHomeServiceSurcharge ? moneyToNumber(input.homeServiceSurcharge) : 0;
+  return 20 + addOnsTotal + productsTotal + surchargeTotal;
+}
+
+function bookingCheckoutErrorDescription(error: unknown) {
+  const message = error instanceof Error ? error.message : "Please check the form and try again.";
+  if (message.includes("Live Stripe payments require a live Stripe secret key") || message.includes("Stripe is not configured")) {
+    return "Payment is currently unavailable. Please contact us to complete your booking.";
+  }
+  if (message.includes("Invalid input") || message.includes("bookingProducts")) {
+    return "One selected appointment product could not be prepared for checkout. Please remove it, add it again, and try once more.";
+  }
+  return message;
+}
+
 function StepIndicator({ step, total }: { step: number; total: number }) {
   return (
     <div className="mb-8">
@@ -134,13 +197,19 @@ export default function Booking() {
     }
     if (params.get("payment") === "cancelled") {
       goToStep(6);
-      toast.error("Stripe deposit was not completed", {
-        description: "No deposit was taken. Review your booking and click Pay £20 Deposit again when ready.",
+      toast.error("Deposit payment was not completed", {
+        description: "No payment was taken. Review your booking and click Pay £20 Deposit again when ready.",
       });
     }
   }, []);
 
   const homeAddressRequired = form.serviceLocation === "home_service";
+  const bookingCheckoutTotal = calculateBookingCheckoutTotal({
+    selectedAddOns,
+    selectedProducts,
+    homeServiceSurcharge,
+    includeHomeServiceSurcharge: form.serviceLocation === "home_service",
+  });
   const canContinueFromDate = Boolean(form.appointmentDate && form.appointmentTime && !selectedSlotBlocked);
   const canContinueFromDetails = Boolean(
     form.clientName && form.clientEmail && form.clientPhone && (!homeAddressRequired || (form.addressLine1 && form.city && form.county))
@@ -150,8 +219,14 @@ export default function Booking() {
     setSelectedAddOns(current => current.some(item => item.id === addOn.id) ? current.filter(item => item.id !== addOn.id) : [...current, addOn]);
   }
 
-  function toggleProduct(product: any) {
-    const productId = Number(product.id);
+  function toggleProduct(product: BookingShopProduct) {
+    const productId = normalizeProductId(product);
+    if (!productId) {
+      toast.error("This product cannot be added to your booking", {
+        description: "The product data is missing a valid checkout ID. Please continue without it or contact Eby’s Place.",
+      });
+      return;
+    }
     setSelectedProducts(current => current.some(item => item.productId === productId)
       ? current.filter(item => item.productId !== productId)
       : [...current, { productId, productName: product.name, quantity: 1, unitPrice: product.price }]);
@@ -183,14 +258,19 @@ export default function Booking() {
       return;
     }
     try {
+      const checkoutProducts = normalizeBookingProductsForCheckout(selectedProducts);
+      if (checkoutProducts.some((item) => !Number.isFinite(item.productId) || item.productId <= 0)) {
+        toast.error("Please remove and re-add the affected appointment product before checkout.");
+        return;
+      }
       const booking = await create.mutateAsync({
         ...form,
         addOns: selectedAddOns.map(({ id, name, price }) => ({ id, name, price })),
-        bookingProducts: selectedProducts,
+        bookingProducts: checkoutProducts,
       });
       toast.success(booking.customerNotification);
-      toast.message("Opening Eby's Place secure checkout", {
-        description: "Your deposit, selected add-ons, and selected appointment products will be included in one secure Stripe checkout.",
+      toast.message("Opening Eby's Place secure payment", {
+        description: "Your deposit, selected add-ons, and selected appointment products will be included in one secure payment.",
       });
       const session = await checkout.mutateAsync({
         bookingId: booking.bookingId,
@@ -198,12 +278,12 @@ export default function Booking() {
         clientName: form.clientName,
         serviceName: form.serviceName,
         addOns: selectedAddOns.map(({ id, name, price }) => ({ id, name, price })),
-        bookingProducts: selectedProducts,
+        bookingProducts: checkoutProducts,
       });
       if (session.checkoutUrl) window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
       toast.error("Booking could not be completed", {
-        description: error instanceof Error ? error.message : "Please check the form and try again.",
+        description: bookingCheckoutErrorDescription(error),
       });
     }
   }
@@ -217,14 +297,14 @@ export default function Booking() {
           Secure your appointment with a <span className="gold-text">£20 deposit.</span>
         </h1>
         <p className="mt-4 max-w-3xl text-white/70">
-          Seven simple steps — choose your service, pick a date and time, select your location, enter your details, add optional extras, and pay a £20 Stripe deposit to confirm.
+          Seven simple steps — choose your service, pick a date and time, select your location, enter your details, add optional extras, and pay a £20 deposit securely to confirm.
         </p>
 
         {checkoutReturn ? (
           <div className="mt-6 rounded-3xl border border-amber-300/35 bg-amber-300/10 p-5 text-amber-50" role="status">
-            <p className="font-semibold">Stripe deposit not completed</p>
+            <p className="font-semibold">Deposit payment not completed</p>
             <p className="mt-2 text-sm text-amber-50/85">
-              Your Eby’s Place booking{checkoutReturn.bookingId ? ` #${checkoutReturn.bookingId}` : ""} is still waiting for the £20 deposit. No payment was taken, and you can review the details below before starting secure Stripe checkout again.
+              Your Eby’s Place booking{checkoutReturn.bookingId ? ` #${checkoutReturn.bookingId}` : ""} is still waiting for the £20 deposit. No payment was taken, and you can review the details below before starting secure payment again.
             </p>
           </div>
         ) : null}
@@ -481,22 +561,25 @@ export default function Booking() {
                 <p className="mt-2 text-[#4a3014]">Add hair care or accessories to your appointment order. This step is optional.</p>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
-                {productOptions.map((product: any) => {
-                  const selected = selectedProducts.some(item => item.productId === Number(product.id));
+                {productOptions.map((product: BookingShopProduct) => {
+                  const productId = normalizeProductId(product);
+                  const selected = productId ? selectedProducts.some(item => item.productId === productId) : false;
                   return (
                     <button
-                      key={product.id ?? product.slug}
+                      key={product.id ?? product.productId ?? product.slug ?? product.name}
                       type="button"
                       onClick={() => toggleProduct(product)}
-                      className={`overflow-hidden rounded-3xl border text-left transition hover:-translate-y-0.5 ${selected ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/50"}`}
+                      aria-pressed={selected}
+                      className={`relative overflow-hidden rounded-3xl border text-left transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected ? "border-primary bg-primary/20 shadow-[0_14px_36px_rgba(201,168,76,.22)] ring-2 ring-primary/35" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/50"}`}
                     >
+                      {selected ? <span className="absolute right-3 top-3 z-10 rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#111111]">✓ Added</span> : null}
                       {product.imageUrl ? (
                         <div className="h-36 overflow-hidden">
                           <img src={product.imageUrl} alt={`Shop product: ${product.name}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                         </div>
                       ) : null}
                       <div className="p-4">
-                        <span className="text-xs font-bold uppercase tracking-wide text-primary">{selected ? "Added" : product.badge || "Optional"}</span>
+                        <span className="text-xs font-bold uppercase tracking-wide text-primary">{selected ? "Selected — tap again to remove" : product.badge || "Optional"}</span>
                         <h3 className="serif mt-2 text-xl font-bold text-[#24170d]">{product.name}</h3>
                         <b className="mt-2 block text-lg text-primary">£{product.price}</b>
                       </div>
@@ -521,7 +604,7 @@ export default function Booking() {
             <form onSubmit={submit} className="grid gap-5">
               <div>
                 <h2 className="serif text-3xl font-bold text-primary">Review and Pay</h2>
-                <p className="mt-2 text-[#4a3014]">Please review your booking summary. Click Pay £20 Deposit to open Stripe secure checkout and confirm your appointment.</p>
+                <p className="mt-2 text-[#4a3014]">Please review your booking summary. Click Pay £20 Deposit to proceed to secure payment and confirm your appointment.</p>
               </div>
               <div className="grid gap-3 rounded-3xl border border-primary/25 bg-primary/10 p-5 text-[#3a2615] sm:grid-cols-2">
                 <p><strong className="text-primary">Service:</strong> {form.serviceName}</p>
@@ -543,7 +626,8 @@ export default function Booking() {
                 {homeServiceSurcharge > 0 && form.serviceLocation === "home_service" ? (
                   <p><strong className="text-primary">Travel surcharge:</strong> £{homeServiceSurcharge.toFixed(2)}</p>
                 ) : null}
-                <p className="font-bold text-primary sm:col-span-2">Deposit due now: £20.00</p>
+                <p className="font-bold text-primary sm:col-span-2">Total due now: £{formatMoney(bookingCheckoutTotal)}</p>
+                <p className="text-sm font-semibold text-[#4a3014] sm:col-span-2">Includes the £20.00 booking deposit{selectedAddOns.length > 0 ? ", selected add-ons" : ""}{selectedProducts.length > 0 ? ", selected shop products" : ""}{homeServiceSurcharge > 0 && form.serviceLocation === "home_service" ? ", and home-service travel" : ""}.</p>
               </div>
               <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm text-primary">
                 After successful payment you will receive a confirmation email, WhatsApp, and SMS.
@@ -551,8 +635,8 @@ export default function Booking() {
                   ? " The studio address is included in your confirmation — it is never shown on the website."
                   : " Your confirmed home address will be included in the confirmation message."}
               </div>
-              {create.error && <p className="rounded-2xl border border-red-400/40 bg-red-50 p-4 font-semibold text-red-900">{create.error.message}</p>}
-              {checkout.error && <p className="rounded-2xl border border-red-400/40 bg-red-50 p-4 font-semibold text-red-900">{checkout.error.message}</p>}
+              {create.error && <p className="rounded-2xl border border-red-400/40 bg-red-50 p-4 font-semibold text-red-900">{bookingCheckoutErrorDescription(create.error)}</p>}
+              {checkout.error && <p className="rounded-2xl border border-red-400/40 bg-red-50 p-4 font-semibold text-red-900">{bookingCheckoutErrorDescription(checkout.error)}</p>}
               <div className="flex flex-wrap gap-3">
                 <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
                 <button
@@ -560,7 +644,7 @@ export default function Booking() {
                   className="btn-gold min-h-12 px-8 text-base"
                   disabled={create.isPending || checkout.isPending}
                 >
-                  {create.isPending || checkout.isPending ? "Opening Stripe..." : "Pay £20 Deposit"}
+                  {create.isPending || checkout.isPending ? "Opening payment..." : "Pay £20 Deposit"}
                 </button>
               </div>
             </form>

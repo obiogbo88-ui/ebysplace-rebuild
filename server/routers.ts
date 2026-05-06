@@ -95,9 +95,13 @@ function getLiveStripePublishableKey() {
 
 function getStripe() {
   const key = getLiveStripeSecretKey();
-  if (!key) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Stripe is not configured yet." });
+  if (!key) {
+    console.warn("[Payments] Live payment checkout attempted without a configured secret key. Configure EBYSPLACE_LIVE_STRIPE_SECRET_KEY in deployment settings.");
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Payment is currently unavailable. Please contact us to complete your booking." });
+  }
   if (!key.startsWith("sk_live_")) {
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Live Stripe payments require a live Stripe secret key. Add EBYSPLACE_LIVE_STRIPE_SECRET_KEY or configure STRIPE_SECRET_KEY with a key that starts with sk_live_." });
+    console.warn("[Payments] Live payment checkout attempted without a live secret key. Configure EBYSPLACE_LIVE_STRIPE_SECRET_KEY in deployment settings.");
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Payment is currently unavailable. Please contact us to complete your booking." });
   }
   return new Stripe(key);
 }
@@ -144,10 +148,9 @@ function poundsToMinorUnits(value: string | number) {
   return Math.round(Number(value || 0) * 100);
 }
 
-function buildBookingCheckoutLineItems(input: { serviceName: string; homeServiceSurcharge: number; addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
+function buildBookingCheckoutLineItems(input: { serviceName: string; addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
   return [
     { price_data: { currency: "gbp", unit_amount: 2000, product_data: { name: "Eby’s Place £20 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 },
-    ...(input.homeServiceSurcharge > 0 ? [{ price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(input.homeServiceSurcharge), product_data: { name: "Eby’s Place Home Service travel surcharge", description: "Additional travel fee for a home-service appointment" } }, quantity: 1 }] : []),
     ...(input.addOns || []).map((item) => ({
       price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(item.price), product_data: { name: `Add-on: ${item.name}`, description: "Selected Eby’s Place appointment add-on" } },
       quantity: 1,
@@ -258,7 +261,7 @@ export const appRouter = router({
       await notifyOwnerSafely(
         "New Eby’s Place booking request",
         [
-          `A customer has submitted a booking request and needs to complete the £20 Stripe deposit.`,
+          `A customer has submitted a booking request and needs to complete the £20 secure deposit.`,
           `Booking ID: ${booking.id}`,
           `Service: ${input.serviceName}`,
           `Customer: ${input.clientName}`,
@@ -275,9 +278,9 @@ export const appRouter = router({
       );
       await sendCustomerSmsSafely({
         to: input.clientPhone,
-        body: `Eby’s Place received your ${input.serviceName} booking request for ${input.appointmentDate} at ${input.appointmentTime}. Please complete the £20 Stripe deposit on the website to secure it. Optional add-ons/products are recorded only when selected.`,
+        body: `Eby’s Place received your ${input.serviceName} booking request for ${input.appointmentDate} at ${input.appointmentTime}. Please complete the £20 secure deposit on the website to secure it. Optional add-ons/products are recorded only when selected.`,
       });
-      return { bookingId: booking.id, depositAmount: 20, homeServiceSurcharge: Number(homeServiceSurcharge), depositCurrency: "GBP", serviceLocation, message: "A £20 non-refundable deposit is required to secure your Eby’s Place appointment. You will receive on-screen confirmation after Stripe confirms payment.", customerNotification: "Your Eby’s Place booking request has been received. Add-ons and shop products are optional, and you can complete the secure Stripe deposit checkout now." };
+      return { bookingId: booking.id, depositAmount: 20, homeServiceSurcharge: Number(homeServiceSurcharge), depositCurrency: "GBP", serviceLocation, message: "A £20 non-refundable deposit is required to secure your Eby’s Place appointment. You will receive on-screen confirmation after payment is confirmed.", customerNotification: "Your Eby’s Place booking request has been received. Add-ons and shop products are optional, and you can complete the secure deposit payment now." };
     }),
     createDepositCheckout: publicProcedure.input(z.object({
       bookingId: z.number(),
@@ -294,7 +297,6 @@ export const appRouter = router({
       const extrasTotal = bookingExtrasTotal(input);
       const lineItems = buildBookingCheckoutLineItems({
         serviceName: input.serviceName,
-        homeServiceSurcharge,
         addOns: input.addOns,
         bookingProducts: input.bookingProducts,
       });
@@ -310,7 +312,7 @@ export const appRouter = router({
         cancel_url: `${origin}/booking?payment=cancelled&booking=${input.bookingId}`,
         metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) },
       });
-      if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a booking deposit checkout link. Please try again." });
+      if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Payment is currently unavailable. Please contact us to complete your booking." });
       await db.updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),

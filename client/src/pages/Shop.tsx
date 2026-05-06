@@ -266,11 +266,11 @@ export default function Shop() {
 
         {checkoutReturn ? (
           <div className={`mt-8 rounded-3xl border p-5 ${checkoutReturn.status === "success" ? "border-primary/35 bg-primary/10 text-primary" : "border-white/15 bg-white/[0.05] text-white/78"}`} role="status">
-            <p className="font-semibold">{checkoutReturn.status === "success" ? "Stripe payment successful" : "Stripe checkout cancelled"}</p>
+            <p className="font-semibold">{checkoutReturn.status === "success" ? "Payment successful" : "Checkout cancelled"}</p>
             <p className="mt-2 text-sm leading-6">
               {checkoutReturn.status === "success"
-                ? `Thank you. Your Eby’s Place shop order${checkoutReturn.orderId ? ` #${checkoutReturn.orderId}` : ""} has returned from Stripe, and a receipt will be sent to the email used at checkout once payment is confirmed.`
-                : `Your Eby’s Place shop order${checkoutReturn.orderId ? ` #${checkoutReturn.orderId}` : ""} was not paid. You can adjust your bag and start secure Stripe checkout again when ready.`}
+                ? `Thank you. Your Eby’s Place shop order${checkoutReturn.orderId ? ` #${checkoutReturn.orderId}` : ""} has returned from secure payment, and a receipt will be sent to the email used at checkout once payment is confirmed.`
+                : `Your Eby’s Place shop order${checkoutReturn.orderId ? ` #${checkoutReturn.orderId}` : ""} was not paid. You can adjust your bag and proceed to secure payment again when ready.`}
             </p>
           </div>
         ) : null}
@@ -333,8 +333,8 @@ export default function Shop() {
               </div>
               <input placeholder="Postcode (optional if unavailable)" value={delivery.postcode} onChange={(event) => setDelivery({ ...delivery, postcode: event.target.value })} />
               <textarea placeholder="Delivery notes" value={delivery.deliveryNote} onChange={(event) => setDelivery({ ...delivery, deliveryNote: event.target.value })} />
-              <button disabled={!cart.length || order.isPending} className="btn-gold disabled:cursor-not-allowed disabled:opacity-50">Pay securely with Stripe</button>
-              {order.isSuccess && <p className="rounded-2xl border border-primary/30 bg-primary/10 p-3 font-semibold text-primary">Secure Stripe checkout opened in a new tab.</p>}
+              <button disabled={!cart.length || order.isPending} className="btn-gold disabled:cursor-not-allowed disabled:opacity-50">Proceed to secure payment</button>
+              {order.isSuccess && <p className="rounded-2xl border border-primary/30 bg-primary/10 p-3 font-semibold text-primary">Secure payment opened in a new tab.</p>}
               {order.error && <p className="rounded-2xl border border-red-500/40 bg-red-50 p-3 font-semibold text-red-900">{order.error.message}</p>}
             </form>
           </aside>

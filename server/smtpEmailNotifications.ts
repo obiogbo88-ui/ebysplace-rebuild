@@ -145,7 +145,7 @@ async function sendAndLogEmail(payload: EmailPayload, mode: "initial" | "resend"
   }
 }
 
-function money(value: unknown, fallback = "confirmed in your Stripe receipt") {
+function money(value: unknown, fallback = "confirmed in your payment receipt") {
   const numberValue = Number(value);
   if (!Number.isFinite(numberValue)) return fallback;
   return `£${numberValue.toFixed(2)}`;
@@ -201,7 +201,7 @@ export function buildBookingEmailPayloads(booking: any, session: any): EmailPayl
 
   const customerBody = [
     `Hi ${customerName},`,
-    "Thank you for booking with Eby’s Place. Your Stripe payment has been received and your appointment is secured.",
+    "Thank you for booking with Eby’s Place. Your secure payment has been received and your appointment is secured.",
     `Booking reference: ${reference}`,
     `Service/hairstyle booked: ${serviceName}`,
     `Booking date and time: ${dateTime}`,
@@ -223,8 +223,8 @@ export function buildOrderEmailPayloads(order: any, items: any[], session: any):
   const customerName = order?.customerName ?? session?.metadata?.customer_name ?? "Customer";
   const itemsSummary = items.length
     ? items.map((item) => `${item.quantity} × ${item.variantName ? `${item.productName} — ${item.variantName}` : item.productName} (${money(Number(item.unitPrice) * Number(item.quantity))})`).join("\n")
-    : "Products recorded in Stripe checkout.";
-  const totalPaid = items.length ? money(items.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity), 0)) : (session?.amount_total != null ? money(Number(session.amount_total) / 100) : "confirmed in your Stripe receipt");
+    : "Products recorded during checkout.";
+  const totalPaid = items.length ? money(items.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity), 0)) : (session?.amount_total != null ? money(Number(session.amount_total) / 100) : "confirmed in your payment receipt");
   const deliveryText = orderDeliveryText(order);
   const paymentStatus = order?.status === "paid" ? "Paid" : "Stripe payment confirmed";
 

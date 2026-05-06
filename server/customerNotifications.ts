@@ -112,10 +112,10 @@ function isValidEmail(value?: string | null) {
 }
 
 /**
- * Customer email confirmation hook. Stripe Checkout is configured to send the
- * payment receipt email automatically after successful card payment. If a
- * SendGrid key is later added, this helper sends the branded appointment
- * confirmation as a separate customer email without blocking checkout.
+ * Customer email confirmation hook. The payment provider sends the payment
+ * receipt email automatically after successful card payment. If a SendGrid key
+ * is later added, this helper sends the branded appointment confirmation as a
+ * separate customer email without blocking checkout.
  */
 export async function sendCustomerEmailSafely(input: EmailInput) {
   try {
@@ -195,7 +195,7 @@ export async function sendShopOrderPaidEmailSafely(input: { to?: string | null; 
       `Your Eby’s Place shop payment has been confirmed for order #${input.orderId}.`,
       input.deliveryAddress ? `Delivery address: ${input.deliveryAddress}` : 'Delivery address: provided during checkout.',
       input.itemsSummary ? `Items:\n${input.itemsSummary}` : 'The Eby’s Place team is preparing your order.',
-      'Stripe will send your payment receipt to the email used at checkout.'
+      'Your payment receipt will be sent to the email used at checkout.'
     ].join('\n\n'),
   });
 }

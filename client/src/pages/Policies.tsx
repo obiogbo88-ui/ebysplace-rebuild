@@ -25,7 +25,7 @@ const policies: Record<PolicyKey, PolicyContent> = {
       {
         title: "Information we collect",
         body:
-          "We may collect contact details, appointment details, order details, review submissions, uploaded images for AI Try-On, and messages you choose to send us. Payment details are handled securely by Stripe and are not stored by Eby’s Place.",
+          "We may collect contact details, appointment details, order details, review submissions, uploaded images for AI Try-On, and messages you choose to send us. Payment details are handled securely by our payment provider and are not stored by Eby’s Place.",
       },
       {
         title: "How we use information",
@@ -58,7 +58,7 @@ const policies: Record<PolicyKey, PolicyContent> = {
       {
         title: "Payments",
         body:
-          "Online payments are processed through Stripe. Please check your order information before checkout, including delivery details and product selections.",
+          "Online payments are processed securely by our payment provider. Please check your order information before checkout, including delivery details and product selections.",
       },
       {
         title: "Dispatch and delivery",
@@ -114,7 +114,7 @@ const policies: Record<PolicyKey, PolicyContent> = {
       {
         title: "Bookings and payments",
         body:
-          "Please provide accurate booking and contact information. Stripe handles payment processing, and appointment-specific conditions are presented before checkout.",
+          "Please provide accurate booking and contact information. Secure payment processing is handled by our payment provider, and appointment-specific conditions are presented before checkout.",
       },
       {
         title: "AI Try-On",

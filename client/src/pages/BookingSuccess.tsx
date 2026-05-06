@@ -15,7 +15,7 @@ export default function BookingSuccess() {
             Your Eby’s Place deposit is being confirmed.
           </h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-white/70">
-            Thank you for booking Eby’s Place. If Stripe completed successfully, your £20 non-refundable deposit has been submitted and the salon owner is notified automatically. The booking dashboard will update from Stripe’s secure webhook once payment is verified.
+            Thank you for booking Eby’s Place. If secure payment completed successfully, your £20 non-refundable deposit has been submitted and the salon owner is notified automatically. The booking dashboard will update once payment is verified.
           </p>
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -34,7 +34,7 @@ export default function BookingSuccess() {
           </div>
 
           <blockquote className="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-white/75">
-            Please keep this page or your Stripe receipt for reference. If you closed checkout before paying, return to the booking page and start the deposit step again.
+            Please keep this page or your payment receipt for reference. If you closed checkout before paying, return to the booking page and start the deposit step again.
           </blockquote>
 
           <div className="mt-8 flex flex-wrap gap-3">

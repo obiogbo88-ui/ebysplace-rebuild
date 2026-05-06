@@ -50,8 +50,10 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(shopSource).toContain("Add ${readableColourLabel(selectedVariant)} to bag");
     expect(shopSource).toContain("<p className=\"pill w-fit\">Shop</p>");
     expect(shopSource).toContain("payment === \"success\"");
-    expect(shopSource).toContain("Stripe payment successful");
-    expect(shopSource).toContain("Stripe checkout cancelled");
+    expect(shopSource).toContain("Payment successful");
+    expect(shopSource).not.toContain("Stripe payment successful");
+    expect(shopSource).toContain("Checkout cancelled");
+    expect(shopSource).not.toContain("Stripe checkout cancelled");
     expect(shopSource).not.toContain("Better shopping flow");
     expect(shopSource).not.toContain("Selected colour");
     expect(shopSource).not.toContain("admin order manager");
@@ -73,6 +75,32 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(shopSource).toContain("const checkoutItems = normalizeCartForCheckout(cart);");
     expect(shopSource).toContain("items: checkoutItems");
     expect(shopSource).not.toContain("items: cart");
+  });
+
+  it("normalizes booking shop product IDs before submitting booking checkout products", () => {
+    const bookingSource = readSource("client/src/pages/Booking.tsx");
+
+    expect(bookingSource).toContain("function normalizeProductId(product: BookingShopProduct)");
+    expect(bookingSource).toContain("return parsePositiveInteger(product.id ?? product.productId);");
+    expect(bookingSource).toContain("const productId = parsePositiveInteger(item.productId);");
+    expect(bookingSource).toContain("const productId = normalizeProductId(product);");
+    expect(bookingSource).toContain("This product cannot be added to your booking");
+    expect(bookingSource).toContain("function normalizeBookingProductsForCheckout(products: BookingProductSelection[])");
+    expect(bookingSource).toContain("const checkoutProducts = normalizeBookingProductsForCheckout(selectedProducts);");
+    expect(bookingSource).toContain("bookingProducts: checkoutProducts");
+    expect(bookingSource).not.toContain("const productId = Number(product.id);");
+    expect(bookingSource).not.toContain("bookingProducts: selectedProducts");
+  });
+
+  it("keeps booking checkout live Stripe configuration failures clear for production", () => {
+    const bookingSource = readSource("client/src/pages/Booking.tsx");
+    const routerSource = readSource("server/routers.ts");
+
+    expect(routerSource).toContain("Payment is currently unavailable. Please contact us to complete your booking.");
+    expect(routerSource).not.toContain("Live Stripe payments require a live Stripe secret key");
+    expect(bookingSource).toContain("bookingCheckoutErrorDescription(error)");
+    expect(bookingSource).toContain("Payment is currently unavailable. Please contact us to complete your booking.");
+    expect(bookingSource).not.toContain("Settings → Payment");
   });
 
   it("keeps every main public and admin page responsive between mobile and desktop views", () => {

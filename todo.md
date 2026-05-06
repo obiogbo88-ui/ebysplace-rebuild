@@ -766,3 +766,29 @@
 - [x] Fix shop checkout cart payload so every item submits a valid numeric productId instead of undefined.
 - [x] Add regression coverage for shop checkout payload mapping from products and variants.
 - [x] Validate the shop checkout fix with targeted tests, full checks, production build, and a checkpoint sync to GitHub.
+
+- [x] Diagnose and fix booking checkout product add-ons so bookingProducts always submit valid numeric productId values instead of NaN.
+- [x] Diagnose live Stripe key selection/configuration for booking checkout and preserve the required sk_live production guard with clearer customer-facing guidance when live keys are not configured.
+- [x] Add regression coverage for booking checkout with add-ons and attached shop products.
+- [x] Validate booking checkout fixes with targeted tests, full checks, production build, health check, and checkpoint sync to GitHub.
+
+- [x] Fix booking checkout selected shop product payloads so every add-on product submits a valid numeric productId instead of NaN, with a clear customer-facing error for invalid product data
+- [x] Add regression coverage for booking product ID normalization and preserve clear live Stripe configuration messaging for production checkout failures
+
+- [x] Ensure booking checkout shop product productId values are parsed as valid integers before API submission, preventing NaN validation errors.
+- [x] Replace raw live payment key errors with friendly customer-facing booking payment unavailable messaging.
+- [x] Confirm EBYSPLACE_LIVE_STRIPE_SECRET_KEY handling remains documented for deployment settings without exposing raw configuration errors to customers.
+- [x] Make booking shop product selection visibly toggleable with selected/added feedback and no duplicate product additions.
+- [x] Ensure booking checkout summary and payment payload total equals £20 deposit plus selected add-ons plus selected shop products, or £20 when none are selected.
+- [x] Restyle the menu Book Now / Secure £20 Deposit CTA to match other navigation link typography and remove the dark bordered button treatment.
+- [x] Remove customer-facing Stripe wording from booking/shop UI copy and replace it with neutral secure-payment language.
+- [x] Add or update regression tests for booking product ID parsing, product toggle behavior, payment total/copy, and hidden raw payment-key errors.
+- [x] Validate the fixes with type checks, tests, production build, project health, TODO verification, and checkpoint sync.
+
+- [x] Add a prominent homepage search bar for services, styles, and shop products with live matching results as users type.
+- [x] Make homepage search results navigate to the relevant service or shop product page when clicked.
+- [x] Add a Shop Now navigation/menu button next to or near Book Now, styled like the Book Now CTA with black background and gold text, linking to the shop page.
+- [x] Add or update regression coverage for homepage search visibility/results/navigation anchors and the Shop Now navigation CTA.
+- [x] Validate homepage search and navigation updates with checks, tests, build, project health, TODO verification, and checkpoint/GitHub sync.
+
+- [x] Finish validation and checkpoint for the requested checkout, homepage search, and navigation updates only, with no unrelated source changes.

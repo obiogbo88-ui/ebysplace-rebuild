@@ -27,7 +27,16 @@ const categoryIntro: Record<ServiceCategory, string> = {
 export default function Services() {
   const [category, setCategory] = useState<ServiceCategory>("All");
   const serviceQueryInput = useMemo(() => (category === "All" ? {} : { category }), [category]);
+  const initialSearchTerm = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("search")?.trim() || "";
+  }, []);
   const { data = [], isLoading } = trpc.public.services.useQuery(serviceQueryInput);
+  const visibleServices = useMemo(() => {
+    if (!initialSearchTerm) return data as any[];
+    const term = initialSearchTerm.toLowerCase();
+    return (data as any[]).filter((service) => [service.name, service.category, service.description, service.badge].filter(Boolean).join(" ").toLowerCase().includes(term));
+  }, [data, initialSearchTerm]);
 
   return (
     <div className="luxury-shell">
@@ -41,7 +50,7 @@ export default function Services() {
           </h1>
           <p className="mt-5 max-w-3xl text-lg leading-8 text-white/68">
             Choose from the full Somerset, UK service menu. Every booking
-            clearly presents the £20 non-refundable Stripe deposit before
+            clearly presents the £20 non-refundable deposit before
             checkout, and every style is framed around comfort, longevity, and
             scalp respect.
           </p>
@@ -82,7 +91,7 @@ export default function Services() {
               </p>
               <h2 className="serif mt-2 text-4xl font-bold">{category === "All" ? "Full service menu" : `${category} menu`}</h2>
               <p className="mt-3 max-w-3xl text-white/65">
-                {categoryIntro[category]}
+                {initialSearchTerm ? `Showing services matching “${initialSearchTerm}”. Clear the search from your browser address bar to view the full menu again.` : categoryIntro[category]}
               </p>
             </div>
             <button type="button" className="btn-gold" onClick={() => navigateWithSmoothScroll("/booking")}>
@@ -99,13 +108,13 @@ export default function Services() {
                 />
               ))}
             </div>
-          ) : (data as any[]).length === 0 ? (
+          ) : visibleServices.length === 0 ? (
             <div className="lux-card mt-10 text-white/70">
-              No services are currently published in this category.
+              {initialSearchTerm ? `No services currently match “${initialSearchTerm}”.` : "No services are currently published in this category."}
             </div>
           ) : (
             <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {(data as any[]).map(service => {
+              {visibleServices.map(service => {
                 const isBookable = service.isBookable !== "false";
                 return (
                 <article

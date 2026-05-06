@@ -223,7 +223,6 @@ main,
 
 .btn-gold,
 .btn-dark,
-a[href='/booking'],
 a[href^='/booking'].btn-gold,
 button[type='submit'] {
   background: #111111 !important;
@@ -234,7 +233,6 @@ button[type='submit'] {
 
 .btn-gold:hover,
 .btn-dark:hover,
-a[href='/booking']:hover,
 a[href^='/booking'].btn-gold:hover,
 button[type='submit']:hover {
   background: #C9A84C !important;
@@ -278,27 +276,30 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
   backdrop-filter: blur(14px);
 }
 .mobile-sticky-booking .sticky-booking-cta-button {
-  background: #111111 !important;
-  color: #C9A84C !important;
-  border: 2px solid #C9A84C !important;
-  gap: 0.12rem;
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: #2a1a0b !important;
+  border: 0 !important;
+  gap: 0.08rem;
   line-height: 1.25;
   text-decoration: none !important;
+  box-shadow: 0 12px 28px rgba(66, 42, 18, 0.12);
 }
 .mobile-sticky-booking .sticky-booking-cta-label,
 .mobile-sticky-booking .sticky-booking-cta-separator,
 .mobile-sticky-booking .sticky-booking-cta-accent {
-  color: #C9A84C !important;
+  color: #2a1a0b !important;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   opacity: 1 !important;
   visibility: visible !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+  text-shadow: none;
 }
-.mobile-sticky-booking .sticky-booking-cta-accent { color: #C9A84C !important; font-size: .875rem; line-height: 1.2; }
+.mobile-sticky-booking .sticky-booking-cta-accent { line-height: 1.25; }
 .mobile-sticky-booking .sticky-booking-cta-button:hover,
 .mobile-sticky-booking .sticky-booking-cta-button:focus-visible {
-  background: #C9A84C !important;
-  color: #111111 !important;
-  border-color: #111111 !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #8a641e !important;
 }
 .mobile-sticky-booking .sticky-booking-cta-button:hover .sticky-booking-cta-label,
 .mobile-sticky-booking .sticky-booking-cta-button:hover .sticky-booking-cta-separator,
@@ -306,7 +307,7 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
 .mobile-sticky-booking .sticky-booking-cta-button:focus-visible .sticky-booking-cta-label,
 .mobile-sticky-booking .sticky-booking-cta-button:focus-visible .sticky-booking-cta-separator,
 .mobile-sticky-booking .sticky-booking-cta-button:focus-visible .sticky-booking-cta-accent {
-  color: #111111 !important;
+  color: #8a641e !important;
   text-shadow: none;
 }
 

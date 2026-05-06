@@ -50,7 +50,7 @@ const navLinks = [
   { href: "/gallery", label: "Gallery" },
 ];
 
-const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking");
+const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking" && item.href !== "/shop");
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -94,6 +94,14 @@ export function SiteHeader() {
               </Link>
             ))}
           </nav>
+          <div className="flex shrink-0 items-center gap-2">
+            <button type="button" className="btn-gold px-4 py-2.5 text-xs uppercase tracking-[.16em] xl:px-5 xl:text-sm" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}>
+              Book Now
+            </button>
+            <button type="button" className="btn-gold px-4 py-2.5 text-xs uppercase tracking-[.16em] xl:px-5 xl:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
+              Shop Now
+            </button>
+          </div>
           <form className="relative w-40 xl:w-56" role="search" aria-label="Product search" onSubmit={handleProductSearch}>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
             <input
@@ -119,8 +127,8 @@ export function SiteHeader() {
             />
           </form>
           <div className="hidden sm:block">
-            <button type="button" className="btn-gold px-2.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
-              Shop
+            <button type="button" className="btn-gold px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
+              Shop Now
             </button>
           </div>
           <button
@@ -243,15 +251,15 @@ function HomepageLiveSearch() {
   const results = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (term.length < 2) return [];
-    const serviceResults = (services as any[]).filter((service) => [service.name, service.category, service.description, service.badge].filter(Boolean).join(" ").toLowerCase().includes(term)).slice(0, 4).map((service) => ({ type: "Service", title: service.name, detail: `${service.category} · from £${service.priceFrom}`, href: `/booking?service=${encodeURIComponent(service.name)}` }));
+    const serviceResults = (services as any[]).filter((service) => [service.name, service.category, service.description, service.badge].filter(Boolean).join(" ").toLowerCase().includes(term)).slice(0, 4).map((service) => ({ type: "Service", title: service.name, detail: `${service.category} · from £${service.priceFrom}`, href: `/services?search=${encodeURIComponent(service.name)}` }));
     const productResults = (products as any[]).filter((product) => [product.name, product.category, product.description, product.badge].filter(Boolean).join(" ").toLowerCase().includes(term)).slice(0, 4).map((product) => ({ type: "Product", title: product.name, detail: `${product.category} · £${product.price}`, href: `/shop?search=${encodeURIComponent(product.name)}` }));
     return [...serviceResults, ...productResults].slice(0, 6);
   }, [query, services, products]);
   return (
     <section className="container relative z-20 -mt-10 pb-[3.75rem] md:-mt-12 md:pb-20">
       <div className="rounded-[2rem] border border-primary/25 bg-white p-5 shadow-[0_24px_80px_rgba(26,26,26,.12)] sm:p-7 md:p-8">
-        <label className="block text-sm font-bold uppercase tracking-[0.24em] text-primary">Search services, hairstyles, products, and food items</label>
-        <input className="mt-3 w-full rounded-2xl border border-primary/20 bg-white px-4 py-3 text-base text-[#2e1b10] outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 sm:text-lg" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search braids, twists, aftercare, products, food items..." aria-label="Search services, hairstyles, products, and food items" />
+        <label className="block text-sm font-bold uppercase tracking-[0.24em] text-primary">Search services, styles, and shop products</label>
+        <input className="mt-3 w-full rounded-2xl border border-primary/20 bg-white px-4 py-3 text-base text-[#2e1b10] outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 sm:text-lg" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search braids, twists, aftercare, or shop products..." aria-label="Search services, styles, and shop products" />
         {query.trim().length >= 2 ? (
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {results.length ? results.map((result) => (
@@ -260,9 +268,9 @@ function HomepageLiveSearch() {
                 <b className="mt-2 block text-primary">{result.title}</b>
                 <small className="mt-1 block text-[#4A4A4A]">{result.detail}</small>
               </button>
-            )) : <p className="rounded-2xl border border-primary/20 bg-[#FAF7F2] p-4 text-sm text-[#4A4A4A] sm:col-span-2 lg:col-span-3">No matching services, hairstyles, products, or food items yet. Try “braids”, “twists”, or “aftercare”.</p>}
+            )) : <p className="rounded-2xl border border-primary/20 bg-[#FAF7F2] p-4 text-sm text-[#4A4A4A] sm:col-span-2 lg:col-span-3">No matching services, styles, or shop products yet. Try “braids”, “twists”, or “aftercare”.</p>}
           </div>
-        ) : <p className="mt-3 text-sm font-medium text-[#4A4A4A]">Start typing to search services, hairstyles, products, and food items instantly.</p>}
+        ) : <p className="mt-3 text-sm font-medium text-[#4A4A4A]">Start typing to search services, styles, and shop products instantly.</p>}
       </div>
     </section>
   );

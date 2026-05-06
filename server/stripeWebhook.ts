@@ -66,7 +66,7 @@ export function registerStripeWebhook(app: Application) {
             void sendBookingPaymentEmailsSafely(booking, session).catch((error) => console.warn("[StripeWebhook] SMTP booking email workflow failed", error));
           }
           const remainingBalance = booking?.estimatedPrice != null ? Math.max(Number(booking.estimatedPrice || 0) + Number(booking.homeServiceSurcharge || 0) - 20, 0).toFixed(2) : null;
-          const customerConfirmation = `Your Eby’s Place £20 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured. Stripe will also email the payment receipt to the checkout email address.`;
+          const customerConfirmation = `Your Eby’s Place £20 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured. Your payment receipt will also be emailed to the checkout email address.`;
           const bookingLocation = booking?.serviceLocation ?? session.metadata?.service_location ?? "studio";
           const homeServiceAddress = [booking?.addressLine1, booking?.addressLine2, booking?.city, booking?.county, booking?.postcode].filter(Boolean).join(", ");
           const locationConfirmation = bookingLocation === "home_service"
@@ -125,14 +125,14 @@ export function registerStripeWebhook(app: Application) {
           }
           const itemsSummary = orderItems.length
             ? orderItems.map((item) => `${item.quantity} × ${item.variantName ? `${item.productName} — ${item.variantName}` : item.productName} (£${(Number(item.unitPrice) * Number(item.quantity)).toFixed(2)})`).join("\n")
-            : "Items recorded in your Stripe checkout.";
+            : "Items recorded during checkout.";
           const totalPaid = orderItems.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity), 0).toFixed(2);
           const orderEmailBody = [
             `Hi ${order?.customerName ?? session.metadata?.customer_name ?? "there"},`,
             "Thank you for shopping with Eby’s Place.",
             `Order reference: #${orderReference}`,
             `Products and quantities:\n${itemsSummary}`,
-            orderItems.length ? `Total paid: £${totalPaid}` : "Total paid: confirmed in your Stripe receipt.",
+            orderItems.length ? `Total paid: £${totalPaid}` : "Total paid: confirmed in your payment receipt.",
             `Delivery address: ${deliveryAddress || "provided during checkout"}`,
             "Estimated delivery: 3-5 working days after dispatch.",
           ].join("\n\n");
@@ -146,7 +146,7 @@ export function registerStripeWebhook(app: Application) {
               customerName: order?.customerName ?? session.metadata?.customer_name,
               orderId: orderReference,
               deliveryAddress: deliveryAddress || "provided during checkout",
-              itemsSummary: `${itemsSummary}\n\n${orderItems.length ? `Total paid: £${totalPaid}` : "Total paid: confirmed in your Stripe receipt."}\nEstimated delivery: 3-5 working days after dispatch.`,
+              itemsSummary: `${itemsSummary}\n\n${orderItems.length ? `Total paid: £${totalPaid}` : "Total paid: confirmed in your payment receipt."}\nEstimated delivery: 3-5 working days after dispatch.`,
             }),
             sendOwnerSmsAndWhatsAppSafely(`New Eby's Place shop order paid: ${order?.customerName ?? session.metadata?.customer_name ?? "Customer"}, order #${orderReference}, deliver to ${deliveryAddress || "address on order"}.`),
           ]);
