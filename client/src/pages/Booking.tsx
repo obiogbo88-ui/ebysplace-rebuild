@@ -234,7 +234,7 @@ export default function Booking() {
 
   function goToStep(nextStep: number) {
     setStep(nextStep);
-    smoothScrollToElement("booking-card", 0);
+    smoothScrollToElement("booking-card", 60);
   }
 
   function goBack() {
