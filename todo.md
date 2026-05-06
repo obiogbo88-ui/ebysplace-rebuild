@@ -716,21 +716,21 @@
 
 - [x] Fix the lower-screen CTA button so its written text is visible and readable across mobile and desktop.
 
-- [ ] Audit Stripe environment variable names, live/test key selection, backend-only secret boundaries, and webhook secret format.
-- [ ] Identify the exact backend blocker preventing Stripe checkout payments from completing.
-- [ ] Verify and fix booking checkout session creation, customer metadata, success/cancel URLs, and selected service/product pricing.
-- [ ] Verify and fix shop checkout session creation, customer metadata, delivery details, success/cancel URLs, and cart pricing.
-- [ ] Verify Stripe webhook endpoint, raw-body signature verification, event coverage, and database payment status updates.
-- [ ] Verify database connectivity, schema, migrations, permissions, and write paths for bookings, orders, payment records, customer details, and admin content.
-- [ ] Fix admin dashboard upload and management for gallery images, service images, product images, product details, service descriptions, prices, availability, and booking/order status.
-- [ ] Confirm uploaded admin content appears correctly on the public website.
-- [ ] Add regression tests for the real Stripe/database/admin upload blockers found.
-- [ ] Run logs, full tests, production build, project health checks, and save a checkpoint for the checkout/admin upload fix.
+- [x] Audit Stripe environment variable names, live/test key selection, backend-only secret boundaries, and webhook secret format.
+- [x] Identify the exact backend blocker preventing Stripe checkout payments from completing.
+- [x] Verify and fix booking checkout session creation, customer metadata, success/cancel URLs, and selected service/product pricing.
+- [x] Verify and fix shop checkout session creation, customer metadata, delivery details, success/cancel URLs, and cart pricing.
+- [x] Verify Stripe webhook endpoint, raw-body signature verification, event coverage, and database payment status updates.
+- [x] Verify database connectivity, schema, migrations, permissions, and write paths for bookings, orders, payment records, customer details, and admin content.
+- [x] Fix admin dashboard upload and management for gallery images, service images, product images, product details, service descriptions, prices, availability, and booking/order status.
+- [x] Confirm uploaded admin content appears correctly on the public website.
+- [x] Add regression tests for the real Stripe/database/admin upload blockers found.
+- [x] Run logs, full tests, production build, project health checks, and save a checkpoint for the checkout/admin upload fix.
 
-- [ ] Replace the top navigation Book CTA with a Shop CTA that links directly to the shop page.
-- [ ] Add a visible homepage search bar near the hero section for services, hairstyles, products, and food items.
-- [ ] Reduce and align the footer logo so it remains readable without dominating the footer.
-- [ ] Restyle the mobile/menu list Book CTA to match the rest of the menu list items instead of appearing as a dark button.
+- [x] Replace the top navigation Book CTA with a Shop CTA that links directly to the shop page.
+- [x] Add a visible homepage search bar near the hero section for services, hairstyles, products, and food items.
+- [x] Reduce and align the footer logo so it remains readable without dominating the footer.
+- [x] Restyle the mobile/menu list Book CTA to match the rest of the menu list items instead of appearing as a dark button.
 
 - [x] Restore/add a floating bottom-right WhatsApp enquiry button linking to https://wa.me/447864585110 with the requested pre-filled message on mobile and desktop.
 

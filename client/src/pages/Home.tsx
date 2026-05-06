@@ -50,6 +50,8 @@ const navLinks = [
   { href: "/gallery", label: "Gallery" },
 ];
 
+const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking");
+
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
@@ -86,7 +88,7 @@ export function SiteHeader() {
             className="flex min-w-0 items-center gap-3 xl:gap-5"
             aria-label="Main navigation"
           >
-            {navLinks.map(item => (
+            {desktopNavLinks.map(item => (
               <Link key={item.href} className="nav-link whitespace-nowrap text-[0.72rem] tracking-[.12em] xl:text-sm xl:tracking-[.18em]" href={item.href}>
                 {item.label}
               </Link>
@@ -117,8 +119,8 @@ export function SiteHeader() {
             />
           </form>
           <div className="hidden sm:block">
-            <button type="button" className="btn-gold px-2.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}>
-              Book
+            <button type="button" className="btn-gold px-2.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
+              Shop
             </button>
           </div>
           <button
@@ -157,7 +159,7 @@ export function SiteHeader() {
             {navLinks.map(item => (
               <Link
                 key={item.href}
-                className="rounded-2xl border border-[#d8bd74]/35 bg-white/45 px-4 py-3 text-sm font-semibold text-[#2a1a0b] transition hover:border-[#b9933e] hover:text-[#8a641e]"
+                className="rounded-2xl border border-[#d8bd74]/35 bg-white/45 px-4 py-3 text-sm font-semibold text-[#2a1a0b] transition hover:border-[#b9933e] hover:bg-white/70 hover:text-[#8a641e]"
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
               >
@@ -181,7 +183,7 @@ export function SiteFooter() {
             <img
               src={HEADER_LOGO_SRC}
               alt="Eby’s Place"
-              className="h-[7.5rem] w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-[8.5rem]"
+              className="h-16 w-auto max-w-[10rem] object-contain object-left mix-blend-multiply drop-shadow-[0_8px_18px_rgba(112,78,28,.18)] sm:h-20 sm:max-w-[12rem]"
               loading="lazy"
               decoding="async"
             />
@@ -246,10 +248,10 @@ function HomepageLiveSearch() {
     return [...serviceResults, ...productResults].slice(0, 6);
   }, [query, services, products]);
   return (
-    <section className="container relative z-20 py-[3.75rem] md:py-20">
+    <section className="container relative z-20 -mt-10 pb-[3.75rem] md:-mt-12 md:pb-20">
       <div className="rounded-[2rem] border border-primary/25 bg-white p-5 shadow-[0_24px_80px_rgba(26,26,26,.12)] sm:p-7 md:p-8">
-        <label className="block text-sm font-bold uppercase tracking-[0.24em] text-primary">Find a service or product</label>
-        <input className="mt-3 w-full rounded-2xl border border-primary/20 bg-white px-4 py-3 text-base text-[#2e1b10] outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 sm:text-lg" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search braids, twists, aftercare, accessories..." />
+        <label className="block text-sm font-bold uppercase tracking-[0.24em] text-primary">Search services, hairstyles, products, and food items</label>
+        <input className="mt-3 w-full rounded-2xl border border-primary/20 bg-white px-4 py-3 text-base text-[#2e1b10] outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 sm:text-lg" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search braids, twists, aftercare, products, food items..." aria-label="Search services, hairstyles, products, and food items" />
         {query.trim().length >= 2 ? (
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {results.length ? results.map((result) => (
@@ -258,9 +260,9 @@ function HomepageLiveSearch() {
                 <b className="mt-2 block text-primary">{result.title}</b>
                 <small className="mt-1 block text-[#4A4A4A]">{result.detail}</small>
               </button>
-            )) : <p className="rounded-2xl border border-primary/20 bg-[#FAF7F2] p-4 text-sm text-[#4A4A4A] sm:col-span-2 lg:col-span-3">No matching services or products yet. Try “braids”, “twists”, or “aftercare”.</p>}
+            )) : <p className="rounded-2xl border border-primary/20 bg-[#FAF7F2] p-4 text-sm text-[#4A4A4A] sm:col-span-2 lg:col-span-3">No matching services, hairstyles, products, or food items yet. Try “braids”, “twists”, or “aftercare”.</p>}
           </div>
-        ) : <p className="mt-3 text-sm font-medium text-[#4A4A4A]">Start typing to search services and shop products instantly.</p>}
+        ) : <p className="mt-3 text-sm font-medium text-[#4A4A4A]">Start typing to search services, hairstyles, products, and food items instantly.</p>}
       </div>
     </section>
   );
@@ -380,6 +382,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <HomepageLiveSearch />
 
         <section className="section-pad bg-white/[0.045]">
           <div className="container grid gap-6 md:grid-cols-3">

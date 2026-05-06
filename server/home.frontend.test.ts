@@ -92,13 +92,17 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(appSource).toContain('<Route path="/admin/login" component={AdminLogin} />');
   });
 
-  it("adds a public product search form to navigation and routes searches to filtered shop results", () => {
+  it("adds public search forms and routes navigation searches to filtered shop results", () => {
     expect(homeSource).toContain('role="search" aria-label="Product search"');
     expect(homeSource).toContain('role="search" aria-label="Compact product search"');
     expect(homeSource).toContain('role="search" aria-label="Mobile product search"');
     expect(homeSource).toContain('placeholder="Search products"');
     expect(homeSource).toContain('`/shop?search=${encodeURIComponent(query)}`');
     expect(homeSource).toContain('navigateWithSmoothScroll(target, setLocation)');
+    expect(homeSource).toContain('<HomepageLiveSearch />');
+    expect(homeSource).toContain('Search services, hairstyles, products, and food items');
+    expect(homeSource).toContain('placeholder="Search braids, twists, aftercare, products, food items..."');
+    expect(homeSource).toContain('-mt-10 pb-[3.75rem] md:-mt-12 md:pb-20');
     expect(shopSource).toContain('new URLSearchParams(window.location.search).get("search")');
     expect(shopSource).toContain('function productMatchesSearch(product: ShopProduct, query: string)');
     expect(shopSource).toContain('Showing {visibleProducts.length} result');
@@ -106,7 +110,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(shopSource).toContain('navigateWithSmoothScroll("/shop")');
   });
 
-  it("uses the supplied stretched and blended clickable top logo while matching the lower logo colour", () => {
+  it("uses the supplied stretched top logo and a reduced, aligned footer logo", () => {
     expect(homeSource).toContain('href="/"');
     expect(homeSource).toContain("src={HEADER_LOGO_SRC}");
     expect(homeSource).toContain('fetchPriority="high"');
@@ -114,18 +118,22 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("h-16 w-[10.5rem] object-contain object-left mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]");
     expect(homeSource).toContain('<div className="hidden sm:block">');
     expect(homeSource).toContain("btn-gold px-2.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm");
+    expect(homeSource).toContain('navigateWithSmoothScroll("/shop", setLocation)');
+    expect(homeSource).toContain('Shop\n            </button>');
+    expect(homeSource).toContain('const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking");');
     expect(homeSource).not.toContain("h-24 w-[16rem] object-contain mix-blend-multiply sm:h-28 sm:w-[22rem] lg:h-24 lg:w-[18rem] xl:w-[20rem]");
     expect(homeSource).not.toContain("h-52 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
     expect(homeSource).not.toContain("h-36 w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-40");
     expect(homeSource).not.toContain("sm:h-56 lg:h-60");
     expect(homeSource).not.toContain("translate-y-8");
-    expect(homeSource).toContain("h-[7.5rem] w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-[8.5rem]");
+    expect(homeSource).toContain("h-16 w-auto max-w-[10rem] object-contain object-left mix-blend-multiply drop-shadow-[0_8px_18px_rgba(112,78,28,.18)] sm:h-20 sm:max-w-[12rem]");
     expect(homeSource).toContain("src={HEADER_LOGO_SRC}");
     expect(homeSource).toContain("alt=\"Eby’s Place\"");
     expect(homeSource).not.toContain("text-base font-extrabold uppercase tracking-[0.14em]");
     expect(homeSource).not.toContain("mt-1 max-w-[13rem]");
     expect(homeSource).not.toContain("<span className=\"text-2xl font-extrabold uppercase tracking-[0.14em] text-[#2a1a0b]\">");
     expect(homeSource).not.toContain("[filter:brightness(.55)_sepia(1)_saturate(1.35)]");
+    expect(homeSource).toContain("hover:bg-white/70 hover:text-[#8a641e]");
   });
 
   it("keeps storage-backed images on clean public Supabase URLs and decodes gallery images without blocking layout", () => {
