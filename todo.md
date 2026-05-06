@@ -792,3 +792,9 @@
 - [x] Validate homepage search and navigation updates with checks, tests, build, project health, TODO verification, and checkpoint/GitHub sync.
 
 - [x] Finish validation and checkpoint for the requested checkout, homepage search, and navigation updates only, with no unrelated source changes.
+
+- [x] Diagnose and fix admin image upload failure showing permission error 10002.
+- [x] Verify admin image upload uses server-side storage/auth correctly and does not rely on insufficient frontend permissions.
+- [x] Diagnose checkout failure path and fix site-code issues or document required payment configuration steps if checkout is blocked by live payment settings.
+- [x] Add or update regression coverage for admin upload permissions and checkout failure handling.
+- [x] Validate admin upload and checkout fixes with checks, tests, build, project health, TODO verification, and checkpoint sync.

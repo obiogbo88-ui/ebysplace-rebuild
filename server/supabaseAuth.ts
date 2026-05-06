@@ -3,7 +3,29 @@ import { TRPCError } from "@trpc/server";
 import type { Request } from "express";
 import { upsertUser } from "./db";
 
-const ADMIN_EMAIL = (process.env.EBYSPLACE_ADMIN_EMAIL ?? "info@ebysplace.com").trim().toLowerCase();
+function normalizeEmailCandidate(value: string | undefined) {
+  const email = value?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]?.trim().toLowerCase();
+  return email || null;
+}
+
+function getConfiguredAdminEmails() {
+  const configured = [
+    normalizeEmailCandidate(process.env.EBYSPLACE_ADMIN_EMAIL),
+    normalizeEmailCandidate(process.env.EBYSPLACE_OWNER_EMAIL),
+    normalizeEmailCandidate(process.env.OWNER_EMAIL),
+    normalizeEmailCandidate(process.env.SMTP_FROM),
+    "info@ebysplace.com",
+  ].filter((email): email is string => Boolean(email));
+  return Array.from(new Set(configured));
+}
+
+const ADMIN_EMAILS = getConfiguredAdminEmails();
+const PRIMARY_ADMIN_EMAIL = ADMIN_EMAILS[0] ?? "info@ebysplace.com";
+
+function isConfiguredAdminEmail(email: string | undefined) {
+  const normalized = normalizeEmailCandidate(email);
+  return Boolean(normalized && ADMIN_EMAILS.includes(normalized));
+}
 
 type SupabaseAuthUser = {
   id: string;
@@ -119,8 +141,8 @@ async function supabaseAuthFetch<T>(path: string, init: RequestInit = {}): Promi
 export async function signInAdminWithPassword(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
   try {
-    if (normalizedEmail !== ADMIN_EMAIL) {
-      console.error("[Auth] Rejected admin sign-in for non-admin email", { email: normalizedEmail });
+    if (!isConfiguredAdminEmail(normalizedEmail)) {
+      console.error("[Auth] Rejected admin sign-in for non-admin email", { email: normalizedEmail, configuredAdminEmails: ADMIN_EMAILS });
       throw new TRPCError({ code: "UNAUTHORIZED", message: "Only the configured Eby’s Place administrator can sign in." });
     }
 
@@ -167,8 +189,8 @@ export async function requestAdminPasswordReset(email: string, origin: string) {
     message: "If this email is the configured Eby’s Place administrator, a Supabase password reset link has been sent.",
   };
 
-  if (normalizedEmail !== ADMIN_EMAIL) {
-    console.warn("[Auth] Ignored password reset request for non-admin email", { email: normalizedEmail });
+  if (!isConfiguredAdminEmail(normalizedEmail)) {
+    console.warn("[Auth] Ignored password reset request for non-admin email", { email: normalizedEmail, configuredAdminEmails: ADMIN_EMAILS });
     return genericResponse;
   }
 
@@ -196,8 +218,8 @@ export async function updateAdminPasswordWithRecoveryToken(accessToken: string, 
       headers: { Authorization: "Bearer " + token },
     });
     const normalizedEmail = user.email?.trim().toLowerCase();
-    if (normalizedEmail !== ADMIN_EMAIL) {
-      console.error("[Auth] Rejected password update for non-admin recovery token", { email: normalizedEmail });
+    if (!isConfiguredAdminEmail(normalizedEmail)) {
+      console.error("[Auth] Rejected password update for non-admin recovery token", { email: normalizedEmail, configuredAdminEmails: ADMIN_EMAILS });
       throw new TRPCError({ code: "UNAUTHORIZED", message: "This reset link is not for the configured Eby’s Place administrator." });
     }
 
@@ -209,8 +231,8 @@ export async function updateAdminPasswordWithRecoveryToken(accessToken: string, 
 
     await upsertUser({
       openId: updated.id || user.id,
-      email: ADMIN_EMAIL,
-      name: getDisplayName(updated.id ? updated : user, ADMIN_EMAIL),
+      email: PRIMARY_ADMIN_EMAIL,
+      name: getDisplayName(updated.id ? updated : user, PRIMARY_ADMIN_EMAIL),
       loginMethod: "supabase_password",
       role: "admin",
       lastSignedIn: new Date(),
@@ -240,7 +262,7 @@ export async function authenticateSupabaseRequest(req: Request) {
     }
 
     const normalizedEmail = user.email.trim().toLowerCase();
-    const role = normalizedEmail === ADMIN_EMAIL ? "admin" : "user";
+    const role = isConfiguredAdminEmail(normalizedEmail) ? "admin" : "user";
     const localUser = {
       openId: user.id,
       email: normalizedEmail,

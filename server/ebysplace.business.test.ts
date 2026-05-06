@@ -292,7 +292,7 @@ describe("Eby’s Place platform business rules", () => {
       items: [{ productId: 1, variantId: 2, productName: "X-Pression Braiding Hair", variantName: "Colour 30", quantity: 2, unitPrice: "8.50" }],
     });
 
-    expect(result).toEqual({ orderId: 88, checkoutUrl: "https://checkout.stripe.com/shop", status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete Stripe payment to confirm the order." });
+    expect(result).toEqual({ orderId: 88, checkoutUrl: "https://checkout.stripe.com/shop", status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete secure payment to confirm the order." });
     expect(result.customerNotification).toContain("Eby’s Place");
     expect(JSON.stringify(result)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     expect(stripeCreateSessionMock).toHaveBeenCalledWith(expect.objectContaining({

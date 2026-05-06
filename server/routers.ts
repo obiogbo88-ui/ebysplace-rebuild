@@ -93,15 +93,21 @@ function getLiveStripePublishableKey() {
   return candidates.find((key) => key.startsWith("pk_live_")) || candidates.find(Boolean) || "";
 }
 
+const CUSTOMER_PAYMENT_UNAVAILABLE_MESSAGE = "Payment is currently unavailable. Please contact us to complete your booking.";
+
+function paymentUnavailableError() {
+  return new TRPCError({ code: "PRECONDITION_FAILED", message: CUSTOMER_PAYMENT_UNAVAILABLE_MESSAGE });
+}
+
 function getStripe() {
   const key = getLiveStripeSecretKey();
   if (!key) {
     console.warn("[Payments] Live payment checkout attempted without a configured secret key. Configure EBYSPLACE_LIVE_STRIPE_SECRET_KEY in deployment settings.");
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Payment is currently unavailable. Please contact us to complete your booking." });
+    throw paymentUnavailableError();
   }
   if (!key.startsWith("sk_live_")) {
     console.warn("[Payments] Live payment checkout attempted without a live secret key. Configure EBYSPLACE_LIVE_STRIPE_SECRET_KEY in deployment settings.");
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Payment is currently unavailable. Please contact us to complete your booking." });
+    throw paymentUnavailableError();
   }
   return new Stripe(key);
 }
@@ -300,7 +306,9 @@ export const appRouter = router({
         addOns: input.addOns,
         bookingProducts: input.bookingProducts,
       });
-      const session = await stripe.checkout.sessions.create({
+      let session: Stripe.Checkout.Session;
+      try {
+        session = await stripe.checkout.sessions.create({
         mode: "payment",
         customer_email: input.clientEmail,
         client_reference_id: input.bookingId.toString(),
@@ -311,8 +319,12 @@ export const appRouter = router({
         success_url: `${origin}/booking/success?booking=${input.bookingId}`,
         cancel_url: `${origin}/booking?payment=cancelled&booking=${input.bookingId}`,
         metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) },
-      });
-      if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Payment is currently unavailable. Please contact us to complete your booking." });
+        });
+      } catch (error) {
+        console.error("[Payments] Booking checkout session creation failed", error);
+        throw paymentUnavailableError();
+      }
+      if (!session.url) throw paymentUnavailableError();
       await db.updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),
@@ -324,7 +336,9 @@ export const appRouter = router({
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
       const orderId = order.id.toString();
-      const session = await stripe.checkout.sessions.create({
+      let session: Stripe.Checkout.Session;
+      try {
+        session = await stripe.checkout.sessions.create({
         mode: "payment",
         customer_email: input.customerEmail,
         client_reference_id: orderId,
@@ -350,13 +364,17 @@ export const appRouter = router({
           customer_email: input.customerEmail,
           customer_name: input.customerName,
         },
-      });
-      if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout link. Please try again." });
+        });
+      } catch (error) {
+        console.error("[Payments] Shop checkout session creation failed", error);
+        throw paymentUnavailableError();
+      }
+      if (!session.url) throw paymentUnavailableError();
       await db.updateOrderCheckout(order.id, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
       await notifyOwnerSafely(
         "New Eby’s Place shop order checkout started",
         [
-          `A customer started Stripe checkout for a shop order.`,
+          `A customer started secure checkout for a shop order.`,
           `Order ID: ${order.id}`,
           `Customer: ${input.customerName}`,
           `Email: ${input.customerEmail}`,
@@ -366,9 +384,9 @@ export const appRouter = router({
       );
       await sendCustomerSmsSafely({
         to: input.customerPhone,
-        body: `Eby’s Place has prepared your secure checkout for order #${order.id}. Please complete Stripe payment in the browser tab to confirm your order.`,
+        body: `Eby’s Place has prepared your secure checkout for order #${order.id}. Please complete secure payment in the browser tab to confirm your order.`,
       });
-      return { orderId: order.id, checkoutUrl: session.url, status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete Stripe payment to confirm the order." };
+      return { orderId: order.id, checkoutUrl: session.url, status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete secure payment to confirm the order." };
     }),
     uploadTryOnPhoto: publicProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("try-on-photo.jpg") })).mutation(async ({ input }) => {
       const { mimeType, buffer } = decodeDataUrl(input.dataUrl);
