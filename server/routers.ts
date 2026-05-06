@@ -476,13 +476,14 @@ export const appRouter = router({
       const { variants, ...product } = input;
       return db.createProduct(product, variants);
     }),
-    updateProduct: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), seoTitle: z.string().min(8).max(255).optional(), seoDescription: z.string().min(30).max(320).optional(), category: productCategory.optional(), description: z.string().min(10).optional(), price: z.string().regex(/^\d+(\.\d{2})?$/).optional(), imageUrl: z.string().min(5).optional(), badge: z.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z.number().int().min(0).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+    updateProduct: adminProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().min(2).optional(), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), seoTitle: z.string().min(8).max(255).optional(), seoDescription: z.string().min(30).max(320).optional(), category: productCategory.optional(), description: z.string().min(10).optional(), price: z.string().regex(/^\d+(\.\d{2})?$/).optional(), imageUrl: z.string().min(5).optional(), badge: z.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z.number().int().min(0).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
       const { id, ...changes } = input;
       return db.updateProduct(id, changes);
     }),
-    updateProductStock: adminProcedure.input(z.object({ id: z.number(), stockQuantity: z.number().int().min(0), stockStatus: productStockStatus })).mutation(({ input }) => db.updateProductStock(input.id, input.stockQuantity, input.stockStatus)),
-    updateProductVariants: adminProcedure.input(z.object({ productId: z.number(), variants: z.array(z.object({ name: z.string().min(1), colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), stockQuantity: z.number().int().min(0).default(0) })) })).mutation(({ input }) => db.replaceProductVariants(input.productId, input.variants)),
-    uploadProductImage: adminProcedure.input(z.object({ productId: z.number().optional(), productName: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("product-image.png") })).mutation(async ({ input }) => {
+    updateProductStock: adminProcedure.input(z.object({ id: z.number().int().positive(), stockQuantity: z.number().int().min(0), stockStatus: productStockStatus })).mutation(({ input }) => db.updateProductStock(input.id, input.stockQuantity, input.stockStatus)),
+    updateProductVariants: adminProcedure.input(z.object({ productId: z.number().int().positive(), variants: z.array(z.object({ name: z.string().min(1), colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), stockQuantity: z.number().int().min(0).default(0) })) })).mutation(({ input }) => db.replaceProductVariants(input.productId, input.variants)),
+    deleteProduct: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => db.deleteProduct(input.id)),
+    uploadProductImage: adminProcedure.input(z.object({ productId: z.number().int().positive().optional(), productName: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("product-image.png") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.productName}-${input.fileName}`, folder: "products" });
       if (input.productId) await db.updateProduct(input.productId, { imageUrl: uploaded.url });
       return uploaded;

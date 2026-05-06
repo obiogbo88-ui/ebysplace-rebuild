@@ -16,6 +16,7 @@ import {
   Activity,
   Users,
   Mail,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -150,6 +151,14 @@ export default function Admin() {
     onError: (error: any) => toast.error(error.message),
   });
   const updateProduct = trpc.admin.updateProduct.useMutation(opts);
+  const deleteProduct = trpc.admin.deleteProduct.useMutation({
+    onSuccess: () => {
+      refresh();
+      scrollAdminFeedback("products");
+      toast.success("Product deleted from Supabase");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
   const updateService = trpc.admin.updateService.useMutation(opts);
   const uploadProductImage = trpc.admin.uploadProductImage.useMutation({
     onSuccess: () => {
@@ -529,7 +538,10 @@ export default function Admin() {
                         ))}
                       </div>
                     </div>
-                    <button className="btn-gold py-2" onClick={() => { if (!product.id) { toast.error("This product has no database ID. Please reload the page and try again."); return; } const price = readAdminPrice(`product-price-${product.id}`, "Shop price"); if (!price) return; updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, price, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, imageUrl: (document.getElementById(`product-image-${product.id}`) as HTMLInputElement).value || undefined, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value }); updateProductVariants.mutate({ productId: product.id, variants: parseColourChoices((document.getElementById(`product-colours-${product.id}`) as HTMLTextAreaElement).value) }); }}>Save product price, SEO & colours</button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button className="btn-gold flex-1 py-2" onClick={() => { if (!product.id) { toast.error("This product has no database ID. Please reload the page and try again."); return; } const price = readAdminPrice(`product-price-${product.id}`, "Shop price"); if (!price) return; updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, price, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, imageUrl: (document.getElementById(`product-image-${product.id}`) as HTMLInputElement).value || undefined, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value }); updateProductVariants.mutate({ productId: product.id, variants: parseColourChoices((document.getElementById(`product-colours-${product.id}`) as HTMLTextAreaElement).value) }); }}>Save product price, SEO & colours</button>
+                      <button type="button" className="btn-dark border-red-400/40 py-2 text-red-100 hover:border-red-300 hover:text-red-50" disabled={deleteProduct.isPending} onClick={() => { if (!product.id) { toast.error("This product has no database ID. Please reload the page and try again."); return; } if (window.confirm(`Delete ${product.name} from the Supabase products table?`)) deleteProduct.mutate({ id: Number(product.id) }); }}><Trash2 className="mr-2 h-4 w-4" />Delete product</button>
+                    </div>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                     <input type="number" min={0} defaultValue={product.stockQuantity} id={`stock-${product.id}`} />

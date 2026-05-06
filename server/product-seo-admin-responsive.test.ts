@@ -92,6 +92,52 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(bookingSource).not.toContain("bookingProducts: selectedProducts");
   });
 
+  it("keeps Supabase product IDs valid across admin actions, public product reads, and paid stock reduction", () => {
+    const dbSource = readSource("server/db.ts");
+    const adminSource = readSource("client/src/pages/Admin.tsx");
+    const routerSource = readSource("server/routers.ts");
+
+    expect(dbSource).toContain("const rawUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;");
+    expect(dbSource).toContain("const id = Number(row.id);");
+    expect(dbSource).toContain("id: Number.isFinite(id) && id > 0 ? id : undefined");
+    expect(dbSource).toContain("if (!Number.isFinite(id) || id <= 0) throw new Error(\"A valid Supabase product id is required.\");");
+    expect(dbSource).toContain("async function decrementSupabaseProductStock(productId: number, quantity: number, variantId?: number | null)");
+    expect(dbSource).toContain("const supabaseProductRows = await listSupabaseProducts();");
+    expect(dbSource).toContain("await decrementSupabaseProductStock(item.productId, item.quantity, item.variantId);");
+    expect(adminSource).toContain("This product has no database ID. Please reload the page and try again.");
+    expect(adminSource).toContain("deleteProduct.mutate({ id: Number(product.id) })");
+    expect(adminSource).toContain("updateProductVariants.mutate({ productId: product.id");
+    expect(routerSource).toContain("productId: z.number().int().positive()");
+  });
+
+  it("keeps admin-managed services, gallery, reviews, website sections, add-ons, and checkout records wired to live database flows", () => {
+    const dbSource = readSource("server/db.ts");
+    const adminSource = readSource("client/src/pages/Admin.tsx");
+    const bookingSource = readSource("client/src/pages/Booking.tsx");
+    const homeSource = readSource("client/src/pages/Home.tsx");
+    const gallerySource = readSource("client/src/pages/Gallery.tsx");
+
+    expect(dbSource).toContain("export async function listServices(category?: string)");
+    expect(dbSource).toContain("export async function updateService(id: number");
+    expect(dbSource).toContain("export async function addGalleryImage");
+    expect(dbSource).toContain("export async function moderateReview");
+    expect(dbSource).toContain("export async function updateWebsiteSection");
+    expect(dbSource).toContain("export async function updateBookingStatus");
+    expect(dbSource).toContain("export async function updateOrderStatus");
+    expect(dbSource).toContain("const existing = await db.select({ id: services.id }).from(services).where(eq(services.slug, service.slug)).limit(1);");
+    expect(dbSource).toContain("if (existing.length === 0) await db.insert(products).values(product);");
+    expect(adminSource).toContain("updateService.mutate");
+    expect(adminSource).toContain("updateWebsiteSection.mutate");
+    expect(adminSource).toContain("addGallery.mutate");
+    expect(bookingSource).toContain("trpc.public.services.useQuery");
+    expect(bookingSource).toContain("service.category === \"Add-ons\"");
+    expect(bookingSource).toContain("const bookingCheckoutTotal = calculateBookingCheckoutTotal({");
+    expect(bookingSource).toContain("addOns: selectedAddOns");
+    expect(homeSource).toContain("trpc.public.websiteSections.useQuery");
+    expect(homeSource).toContain("trpc.public.featuredServices.useQuery");
+    expect(gallerySource).toContain("trpc.public.gallery.useQuery");
+  });
+
   it("keeps booking checkout live Stripe configuration failures clear for production", () => {
     const bookingSource = readSource("client/src/pages/Booking.tsx");
     const routerSource = readSource("server/routers.ts");

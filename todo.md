@@ -802,3 +802,22 @@
 - [x] Remove the visible green floating WhatsApp logo from the homepage/public website.
 - [x] Preserve unrelated homepage content, navigation, booking, shop, checkout, admin, and notification behavior while removing the WhatsApp floating logo.
 - [x] Validate the WhatsApp logo removal with tests, production build, project health, TODO verification, and checkpoint sync.
+
+- [x] Diagnose and fix the product database error shown as "This product has no database, please reload."
+- [x] Ensure products are saved to and fetched from the Supabase-backed products table with valid id, name, slug, price, description, image_url, colour, stock, and status fields.
+- [x] Fix the undefined product id validation failure so editing, deleting, saving, viewing, booking, and checkout flows pass the correct Supabase product id.
+- [x] Confirm product cards and admin dashboard use live database products rather than static/demo data for mutable product actions.
+- [x] Verify Supabase-related deployment environment variable status for the app stack and document any naming mismatch such as NEXT_PUBLIC_* versus Vite/server variables.
+- [x] Validate product create, edit, delete, fetch, display, regression tests, production build, project health, TODO verification, and checkpoint sync.
+
+- [x] Audit every admin-managed area, including products, services, homepage/content sections, gallery, reviews, bookings, orders, uploads, availability, analytics-facing summaries, and checkout-related records.
+- [x] Ensure admin create, edit, delete, approve, upload, status, stock, price, and content changes persist to the configured database and are not static/demo-only data.
+- [x] Ensure public frontend pages automatically fetch and display the latest admin/database changes without requiring hardcoded product, service, gallery, review, or content data.
+- [x] Fix actionable admin automation bugs found across product CRUD, service editing, homepage content, gallery uploads, review moderation, booking/order status, checkout records, and upload flows.
+- [x] Add or update regression tests covering admin-to-frontend live data automation and valid database ids for edited, deleted, saved, and viewed records.
+- [x] Run final broad validation across TypeScript, tests, production build, project health, and relevant runtime logs before checkpointing.
+
+- [x] Investigate checkout logic across booking deposits and shop orders, including Stripe session creation, payment status updates, webhook handling, and customer-safe failure messages.
+- [x] Investigate service add-on logic end to end, including admin-managed add-on data, public booking display, price/deposit calculations, validation, and checkout metadata.
+- [x] Fix actionable checkout and add-on bugs so admin-managed pricing and add-ons flow correctly into the public frontend and payment records.
+- [x] Conclude this audit phase with a clear summary of admin automation coverage, checkout findings, add-on findings, fixes applied, and remaining deployment requirements.

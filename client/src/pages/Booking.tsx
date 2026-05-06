@@ -47,14 +47,12 @@ const STEPS = [
   { id: 6, label: "Review & Pay" },
 ];
 
-const addOnOptions = [
-  { id: "hair-wash-prep", name: "Hair wash prep", price: "15.00", description: "A gentle cleanse and prep service before braiding." },
-  { id: "beads", name: "Beads", price: "8.00", description: "Decorative bead finish selected to complement your style." },
-  { id: "edge-control", name: "Edge control finish", price: "5.00", description: "A polished edge-control finish for a neat final look." },
-  { id: "take-down-help", name: "Take-down help", price: "20.00", description: "Assistance removing an existing protective style before the appointment." },
-];
-
-type AddOnOption = typeof addOnOptions[number];
+type AddOnOption = {
+  id: string;
+  name: string;
+  price: string;
+  description?: string | null;
+};
 type BookingProductSelection = {
   productId: number;
   productName: string;
@@ -168,7 +166,19 @@ export default function Booking() {
   const { data: services = [], isLoading: servicesLoading } = trpc.public.services.useQuery({});
   const { data: products = [], isLoading: productsLoading } = trpc.public.products.useQuery();
   const serviceOptions = useMemo(
-    () => (services as any[]).filter(service => service.isBookable !== "false"),
+    () => (services as any[]).filter(service => service.category !== "Add-ons" && service.isBookable !== "false"),
+    [services]
+  );
+  const addOnOptions = useMemo<AddOnOption[]>(
+    () => (services as any[])
+      .filter(service => service.category === "Add-ons")
+      .map(service => ({
+        id: String(service.id ?? service.slug),
+        name: service.name,
+        price: formatMoney(moneyToNumber(service.priceFrom)),
+        description: service.description,
+      }))
+      .filter(addOn => addOn.id && addOn.name && moneyToNumber(addOn.price) >= 0),
     [services]
   );
   const productOptions = useMemo(
@@ -552,11 +562,14 @@ export default function Booking() {
                     >
                       <span className="text-xs font-bold uppercase tracking-wide text-primary">{selected ? "Selected" : "Optional"}</span>
                       <h3 className="serif mt-2 text-2xl font-bold text-[#24170d]">{addOn.name}</h3>
-                      <p className="mt-1 text-sm leading-6 text-[#4a3014]">{addOn.description}</p>
+                      {addOn.description ? <p className="mt-1 text-sm leading-6 text-[#4a3014]">{addOn.description}</p> : null}
                       <b className="mt-3 block text-xl text-primary">£{addOn.price}</b>
                     </button>
                   );
                 })}
+                {!servicesLoading && addOnOptions.length === 0 ? (
+                  <p className="rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-5 text-[#4a3014]">No appointment add-ons are available right now. Continue to shop products or review your booking.</p>
+                ) : null}
               </div>
               <div className="flex flex-wrap gap-3">
                 <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>

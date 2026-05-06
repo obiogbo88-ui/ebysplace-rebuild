@@ -1,0 +1,1063 @@
+=== ROUTER ADMIN PROCEDURES ===
+4:import Stripe from "stripe";
+9:import { adminProcedure, publicProcedure, router } from "./_core/trpc";
+16:const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
+17:const bookingStatus = z.enum(["pending", "confirmed", "completed", "cancelled"]);
+18:const reviewStatus = z.enum(["approved", "rejected"]);
+19:const orderStatus = z.enum(["draft", "pending_payment", "paid", "fulfilling", "shipped", "completed", "cancelled"]);
+20:const productStockStatus = z.enum(["in_stock", "low_stock", "out_of_stock"]);
+21:const productCategory = z.enum(["Accessories", "Aftercare", "Hair Attachments"]);
+22:const galleryCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"]);
+24:const bookingAddOnInput = z.object({
+30:const bookingProductInput = z.object({
+31:  productId: z.number(),
+32:  productName: z.string().min(2),
+37:const bookingInput = z.object({
+38:  serviceId: z.number().optional(),
+39:  serviceLocation: z.enum(["studio", "home_service"]).default("studio"),
+40:  serviceName: z.string().min(2),
+52:  addOns: z.array(bookingAddOnInput).default([]),
+53:  bookingProducts: z.array(bookingProductInput).default([]),
+56:const orderInput = z.object({
+67:    productId: z.number(),
+69:    productName: z.string().min(2),
+96:const CUSTOMER_PAYMENT_UNAVAILABLE_MESSAGE = "Payment is currently unavailable. Please contact us to complete your booking.";
+105:    console.warn("[Payments] Live payment checkout attempted without a configured secret key. Configure EBYSPLACE_LIVE_STRIPE_SECRET_KEY in deployment settings.");
+109:    console.warn("[Payments] Live payment checkout attempted without a live secret key. Configure EBYSPLACE_LIVE_STRIPE_SECRET_KEY in deployment settings.");
+116:  return { stripeMode: "live" as const, publishableKeyConfigured: Boolean(getLiveStripePublishableKey().startsWith("pk_live_")) };
+132:function formatBookingExtras(input: { addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
+133:  const addOns = input.addOns?.length
+134:    ? input.addOns.map((item) => `${item.name} (£${item.price})`).join(", ")
+136:  const bookingProducts = input.bookingProducts?.length
+137:    ? input.bookingProducts.map((item) => `${item.quantity} × ${item.productName} (£${item.unitPrice})`).join(", ")
+139:  return { addOns, bookingProducts };
+142:function buildBookingNote(input: { deliveryNote?: string; serviceLocation?: "studio" | "home_service"; homeServiceSurcharge?: string; addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
+146:    `Service location: ${input.serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}`,
+147:    input.homeServiceSurcharge && Number(input.homeServiceSurcharge) > 0 ? `Home service surcharge: £${input.homeServiceSurcharge}` : undefined,
+148:    `Optional add-ons: ${extras.addOns}`,
+149:    `Optional shop products for appointment order: ${extras.bookingProducts}`,
+157:function buildBookingCheckoutLineItems(input: { serviceName: string; addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
+159:    { price_data: { currency: "gbp", unit_amount: 2000, product_data: { name: "Eby’s Place £20 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 },
+160:    ...(input.addOns || []).map((item) => ({
+161:      price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(item.price), product_data: { name: `Add-on: ${item.name}`, description: "Selected Eby’s Place appointment add-on" } },
+164:    ...(input.bookingProducts || []).map((item) => ({
+165:      price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(item.unitPrice), product_data: { name: item.productName, description: "Eby’s Place shop product added to appointment checkout" } },
+171:function bookingExtrasTotal(input: { addOns?: Array<{ price: string }>; bookingProducts?: Array<{ quantity: number; unitPrice: string }> }) {
+172:  const addOnsTotal = (input.addOns || []).reduce((sum, item) => sum + Number(item.price), 0);
+173:  const productsTotal = (input.bookingProducts || []).reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0);
+174:  return addOnsTotal + productsTotal;
+186:    throw new TRPCError({ code: "BAD_REQUEST", message: "Only image uploads are supported for admin media." });
+214:    services: publicProcedure.input(z.object({ category: serviceCategory.optional() }).optional()).query(({ input }) => db.listServices(input?.category)),
+216:    products: publicProcedure.query(() => db.listProducts()),
+217:    availability: publicProcedure.query(() => db.getAvailabilitySettings()),
+220:    websiteSections: publicProcedure.query(() => db.listWebsiteSections()),
+221:    reviews: publicProcedure.query(() => db.listApprovedReviews()),
+222:    gallery: publicProcedure.input(z.object({ category: z.string().optional() }).optional()).query(({ input }) => db.listGallery(input?.category)),
+223:    newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(async ({ input }) => {
+224:      const result = await db.subscribeNewsletter(input.email, input.productAlerts);
+226:        sendNewsletterWelcomeEmailSafely({ to: input.email, productAlerts: input.productAlerts }),
+229:          `${input.email} joined Eby’s Place updates${input.productAlerts ? " with product alerts" : ""}.`
+234:    submitReview: publicProcedure.input(z.object({ customerName: z.string().min(2), rating: z.number().min(1).max(5), reviewText: z.string().min(10) })).mutation(async ({ input }) => {
+235:      const review = await db.submitReview(input);
+237:        "New Eby’s Place review submitted",
+239:          `A customer submitted a website review for moderation.`,
+240:          `Review ID: ${review.id}`,
+243:          `Status: ${review.status}`,
+246:      return { ...review, customerNotification: "Thank you for reviewing Eby’s Place. Your review has been received and is pending approval." };
+248:    createBooking: publicProcedure.input(bookingInput).mutation(async ({ input }) => {
+249:      const { addOns, bookingProducts, ...bookingFields } = input;
+250:      const serviceLocation = input.serviceLocation || "studio";
+252:      const homeServiceSurcharge = serviceLocation === "home_service" ? Number(settings.homeServiceSurcharge || 0).toFixed(2) : "0.00";
+253:      if (serviceLocation === "home_service") {
+255:        if (missing) throw new TRPCError({ code: "BAD_REQUEST", message: "Home Service bookings require the customer name, address line 1, city, and county. Postcode is optional." });
+257:      const sanitizedBookingFields = serviceLocation === "studio"
+258:        ? { ...bookingFields, serviceLocation, addressLine1: "Studio visit", addressLine2: null, city: "Studio", county: null, postcode: "STUDIO", homeServiceSurcharge }
+259:        : { ...bookingFields, serviceLocation, addressLine1: input.addressLine1!.trim(), addressLine2: input.addressLine2?.trim() || null, city: input.city!.trim(), county: input.county?.trim() || null, postcode: input.postcode?.trim() || "", homeServiceSurcharge };
+260:      const bookingNote = buildBookingNote({ ...input, serviceLocation, homeServiceSurcharge });
+265:      const booking = await db.createBooking({ ...sanitizedBookingFields, deliveryNote: bookingNote, status: "pending", depositStatus: "unpaid" });
+266:      const extras = formatBookingExtras({ addOns, bookingProducts });
+268:        "New Eby’s Place booking request",
+270:          `A customer has submitted a booking request and needs to complete the £20 secure deposit.`,
+271:          `Booking ID: ${booking.id}`,
+272:          `Service: ${input.serviceName}`,
+277:          `Location type: ${serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}`,
+278:          serviceLocation === "home_service" ? `Customer address: ${[input.addressLine1, input.addressLine2, input.city, input.county, input.postcode].filter(Boolean).join(", ")}` : undefined,
+279:          serviceLocation === "home_service" ? `Home service surcharge: £${homeServiceSurcharge}` : undefined,
+280:          `Optional add-ons: ${extras.addOns}`,
+281:          `Optional shop products: ${extras.bookingProducts}`,
+287:        body: `Eby’s Place received your ${input.serviceName} booking request for ${input.appointmentDate} at ${input.appointmentTime}. Please complete the £20 secure deposit on the website to secure it. Optional add-ons/products are recorded only when selected.`,
+289:      return { bookingId: booking.id, depositAmount: 20, homeServiceSurcharge: Number(homeServiceSurcharge), depositCurrency: "GBP", serviceLocation, message: "A £20 non-refundable deposit is required to secure your Eby’s Place appointment. You will receive on-screen confirmation after payment is confirmed.", customerNotification: "Your Eby’s Place booking request has been received. Add-ons and shop products are optional, and you can complete the secure deposit payment now." };
+292:      bookingId: z.number(),
+295:      serviceName: z.string().min(2),
+296:      addOns: z.array(bookingAddOnInput).default([]),
+297:      bookingProducts: z.array(bookingProductInput).default([]),
+299:      const stripe = getStripe();
+301:      const booking = await db.getBookingById(input.bookingId);
+302:      const homeServiceSurcharge = Number(booking?.homeServiceSurcharge || 0);
+303:      const extrasTotal = bookingExtrasTotal(input);
+305:        serviceName: input.serviceName,
+306:        addOns: input.addOns,
+307:        bookingProducts: input.bookingProducts,
+311:        session = await stripe.checkout.sessions.create({
+314:        client_reference_id: input.bookingId.toString(),
+315:        payment_intent_data: { receipt_email: input.clientEmail, description: `Eby’s Place booking deposit for ${input.serviceName}`, statement_descriptor_suffix: "EBYSPLACE" },
+316:        custom_text: { submit: { message: "You are paying Eby’s Place securely. Your booking deposit confirmation and receipt will use the email entered for checkout." } },
+319:        success_url: `${origin}/booking/success?booking=${input.bookingId}`,
+320:        cancel_url: `${origin}/booking?payment=cancelled&booking=${input.bookingId}`,
+321:        metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) },
+324:        console.error("[Payments] Booking checkout session creation failed", error);
+328:      await db.updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
+329:      return { checkoutUrl: session.url, bookingId: input.bookingId };
+331:    createOrder: publicProcedure.input(orderInput).mutation(async ({ input, ctx }) => {
+333:        throw new TRPCError({ code: "BAD_REQUEST", message: "Shop orders require delivery address line 1 and city. Postcode is optional." });
+335:      const order = await db.createOrderWithItems(input);
+336:      const stripe = getStripe();
+338:      const orderId = order.id.toString();
+341:        session = await stripe.checkout.sessions.create({
+344:        client_reference_id: orderId,
+345:        payment_intent_data: { receipt_email: input.customerEmail, description: "Eby’s Place shop order", statement_descriptor_suffix: "EBYSPLACE" },
+346:        custom_text: { submit: { message: "You are paying Eby’s Place securely. Your shop order confirmation and receipt will use the email entered for checkout." } },
+347:        line_items: order.items.map((item) => ({
+351:            product_data: {
+352:              name: item.variantName ? `${item.productName} — ${item.variantName}` : item.productName,
+353:              description: "Eby’s Place shop product",
+359:        success_url: `${origin}/shop?payment=success&order=${orderId}`,
+360:        cancel_url: `${origin}/shop?payment=cancelled&order=${orderId}`,
+362:          order_id: orderId,
+363:          order_type: "shop_products",
+369:        console.error("[Payments] Shop checkout session creation failed", error);
+373:      await db.updateOrderCheckout(order.id, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
+375:        "New Eby’s Place shop order checkout started",
+377:          `A customer started secure checkout for a shop order.`,
+378:          `Order ID: ${order.id}`,
+382:          `Items: ${order.items.map((item) => `${item.quantity} × ${item.variantName ? `${item.productName} — ${item.variantName}` : item.productName}`).join(", ")}`,
+387:        body: `Eby’s Place has prepared your secure checkout for order #${order.id}. Please complete secure payment in the browser tab to confirm your order.`,
+389:      return { orderId: order.id, checkoutUrl: session.url, status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete secure payment to confirm the order." };
+429:            `A visitor generated an AI Try-On preview on the website.`,
+436:        return { id: record.id, generatedImageUrl: result.url, status: "completed" as const, customerNotification: "Your Eby’s Place AI Try-On preview is ready." };
+446:  admin: router({
+447:    summary: adminProcedure.query(() => db.adminSummary()),
+448:    lists: adminProcedure.query(() => db.adminLists()),
+449:    listEmailNotificationLogs: adminProcedure.query(() => db.listEmailNotificationLogs()),
+450:    moderateReview: adminProcedure.input(z.object({ id: z.number(), status: reviewStatus })).mutation(({ input }) => db.moderateReview(input.id, input.status)),
+451:    updateBookingStatus: adminProcedure.input(z.object({ id: z.number(), status: bookingStatus })).mutation(({ input }) => db.updateBookingStatus(input.id, input.status)),
+452:    updateOrderStatus: adminProcedure.input(z.object({ id: z.number(), status: orderStatus })).mutation(({ input }) => db.updateOrderStatus(input.id, input.status)),
+453:    blockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional(), reason: z.string().optional() })).mutation(({ input }) => db.blockBookingSlot(input)),
+454:    unblockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional() })).mutation(({ input }) => db.unblockBookingSlot(input)),
+455:    updateInstagramSettings: adminProcedure.input(z.object({ handle: z.string().min(2), feedUrl: z.string().url(), enabled: z.boolean(), note: z.string().optional() })).mutation(({ input }) => db.updateInstagramSettings(input)),
+456:    updateHomeServiceSurcharge: adminProcedure.input(z.object({ homeServiceSurcharge: z.string().regex(/^\d+(\.\d{2})?$/) })).mutation(({ input }) => db.updateHomeServiceSurcharge(input.homeServiceSurcharge)),
+457:    sendReviewRequest: adminProcedure.input(z.object({ bookingId: z.number() })).mutation(async ({ input }) => {
+458:      const booking = await db.getBookingById(input.bookingId);
+459:      if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });
+460:      await sendReviewRequestEmailSafely({ to: booking.clientEmail, customerName: booking.clientName, bookingId: booking.id, serviceName: booking.serviceName, reviewUrl: `/reviews?booking=${booking.id}` });
+463:    resendEmailNotification: adminProcedure.input(z.object({ logId: z.number().int().positive() })).mutation(async ({ input }) => {
+471:    updateService: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), description: z.string().min(10).optional(), duration: z.string().min(2).optional(), priceFrom: z.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z.string().optional(), imageUrl: z.string().min(5).optional(), isBookable: z.enum(["true", "false"]).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+475:    createProduct: adminProcedure.input(z.object({ name: z.string().min(2), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/), seoTitle: z.string().min(8).max(255).optional(), seoDescription: z.string().min(30).max(320).optional(), category: productCategory, description: z.string().min(10), price: z.string().regex(/^\d+(\.\d{2})?$/), imageUrl: z.string().min(5).optional(), badge: z.string().optional(), stockStatus: productStockStatus.default("in_stock"), stockQuantity: z.number().int().min(0).default(0), isFeatured: z.enum(["true", "false"]).default("false"), variants: z.array(z.object({ name: z.string().min(1), colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), stockQuantity: z.number().int().min(0).default(0) })).default([]) })).mutation(({ input }) => {
+476:      const { variants, ...product } = input;
+477:      return db.createProduct(product, variants);
+479:    updateProduct: adminProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().min(2).optional(), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), seoTitle: z.string().min(8).max(255).optional(), seoDescription: z.string().min(30).max(320).optional(), category: productCategory.optional(), description: z.string().min(10).optional(), price: z.string().regex(/^\d+(\.\d{2})?$/).optional(), imageUrl: z.string().min(5).optional(), badge: z.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z.number().int().min(0).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+483:    updateProductStock: adminProcedure.input(z.object({ id: z.number().int().positive(), stockQuantity: z.number().int().min(0), stockStatus: productStockStatus })).mutation(({ input }) => db.updateProductStock(input.id, input.stockQuantity, input.stockStatus)),
+484:    updateProductVariants: adminProcedure.input(z.object({ productId: z.number().int().positive(), variants: z.array(z.object({ name: z.string().min(1), colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), stockQuantity: z.number().int().min(0).default(0) })) })).mutation(({ input }) => db.replaceProductVariants(input.productId, input.variants)),
+485:    deleteProduct: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => db.deleteProduct(input.id)),
+486:    uploadProductImage: adminProcedure.input(z.object({ productId: z.number().int().positive().optional(), productName: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("product-image.png") })).mutation(async ({ input }) => {
+487:      const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.productName}-${input.fileName}`, folder: "products" });
+488:      if (input.productId) await db.updateProduct(input.productId, { imageUrl: uploaded.url });
+491:    insights: adminProcedure.query(() => db.adminInsights()),
+492:    uploadServiceImage: adminProcedure.input(z.object({ serviceId: z.number(), serviceName: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("service-image.png") })).mutation(async ({ input }) => {
+493:      const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.serviceName}-${input.fileName}`, folder: "services" });
+494:      await db.updateService(input.serviceId, { imageUrl: uploaded.url });
+497:    uploadGalleryImage: adminProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("gallery-image.png") })).mutation(async ({ input }) => uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: input.fileName, folder: "gallery" })),
+498:    uploadWebsiteSectionImage: adminProcedure.input(z.object({ sectionKey: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("section-image.png"), imageRole: z.enum(["main", "portrait"]).default("main") })).mutation(async ({ input }) => {
+499:      const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.sectionKey}-${input.imageRole}-${input.fileName}`, folder: "website-sections" });
+500:      await db.updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url } : { imageUrl: uploaded.url });
+503:    addGalleryImage: adminProcedure.input(z.object({ title: z.string().min(2), category: galleryCategory, imageUrl: z.string().min(5), altText: z.string().min(5), isPublished: z.enum(["true", "false"]).default("true"), sortOrder: z.number().int().default(0) })).mutation(({ input }) => db.addGalleryImage(input)),
+504:    updateWebsiteSection: adminProcedure.input(z.object({ sectionKey: z.string().min(2), title: z.string().min(2).optional(), eyebrow: z.string().optional(), body: z.string().optional(), ctaLabel: z.string().optional(), ctaHref: z.string().optional(), imageUrl: z.string().optional(), portraitImageUrl: z.string().optional(), portraitDescription: z.string().optional(), isPublished: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+505:      const { sectionKey, ...changes } = input;
+506:      return db.updateWebsiteSection(sectionKey, changes);
+\n=== DB PRODUCT/SUPABASE/CHECKOUT/ADDON HELPERS ===
+6:  bookings,
+8:  galleryImages,
+11:  orderItems,
+12:  orders,
+13:  productVariants,
+14:  products,
+15:  reviews,
+16:  services,
+119:type SupabaseProductRow = Record<string, any>;
+123:type SupabaseColumnStyle = "camel" | "snake";
+125:function getSupabaseRestConfig() {
+127:  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+128:  if (!url || !serviceRoleKey) return null;
+129:  return { url, serviceRoleKey };
+136:async function supabaseRest<T>(path: string, init: RequestInit = {}) {
+137:  const config = getSupabaseRestConfig();
+142:      apikey: config.serviceRoleKey,
+143:      Authorization: `Bearer ${config.serviceRoleKey}`,
+157:  if (!response.ok) console.warn("[Supabase Products] REST request failed", { path, status: response.status, body });
+179:function normalizeSupabaseProduct(row: SupabaseProductRow, variants: SupabaseProductRow[] = []) {
+184:  const normalizedVariants = variants.map((variant) => {
+185:    const variantId = Number(variant.id);
+186:    const variantStock = Number(variant.stockQuantity ?? variant.stock ?? 0);
+188:      ...variant,
+189:      id: Number.isFinite(variantId) && variantId > 0 ? variantId : undefined,
+190:      productId: Number(variant.productId ?? variant.product_id ?? id),
+191:      name: String(variant.name ?? variant.colour ?? "Default"),
+192:      colourHex: variant.colourHex ?? variant.colour_hex ?? variant.colour ?? "#c8a95a",
+193:      stockQuantity: Number.isFinite(variantStock) ? variantStock : 0,
+194:      stock: Number.isFinite(variantStock) ? variantStock : 0,
+200:    name: String(row.name ?? "Untitled product"),
+201:    slug: String(row.slug ?? row.name ?? "product").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+203:    seoDescription: row.seoDescription ?? row.seo_description ?? row.description ?? "Eby’s Place shop product.",
+205:    description: row.description ?? "Eby’s Place shop product.",
+216:    variants: normalizedVariants,
+221:async function getSupabaseProductColumnStyle(): Promise<SupabaseColumnStyle | null> {
+222:  const result = await supabaseRest<SupabaseProductRow[]>("/rest/v1/products?select=*&limit=1");
+229:async function getSupabaseVariantTableName() {
+230:  const camel = await supabaseRest<SupabaseProductRow[]>("/rest/v1/productVariants?select=*&limit=1");
+231:  if (camel.ok) return "productVariants";
+232:  const snake = await supabaseRest<SupabaseProductRow[]>("/rest/v1/product_variants?select=*&limit=1");
+233:  if (snake.ok) return "product_variants";
+237:function supabaseProductPayload(input: Partial<typeof products.$inferInsert>, style: SupabaseColumnStyle) {
+269:function supabaseVariantPayload(variant: ProductVariantInput & { productId: number }, tableName: string) {
+270:  if (tableName === "product_variants") {
+271:    return cleanUndefinedValues({ product_id: variant.productId, name: variant.name, colour_hex: variant.colourHex, stock: variant.stockQuantity });
+273:  return cleanUndefinedValues({ productId: variant.productId, name: variant.name, colourHex: variant.colourHex, stockQuantity: variant.stockQuantity });
+276:async function listSupabaseProducts() {
+277:  const style = await getSupabaseProductColumnStyle();
+279:  const productResult = await supabaseRest<SupabaseProductRow[]>("/rest/v1/products?select=*");
+280:  if (!productResult.ok || !Array.isArray(productResult.body)) return null;
+281:  const variantTable = await getSupabaseVariantTableName();
+282:  const variantResult = variantTable ? await supabaseRest<SupabaseProductRow[]>(`/rest/v1/${variantTable}?select=*`) : { ok: false, body: [] as SupabaseProductRow[] };
+283:  const variants = variantResult.ok && Array.isArray(variantResult.body) ? variantResult.body : [];
+284:  return productResult.body
+285:    .map((product) => normalizeSupabaseProduct(product, variants.filter((variant) => Number(variant.productId ?? variant.product_id) === Number(product.id))))
+286:    .filter((product) => product.id && isPositivePrice(product.price))
+290:async function createSupabaseProduct(input: typeof products.$inferInsert, variants: ProductVariantInput[] = []) {
+291:  const style = await getSupabaseProductColumnStyle();
+293:  const result = await supabaseRest<SupabaseProductRow[]>("/rest/v1/products", {
+296:    body: JSON.stringify(supabaseProductPayload(input, style)),
+298:  if (!result.ok || !Array.isArray(result.body) || !result.body[0]?.id) throw new Error("Supabase product could not be saved with a database id.");
+299:  const product = normalizeSupabaseProduct(result.body[0]);
+300:  if (product.id && variants.length) await replaceSupabaseProductVariants(product.id, variants);
+301:  const refreshed = product.id ? await getSupabaseProductById(product.id) : null;
+302:  return refreshed ?? product;
+305:async function getSupabaseProductById(id: number) {
+306:  const result = await supabaseRest<SupabaseProductRow[]>(`/rest/v1/products?select=*&id=eq.${encodeURIComponent(String(id))}&limit=1`);
+308:  const variantTable = await getSupabaseVariantTableName();
+309:  const variantResult = variantTable ? await supabaseRest<SupabaseProductRow[]>(`/rest/v1/${variantTable}?select=*&${variantTable === "product_variants" ? "product_id" : "productId"}=eq.${encodeURIComponent(String(id))}`) : { ok: false, body: [] as SupabaseProductRow[] };
+310:  const variants = variantResult.ok && Array.isArray(variantResult.body) ? variantResult.body : [];
+311:  return normalizeSupabaseProduct(result.body[0], variants);
+314:async function updateSupabaseProduct(id: number, input: Partial<typeof products.$inferInsert>) {
+315:  const style = await getSupabaseProductColumnStyle();
+317:  const result = await supabaseRest<SupabaseProductRow[]>(`/rest/v1/products?id=eq.${encodeURIComponent(String(id))}`, {
+320:    body: JSON.stringify(supabaseProductPayload(input, style)),
+322:  if (!result.ok) throw new Error(`Supabase product ${id} could not be updated.`);
+323:  return result.body && Array.isArray(result.body) && result.body[0] ? normalizeSupabaseProduct(result.body[0]) : await getSupabaseProductById(id);
+326:async function replaceSupabaseProductVariants(productId: number, variants: ProductVariantInput[]) {
+327:  const tableName = await getSupabaseVariantTableName();
+329:  const productColumn = tableName === "product_variants" ? "product_id" : "productId";
+330:  const deleteResult = await supabaseRest(`/rest/v1/${tableName}?${productColumn}=eq.${encodeURIComponent(String(productId))}`, { method: "DELETE" });
+331:  if (!deleteResult.ok) throw new Error(`Existing Supabase variants for product ${productId} could not be replaced.`);
+332:  if (!variants.length) return { productId, variants: [] };
+333:  const payload = variants.map((variant) => supabaseVariantPayload({ ...variant, productId }, tableName));
+334:  const insertResult = await supabaseRest<SupabaseProductRow[]>(`/rest/v1/${tableName}`, {
+339:  if (!insertResult.ok) throw new Error(`Supabase variants for product ${productId} could not be saved.`);
+340:  return { productId, variants: insertResult.body ?? [] };
+343:async function deleteSupabaseProduct(id: number) {
+344:  const style = await getSupabaseProductColumnStyle();
+346:  const tableName = await getSupabaseVariantTableName();
+348:    const productColumn = tableName === "product_variants" ? "product_id" : "productId";
+349:    await supabaseRest(`/rest/v1/${tableName}?${productColumn}=eq.${encodeURIComponent(String(id))}`, { method: "DELETE" });
+351:  const result = await supabaseRest(`/rest/v1/products?id=eq.${encodeURIComponent(String(id))}`, { method: "DELETE" });
+352:  if (!result.ok) throw new Error(`Supabase product ${id} could not be deleted.`);
+362:  const textFields = ["name", "email", "loginMethod", "stripeCustomerId"] as const;
+394:  "knotless-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+395:  "box-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+396:  "goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
+397:  "fulani-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+398:  "cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+399:  "stitch-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
+400:  "lemonade-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
+401:  "boho-goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
+402:  "tribal-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
+403:  "senegalese-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
+404:  "passion-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
+405:  "faux-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
+406:  "butterfly-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
+407:  "starter-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+408:  "kids-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+409:  "kids-cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
+410:  "hair-wash-prep": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
+411:  "beads-accessories": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png",
+412:  "edge-control-styling": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_edge_control_styling_675ed964-0d252ca79f.png",
+413:  "braid-takedown": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png"
+427:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+439:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+451:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
+463:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+475:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+487:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
+499:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
+511:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
+523:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
+535:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
+547:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
+559:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
+571:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
+577:    description: "Starter loc foundation service with neat sectioning and careful guidance for your loc journey.",
+583:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+595:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+607:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
+613:    description: "Neat individual box braids for children, installed gently with lightweight hair and careful sectioning to protect young scalps.",
+619:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+631:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+643:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
+655:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
+667:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+679:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+691:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
+703:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+715:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+727:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
+739:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png",
+751:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_edge_control_styling_675ed964-0d252ca79f.png",
+757:    description: "Careful braid removal service designed to reduce pulling, breakage, and avoidable stress.",
+763:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png",
+767:const PRODUCT_IMAGE_FALLBACK_URL = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
+768:const ABOUT_PORTRAIT_FALLBACK_URL = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-about-story-portrait.png";
+778:  { customerName: "Amara", rating: 5, reviewText: "The most comfortable braiding experience I have had. My scalp felt cared for and the finish was beautiful.", status: "approved" as const, source: "website" },
+779:  { customerName: "Naomi", rating: 5, reviewText: "Eby’s Place feels premium from booking to the final look. The braids were neat, lightweight, and lasted so well.", status: "approved" as const, source: "website" },
+780:  { customerName: "Tia", rating: 5, reviewText: "I booked for my daughter and the team was so patient and gentle. A truly family-friendly service.", status: "approved" as const, source: "website" },
+781:  { customerName: "Obi", rating: 5, reviewText: "I cant thank you enough.", status: "approved" as const, source: "google" },
+782:  { customerName: "Claudia Grenlus", rating: 5, reviewText: "Love my hair,happy that I found you ,highly recommend", status: "approved" as const, source: "google" },
+783:  { customerName: "Lauren Groves", rating: 5, reviewText: "Very pleased pleased with my daughters hair .. lovely lady & very professional & welcoming", status: "approved" as const, source: "google" },
+784:  { customerName: "amy martlin", rating: 5, reviewText: "Really happy and would definitely use eby again. She very welcoming, high standards and goes the extra mile. Would highly recommend this lady", status: "approved" as const, source: "google" },
+785:  { customerName: "Rafiatu Yussif", rating: 5, reviewText: "I was happy with my hair and the service given. Thanks Eby’s. Will be returning again.", status: "approved" as const, source: "google" },
+786:  { customerName: "Nazanin Aflakian", rating: 5, reviewText: "I had an amazing experience getting my daughter's hair done! She got African braids, and the stylist was incredibly...", status: "approved" as const, source: "google" },
+787:  { customerName: "Finlay Pettitt", rating: 5, reviewText: "5-star Google review.", status: "approved" as const, source: "google" },
+788:  { customerName: "yaali", rating: 5, reviewText: "i'm a person with a lot of issues and insecurity, but it was such a lovely experience. over the moon with my braids and...", status: "approved" as const, source: "google" },
+789:  { customerName: "Maliha Berridge", rating: 5, reviewText: "My son had his hair braided and extensions by Eby. She was extremely professional and gave great advice on what would be...", status: "approved" as const, source: "google" },
+790:  { customerName: "Miracle Igboanugo", rating: 5, reviewText: "Ooh! I just got my locs with this brand and I loveeee!!! Thank you so much! Cus I am sure coming back for another 😍", status: "approved" as const, source: "google" },
+791:  { customerName: "Ivy O", rating: 5, reviewText: "Excellent hair services. Highly professional and delivers all the time.", status: "approved" as const, source: "google" },
+792:  { customerName: "Lynda Francis", rating: 5, reviewText: "I have had my hair styled on two occasions and they were both fantastic and well above expectations. I would highly recommend. Cheers.", status: "approved" as const, source: "google" },
+793:  { customerName: "Chiamaka Udebbia", rating: 5, reviewText: "Service was great, friendly environment with lovely staff. Price is very reasonable and affordable. Will recommend for everyone.", status: "approved" as const, source: "google" },
+794:  { customerName: "ebirim salvy", rating: 5, reviewText: "Tested and trusted. She gives that perfect African braids vibes Neatly done with care", status: "approved" as const, source: "google" },
+795:  { customerName: "Logos HQ", rating: 5, reviewText: "Thank you for fitting us in last minute! Amazing customer service! Service was done professionally and nice touch with the curls.", status: "approved" as const, source: "google" },
+796:  { customerName: "Onuoha Christiana", rating: 5, reviewText: "Amazing hair stylist.. Highly recommended.. Please do well to patronise her.. I absolutely loved her service", status: "approved" as const, source: "google" },
+797:  { customerName: "Kelly", rating: 5, reviewText: "I recently got my hair done here and i was so pleased with how it came out. She was so quick and she replicated the...", status: "approved" as const, source: "google" },
+798:  { customerName: "Isaac Fortune", rating: 5, reviewText: "Braids were so neat..Nice customer service", status: "approved" as const, source: "google" },
+799:  { customerName: "elizabethz okeke", rating: 5, reviewText: "I received an exceptional service.", status: "approved" as const, source: "google" },
+800:  { customerName: "Nombulelo Choto", rating: 5, reviewText: "Amazing service, always go home loving my hair. Highly recommend!!", status: "approved" as const, source: "google" },
+801:  { customerName: "Chigozie Gloria", rating: 5, reviewText: "5-star Google review.", status: "approved" as const, source: "google" },
+806:  for (const review of seedReviews) {
+808:      .select({ id: reviews.id })
+809:      .from(reviews)
+810:      .where(and(eq(reviews.customerName, review.customerName), eq(reviews.reviewText, review.reviewText)))
+812:    if (existing.length === 0) await db.insert(reviews).values(review);
+841:  for (const product of seedProducts) {
+842:    await db.insert(products).values(product).onDuplicateKeyUpdate({
+844:        name: product.name,
+845:        seoTitle: product.seoTitle,
+846:        seoDescription: product.seoDescription,
+847:        category: product.category,
+848:        description: product.description,
+849:        price: product.price,
+850:        imageUrl: product.imageUrl,
+851:        badge: product.badge,
+852:        stockStatus: product.stockStatus,
+853:        stockQuantity: product.stockQuantity,
+854:        isFeatured: product.isFeatured,
+864:    const existing = await db.select({ id: galleryImages.id }).from(galleryImages).where(eq(galleryImages.title, item.title)).limit(1);
+866:      await db.insert(galleryImages).values(item);
+868:      await db.update(galleryImages).set({ ...item, isPublished: "true" }).where(eq(galleryImages.id, existing[0].id));
+875:    sectionKey: "about_us",
+879:    ctaLabel: "Read our services",
+880:    ctaHref: "/services",
+893:  for (const service of seedServices) {
+894:    await db.insert(services).values(service).onDuplicateKeyUpdate({
+896:        name: service.name,
+897:        category: service.category,
+898:        description: service.description,
+899:        duration: service.duration,
+900:        priceFrom: service.priceFrom,
+901:        badge: service.badge,
+902:        isFeatured: service.isFeatured,
+903:        imageUrl: service.imageUrl,
+904:        sortOrder: service.sortOrder,
+910:  const productRows = await db.select().from(products);
+911:  const variantRows = await db.select().from(productVariants);
+912:  const scarf = productRows.find((product) => product.slug === "satin-edge-scarf");
+913:  const hair = productRows.find((product) => product.slug === "premium-braiding-hair");
+914:  if (scarf && !variantRows.some((variant) => variant.productId === scarf.id)) await db.insert(productVariants).values([{ productId: scarf.id, name: "Black", colourHex: "#111111", stockQuantity: 18 }, { productId: scarf.id, name: "Gold", colourHex: "#c8a95a", stockQuantity: 16 }]);
+915:  if (hair && !variantRows.some((variant) => variant.productId === hair.id)) await db.insert(productVariants).values([{ productId: hair.id, name: "1B Natural Black", colourHex: "#1b1715", stockQuantity: 42 }, { productId: hair.id, name: "30 Auburn", colourHex: "#8a4b2a", stockQuantity: 28 }, { productId: hair.id, name: "613 Blonde", colourHex: "#d6b779", stockQuantity: 24 }]);
+917:  const existingSections = await db.select().from(websiteSections).where(eq(websiteSections.sectionKey, "about_us")).limit(1);
+922:function mergeWithSeedServices(rows: Array<typeof services.$inferSelect>, category?: string) {
+939:    const rows = await db.select().from(services).orderBy(asc(services.sortOrder));
+942:    console.warn("[Database] Falling back to seeded services", error);
+953:    const rows = await db.select().from(services).where(eq(services.isFeatured, "true")).orderBy(asc(services.sortOrder));
+957:    console.warn("[Database] Falling back to seeded featured services", error);
+963:  const fallback = seedWebsiteSections.filter((section) => section.isPublished === "true");
+968:    const rows = await db.select().from(websiteSections).where(eq(websiteSections.isPublished, "true")).orderBy(asc(websiteSections.sortOrder));
+971:    console.warn("[Database] Falling back to seeded website sections", error);
+977:  const fallback = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
+979:    const supabaseProducts = await listSupabaseProducts();
+980:    if (supabaseProducts) return supabaseProducts;
+984:    const productRows = await db.select().from(products).orderBy(desc(products.isFeatured), asc(products.name));
+985:    const variantRows = await db.select().from(productVariants);
+986:    const publicRows = productRows.filter((product) => isPositivePrice(product.price));
+988:    return safeRows.map((product) => ({
+989:      ...product,
+990:      id: Number(product.id),
+991:      imageUrl: isUsableImageUrl(product.imageUrl) ? product.imageUrl : PRODUCT_IMAGE_FALLBACK_URL,
+992:      image_url: isUsableImageUrl(product.imageUrl) ? product.imageUrl : PRODUCT_IMAGE_FALLBACK_URL,
+993:      seoTitle: product.seoTitle || `${product.name} | Eby’s Place`,
+994:      seoDescription: product.seoDescription || product.description,
+995:      stock: product.stockQuantity,
+996:      status: product.stockStatus,
+998:      variants: "id" in product ? variantRows.filter((variant) => variant.productId === product.id) : [],
+1001:    console.warn("[Database] Falling back to seeded products", error);
+1011:    const rows = await db.select().from(reviews).where(eq(reviews.status, "approved")).orderBy(desc(reviews.createdAt));
+1014:    console.warn("[Database] Falling back to seeded reviews", error);
+1019:export async function submitReview(input: { customerName: string; rating: number; reviewText: string }) {
+1022:  const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).$returningId();
+1038:async function getWebsiteJsonSection<T>(sectionKey: string, fallback: T): Promise<T> {
+1043:    const rows = await db.select().from(websiteSections).where(eq(websiteSections.sectionKey, sectionKey)).limit(1);
+1046:    console.warn(`[Database] Falling back for website JSON section ${sectionKey}`, error);
+1051:async function setWebsiteJsonSection(sectionKey: string, value: unknown) {
+1056:    sectionKey,
+1057:    title: sectionKey,
+1064:  const settings = await getWebsiteJsonSection<{ blockedSlots: BlockedBookingSlot[]; homeServiceSurcharge?: string }>('availability_settings', { blockedSlots: [], homeServiceSurcharge: "0.00" });
+1070:  return setWebsiteJsonSection('availability_settings', { ...settings, homeServiceSurcharge });
+1078:  return setWebsiteJsonSection('availability_settings', { ...settings, blockedSlots });
+1084:  return setWebsiteJsonSection('availability_settings', { ...settings, blockedSlots });
+1097:    note: 'Connect the official Instagram feed provider when production social credentials are available.',
+1109:  const rows = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
+1113:export async function subscribeNewsletter(email: string, productAlerts = false) {
+1116:  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onDuplicateKeyUpdate({ set: { productAlerts: productAlerts ? "true" : "false", createdAt: sql`CURRENT_TIMESTAMP` } });
+1126:    const filter = category && category !== "All" ? and(eq(galleryImages.isPublished, "true"), eq(galleryImages.category, category as any)) : eq(galleryImages.isPublished, "true");
+1127:    const rows = await db.select().from(galleryImages).where(filter).orderBy(asc(galleryImages.sortOrder), desc(galleryImages.createdAt));
+1133:    console.warn("[Database] Falling back to seeded gallery", error);
+1164:  await addColumnIfMissing("bookings", "serviceLocation", "enum('studio','home_service') NOT NULL DEFAULT 'studio'");
+1165:  await addColumnIfMissing("bookings", "addressLine2", "varchar(255) NULL");
+1166:  await addColumnIfMissing("bookings", "county", "varchar(120) NULL");
+1167:  await addColumnIfMissing("bookings", "deliveryNote", "text NULL");
+1168:  await addColumnIfMissing("bookings", "homeServiceSurcharge", "decimal(10,2) NOT NULL DEFAULT '0.00'");
+1169:  await makeColumnNullableIfPresent("bookings", "addressLine1", "varchar(255) NULL");
+1170:  await makeColumnNullableIfPresent("bookings", "city", "varchar(120) NULL");
+1171:  await makeColumnNullableIfPresent("bookings", "postcode", "varchar(40) NULL");
+1177:  await addColumnIfMissing("orders", "serviceLocation", "enum('studio','home_service') NOT NULL DEFAULT 'studio'");
+1178:  await addColumnIfMissing("orders", "addressLine2", "varchar(255) NULL");
+1179:  await addColumnIfMissing("orders", "county", "varchar(120) NULL");
+1180:  await addColumnIfMissing("orders", "deliveryNote", "text NULL");
+1181:  await makeColumnNullableIfPresent("orders", "addressLine1", "varchar(255) NULL");
+1182:  await makeColumnNullableIfPresent("orders", "city", "varchar(120) NULL");
+1183:  await makeColumnNullableIfPresent("orders", "postcode", "varchar(40) NULL");
+1186:export async function createBooking(input: typeof bookings.$inferInsert) {
+1190:  const inserted = await db.insert(bookings).values(input).$returningId();
+1194:export async function updateBookingCheckout(id: number, stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
+1197:  await db.update(bookings).set({ depositStatus: "checkout_started", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(bookings.id, id));
+1200:export async function markBookingDepositPaid(stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
+1203:  await db.update(bookings).set({ depositStatus: "paid", status: "confirmed", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId));
+1206:export async function getBookingByCheckoutSession(stripeCheckoutSessionId: string) {
+1210:  const rows = await db.select().from(bookings).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
+1214:export async function createOrderWithItems(input: { customerName: string; customerEmail: string; customerPhone?: string; addressLine1?: string | null; addressLine2?: string | null; city?: string | null; county?: string | null; postcode?: string | null; deliveryNote?: string; items: Array<{ productId: number; variantId?: number; productName: string; variantName?: string; quantity: number; unitPrice: string }> }) {
+1220:  const supabaseProductRows = await listSupabaseProducts();
+1221:  const [mysqlProductRows, mysqlVariantRows] = supabaseProductRows ? [[], []] : await Promise.all([
+1222:    db.select().from(products),
+1223:    db.select().from(productVariants),
+1225:  const productRows = supabaseProductRows ?? mysqlProductRows;
+1226:  const variantRows = supabaseProductRows ? supabaseProductRows.flatMap((product) => product.variants ?? []) : mysqlVariantRows;
+1228:    const product = productRows.find((row) => row.id === item.productId);
+1229:    if (!product) throw new Error(`Product ${item.productId} is no longer available.`);
+1230:    if (product.stockStatus === "out_of_stock") throw new Error(`${product.name} is currently out of stock.`);
+1232:    const variant = item.variantId ? variantRows.find((row) => row.id === item.variantId && row.productId === product.id) : undefined;
+1233:    if (item.variantId && !variant) throw new Error(`Selected variant for ${product.name} is no longer available.`);
+1234:    const stockQuantity = variant ? Number(variant.stockQuantity ?? 0) : Number(product.stockQuantity ?? 0);
+1235:    if (stockQuantity > 0 && quantity > stockQuantity) throw new Error(`Only ${stockQuantity} ${variant ? `${product.name} — ${variant.name}` : product.name} item(s) are available.`);
+1237:      productId: product.id,
+1238:      variantId: variant?.id,
+1239:      productName: product.name,
+1240:      variantName: variant?.name,
+1242:      unitPrice: Number(product.price).toFixed(2),
+1246:  const inserted = await db.insert(orders).values({
+1250:    serviceLocation: "home_service",
+1259:  const orderId = inserted[0]?.id ?? 0;
+1260:  if (orderId && validatedItems.length) await db.insert(orderItems).values(validatedItems.map((item) => ({ ...item, orderId })));
+1261:  return { id: orderId, items: validatedItems };
+1264:export async function updateOrderCheckout(id: number, stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
+1267:  await db.update(orders).set({ status: "pending_payment", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, id));
+1270:export async function markOrderPaid(stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
+1274:  const matchingOrders = await db.select().from(orders).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
+1275:  const order = matchingOrders[0];
+1276:  if (!order) return;
+1277:  const alreadyPaid = ["paid", "fulfilling", "shipped", "completed"].includes(order.status);
+1278:  await db.update(orders).set({ status: "paid", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, order.id));
+1281:  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+1283:    if (item.variantId) {
+1284:      await db.update(productVariants)
+\n=== SCHEMA RELEVANT TABLES ===
+18:export const depositStatusEnum = (name: string) => mysqlEnum(name, ["unpaid", "checkout_started", "paid", "failed", "refunded"]);
+40:  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+46:export const websiteSections = mysqlTable("websiteSections", {
+63:export const services = mysqlTable("services", {
+70:  priceFrom: decimal("priceFrom", { precision: 10, scale: 2 }).notNull(),
+80:export const bookings = mysqlTable("bookings", {
+97:  status: bookingStatusEnum("status").default("pending").notNull(),
+98:  depositStatus: depositStatusEnum("depositStatus").default("unpaid").notNull(),
+99:  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
+100:  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
+105:export const products = mysqlTable("products", {
+113:  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+123:export const productVariants = mysqlTable("productVariants", {
+132:export const orders = mysqlTable("orders", {
+144:  status: orderStatusEnum("status").default("draft").notNull(),
+145:  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
+146:  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
+151:export const orderItems = mysqlTable("orderItems", {
+162:export const galleryImages = mysqlTable("galleryImages", {
+173:export const reviews = mysqlTable("reviews", {
+178:  status: reviewStatusEnum("status").default("pending").notNull(),
+208:  status: emailNotificationStatusEnum("status").default("pending").notNull(),
+225:  status: tryOnStatusEnum("status").default("pending").notNull(),
+\n=== FRONTEND ADMIN/PUBLIC PRODUCT/SERVICE/CHECKOUT HOOKS ===
+client/src/pages/ComponentShowcase.tsx:222:        content: `This is a **demo response**. In a real app, you would call a tRPC mutation here:\n\n\`\`\`typescript\nconst chatMutation = trpc.ai.chat.useMutation({\n  onSuccess: (response) => {\n    setChatMessages(prev => [...prev, {\n      role: "assistant",\n      content: response.choices[0].message.content\n    }]);\n  }\n});\n\nchatMutation.mutate({ messages: newMessages });\n\`\`\`\n\nYour message was: "${content}"`,
+client/src/pages/ComponentShowcase.tsx:361:                  <div className="bg-card text-card-foreground rounded-lg p-4 border">
+client/src/pages/ComponentShowcase.tsx:367:                  <div className="bg-popover text-popover-foreground rounded-lg p-4 border">
+client/src/pages/ComponentShowcase.tsx:373:                  <div className="bg-background text-foreground rounded-lg p-4 border">
+client/src/pages/ComponentShowcase.tsx:498:                        <div className="border-t pt-3 space-y-2">
+client/src/pages/ComponentShowcase.tsx:1001:                      <div className="rounded-md border px-4 py-3 font-mono text-sm">
+client/src/pages/ComponentShowcase.tsx:1004:                      <div className="rounded-md border px-4 py-3 font-mono text-sm">
+client/src/pages/ComponentShowcase.tsx:1007:                      <div className="rounded-md border px-4 py-3 font-mono text-sm">
+client/src/pages/ComponentShowcase.tsx:1181:                  className="rounded-md border"
+client/src/pages/ComponentShowcase.tsx:1272:                  <ScrollArea className="h-[200px] w-full rounded-md border overflow-hidden">
+client/src/pages/ComponentShowcase.tsx:1295:                  className="min-h-[200px] rounded-lg border"
+client/src/pages/ComponentShowcase.tsx:1430:      <footer className="border-t py-6 mt-12">
+client/src/pages/Home.tsx:19:const LANDING_HERO_IMAGE_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_7dbbea62-45d4296622.png";
+client/src/pages/Home.tsx:22:const PRODUCT_IMAGE_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
+client/src/pages/Home.tsx:25:  { href: "/services", label: "Services" },
+client/src/pages/Home.tsx:26:  { href: "/booking", label: "Book" },
+client/src/pages/Home.tsx:30:  { href: "/gallery", label: "Gallery" },
+client/src/pages/Home.tsx:33:const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking" && item.href !== "/shop");
+client/src/pages/Home.tsx:37:  const [productSearch, setProductSearch] = useState("");
+client/src/pages/Home.tsx:42:    const query = productSearch.trim();
+client/src/pages/Home.tsx:49:    <header className="sticky top-0 z-50 border-b border-[#d8bd74]/55 bg-[#f5ead7]/92 shadow-[0_10px_36px_rgba(66,42,18,.12)] backdrop-blur-xl">
+client/src/pages/Home.tsx:78:            <button type="button" className="btn-gold px-4 py-2.5 text-xs uppercase tracking-[.16em] xl:px-5 xl:text-sm" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}>
+client/src/pages/Home.tsx:88:              className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
+client/src/pages/Home.tsx:90:              value={productSearch}
+client/src/pages/Home.tsx:92:              placeholder="Search products"
+client/src/pages/Home.tsx:93:              aria-label="Search Eby’s Place products"
+client/src/pages/Home.tsx:99:          <form className="relative hidden w-44 md:block xl:w-56" role="search" aria-label="Compact product search" onSubmit={handleProductSearch}>
+client/src/pages/Home.tsx:102:              className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
+client/src/pages/Home.tsx:104:              value={productSearch}
+client/src/pages/Home.tsx:106:              placeholder="Search products"
+client/src/pages/Home.tsx:116:            className="rounded-full border border-[#c8a95a]/45 bg-[#2a1a0b]/90 p-2.5 text-[#f7e3a3] sm:p-3"
+client/src/pages/Home.tsx:132:          className="border-t border-[#d8bd74]/45 bg-[#f5ead7]/98 px-5 py-5 shadow-[0_18px_45px_rgba(66,42,18,.14)] 2xl:hidden"
+client/src/pages/Home.tsx:136:            <form className="relative" role="search" aria-label="Mobile product search" onSubmit={handleProductSearch}>
+client/src/pages/Home.tsx:139:                className="h-12 w-full rounded-2xl border border-[#d8bd74]/45 bg-white/60 py-3 pl-11 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
+client/src/pages/Home.tsx:141:                value={productSearch}
+client/src/pages/Home.tsx:143:                placeholder="Search products"
+client/src/pages/Home.tsx:144:                aria-label="Search Eby’s Place products"
+client/src/pages/Home.tsx:150:                className="rounded-2xl border border-[#d8bd74]/35 bg-white/45 px-4 py-3 text-sm font-semibold text-[#2a1a0b] transition hover:border-[#b9933e] hover:bg-white/70 hover:text-[#8a641e]"
+client/src/pages/Home.tsx:167:    <footer className="border-t border-[#d8bd74]/45 bg-[#f5ead7] py-12 text-[#2a1a0b]">
+client/src/pages/Home.tsx:186:            Book protective styles, shop aftercare, try AI previews, and connect
+client/src/pages/Home.tsx:193:            <Link href="/services">Services & Pricing</Link>
+client/src/pages/Home.tsx:194:            <button type="button" className="text-left" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}>Book Appointment</button>
+client/src/pages/Home.tsx:217:      <div className="container mt-12 border-t border-[#d8bd74]/40 pt-8">
+client/src/pages/Home.tsx:229:  const { data: services = [] } = trpc.public.services.useQuery({});
+client/src/pages/Home.tsx:230:  const { data: products = [] } = trpc.public.products.useQuery();
+client/src/pages/Home.tsx:234:    const serviceResults = (services as any[]).filter((service) => [service.name, service.category, service.description, service.badge].filter(Boolean).join(" ").toLowerCase().includes(term)).slice(0, 4).map((service) => ({ type: "Service", title: service.name, detail: `${service.category} · from £${service.priceFrom}`, href: `/services?search=${encodeURIComponent(service.name)}` }));
+client/src/pages/Home.tsx:235:    const productResults = (products as any[]).filter((product) => [product.name, product.category, product.description, product.badge].filter(Boolean).join(" ").toLowerCase().includes(term)).slice(0, 4).map((product) => ({ type: "Product", title: product.name, detail: `${product.category} · £${product.price}`, href: `/shop?search=${encodeURIComponent(product.name)}` }));
+client/src/pages/Home.tsx:236:    return [...serviceResults, ...productResults].slice(0, 6);
+client/src/pages/Home.tsx:237:  }, [query, services, products]);
+client/src/pages/Home.tsx:240:      <div className="rounded-[2rem] border border-primary/25 bg-white p-5 shadow-[0_24px_80px_rgba(26,26,26,.12)] sm:p-7 md:p-8">
+client/src/pages/Home.tsx:241:        <label className="block text-sm font-bold uppercase tracking-[0.24em] text-primary">Search services, styles, and shop products</label>
+client/src/pages/Home.tsx:242:        <input className="mt-3 w-full rounded-2xl border border-primary/20 bg-white px-4 py-3 text-base text-[#2e1b10] outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 sm:text-lg" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search braids, twists, aftercare, or shop products..." aria-label="Search services, styles, and shop products" />
+client/src/pages/Home.tsx:246:              <button key={`${result.type}-${result.title}`} type="button" onClick={() => navigateWithSmoothScroll(result.href, setLocation)} className="rounded-2xl border border-white/10 bg-[#FAF7F2] p-4 text-left transition hover:border-primary/50 hover:bg-[#fff8df]">
+client/src/pages/Home.tsx:251:            )) : <p className="rounded-2xl border border-primary/20 bg-[#FAF7F2] p-4 text-sm text-[#4A4A4A] sm:col-span-2 lg:col-span-3">No matching services, styles, or shop products yet. Try “braids”, “twists”, or “aftercare”.</p>}
+client/src/pages/Home.tsx:253:        ) : <p className="mt-3 text-sm font-medium text-[#4A4A4A]">Start typing to search services, styles, and shop products instantly.</p>}
+client/src/pages/Home.tsx:259:function HomepageGalleryPreview() {
+client/src/pages/Home.tsx:260:  const { data: galleryItems = [] } = trpc.public.gallery.useQuery({ category: "All" });
+client/src/pages/Home.tsx:261:  const preview = (galleryItems as any[]).slice(0, 6);
+client/src/pages/Home.tsx:262:  if (preview.length === 0) return null;
+client/src/pages/Home.tsx:265:      {preview.map((image: any) => (
+client/src/pages/Home.tsx:288:  const { data: styles = [] } = trpc.public.featuredServices.useQuery();
+client/src/pages/Home.tsx:289:  const { data: products = [] } = trpc.public.products.useQuery();
+client/src/pages/Home.tsx:290:  const { data: sections = [] } = trpc.public.websiteSections.useQuery();
+client/src/pages/Home.tsx:291:  const { data: reviews = [] } = trpc.public.reviews.useQuery();
+client/src/pages/Home.tsx:292:  const newsletter = trpc.public.newsletter.useMutation({
+client/src/pages/Home.tsx:300:    ctaLabel: "Read our services",
+client/src/pages/Home.tsx:301:    ctaHref: "/services",
+client/src/pages/Home.tsx:306:  const featuredShopProducts = ((products as any[]).filter(product => product.isFeatured === "true" || product.isFeatured === true).length
+client/src/pages/Home.tsx:307:    ? (products as any[]).filter(product => product.isFeatured === "true" || product.isFeatured === true)
+client/src/pages/Home.tsx:308:    : (products as any[])
+client/src/pages/Home.tsx:345:                  <button type="button" className="btn-gold" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}>
+client/src/pages/Home.tsx:374:                Professional from booking to finish.
+client/src/pages/Home.tsx:377:                Clear services, simple deposits, customer reviews, gallery updates,
+client/src/pages/Home.tsx:378:                delivery details, and full admin oversight — all built for a
+client/src/pages/Home.tsx:388:                AI hairstyle previews, ecommerce, live content, customer reviews,
+client/src/pages/Home.tsx:405:              <Link className="btn-dark" href="/services">
+client/src/pages/Home.tsx:433:                    <button type="button" className="btn-gold mt-5 w-full" onClick={() => navigateWithSmoothScroll(`/booking?service=${encodeURIComponent(s.name)}`, setLocation)}>
+client/src/pages/Home.tsx:446:              <button type="button" className="btn-gold order-2 md:order-1" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
+client/src/pages/Home.tsx:447:                Shop products
+client/src/pages/Home.tsx:449:              <div className="order-1 w-full text-left md:order-2 md:w-auto md:text-right">
+client/src/pages/Home.tsx:451:                  <ShoppingBag className="mr-2 inline h-4 w-4" /> Shop preview
+client/src/pages/Home.tsx:462:              {featuredShopProducts.map(product => (
+client/src/pages/Home.tsx:465:                  className="lux-card group block w-full min-w-0 overflow-hidden p-0 text-left transition hover:-translate-y-1 hover:border-primary/55 hover:shadow-[0_22px_55px_rgba(189,140,52,.24)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+client/src/pages/Home.tsx:466:                  onClick={() => navigateWithSmoothScroll(`/shop?search=${encodeURIComponent(product.name)}`, setLocation)}
+client/src/pages/Home.tsx:467:                  key={product.id ?? product.slug}
+client/src/pages/Home.tsx:468:                  aria-label={`View ${product.name} and all Eby’s Place shop products`}
+client/src/pages/Home.tsx:470:                  <div className="relative min-h-[210px] overflow-hidden rounded-t-[1.75rem] border-b border-primary/20 bg-[#130c07]">
+client/src/pages/Home.tsx:472:                      src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}
+client/src/pages/Home.tsx:473:                      alt={product.name}
+client/src/pages/Home.tsx:483:                    <span className="pill absolute left-4 top-4 bg-black/60 text-xs text-primary">{product.badge || "Featured"}</span>
+client/src/pages/Home.tsx:486:                    <h3 className="serif text-2xl font-bold text-[#2a1a0b] transition group-hover:text-primary">{product.name}</h3>
+client/src/pages/Home.tsx:488:                      <b className="text-2xl text-primary">£{product.price}</b>
+client/src/pages/Home.tsx:507:                  A diverse gallery of braiding styles for women, men, and children of all backgrounds.
+client/src/pages/Home.tsx:510:              <Link className="btn-dark" href="/gallery">
+client/src/pages/Home.tsx:511:                View full gallery
+client/src/pages/Home.tsx:514:            <HomepageGalleryPreview />
+client/src/pages/Home.tsx:520:            <button type="button" className="btn-gold w-fit px-5 py-3 text-sm" onClick={() => navigateWithSmoothScroll("/reviews", setLocation)} aria-label="Leave a review for Eby’s Place">
+client/src/pages/Home.tsx:524:          <div className="review-marquee mt-5" aria-label="Moving Eby’s Place customer reviews">
+client/src/pages/Home.tsx:525:            <div className="review-marquee-track">
+client/src/pages/Home.tsx:526:              {[...(reviews as any[]).slice(0, 6), ...(reviews as any[]).slice(0, 6)].map((r, index) => (
+client/src/pages/Home.tsx:527:                <blockquote className="lux-card review-marquee-card" key={`${r.id ?? r.customerName}-${index}`}>
+client/src/pages/Home.tsx:529:                  <p className="mt-4 text-sm font-semibold leading-7 text-[#3a2615]">“{r.reviewText}”</p>
+client/src/pages/Home.tsx:544:                Get style openings, product drops, and premium braid care guidance.
+client/src/pages/Home.tsx:551:                newsletter.mutate({ email, productAlerts: true });
+client/src/pages/Home.tsx:571:            <div className="rounded-[2rem] border border-[#d2b164]/55 bg-[#fbf2e3]/94 p-5 shadow-[0_24px_70px_rgba(74,48,20,.16)] sm:p-7 lg:p-9">
+client/src/pages/Home.tsx:574:                  <p className="pill w-fit border-[#d8bd74]/70 bg-white text-[#5b3a12]">{aboutSection.eyebrow || "About Eby’s Place"}</p>
+client/src/pages/Home.tsx:581:                  <div className="relative mx-auto h-32 w-32 overflow-hidden rounded-full border border-[#d8bd74]/75 bg-[#efe0c7] p-2 shadow-[0_18px_48px_rgba(74,48,20,.2)] sm:h-36 sm:w-36 lg:h-48 lg:w-48">
+client/src/pages/NotFound.tsx:15:      <Card className="w-full max-w-lg mx-4 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+client/src/pages/Services.tsx:13:    "Browse every published Eby’s Place service in one place, then narrow by category when you already know the style family you want.",
+client/src/pages/Services.tsx:17:    "Soft rope and passion twist services designed for lightweight movement, protection, and comfort.",
+client/src/pages/Services.tsx:24:    "Preparation, finishing, accessories, edge styling, and takedown services to complete the appointment journey.",
+client/src/pages/Services.tsx:29:  const serviceQueryInput = useMemo(() => (category === "All" ? {} : { category }), [category]);
+client/src/pages/Services.tsx:34:  const { data = [], isLoading } = trpc.public.services.useQuery(serviceQueryInput);
+client/src/pages/Services.tsx:38:    return (data as any[]).filter((service) => [service.name, service.category, service.description, service.badge].filter(Boolean).join(" ").toLowerCase().includes(term));
+client/src/pages/Services.tsx:52:            Choose from the full Somerset, UK service catalogue. Every booking
+client/src/pages/Services.tsx:54:            checkout, and every style is framed around comfort, longevity, and
+client/src/pages/Services.tsx:74:                smoothScrollToElement("services-section", 40);
+client/src/pages/Services.tsx:86:        <section id="services-section" className="mt-10 rounded-[2rem] border border-primary/25 bg-white/[0.045] p-6 md:p-8 scroll-mt-28">
+client/src/pages/Services.tsx:92:              <h2 className="serif mt-2 text-4xl font-bold">{category === "All" ? "Full service catalogue" : `${category} services`}</h2>
+client/src/pages/Services.tsx:94:                {initialSearchTerm ? `Showing services matching “${initialSearchTerm}”. Clear the search from your browser address bar to view the full catalogue again.` : categoryIntro[category]}
+client/src/pages/Services.tsx:97:            <button type="button" className="btn-gold" onClick={() => navigateWithSmoothScroll("/booking")}>
+client/src/pages/Services.tsx:98:              <CalendarDays className="mr-2 h-5 w-5" /> Start booking
+client/src/pages/Services.tsx:113:              {initialSearchTerm ? `No services currently match “${initialSearchTerm}”.` : "No services are currently published in this category."}
+client/src/pages/Services.tsx:117:              {visibleServices.map(service => {
+client/src/pages/Services.tsx:118:                const isBookable = service.isBookable !== "false";
+client/src/pages/Services.tsx:122:                  key={service.id ?? service.slug}
+client/src/pages/Services.tsx:124:                  {service.imageUrl ? (
+client/src/pages/Services.tsx:127:                        src={service.imageUrl}
+client/src/pages/Services.tsx:128:                        alt={`${service.name} hairstyle by Eby’s Place`}
+client/src/pages/Services.tsx:136:                      {service.badge || service.category}
+client/src/pages/Services.tsx:139:                      {service.name}
+client/src/pages/Services.tsx:142:                    {service.description}
+client/src/pages/Services.tsx:144:                  <div className="mt-6 grid gap-3 border-t border-white/10 pt-5 sm:grid-cols-2">
+client/src/pages/Services.tsx:147:                      {service.duration}
+client/src/pages/Services.tsx:150:                      From £{service.priceFrom}
+client/src/pages/Services.tsx:156:                        onClick={() => navigateWithSmoothScroll(`/booking?service=${encodeURIComponent(service.name)}`)}
+client/src/pages/Booking.tsx:8:type ServiceLocation = "studio" | "home_service";
+client/src/pages/Booking.tsx:11:  serviceName: string;
+client/src/pages/Booking.tsx:15:  serviceLocation: ServiceLocation;
+client/src/pages/Booking.tsx:25:  serviceName: "",
+client/src/pages/Booking.tsx:29:  serviceLocation: "studio",
+client/src/pages/Booking.tsx:50:const addOnOptions = [
+client/src/pages/Booking.tsx:51:  { id: "hair-wash-prep", name: "Hair wash prep", price: "15.00", description: "A gentle cleanse and prep service before braiding." },
+client/src/pages/Booking.tsx:57:type AddOnOption = typeof addOnOptions[number];
+client/src/pages/Booking.tsx:59:  productId: number;
+client/src/pages/Booking.tsx:60:  productName: string;
+client/src/pages/Booking.tsx:67:  productId?: number | string;
+client/src/pages/Booking.tsx:77:  const productId = Number.parseInt(String(value ?? ""), 10);
+client/src/pages/Booking.tsx:78:  return Number.isInteger(productId) && productId > 0 ? productId : null;
+client/src/pages/Booking.tsx:81:function normalizeProductId(product: BookingShopProduct) {
+client/src/pages/Booking.tsx:82:  return parsePositiveInteger(product.id ?? product.productId);
+client/src/pages/Booking.tsx:85:function normalizeBookingProductsForCheckout(products: BookingProductSelection[]) {
+client/src/pages/Booking.tsx:86:  return products.map((item) => {
+client/src/pages/Booking.tsx:87:    const productId = parsePositiveInteger(item.productId);
+client/src/pages/Booking.tsx:90:      productId: productId ?? Number.NaN,
+client/src/pages/Booking.tsx:111:  const addOnsTotal = input.selectedAddOns.reduce((sum, item) => sum + moneyToNumber(item.price), 0);
+client/src/pages/Booking.tsx:112:  const productsTotal = input.selectedProducts.reduce((sum, item) => sum + moneyToNumber(item.unitPrice) * Math.max(1, Math.floor(Number(item.quantity) || 1)), 0);
+client/src/pages/Booking.tsx:114:  return 20 + addOnsTotal + productsTotal + surchargeTotal;
+client/src/pages/Booking.tsx:117:function bookingCheckoutErrorDescription(error: unknown) {
+client/src/pages/Booking.tsx:120:    return "Payment is currently unavailable. Please contact us to complete your booking.";
+client/src/pages/Booking.tsx:122:  if (message.includes("Invalid input") || message.includes("bookingProducts")) {
+client/src/pages/Booking.tsx:123:    return "One selected appointment product could not be prepared for checkout. Please remove it, add it again, and try once more.";
+client/src/pages/Booking.tsx:168:  const { data: services = [], isLoading: servicesLoading } = trpc.public.services.useQuery({});
+client/src/pages/Booking.tsx:169:  const { data: products = [], isLoading: productsLoading } = trpc.public.products.useQuery();
+client/src/pages/Booking.tsx:170:  const serviceOptions = useMemo(
+client/src/pages/Booking.tsx:171:    () => (services as any[]).filter(service => service.isBookable !== "false"),
+client/src/pages/Booking.tsx:172:    [services]
+client/src/pages/Booking.tsx:174:  const productOptions = useMemo(
+client/src/pages/Booking.tsx:175:    () => (products as any[]).filter(product => product.stockStatus !== "out_of_stock").slice(0, 6),
+client/src/pages/Booking.tsx:176:    [products]
+client/src/pages/Booking.tsx:178:  const create = trpc.public.createBooking.useMutation();
+client/src/pages/Booking.tsx:179:  const checkout = trpc.public.createDepositCheckout.useMutation();
+client/src/pages/Booking.tsx:180:  const availability = trpc.public.availability.useQuery();
+client/src/pages/Booking.tsx:181:  const paymentMode = trpc.public.paymentMode.useQuery();
+client/src/pages/Booking.tsx:182:  const bookingBlockedSlots = availability.data?.blockedSlots || [];
+client/src/pages/Booking.tsx:184:  const checkoutReturn = useMemo(() => {
+client/src/pages/Booking.tsx:186:    return params.get("payment") === "cancelled" ? { status: "cancelled" as const, bookingId: params.get("booking") } : null;
+client/src/pages/Booking.tsx:188:  const selectedSlotBlocked = bookingBlockedSlots.some((slot: any) => slot.date === form.appointmentDate && (!slot.time || slot.time === form.appointmentTime));
+client/src/pages/Booking.tsx:194:    const preselected = params.get("service");
+client/src/pages/Booking.tsx:196:      set("serviceName", preselected);
+client/src/pages/Booking.tsx:202:        description: "No payment was taken. Review your booking and click Pay £20 Deposit again when ready.",
+client/src/pages/Booking.tsx:207:  const homeAddressRequired = form.serviceLocation === "home_service";
+client/src/pages/Booking.tsx:208:  const bookingCheckoutTotal = calculateBookingCheckoutTotal({
+client/src/pages/Booking.tsx:212:    includeHomeServiceSurcharge: form.serviceLocation === "home_service",
+client/src/pages/Booking.tsx:219:  function toggleAddOn(addOn: AddOnOption) {
+client/src/pages/Booking.tsx:220:    setSelectedAddOns(current => current.some(item => item.id === addOn.id) ? current.filter(item => item.id !== addOn.id) : [...current, addOn]);
+client/src/pages/Booking.tsx:223:  function toggleProduct(product: BookingShopProduct) {
+client/src/pages/Booking.tsx:224:    const productId = normalizeProductId(product);
+client/src/pages/Booking.tsx:225:    if (!productId) {
+client/src/pages/Booking.tsx:226:      toast.error("This product cannot be added to your booking", {
+client/src/pages/Booking.tsx:227:        description: "The product data is missing a valid checkout ID. Please continue without it or contact Eby’s Place.",
+client/src/pages/Booking.tsx:231:    setSelectedProducts(current => current.some(item => item.productId === productId)
+client/src/pages/Booking.tsx:232:      ? current.filter(item => item.productId !== productId)
+client/src/pages/Booking.tsx:233:      : [...current, { productId, productName: product.name, quantity: 1, unitPrice: product.price }]);
+client/src/pages/Booking.tsx:238:    smoothScrollToElement("booking-card", 60);
+client/src/pages/Booking.tsx:257:    if (!form.serviceName || !form.appointmentDate || !form.appointmentTime || selectedSlotBlocked || !canContinueFromDetails) {
+client/src/pages/Booking.tsx:262:      const checkoutProducts = normalizeBookingProductsForCheckout(selectedProducts);
+client/src/pages/Booking.tsx:263:      if (checkoutProducts.some((item) => !Number.isFinite(item.productId) || item.productId <= 0)) {
+client/src/pages/Booking.tsx:264:        toast.error("Please remove and re-add the affected appointment product before checkout.");
+client/src/pages/Booking.tsx:267:      const booking = await create.mutateAsync({
+client/src/pages/Booking.tsx:269:        addOns: selectedAddOns.map(({ id, name, price }) => ({ id, name, price })),
+client/src/pages/Booking.tsx:270:        bookingProducts: checkoutProducts,
+client/src/pages/Booking.tsx:272:      toast.success(booking.customerNotification);
+client/src/pages/Booking.tsx:274:        description: "Your deposit, selected add-ons, and selected appointment products will be included in one secure payment.",
+client/src/pages/Booking.tsx:276:      const session = await checkout.mutateAsync({
+client/src/pages/Booking.tsx:277:        bookingId: booking.bookingId,
+client/src/pages/Booking.tsx:280:        serviceName: form.serviceName,
+client/src/pages/Booking.tsx:281:        addOns: selectedAddOns.map(({ id, name, price }) => ({ id, name, price })),
+client/src/pages/Booking.tsx:282:        bookingProducts: checkoutProducts,
+client/src/pages/Booking.tsx:284:      if (session.checkoutUrl) window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
+client/src/pages/Booking.tsx:287:        description: bookingCheckoutErrorDescription(error),
+client/src/pages/Booking.tsx:296:        <p className="pill w-fit">Appointment booking</p>
+client/src/pages/Booking.tsx:301:          Seven simple steps — choose your service, pick a date and time, select your location, enter your details, add optional extras, and pay a £20 deposit securely to confirm.
+client/src/pages/Booking.tsx:305:          <div className="mt-6 rounded-3xl border border-red-400/40 bg-red-50 p-5" role="alert">
+client/src/pages/Booking.tsx:312:              or email us directly to complete your booking deposit.
+client/src/pages/Booking.tsx:317:        {checkoutReturn ? (
+client/src/pages/Booking.tsx:318:          <div className="mt-6 rounded-3xl border border-amber-300/35 bg-amber-300/10 p-5 text-amber-50" role="status">
+client/src/pages/Booking.tsx:321:              Your Eby’s Place booking{checkoutReturn.bookingId ? ` #${checkoutReturn.bookingId}` : ""} is still waiting for the £20 deposit. No payment was taken, and you can review the details below before starting secure payment again.
+client/src/pages/Booking.tsx:326:        <div className="mt-6 rounded-3xl border border-primary/30 bg-primary/10 p-5 text-white/85">
+client/src/pages/Booking.tsx:331:        <div id="booking-card" className="lux-card mt-8 grid gap-6 scroll-mt-28">
+client/src/pages/Booking.tsx:337:                <h2 className="serif text-3xl font-bold text-primary">Choose your service</h2>
+client/src/pages/Booking.tsx:338:                <p className="mt-2 text-[#4a3014]">Select the braid service you would like. Tap a service card to continue automatically.</p>
+client/src/pages/Booking.tsx:340:              {servicesLoading ? (
+client/src/pages/Booking.tsx:346:                  {serviceOptions.map((service: any) => (
+client/src/pages/Booking.tsx:348:                      key={service.id ?? service.slug}
+client/src/pages/Booking.tsx:350:                      onClick={() => { set("serviceName", service.name); goToStep(1); }}
+client/src/pages/Booking.tsx:351:                      className={`overflow-hidden rounded-3xl border p-0 text-left transition hover:-translate-y-0.5 ${form.serviceName === service.name ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/60"}`}
+client/src/pages/Booking.tsx:353:                      {service.imageUrl ? (
+client/src/pages/Booking.tsx:356:                            src={service.imageUrl}
+client/src/pages/Booking.tsx:357:                            alt={`${service.name} braid style by Eby's Place`}
+client/src/pages/Booking.tsx:365:                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{service.category}</span>
+client/src/pages/Booking.tsx:366:                        <h3 className="serif mt-2 text-2xl font-bold text-[#24170d]">{service.name}</h3>
+client/src/pages/Booking.tsx:367:                        {service.description ? <p className="mt-1 line-clamp-2 text-sm text-[#4a3014]">{service.description}</p> : null}
+client/src/pages/Booking.tsx:369:                          <span className="text-sm text-[#6f4b16]">{service.duration}</span>
+client/src/pages/Booking.tsx:370:                          <b className="text-xl text-primary">from £{service.priceFrom}</b>
+client/src/pages/Booking.tsx:375:                  {serviceOptions.length === 0 ? (
+client/src/pages/Booking.tsx:376:                    <button type="button" onClick={() => { set("serviceName", "Knotless Braids"); goToStep(1); }} className="overflow-hidden rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-0 text-left">
+client/src/pages/Booking.tsx:393:                {form.serviceName ? <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-bold text-primary">{form.serviceName}</div> : null}
+client/src/pages/Booking.tsx:417:                <div className="rounded-2xl border border-red-400/40 bg-red-50 p-4 text-sm font-semibold text-red-800">
+client/src/pages/Booking.tsx:439:                <p className="mt-2 text-[#4a3014]">Will you visit the studio or would you like a home service? Tap your choice to continue automatically.</p>
+client/src/pages/Booking.tsx:450:                    value: "home_service" as ServiceLocation,
+client/src/pages/Booking.tsx:459:                    onClick={() => { set("serviceLocation", option.value); goToStep(3); }}
+client/src/pages/Booking.tsx:460:                    className="flex min-h-[160px] flex-col gap-3 rounded-3xl border border-[#d8bd74]/45 bg-white/70 p-7 text-left transition hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_16px_40px_rgba(189,140,52,.18)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+client/src/pages/Booking.tsx:544:                {addOnOptions.map(addOn => {
+client/src/pages/Booking.tsx:545:                  const selected = selectedAddOns.some(item => item.id === addOn.id);
+client/src/pages/Booking.tsx:548:                      key={addOn.id}
+client/src/pages/Booking.tsx:550:                      onClick={() => toggleAddOn(addOn)}
+client/src/pages/Booking.tsx:551:                      className={`rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 ${selected ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/50"}`}
+client/src/pages/Booking.tsx:554:                      <h3 className="serif mt-2 text-2xl font-bold text-[#24170d]">{addOn.name}</h3>
+client/src/pages/Booking.tsx:555:                      <p className="mt-1 text-sm leading-6 text-[#4a3014]">{addOn.description}</p>
+client/src/pages/Booking.tsx:556:                      <b className="mt-3 block text-xl text-primary">£{addOn.price}</b>
+client/src/pages/Booking.tsx:574:                <h2 className="serif text-3xl font-bold text-primary">Optional shop products</h2>
+client/src/pages/Booking.tsx:575:                <p className="mt-2 text-[#4a3014]">Add hair care or accessories to your appointment order. This step is optional.</p>
+client/src/pages/Booking.tsx:578:                {productOptions.map((product: BookingShopProduct) => {
+client/src/pages/Booking.tsx:579:                  const productId = normalizeProductId(product);
+client/src/pages/Booking.tsx:580:                  const selected = productId ? selectedProducts.some(item => item.productId === productId) : false;
+client/src/pages/Booking.tsx:583:                      key={product.id ?? product.productId ?? product.slug ?? product.name}
+client/src/pages/Booking.tsx:585:                      onClick={() => toggleProduct(product)}
+client/src/pages/Booking.tsx:587:                      className={`relative overflow-hidden rounded-3xl border text-left transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected ? "border-primary bg-primary/20 shadow-[0_14px_36px_rgba(201,168,76,.22)] ring-2 ring-primary/35" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/50"}`}
+client/src/pages/Booking.tsx:590:                      {product.imageUrl ? (
+client/src/pages/Booking.tsx:592:                          <img src={product.imageUrl} alt={`Shop product: ${product.name}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+client/src/pages/Booking.tsx:596:                        <span className="text-xs font-bold uppercase tracking-wide text-primary">{selected ? "Selected — tap again to remove" : product.badge || "Optional"}</span>
+client/src/pages/Booking.tsx:597:                        <h3 className="serif mt-2 text-xl font-bold text-[#24170d]">{product.name}</h3>
+client/src/pages/Booking.tsx:598:                        <b className="mt-2 block text-lg text-primary">£{product.price}</b>
+client/src/pages/Booking.tsx:603:                {!productsLoading && productOptions.length === 0 ? (
+client/src/pages/Booking.tsx:604:                  <p className="rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-5 text-[#4a3014]">No shop products available right now. Continue to review your booking.</p>
+client/src/pages/Booking.tsx:609:                <button type="button" className="btn-dark" onClick={() => goToStep(6)}>Skip products</button>
+client/src/pages/Booking.tsx:611:                  {selectedProducts.length > 0 ? "Continue with " + selectedProducts.length + " product" + (selectedProducts.length > 1 ? "s" : "") : "Continue"}
+client/src/pages/Booking.tsx:621:                <p className="mt-2 text-[#4a3014]">Please review your booking summary. Click Pay £20 Deposit to proceed to secure payment and confirm your appointment.</p>
+client/src/pages/Booking.tsx:623:              <div className="grid gap-3 rounded-3xl border border-primary/25 bg-primary/10 p-5 text-[#3a2615] sm:grid-cols-2">
+client/src/pages/Booking.tsx:624:                <p><strong className="text-primary">Service:</strong> {form.serviceName}</p>
+client/src/pages/Booking.tsx:627:                <p><strong className="text-primary">Location:</strong> {form.serviceLocation === "home_service" ? "Home Service" : "Studio Visit"}</p>
+client/src/pages/Booking.tsx:628:                {form.serviceLocation === "home_service" ? (
+client/src/pages/Booking.tsx:638:                  <p className="sm:col-span-2"><strong className="text-primary">Shop products:</strong> {selectedProducts.map(item => item.quantity + " x " + item.productName + " (£" + item.unitPrice + ")").join(", ")}</p>
+client/src/pages/Booking.tsx:640:                {homeServiceSurcharge > 0 && form.serviceLocation === "home_service" ? (
+client/src/pages/Booking.tsx:643:                <p className="font-bold text-primary sm:col-span-2">Total due now: £{formatMoney(bookingCheckoutTotal)}</p>
+client/src/pages/Booking.tsx:644:                <p className="text-sm font-semibold text-[#4a3014] sm:col-span-2">Includes the £20.00 booking deposit{selectedAddOns.length > 0 ? ", selected add-ons" : ""}{selectedProducts.length > 0 ? ", selected shop products" : ""}{homeServiceSurcharge > 0 && form.serviceLocation === "home_service" ? ", and home-service travel" : ""}.</p>
+client/src/pages/Booking.tsx:646:              <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm text-primary">
+client/src/pages/Booking.tsx:648:                {form.serviceLocation === "studio"
+client/src/pages/Booking.tsx:652:              {create.error && <p className="rounded-2xl border border-red-400/40 bg-red-50 p-4 font-semibold text-red-900">{bookingCheckoutErrorDescription(create.error)}</p>}
+client/src/pages/Booking.tsx:653:              {checkout.error && <p className="rounded-2xl border border-red-400/40 bg-red-50 p-4 font-semibold text-red-900">{bookingCheckoutErrorDescription(checkout.error)}</p>}
+client/src/pages/Booking.tsx:659:                  disabled={create.isPending || checkout.isPending}
+client/src/pages/Booking.tsx:661:                  {create.isPending || checkout.isPending ? "Opening payment..." : "Pay £20 Deposit"}
+client/src/pages/BookingSuccess.tsx:6:  const bookingId = searchParams.get("booking");
+client/src/pages/BookingSuccess.tsx:18:            Thank you for booking Eby’s Place. If secure payment completed successfully, your £20 non-refundable deposit has been submitted and the salon owner is notified automatically. The booking dashboard will update once payment is verified.
+client/src/pages/BookingSuccess.tsx:22:            <div className="rounded-3xl border border-primary/25 bg-black/25 p-5">
+client/src/pages/BookingSuccess.tsx:24:              <p className="mt-3 text-2xl font-bold text-white">{bookingId ? `#${bookingId}` : "Pending"}</p>
+client/src/pages/BookingSuccess.tsx:26:            <div className="rounded-3xl border border-primary/25 bg-black/25 p-5">
+client/src/pages/BookingSuccess.tsx:30:            <div className="rounded-3xl border border-primary/25 bg-black/25 p-5">
+client/src/pages/BookingSuccess.tsx:36:          <blockquote className="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-white/75">
+client/src/pages/BookingSuccess.tsx:37:            Please keep this page or your payment receipt for reference. If you closed checkout before paying, return to the booking page and start the deposit step again.
+client/src/pages/BookingSuccess.tsx:41:            <Link className="btn-gold" href="/services">Explore services</Link>
+client/src/pages/BookingSuccess.tsx:42:            <Link className="btn-dark" href="/booking">Start another booking</Link>
+client/src/pages/Shop.tsx:8:  productId: number;
+client/src/pages/Shop.tsx:10:  productName: string;
+client/src/pages/Shop.tsx:36:const PRODUCT_IMAGE_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
+client/src/pages/Shop.tsx:39:function previewDescription(description: string) {
+client/src/pages/Shop.tsx:51:function productMatchesSearch(product: ShopProduct, query: string) {
+client/src/pages/Shop.tsx:53:    product.name,
+client/src/pages/Shop.tsx:54:    product.description,
+client/src/pages/Shop.tsx:55:    product.badge || "",
+client/src/pages/Shop.tsx:56:    product.stockStatus || "",
+client/src/pages/Shop.tsx:57:    ...(product.variants || []).map((variant) => variant.name),
+client/src/pages/Shop.tsx:62:function normalizeProductId(product: ShopProduct) {
+client/src/pages/Shop.tsx:63:  const rawId = product.id ?? (product as ShopProduct & { productId?: number | string }).productId;
+client/src/pages/Shop.tsx:64:  const productId = Number(rawId);
+client/src/pages/Shop.tsx:65:  return Number.isFinite(productId) && productId > 0 ? productId : null;
+client/src/pages/Shop.tsx:71:    productId: Number(item.productId),
+client/src/pages/Shop.tsx:77:function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product: ShopProduct, variant?: ProductVariant) => void }) {
+client/src/pages/Shop.tsx:78:  const variants = product.variants?.length ? product.variants : [fallbackVariant];
+client/src/pages/Shop.tsx:83:  const outOfStock = product.stockStatus === "out_of_stock" || selectedVariant.stockQuantity === 0;
+client/src/pages/Shop.tsx:84:  const collapsedDescription = previewDescription(product.description);
+client/src/pages/Shop.tsx:85:  const canToggleDescription = product.description.trim() !== collapsedDescription;
+client/src/pages/Shop.tsx:86:  const visibleDescription = isDescriptionExpanded ? product.description : collapsedDescription;
+client/src/pages/Shop.tsx:91:        className="relative min-h-[220px] overflow-hidden rounded-t-[1.75rem] border-b border-primary/20"
+client/src/pages/Shop.tsx:97:          src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}
+client/src/pages/Shop.tsx:98:          alt={product.name}
+client/src/pages/Shop.tsx:109:          <span className="pill bg-black/55 text-xs text-primary">{product.badge || "Eby’s Pick"}</span>
+client/src/pages/Shop.tsx:110:          <span className="pill bg-black/55 text-xs text-primary">{product.stockStatus?.replace("_", " ") || "available"}</span>
+client/src/pages/Shop.tsx:118:            <h2 className="serif break-words text-3xl font-bold text-white">{product.name}</h2>
+client/src/pages/Shop.tsx:120:          <b className="shrink-0 text-2xl text-primary">£{product.price}</b>
+client/src/pages/Shop.tsx:137:        <div className="mt-5 rounded-3xl border border-primary/20 bg-black/20 p-4">
+client/src/pages/Shop.tsx:142:          <div className="mt-3 flex flex-wrap gap-3" role="radiogroup" aria-label={`${product.name} colours`}>
+client/src/pages/Shop.tsx:153:                  aria-label={`Preview ${variant.name}`}
+client/src/pages/Shop.tsx:155:                  className={`flex min-h-12 items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition ${active ? "border-primary bg-primary/15 text-primary shadow-[0_0_0_4px_rgba(200,169,90,.12)]" : "border-white/15 bg-white/[0.03] text-white/72 hover:border-primary/60 hover:text-white"}`}
+client/src/pages/Shop.tsx:157:                  <span className="h-7 w-7 rounded-full border border-white/30 shadow-inner" style={{ backgroundColor: swatchColour }} />
+client/src/pages/Shop.tsx:169:          onClick={() => onAdd(product, selectedVariant)}
+client/src/pages/Shop.tsx:179:  const { data } = trpc.public.products.useQuery();
+client/src/pages/Shop.tsx:180:  const order = trpc.public.createOrder.useMutation();
+client/src/pages/Shop.tsx:188:  const products = useMemo(() => (data ?? []) as ShopProduct[], [data]);
+client/src/pages/Shop.tsx:190:    () => searchQuery ? products.filter((product) => productMatchesSearch(product, searchQuery)) : products,
+client/src/pages/Shop.tsx:191:    [products, searchQuery]
+client/src/pages/Shop.tsx:193:  const checkoutReturn = useMemo(() => {
+client/src/pages/Shop.tsx:197:    const orderId = params.get("order");
+client/src/pages/Shop.tsx:198:    if (payment === "success") return { status: "success" as const, orderId };
+client/src/pages/Shop.tsx:199:    if (payment === "cancelled") return { status: "cancelled" as const, orderId };
+client/src/pages/Shop.tsx:203:  const add = (product: ShopProduct, variant?: ProductVariant) => {
+client/src/pages/Shop.tsx:204:    const productId = normalizeProductId(product);
+client/src/pages/Shop.tsx:205:    if (!productId) {
+client/src/pages/Shop.tsx:206:      toast.error("This product needs to refresh before checkout. Please reload the shop and try again.");
+client/src/pages/Shop.tsx:211:      const key = `${productId}:${variantId ?? variant?.name ?? "default"}`;
+client/src/pages/Shop.tsx:212:      const existing = current.find((item) => `${item.productId}:${item.variantId ?? item.variantName ?? "default"}` === key);
+client/src/pages/Shop.tsx:213:      if (existing) return current.map((item) => `${item.productId}:${item.variantId ?? item.variantName ?? "default"}` === key ? { ...item, quantity: item.quantity + 1 } : item);
+client/src/pages/Shop.tsx:214:      return [...current, { productId, variantId, productName: product.name, variantName: variant?.name, quantity: 1, unitPrice: product.price }];
+client/src/pages/Shop.tsx:216:    toast.success(`${product.name} added to your bag`);
+client/src/pages/Shop.tsx:217:    smoothScrollToElement("shop-checkout", 80);
+client/src/pages/Shop.tsx:225:      toast.error("Please add your delivery address and city before opening secure checkout.");
+client/src/pages/Shop.tsx:226:      smoothScrollToElement("shop-checkout", 80);
+client/src/pages/Shop.tsx:229:    const checkoutItems = normalizeCartForCheckout(cart);
+client/src/pages/Shop.tsx:230:    if (checkoutItems.some((item) => !Number.isFinite(item.productId) || item.productId <= 0)) {
+client/src/pages/Shop.tsx:231:      toast.error("Please remove and re-add the affected product before checkout.");
+client/src/pages/Shop.tsx:234:    const result = await order.mutateAsync({ ...delivery, items: checkoutItems });
+client/src/pages/Shop.tsx:236:    if (result.checkoutUrl) {
+client/src/pages/Shop.tsx:237:      window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+client/src/pages/Shop.tsx:250:            <p className="mt-4 max-w-3xl text-white/75">Choose scalp-friendly braid-care essentials, click available colours to preview each finish, then leave your delivery details at checkout.</p>
+client/src/pages/Shop.tsx:256:          <div className="mt-8 rounded-3xl border border-primary/30 bg-black/25 p-5 text-white" role="status" aria-live="polite">
+client/src/pages/Shop.tsx:267:        {checkoutReturn ? (
+client/src/pages/Shop.tsx:268:          <div className={`mt-8 rounded-3xl border p-5 ${checkoutReturn.status === "success" ? "border-primary/35 bg-primary/10 text-primary" : "border-white/15 bg-white/[0.05] text-white/78"}`} role="status">
+client/src/pages/Shop.tsx:269:            <p className="font-semibold">{checkoutReturn.status === "success" ? "Payment successful" : "Checkout cancelled"}</p>
+client/src/pages/Shop.tsx:271:              {checkoutReturn.status === "success"
+\n=== ENV SUPABASE REFERENCES ===
+./client/index.html:11:    <meta property="og:image" content="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-link-preview_6583844d-256f347d13.png" />
+./client/index.html:18:    <meta name="twitter:image" content="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-link-preview_6583844d-256f347d13.png" />
+./client/index.html:38:        "image": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-link-preview_6583844d-256f347d13.png",
+./client/src/components/DashboardLayout.tsx:77:              Access to this dashboard requires the Eby’s Place Supabase admin email and password.
+./client/src/const.ts:4:export const AUTH_TOKEN_STORAGE_KEY = "ebysplace.supabase.access_token";
+./client/src/const.ts:5:export const AUTH_EXPIRES_STORAGE_KEY = "ebysplace.supabase.expires_at";
+./client/src/pages/Home.tsx:17:const LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
+./client/src/pages/Home.tsx:18:const HEADER_LOGO_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png";
+./client/src/pages/Home.tsx:19:const LANDING_HERO_IMAGE_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_7dbbea62-45d4296622.png";
+./client/src/pages/Home.tsx:20:const ABOUT_PORTRAIT_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-about-story-portrait.png";
+./client/src/pages/Home.tsx:22:const PRODUCT_IMAGE_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
+./client/src/pages/Shop.tsx:36:const PRODUCT_IMAGE_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
+./client/src/pages/Admin.tsx:158:      toast.success("Product deleted from Supabase");
+./client/src/pages/Admin.tsx:543:                      <button type="button" className="btn-dark border-red-400/40 py-2 text-red-100 hover:border-red-300 hover:text-red-50" disabled={deleteProduct.isPending} onClick={() => { if (!product.id) { toast.error("This product has no database ID. Please reload the page and try again."); return; } if (window.confirm(`Delete ${product.name} from the Supabase products table?`)) deleteProduct.mutate({ id: Number(product.id) }); }}><Trash2 className="mr-2 h-4 w-4" />Delete product</button>
+./client/src/pages/Admin.tsx:603:                      <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Round image URL<input id="about-portrait-image" defaultValue={about.portraitImageUrl || about.imageUrl || ""} placeholder="Supabase Storage public image URL" /></label>
+./client/src/pages/AdminLogin.tsx:76:              Supabase-secured admin access
+./client/src/pages/AdminLogin.tsx:80:              Sign in with the configured Supabase administrator account to manage services, products, gallery images, reviews, bookings, and website content without any Manus OAuth environment variables.
+./client/src/pages/AdminLogin.tsx:91:                Use the Eby’s Place Supabase email and password to continue.
+./client/src/pages/AdminLogin.tsx:132:                      Check the Supabase admin inbox for a password reset link, then return here to sign in with the new password.
+./client/src/pages/AdminResetPassword.tsx:57:              Enter a new password for the configured Eby’s Place Supabase admin account.
+./package.json:16:    "seed:supabase": "tsx scripts/seed-supabase-content.ts"
+./server/_core/context.ts:4:import { authenticateSupabaseRequest } from "../supabaseAuth";
+./server/_core/context.ts:20:    user = (await authenticateSupabaseRequest(req)) as User | null;
+./server/auth.logout.test.ts:10:    openId: "supabase-auth-id",
+./server/auth.logout.test.ts:13:    loginMethod: "supabase",
+./server/auth.logout.test.ts:33:  it("reports success for token-based Supabase logout without requiring server cookie mutation", async () => {
+./server/db.ts:119:type SupabaseProductRow = Record<string, any>;
+./server/db.ts:123:type SupabaseColumnStyle = "camel" | "snake";
+./server/db.ts:125:function getSupabaseRestConfig() {
+./server/db.ts:126:  const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
+./server/db.ts:127:  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+./server/db.ts:136:async function supabaseRest<T>(path: string, init: RequestInit = {}) {
+./server/db.ts:137:  const config = getSupabaseRestConfig();
+./server/db.ts:157:  if (!response.ok) console.warn("[Supabase Products] REST request failed", { path, status: response.status, body });
+./server/db.ts:179:function normalizeSupabaseProduct(row: SupabaseProductRow, variants: SupabaseProductRow[] = []) {
+./server/db.ts:221:async function getSupabaseProductColumnStyle(): Promise<SupabaseColumnStyle | null> {
+./server/db.ts:222:  const result = await supabaseRest<SupabaseProductRow[]>("/rest/v1/products?select=*&limit=1");
+./server/db.ts:229:async function getSupabaseVariantTableName() {
+./server/db.ts:230:  const camel = await supabaseRest<SupabaseProductRow[]>("/rest/v1/productVariants?select=*&limit=1");
+./server/db.ts:232:  const snake = await supabaseRest<SupabaseProductRow[]>("/rest/v1/product_variants?select=*&limit=1");
+./server/db.ts:237:function supabaseProductPayload(input: Partial<typeof products.$inferInsert>, style: SupabaseColumnStyle) {
+./server/db.ts:269:function supabaseVariantPayload(variant: ProductVariantInput & { productId: number }, tableName: string) {
+./server/db.ts:276:async function listSupabaseProducts() {
+./server/db.ts:277:  const style = await getSupabaseProductColumnStyle();
+./server/db.ts:279:  const productResult = await supabaseRest<SupabaseProductRow[]>("/rest/v1/products?select=*");
+./server/db.ts:281:  const variantTable = await getSupabaseVariantTableName();
+./server/db.ts:282:  const variantResult = variantTable ? await supabaseRest<SupabaseProductRow[]>(`/rest/v1/${variantTable}?select=*`) : { ok: false, body: [] as SupabaseProductRow[] };
+./server/db.ts:285:    .map((product) => normalizeSupabaseProduct(product, variants.filter((variant) => Number(variant.productId ?? variant.product_id) === Number(product.id))))
+./server/db.ts:290:async function createSupabaseProduct(input: typeof products.$inferInsert, variants: ProductVariantInput[] = []) {
+./server/db.ts:291:  const style = await getSupabaseProductColumnStyle();
+./server/db.ts:293:  const result = await supabaseRest<SupabaseProductRow[]>("/rest/v1/products", {
+./server/db.ts:296:    body: JSON.stringify(supabaseProductPayload(input, style)),
+./server/db.ts:298:  if (!result.ok || !Array.isArray(result.body) || !result.body[0]?.id) throw new Error("Supabase product could not be saved with a database id.");
+./server/db.ts:299:  const product = normalizeSupabaseProduct(result.body[0]);
+./server/db.ts:300:  if (product.id && variants.length) await replaceSupabaseProductVariants(product.id, variants);
+./server/db.ts:301:  const refreshed = product.id ? await getSupabaseProductById(product.id) : null;
+./server/db.ts:305:async function getSupabaseProductById(id: number) {
+./server/db.ts:306:  const result = await supabaseRest<SupabaseProductRow[]>(`/rest/v1/products?select=*&id=eq.${encodeURIComponent(String(id))}&limit=1`);
+./server/db.ts:308:  const variantTable = await getSupabaseVariantTableName();
+./server/db.ts:309:  const variantResult = variantTable ? await supabaseRest<SupabaseProductRow[]>(`/rest/v1/${variantTable}?select=*&${variantTable === "product_variants" ? "product_id" : "productId"}=eq.${encodeURIComponent(String(id))}`) : { ok: false, body: [] as SupabaseProductRow[] };
+./server/db.ts:311:  return normalizeSupabaseProduct(result.body[0], variants);
+./server/db.ts:314:async function updateSupabaseProduct(id: number, input: Partial<typeof products.$inferInsert>) {
+./server/db.ts:315:  const style = await getSupabaseProductColumnStyle();
+./server/db.ts:317:  const result = await supabaseRest<SupabaseProductRow[]>(`/rest/v1/products?id=eq.${encodeURIComponent(String(id))}`, {
+./server/db.ts:320:    body: JSON.stringify(supabaseProductPayload(input, style)),
+./server/db.ts:322:  if (!result.ok) throw new Error(`Supabase product ${id} could not be updated.`);
+./server/db.ts:323:  return result.body && Array.isArray(result.body) && result.body[0] ? normalizeSupabaseProduct(result.body[0]) : await getSupabaseProductById(id);
+./server/db.ts:326:async function replaceSupabaseProductVariants(productId: number, variants: ProductVariantInput[]) {
+./server/db.ts:327:  const tableName = await getSupabaseVariantTableName();
+./server/db.ts:330:  const deleteResult = await supabaseRest(`/rest/v1/${tableName}?${productColumn}=eq.${encodeURIComponent(String(productId))}`, { method: "DELETE" });
+./server/db.ts:331:  if (!deleteResult.ok) throw new Error(`Existing Supabase variants for product ${productId} could not be replaced.`);
+./server/db.ts:333:  const payload = variants.map((variant) => supabaseVariantPayload({ ...variant, productId }, tableName));
+./server/db.ts:334:  const insertResult = await supabaseRest<SupabaseProductRow[]>(`/rest/v1/${tableName}`, {
+./server/db.ts:339:  if (!insertResult.ok) throw new Error(`Supabase variants for product ${productId} could not be saved.`);
+./server/db.ts:343:async function deleteSupabaseProduct(id: number) {
+./server/db.ts:344:  const style = await getSupabaseProductColumnStyle();
+./server/db.ts:346:  const tableName = await getSupabaseVariantTableName();
+./server/db.ts:349:    await supabaseRest(`/rest/v1/${tableName}?${productColumn}=eq.${encodeURIComponent(String(id))}`, { method: "DELETE" });
+./server/db.ts:351:  const result = await supabaseRest(`/rest/v1/products?id=eq.${encodeURIComponent(String(id))}`, { method: "DELETE" });
+./server/db.ts:352:  if (!result.ok) throw new Error(`Supabase product ${id} could not be deleted.`);
+./server/db.ts:394:  "knotless-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+./server/db.ts:395:  "box-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+./server/db.ts:396:  "goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
+./server/db.ts:397:  "fulani-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+./server/db.ts:398:  "cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+./server/db.ts:399:  "stitch-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
+./server/db.ts:400:  "lemonade-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
+./server/db.ts:401:  "boho-goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
+./server/db.ts:402:  "tribal-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
+./server/db.ts:403:  "senegalese-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
+./server/db.ts:404:  "passion-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
+./server/db.ts:405:  "faux-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
+./server/db.ts:406:  "butterfly-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
+./server/db.ts:407:  "starter-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+./server/db.ts:408:  "kids-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+./server/db.ts:409:  "kids-cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
+./server/db.ts:410:  "hair-wash-prep": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
+./server/db.ts:411:  "beads-accessories": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png",
+./server/db.ts:412:  "edge-control-styling": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_edge_control_styling_675ed964-0d252ca79f.png",
+./server/db.ts:413:  "braid-takedown": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png"
+./server/db.ts:427:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+./server/db.ts:439:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+./server/db.ts:451:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
+./server/db.ts:463:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+./server/db.ts:475:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+./server/db.ts:487:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
+./server/db.ts:499:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
+./server/db.ts:511:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
+./server/db.ts:523:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
+./server/db.ts:535:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
+./server/db.ts:547:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
+./server/db.ts:559:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
+./server/db.ts:571:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
+./server/db.ts:583:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+./server/db.ts:595:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+./server/db.ts:607:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
+./server/db.ts:619:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+./server/db.ts:631:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+./server/db.ts:643:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
+./server/db.ts:655:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
+./server/db.ts:667:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+./server/db.ts:679:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+./server/db.ts:691:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
+./server/db.ts:703:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+./server/db.ts:715:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+./server/db.ts:727:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
+./server/db.ts:739:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png",
+./server/db.ts:751:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_edge_control_styling_675ed964-0d252ca79f.png",
+./server/db.ts:763:    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_braid_takedown_6240fcb4-8c93f3e6e6.png",
+./server/db.ts:767:const PRODUCT_IMAGE_FALLBACK_URL = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
+./server/db.ts:768:const ABOUT_PORTRAIT_FALLBACK_URL = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-about-story-portrait.png";
+./server/db.ts:979:    const supabaseProducts = await listSupabaseProducts();
+./server/db.ts:980:    if (supabaseProducts) return supabaseProducts;
+./server/db.ts:1220:  const supabaseProductRows = await listSupabaseProducts();
+./server/db.ts:1221:  const [mysqlProductRows, mysqlVariantRows] = supabaseProductRows ? [[], []] : await Promise.all([
+./server/db.ts:1225:  const productRows = supabaseProductRows ?? mysqlProductRows;
+./server/db.ts:1226:  const variantRows = supabaseProductRows ? supabaseProductRows.flatMap((product) => product.variants ?? []) : mysqlVariantRows;
+./server/db.ts:1436:  const supabaseProducts = await listSupabaseProducts();
+./server/db.ts:1438:  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0 };
+./server/db.ts:1440:  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, products: supabaseProducts?.length ?? mysqlProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
+./server/db.ts:1445:  const supabaseProducts = await listSupabaseProducts();
+./server/db.ts:1449:  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+./server/db.ts:1452:  const productsWithVariants = supabaseProducts ?? mysqlProductRows.map((product) => ({
+./server/db.ts:1488:  if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
+./server/db.ts:1489:  const supabaseProduct = await updateSupabaseProduct(id, input);
+./server/db.ts:1490:  if (supabaseProduct) return supabaseProduct;
+./server/db.ts:1498:  const supabaseProduct = await createSupabaseProduct(input, variants);
+./server/db.ts:1499:  if (supabaseProduct?.id) return supabaseProduct;
+./server/db.ts:1510:  if (!Number.isFinite(productId) || productId <= 0) throw new Error("A valid Supabase product id is required.");
+./server/db.ts:1511:  const supabaseResult = await replaceSupabaseProductVariants(productId, variants);
+./server/db.ts:1512:  if (supabaseResult) return supabaseResult;
+./server/db.ts:1521:  if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
+./server/db.ts:1522:  const supabaseResult = await deleteSupabaseProduct(id);
+./server/db.ts:1523:  if (supabaseResult) return supabaseResult;
+./server/db.ts:1539:  if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
+./server/db.ts:1540:  const supabaseProduct = await updateSupabaseProduct(id, { stockQuantity, stockStatus });
+./server/db.ts:1541:  if (supabaseProduct) return { id, stockQuantity: supabaseProduct.stockQuantity ?? stockQuantity, stockStatus: supabaseProduct.stockStatus ?? stockStatus };
+./server/routers.ts:13:import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
+./server/storage.ts:1:// Supabase Storage helpers for Eby’s Place production media.
+./server/storage.ts:3:const SUPABASE_URL = (process.env.SUPABASE_URL || "https://jcyoipbiplzrocrrhwkp.supabase.co").replace(/\/+$/, "");
+./server/storage.ts:4:const SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "ebysplace-media";
+./server/storage.ts:6:function getSupabaseConfig() {
+./server/storage.ts:7:  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+./server/storage.ts:9:    throw new Error("Storage is unavailable: configure SUPABASE_SERVICE_ROLE_KEY in Vercel and redeploy.");
+./server/storage.ts:11:  return { supabaseUrl: SUPABASE_URL, serviceRoleKey, bucket: SUPABASE_BUCKET };
+./server/storage.ts:15:  return relKey.replace(/^supabase:/, "").replace(/^\/+/, "");
+./server/storage.ts:31:  return `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(SUPABASE_BUCKET)}/${encodeObjectKey(key)}`;
+./server/storage.ts:44:  const { supabaseUrl, serviceRoleKey, bucket } = getSupabaseConfig();
+./server/storage.ts:46:  const uploadUrl = `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${encodeObjectKey(key)}`;
+./server/storage.ts:61:    throw new Error(`Supabase storage upload failed (${uploadResp.status}): ${msg}`);
+./server/storage.ts:64:  return { key: `supabase:${key}`, url: publicUrlForKey(key) };
+./server/storage.ts:69:  return { key: `supabase:${key}`, url: publicUrlForKey(key) };
+./server/ebysplace.business.test.ts:137:      expect(service.imageUrl, `${service.name} needs a migrated Supabase service image`).toMatch(/^https:\/\/jcyoipbiplzrocrrhwkp\.supabase\.co\/storage\/v1\/object\/public\/ebysplace-media\/ebysplace_service_/);
+./server/home.frontend.test.ts:84:    expect(homeSource).toContain("https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png");
+./server/home.frontend.test.ts:145:  it("keeps storage-backed images on clean public Supabase URLs and decodes gallery images without blocking layout", () => {
+./server/home.frontend.test.ts:147:    expect(combinedMediaSource).toContain("https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/");
+./server/home.frontend.test.ts:304:    expect(indexSource).toContain('property="og:image" content="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-link-preview_6583844d-256f347d13.png"');
+./server/home.frontend.test.ts:305:    expect(indexSource).toContain('name="twitter:image" content="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-link-preview_6583844d-256f347d13.png"');
+./server/home.frontend.test.ts:307:    expect(indexSource).toContain('"image": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-link-preview_6583844d-256f347d13.png"');
+./server/live-production-repairs.test.ts:9:  it("uses local Supabase email/password admin auth with no Manus OAuth Vite variables", () => {

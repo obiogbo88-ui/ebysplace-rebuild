@@ -1,0 +1,430 @@
+=== Admin procedure references ===
+server/_core/systemRouter.ts:3:import { adminProcedure, publicProcedure, router } from "./trpc";
+server/_core/systemRouter.ts:16:  notifyOwner: adminProcedure
+server/_core/trpc.ts:28:export const protectedProcedure = t.procedure.use(requireUser);
+server/_core/trpc.ts:30:export const adminProcedure = t.procedure.use(
+server/_core/voiceTranscription.ts:238: *   transcribe: protectedProcedure
+server/db.ts:6:  bookings,
+server/db.ts:12:  orders,
+server/db.ts:19:  websiteSections,
+server/db.ts:917:  const existingSections = await db.select().from(websiteSections).where(eq(websiteSections.sectionKey, "about_us")).limit(1);
+server/db.ts:918:  if (existingSections.length === 0) await db.insert(websiteSections).values(seedWebsiteSections);
+server/db.ts:933:export async function listServices(category?: string) {
+server/db.ts:968:    const rows = await db.select().from(websiteSections).where(eq(websiteSections.isPublished, "true")).orderBy(asc(websiteSections.sortOrder));
+server/db.ts:976:export async function listProducts() {
+server/db.ts:1043:    const rows = await db.select().from(websiteSections).where(eq(websiteSections.sectionKey, sectionKey)).limit(1);
+server/db.ts:1055:  await db.insert(websiteSections).values({
+server/db.ts:1109:  const rows = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
+server/db.ts:1120:export async function listGallery(category?: string) {
+server/db.ts:1164:  await addColumnIfMissing("bookings", "serviceLocation", "enum('studio','home_service') NOT NULL DEFAULT 'studio'");
+server/db.ts:1165:  await addColumnIfMissing("bookings", "addressLine2", "varchar(255) NULL");
+server/db.ts:1166:  await addColumnIfMissing("bookings", "county", "varchar(120) NULL");
+server/db.ts:1167:  await addColumnIfMissing("bookings", "deliveryNote", "text NULL");
+server/db.ts:1168:  await addColumnIfMissing("bookings", "homeServiceSurcharge", "decimal(10,2) NOT NULL DEFAULT '0.00'");
+server/db.ts:1169:  await makeColumnNullableIfPresent("bookings", "addressLine1", "varchar(255) NULL");
+server/db.ts:1170:  await makeColumnNullableIfPresent("bookings", "city", "varchar(120) NULL");
+server/db.ts:1171:  await makeColumnNullableIfPresent("bookings", "postcode", "varchar(40) NULL");
+server/db.ts:1177:  await addColumnIfMissing("orders", "serviceLocation", "enum('studio','home_service') NOT NULL DEFAULT 'studio'");
+server/db.ts:1178:  await addColumnIfMissing("orders", "addressLine2", "varchar(255) NULL");
+server/db.ts:1179:  await addColumnIfMissing("orders", "county", "varchar(120) NULL");
+server/db.ts:1180:  await addColumnIfMissing("orders", "deliveryNote", "text NULL");
+server/db.ts:1181:  await makeColumnNullableIfPresent("orders", "addressLine1", "varchar(255) NULL");
+server/db.ts:1182:  await makeColumnNullableIfPresent("orders", "city", "varchar(120) NULL");
+server/db.ts:1183:  await makeColumnNullableIfPresent("orders", "postcode", "varchar(40) NULL");
+server/db.ts:1186:export async function createBooking(input: typeof bookings.$inferInsert) {
+server/db.ts:1190:  const inserted = await db.insert(bookings).values(input).$returningId();
+server/db.ts:1197:  await db.update(bookings).set({ depositStatus: "checkout_started", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(bookings.id, id));
+server/db.ts:1203:  await db.update(bookings).set({ depositStatus: "paid", status: "confirmed", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId));
+server/db.ts:1210:  const rows = await db.select().from(bookings).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
+server/db.ts:1246:  const inserted = await db.insert(orders).values({
+server/db.ts:1267:  await db.update(orders).set({ status: "pending_payment", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, id));
+server/db.ts:1274:  const matchingOrders = await db.select().from(orders).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
+server/db.ts:1278:  await db.update(orders).set({ status: "paid", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, order.id));
+server/db.ts:1301:  const rows = await db.select().from(orders).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
+server/db.ts:1309:  const rows = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+server/db.ts:1438:  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0 };
+server/db.ts:1439:  const [bookingRows, orderRows, reviewRows, mysqlProductRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
+server/db.ts:1440:  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, products: supabaseProducts?.length ?? mysqlProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
+server/db.ts:1449:  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+server/db.ts:1451:  const [bookingRows, orderRows, reviewRows, mysqlProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
+server/db.ts:1463:  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows, emailNotifications: emailNotificationRows, availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+server/db.ts:1476:  await db.update(bookings).set({ status }).where(eq(bookings.id, id));
+server/db.ts:1487:export async function updateProduct(id: number, input: Partial<typeof products.$inferInsert>) {
+server/db.ts:1497:export async function createProduct(input: typeof products.$inferInsert, variants: Array<{ name: string; colourHex?: string; stockQuantity: number }> = []) {
+server/db.ts:1520:export async function deleteProduct(id: number) {
+server/db.ts:1534:  await db.update(orders).set({ status }).where(eq(orders.id, id));
+server/db.ts:1538:export async function updateProductStock(id: number, stockQuantity: number, stockStatus: "in_stock" | "low_stock" | "out_of_stock") {
+server/db.ts:1555:export async function updateWebsiteSection(sectionKey: string, input: Partial<typeof websiteSections.$inferInsert>) {
+server/db.ts:1558:  await db.insert(websiteSections).values({ sectionKey, title: input.title ?? sectionKey, ...input }).onDuplicateKeyUpdate({ set: { ...input, updatedAt: new Date() } });
+server/db.ts:1574:    db.select({ label: bookings.serviceName, total: sql<number>`count(*)` }).from(bookings).groupBy(bookings.serviceName).orderBy(desc(sql`count(*)`)).limit(8),
+server/db.ts:1576:    db.select().from(bookings).orderBy(desc(bookings.createdAt)).limit(6),
+server/db.ts:1577:    db.select().from(orders).orderBy(desc(orders.createdAt)).limit(6),
+server/routers.ts:9:import { adminProcedure, publicProcedure, router } from "./_core/trpc";
+server/routers.ts:214:    services: publicProcedure.input(z.object({ category: serviceCategory.optional() }).optional()).query(({ input }) => db.listServices(input?.category)),
+server/routers.ts:216:    products: publicProcedure.query(() => db.listProducts()),
+server/routers.ts:220:    websiteSections: publicProcedure.query(() => db.listWebsiteSections()),
+server/routers.ts:222:    gallery: publicProcedure.input(z.object({ category: z.string().optional() }).optional()).query(({ input }) => db.listGallery(input?.category)),
+server/routers.ts:255:        if (missing) throw new TRPCError({ code: "BAD_REQUEST", message: "Home Service bookings require the customer name, address line 1, city, and county. Postcode is optional." });
+server/routers.ts:333:        throw new TRPCError({ code: "BAD_REQUEST", message: "Shop orders require delivery address line 1 and city. Postcode is optional." });
+server/routers.ts:447:    summary: adminProcedure.query(() => db.adminSummary()),
+server/routers.ts:448:    lists: adminProcedure.query(() => db.adminLists()),
+server/routers.ts:449:    listEmailNotificationLogs: adminProcedure.query(() => db.listEmailNotificationLogs()),
+server/routers.ts:450:    moderateReview: adminProcedure.input(z.object({ id: z.number(), status: reviewStatus })).mutation(({ input }) => db.moderateReview(input.id, input.status)),
+server/routers.ts:451:    updateBookingStatus: adminProcedure.input(z.object({ id: z.number(), status: bookingStatus })).mutation(({ input }) => db.updateBookingStatus(input.id, input.status)),
+server/routers.ts:452:    updateOrderStatus: adminProcedure.input(z.object({ id: z.number(), status: orderStatus })).mutation(({ input }) => db.updateOrderStatus(input.id, input.status)),
+server/routers.ts:453:    blockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional(), reason: z.string().optional() })).mutation(({ input }) => db.blockBookingSlot(input)),
+server/routers.ts:454:    unblockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional() })).mutation(({ input }) => db.unblockBookingSlot(input)),
+server/routers.ts:455:    updateInstagramSettings: adminProcedure.input(z.object({ handle: z.string().min(2), feedUrl: z.string().url(), enabled: z.boolean(), note: z.string().optional() })).mutation(({ input }) => db.updateInstagramSettings(input)),
+server/routers.ts:456:    updateHomeServiceSurcharge: adminProcedure.input(z.object({ homeServiceSurcharge: z.string().regex(/^\d+(\.\d{2})?$/) })).mutation(({ input }) => db.updateHomeServiceSurcharge(input.homeServiceSurcharge)),
+server/routers.ts:457:    sendReviewRequest: adminProcedure.input(z.object({ bookingId: z.number() })).mutation(async ({ input }) => {
+server/routers.ts:463:    resendEmailNotification: adminProcedure.input(z.object({ logId: z.number().int().positive() })).mutation(async ({ input }) => {
+server/routers.ts:471:    updateService: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), description: z.string().min(10).optional(), duration: z.string().min(2).optional(), priceFrom: z.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z.string().optional(), imageUrl: z.string().min(5).optional(), isBookable: z.enum(["true", "false"]).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+server/routers.ts:475:    createProduct: adminProcedure.input(z.object({ name: z.string().min(2), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/), seoTitle: z.string().min(8).max(255).optional(), seoDescription: z.string().min(30).max(320).optional(), category: productCategory, description: z.string().min(10), price: z.string().regex(/^\d+(\.\d{2})?$/), imageUrl: z.string().min(5).optional(), badge: z.string().optional(), stockStatus: productStockStatus.default("in_stock"), stockQuantity: z.number().int().min(0).default(0), isFeatured: z.enum(["true", "false"]).default("false"), variants: z.array(z.object({ name: z.string().min(1), colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), stockQuantity: z.number().int().min(0).default(0) })).default([]) })).mutation(({ input }) => {
+server/routers.ts:477:      return db.createProduct(product, variants);
+server/routers.ts:479:    updateProduct: adminProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().min(2).optional(), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), seoTitle: z.string().min(8).max(255).optional(), seoDescription: z.string().min(30).max(320).optional(), category: productCategory.optional(), description: z.string().min(10).optional(), price: z.string().regex(/^\d+(\.\d{2})?$/).optional(), imageUrl: z.string().min(5).optional(), badge: z.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z.number().int().min(0).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+server/routers.ts:481:      return db.updateProduct(id, changes);
+server/routers.ts:483:    updateProductStock: adminProcedure.input(z.object({ id: z.number().int().positive(), stockQuantity: z.number().int().min(0), stockStatus: productStockStatus })).mutation(({ input }) => db.updateProductStock(input.id, input.stockQuantity, input.stockStatus)),
+server/routers.ts:484:    updateProductVariants: adminProcedure.input(z.object({ productId: z.number().int().positive(), variants: z.array(z.object({ name: z.string().min(1), colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), stockQuantity: z.number().int().min(0).default(0) })) })).mutation(({ input }) => db.replaceProductVariants(input.productId, input.variants)),
+server/routers.ts:485:    deleteProduct: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => db.deleteProduct(input.id)),
+server/routers.ts:486:    uploadProductImage: adminProcedure.input(z.object({ productId: z.number().int().positive().optional(), productName: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("product-image.png") })).mutation(async ({ input }) => {
+server/routers.ts:488:      if (input.productId) await db.updateProduct(input.productId, { imageUrl: uploaded.url });
+server/routers.ts:491:    insights: adminProcedure.query(() => db.adminInsights()),
+server/routers.ts:492:    uploadServiceImage: adminProcedure.input(z.object({ serviceId: z.number(), serviceName: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("service-image.png") })).mutation(async ({ input }) => {
+server/routers.ts:497:    uploadGalleryImage: adminProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("gallery-image.png") })).mutation(async ({ input }) => uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: input.fileName, folder: "gallery" })),
+server/routers.ts:498:    uploadWebsiteSectionImage: adminProcedure.input(z.object({ sectionKey: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("section-image.png"), imageRole: z.enum(["main", "portrait"]).default("main") })).mutation(async ({ input }) => {
+server/routers.ts:503:    addGalleryImage: adminProcedure.input(z.object({ title: z.string().min(2), category: galleryCategory, imageUrl: z.string().min(5), altText: z.string().min(5), isPublished: z.enum(["true", "false"]).default("true"), sortOrder: z.number().int().default(0) })).mutation(({ input }) => db.addGalleryImage(input)),
+server/routers.ts:504:    updateWebsiteSection: adminProcedure.input(z.object({ sectionKey: z.string().min(2), title: z.string().min(2).optional(), eyebrow: z.string().optional(), body: z.string().optional(), ctaLabel: z.string().optional(), ctaHref: z.string().optional(), imageUrl: z.string().optional(), portraitImageUrl: z.string().optional(), portraitDescription: z.string().optional(), isPublished: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+server/ebysplace.business.test.ts:103:    const services = await db.listServices();
+server/ebysplace.business.test.ts:134:    const services = await db.listServices();
+server/ebysplace.business.test.ts:273:  it("creates Stripe Checkout sessions for shop product orders with Eby’s Place customer-facing copy", async () => {
+server/ebysplace.business.test.ts:326:  it("notifies the owner and marks bookings paid for completed Stripe deposit webhooks", async () => {
+server/ebysplace.business.test.ts:399:  it("notifies the owner and marks shop orders paid for completed Stripe product webhooks", async () => {
+server/home.frontend.test.ts:212:    expect(homeSource).toContain("websiteSections.useQuery");
+server/product-seo-admin-responsive.test.ts:12:    const products = await db.listProducts();
+server/product-seo-admin-responsive.test.ts:27:    expect(routerSource).toContain("updateProduct: adminProcedure");
+server/product-seo-admin-responsive.test.ts:33:    expect(adminSource).toContain("updateProduct.mutate");
+server/product-seo-admin-responsive.test.ts:124:    expect(routerSource).toContain("createProduct: adminProcedure");
+server/product-seo-admin-responsive.test.ts:125:    expect(routerSource).toContain("uploadProductImage: adminProcedure");
+server/product-seo-admin-responsive.test.ts:126:    expect(routerSource).toContain("insights: adminProcedure");
+server/product-seo-admin-responsive.test.ts:127:    expect(dbSource).toContain("export async function createProduct");
+server/product-seo-admin-responsive.test.ts:131:    expect(routerSource).toContain("updateProductVariants");
+server/product-seo-admin-responsive.test.ts:139:    expect(adminSource).toContain("<AdminPanel id=\"bookings\"");
+server/product-seo-admin-responsive.test.ts:140:    expect(adminSource).toContain("<AdminPanel id=\"orders\"");
+server/product-seo-admin-responsive.test.ts:146:    expect(adminSource).toContain("open={isPanelOpen(\"bookings\")}");
+server/product-seo-admin-responsive.test.ts:147:    expect(adminSource).toContain("onToggle={() => togglePanel(\"bookings\")}");
+server/product-seo-admin-responsive.test.ts:180:    expect(routerSource).toContain("summary: adminProcedure");
+server/product-seo-admin-responsive.test.ts:181:    expect(routerSource).toContain("lists: adminProcedure");
+server/product-seo-admin-responsive.test.ts:182:    expect(routerSource).toContain("insights: adminProcedure");
+server/strict-visual-regression.test.ts:17:    expect(routersSource).toContain("products: publicProcedure.query(() => db.listProducts())");
+server/strict-visual-regression.test.ts:19:    expect(routersSource).toContain("db.listServices(input?.category)");
+server/strict-visual-regression.test.ts:24:    expect(routersSource).toContain("summary: adminProcedure.query(() => db.adminSummary())");
+server/strict-visual-regression.test.ts:89:    expect(adminSource).toContain("updateProduct.mutate({ id: product.id");
+server/strict-visual-regression.test.ts:91:    expect(routersSource).toContain("updateService: adminProcedure.input");
+server/strict-visual-regression.test.ts:94:    expect(routersSource).toContain("updateProduct: adminProcedure.input");
+server/strict-visual-regression.test.ts:97:    expect(dbSource).toContain("export async function updateProduct");
+server/live-production-repairs.test.ts:116:    expect(seedSource).toContain('await upsertRows("websiteSections", seedWebsiteSections, "sectionKey")');
+client/src/components/DashboardLayout.tsx:33:  { icon: CalendarDays, label: "Bookings", path: "/admin#bookings" },
+client/src/components/DashboardLayout.tsx:35:  { icon: ShoppingBag, label: "Orders", path: "/admin#orders" },
+client/src/pages/Home.tsx:290:  const { data: sections = [] } = trpc.public.websiteSections.useQuery();
+client/src/pages/Admin.tsx:24:  bookings?: any[];
+client/src/pages/Admin.tsx:25:  orders?: any[];
+client/src/pages/Admin.tsx:58:  { label: "Bookings", sectionId: "bookings", description: "Review and update appointment statuses." },
+client/src/pages/Admin.tsx:59:  { label: "Orders", sectionId: "orders", description: "Open protected shop order fulfilment." },
+client/src/pages/Admin.tsx:136:  const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => { scrollAdminFeedback("bookings"); toast.success("Review request sent"); } });
+client/src/pages/Admin.tsx:142:  const updateStock = trpc.admin.updateProductStock.useMutation(opts);
+client/src/pages/Admin.tsx:143:  const updateProductVariants = trpc.admin.updateProductVariants.useMutation(opts);
+client/src/pages/Admin.tsx:144:  const createProduct = trpc.admin.createProduct.useMutation({
+client/src/pages/Admin.tsx:153:  const updateProduct = trpc.admin.updateProduct.useMutation(opts);
+client/src/pages/Admin.tsx:154:  const deleteProduct = trpc.admin.deleteProduct.useMutation({
+client/src/pages/Admin.tsx:308:              Manage bookings, services, ecommerce orders, stock, gallery assets, moderated reviews, AI try-on records,
+client/src/pages/Admin.tsx:350:            <Stat label="Bookings" value={summary.data?.bookings ?? 0} icon={CalendarDays} />
+client/src/pages/Admin.tsx:351:            <Stat label="Orders" value={summary.data?.orders ?? 0} icon={ShoppingBag} />
+client/src/pages/Admin.tsx:367:                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4"><b className="text-primary">Braid styles & services</b>{(insights.data?.bestBookedServices || []).length ? (insights.data?.bestBookedServices || []).map((item: any) => <p className="mt-3 text-sm" key={item.label}>{item.label}<small className="block text-white/45">{item.total} bookings</small></p>) : <p className="mt-3 text-sm text-white/45">No booking volume yet.</p>}</div>
+client/src/pages/Admin.tsx:373:                <p className="mt-2 text-sm text-white/55">Monitor bookings, orders, reviews, visits, AI Try-On generations, and newsletter actions in one compact feed.</p>
+client/src/pages/Admin.tsx:383:          <AdminPanel id="bookings" eyebrow="Appointments" title="Bookings manager" description="Open appointment requests, deposits, dates, and status controls only when you need to manage the diary." icon={CalendarDays} open={isPanelOpen("bookings")} onToggle={() => togglePanel("bookings")}>
+client/src/pages/Admin.tsx:390:                {(data.bookings || []).map((booking: any) => (
+client/src/pages/Admin.tsx:428:          <AdminPanel id="orders" eyebrow="Fulfilment" title="Shop orders and delivery" description="Review paid orders, customer delivery details, and fulfilment statuses in a protected Eby’s Place order workspace." icon={ShoppingBag} open={isPanelOpen("orders")} onToggle={() => togglePanel("orders")}>
+client/src/pages/Admin.tsx:430:            {(data.orders || []).length ? data.orders!.map((order: any) => (
+client/src/pages/Admin.tsx:439:            )) : <p className="text-white/55">No shop orders yet.</p>}
+client/src/pages/Admin.tsx:470:              }) : <p className="text-white/55">No Zoho SMTP email notification logs yet. New paid bookings and shop orders will appear here after Stripe checkout completion.</p>}
+client/src/pages/Admin.tsx:494:              <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); const price = Number(newProduct.price); if (!Number.isFinite(price) || price < 0) { toast.error("Product price must be valid."); return; } createProduct.mutate({ name: newProduct.name, slug: (newProduct.slug || newProduct.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), category: newProduct.category as any, description: newProduct.description, price: price.toFixed(2), imageUrl: newProduct.imageUrl || undefined, badge: newProduct.badge || undefined, stockQuantity: Number(newProduct.stockQuantity) || 0, seoTitle: newProduct.seoTitle || `${newProduct.name} | Eby’s Place`, seoDescription: newProduct.seoDescription || newProduct.description, stockStatus: "in_stock", isFeatured: "false", variants: parseColourChoices(newProduct.colourChoices) }); }}>
+client/src/pages/Admin.tsx:505:                <button className="btn-gold" disabled={createProduct.isPending}>{createProduct.isPending ? "Saving product…" : "Save product to shop"}</button>
+client/src/pages/Admin.tsx:542:                      <button className="btn-gold flex-1 py-2" onClick={() => { if (!product.id) { toast.error("This product has no database ID. Please reload the page and try again."); return; } const price = readAdminPrice(`product-price-${product.id}`, "Shop price"); if (!price) return; updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, price, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, imageUrl: (document.getElementById(`product-image-${product.id}`) as HTMLInputElement).value || undefined, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value }); updateProductVariants.mutate({ productId: product.id, variants: parseColourChoices((document.getElementById(`product-colours-${product.id}`) as HTMLTextAreaElement).value) }); }}>Save product price, SEO & colours</button>
+client/src/pages/Admin.tsx:543:                      <button type="button" className="btn-dark border-red-400/40 py-2 text-red-100 hover:border-red-300 hover:text-red-50" disabled={deleteProduct.isPending} onClick={() => { if (!product.id) { toast.error("This product has no database ID. Please reload the page and try again."); return; } if (window.confirm(`Delete ${product.name} from the Supabase products table?`)) deleteProduct.mutate({ id: Number(product.id) }); }}><Trash2 className="mr-2 h-4 w-4" />Delete product</button>
+client/src/pages/Policies.tsx:33:          "We use information to manage bookings, process shop orders, respond to enquiries, operate the website, moderate reviews, improve customer care, and keep appropriate business records.",
+client/src/pages/AdminLogin.tsx:80:              Sign in with the configured Supabase administrator account to manage services, products, gallery images, reviews, bookings, and website content without any Manus OAuth environment variables.
+\n=== Static/demo product/service/gallery markers ===
+server/_core/cookies.ts:41:  //       : undefined;
+server/_core/dataApi.ts:15:    if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
+server/_core/dataApi.ts:25:    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+server/_core/index.ts:10:import { serveStatic } from "../static";
+server/_core/index.ts:52:  // development mode uses Vite, production mode uses static files
+server/_core/llm.ts:174:  toolChoice: ToolChoice | undefined,
+server/_core/llm.ts:175:  tools: Tool[] | undefined
+server/_core/llm.ts:176:): "none" | "auto" | ToolChoiceExplicit | undefined => {
+server/_core/llm.ts:177:  if (!toolChoice) return undefined;
+server/_core/llm.ts:234:  | undefined => {
+server/_core/llm.ts:249:  if (!schema) return undefined;
+server/_core/map.ts:30:    if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
+server/_core/map.ts:36:    body: options.body ? JSON.stringify(options.body) : undefined,
+server/_core/vite.ts:69:  // traffic so the SPA fallback still returns public/index.html instead of
+server/_core/vite.ts:91:  app.use(express.static(distPath, { fallthrough: true, index: false }));
+server/db.ts:65:      console.error("[Database] DATABASE_URL is missing. Public reads will use safe seed-data fallbacks and write operations will be skipped.", {
+server/db.ts:89:      console.error("[Database] Ignoring non-MySQL DATABASE_URL. The app expects a MySQL/TiDB connection string and will use safe seed-data fallbacks until one is configured.", { fingerprint });
+server/db.ts:103:        ssl: requiresSsl(connectionString) ? { rejectUnauthorized: false } : undefined,
+server/db.ts:133:  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)) as Partial<T>;
+server/db.ts:189:      id: Number.isFinite(variantId) && variantId > 0 ? variantId : undefined,
+server/db.ts:199:    id: Number.isFinite(id) && id > 0 ? id : undefined,
+server/db.ts:253:      stock: Number.isFinite(stockQuantity) ? stockQuantity : undefined,
+server/db.ts:365:    if (value === undefined) return;
+server/db.ts:370:  if (user.lastSignedIn !== undefined) {
+server/db.ts:374:  if (user.role !== undefined) {
+server/db.ts:388:  if (!db) return undefined;
+server/db.ts:416:export const seedServices = [
+server/db.ts:770:export const seedProducts = [
+server/db.ts:841:  for (const product of seedProducts) {
+server/db.ts:893:  for (const service of seedServices) {
+server/db.ts:929:  const scopedSeeds = seedServices.filter((item) => (!category || item.category === category) && !existingSlugs.has(item.slug));
+server/db.ts:934:  const fallback = category ? seedServices.filter((item) => item.category === category) : seedServices;
+server/db.ts:938:    if (!db) return fallback;
+server/db.ts:943:    return fallback;
+server/db.ts:948:  const fallback = seedServices.filter((item) => item.isFeatured === "true");
+server/db.ts:952:    if (!db) return fallback;
+server/db.ts:955:    return safeRows.length ? safeRows : fallback;
+server/db.ts:958:    return fallback;
+server/db.ts:963:  const fallback = seedWebsiteSections.filter((section) => section.isPublished === "true");
+server/db.ts:967:    if (!db) return fallback;
+server/db.ts:969:    return rows.length ? rows : fallback;
+server/db.ts:972:    return fallback;
+server/db.ts:977:  const fallback = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
+server/db.ts:983:    if (!db) return fallback;
+server/db.ts:987:    const safeRows = publicRows.length ? publicRows : fallback;
+server/db.ts:1002:    return fallback;
+server/db.ts:1029:function safeParseJson<T>(value: string | null | undefined, fallback: T): T {
+server/db.ts:1030:  if (!value) return fallback;
+server/db.ts:1034:    return fallback;
+server/db.ts:1038:async function getWebsiteJsonSection<T>(sectionKey: string, fallback: T): Promise<T> {
+server/db.ts:1042:    if (!db) return fallback;
+server/db.ts:1044:    return safeParseJson(rows[0]?.body, fallback);
+server/db.ts:1047:    return fallback;
+server/db.ts:1121:  const fallback = category && category !== "All" ? seedGallery.filter((item) => item.category === category) : seedGallery;
+server/db.ts:1125:    if (!db) return fallback;
+server/db.ts:1129:    if (safeRows.length >= 8 || (category && category !== "All")) return safeRows.length ? safeRows : fallback;
+server/db.ts:1134:    return fallback;
+server/db.ts:1232:    const variant = item.variantId ? variantRows.find((row) => row.id === item.variantId && row.productId === product.id) : undefined;
+server/db.ts:1438:  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0 };
+server/db.ts:1448:  const fallbackProducts = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
+server/db.ts:1449:  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+server/routers.ts:76:function normalizeStripeKey(value: string | undefined) {
+server/routers.ts:145:    input.deliveryNote?.trim() ? input.deliveryNote.trim() : undefined,
+server/routers.ts:147:    input.homeServiceSurcharge && Number(input.homeServiceSurcharge) > 0 ? `Home service surcharge: £${input.homeServiceSurcharge}` : undefined,
+server/routers.ts:278:          serviceLocation === "home_service" ? `Customer address: ${[input.addressLine1, input.addressLine2, input.city, input.county, input.postcode].filter(Boolean).join(", ")}` : undefined,
+server/routers.ts:279:          serviceLocation === "home_service" ? `Home service surcharge: £${homeServiceSurcharge}` : undefined,
+server/routers.ts:282:          input.deliveryNote ? `Notes: ${input.deliveryNote}` : undefined,
+server/routers.ts:381:          input.customerPhone ? `Phone: ${input.customerPhone}` : undefined,
+server/routers.ts:432:            input.gender ? `Gender: ${input.gender}` : undefined,
+server/routers.ts:433:            input.ageGroup ? `Age group: ${input.ageGroup}` : undefined,
+server/ebysplace.business.test.ts:58:    res: { clearCookie: () => undefined } as unknown as TrpcContext["res"],
+server/ebysplace.business.test.ts:257:    process.env.STRIPE_SECRET_KEY = `\"${["sk", "live", "platform", "fallback"].join("_")}\"`;
+server/ebysplace.business.test.ts:258:    stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_live_fallback", url: "https://checkout.stripe.com/live-fallback", payment_intent: "pi_live_fallback" });
+server/ebysplace.business.test.ts:268:    expect(result.checkoutUrl).toBe("https://checkout.stripe.com/live-fallback");
+server/ebysplace.business.test.ts:270:    expect(vi.mocked(Stripe)).toHaveBeenCalledWith(["sk", "live", "platform", "fallback"].join("_"));
+server/ebysplace.business.test.ts:280:    const updateCheckoutSpy = vi.spyOn(db, "updateOrderCheckout").mockResolvedValueOnce(undefined);
+server/ebysplace.business.test.ts:345:    const markPaidSpy = vi.spyOn(db, "markBookingDepositPaid").mockResolvedValueOnce(undefined);
+server/ebysplace.business.test.ts:417:    const markOrderPaidSpy = vi.spyOn(db, "markOrderPaid").mockResolvedValueOnce(undefined);
+server/ebysplace.business.test.ts:525:    const updateSpy = vi.spyOn(db, "updateTryOnGeneration").mockResolvedValueOnce(undefined);
+server/ebysplace.business.test.ts:568:    expect(source).toContain('placeholder="Postcode (optional if unavailable)"');
+server/ebysplace.business.test.ts:570:    expect(source).not.toContain('required placeholder="Address line 2 (optional)"');
+server/ebysplace.business.test.ts:573:  it("returns an admin summary fallback with seeded services and products", async () => {
+server/stripeWebhook.ts:11:function normalizeStripeKey(value: string | undefined) {
+server/stripeWebhook.ts:97:                booking?.deliveryNote ? `Booking notes and optional selections:\n${booking.deliveryNote}` : undefined,
+server/stripeWebhook.ts:112:              paymentIntentId ? `Payment intent: ${paymentIntentId}` : undefined,
+server/stripeWebhook.ts:161:              paymentIntentId ? `Payment intent: ${paymentIntentId}` : undefined,
+server/stripeWebhook.ts:178:            paymentIntent.receipt_email ? `Customer email: ${paymentIntent.receipt_email}` : undefined,
+server/home.frontend.test.ts:99:    expect(homeSource).toContain('placeholder="Search products"');
+server/home.frontend.test.ts:104:      expect(homeSource).toContain('placeholder="Search braids, twists, aftercare, or shop products..."');
+server/product-seo-admin-responsive.test.ts:10:  it("provides seeded products with editable SEO metadata fallbacks", async () => {
+server/performance-routing.test.ts:13:    expect(app).toContain("<Suspense fallback={<RouteLoading />}> ".trim());
+server/vercel.ts:8:import { serveStatic } from "./static";
+server/vercel-public-routing.test.ts:9:  it("routes API requests to the backend and all non-API routes to the static React frontend shell", () => {
+server/vercel-public-routing.test.ts:40:    const staticServerSource = readProjectFile("server/static.ts");
+server/vercel-public-routing.test.ts:42:    expect(staticServerSource).toContain('path.resolve(process.cwd(), "public")');
+server/vercel-public-routing.test.ts:43:    expect(staticServerSource.indexOf('path.resolve(process.cwd(), "public")')).toBeLessThan(
+server/vercel-public-routing.test.ts:44:      staticServerSource.indexOf('path.resolve(import.meta.dirname, "public")')
+server/vercel-public-routing.test.ts:46:    expect(staticServerSource).toContain('fs.existsSync(path.resolve(candidate, "index.html"))');
+server/vercel-public-routing.test.ts:49:  it("keeps real API paths out of the SPA fallback while allowing Vercel's internal adapter path to serve the frontend", () => {
+server/vercel-public-routing.test.ts:50:    const staticServerSource = readProjectFile("server/static.ts");
+server/vercel-public-routing.test.ts:52:    expect(staticServerSource).toContain("function isBackendApiRequest(url: string)");
+server/vercel-public-routing.test.ts:53:    expect(staticServerSource).toContain('pathname === "/api/index" || pathname === "/api/index/"');
+server/vercel-public-routing.test.ts:54:    expect(staticServerSource).toContain("return false;");
+server/vercel-public-routing.test.ts:55:    expect(staticServerSource).toContain('return pathname === "/api" || pathname.startsWith("/api/");');
+server/vercel-public-routing.test.ts:56:    expect(staticServerSource).toContain('app.use("*", (req: Request, res: Response, next: NextFunction) => {');
+server/vercel-public-routing.test.ts:57:    expect(staticServerSource).toContain("isBackendApiRequest(req.originalUrl || req.url)");
+server/vercel-public-routing.test.ts:58:    expect(staticServerSource).toContain("return next();");
+server/vercel-public-routing.test.ts:59:    expect(staticServerSource).toContain("res.status(200).sendFile(indexPath");
+server/vercel-public-routing.test.ts:62:  it("keeps JSON API error handling before the secondary public static fallback in the Vercel Express adapter", () => {
+server/vercel-public-routing.test.ts:65:    expect(vercelSource).toContain('import { serveStatic } from "./static";');
+server/vercel-public-routing.test.ts:95:  it("does not leave unresolved analytics placeholders in the production HTML shell", () => {
+server/live-production-repairs.test.ts:49:  it("keeps the Braiders Near Me page useful with searchable demo directory data and registration CTAs", () => {
+server/live-production-repairs.test.ts:52:    expect(braidersSource).toContain("demoBraiders");
+server/live-production-repairs.test.ts:115:    expect(seedSource).toContain('await upsertRows("products", seedProducts, "slug")');
+server/supabaseAuth.ts:6:function normalizeEmailCandidate(value: string | undefined) {
+server/supabaseAuth.ts:25:function isConfiguredAdminEmail(email: string | undefined) {
+server/supabaseAuth.ts:45:function toTrpcError(error: unknown, fallbackMessage: string) {
+server/supabaseAuth.ts:47:  const message = error instanceof Error && error.message ? error.message : fallbackMessage;
+server/supabaseAuth.ts:78:function getDisplayName(user: SupabaseAuthUser, fallbackEmail: string) {
+server/supabaseAuth.ts:80:  return typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : fallbackEmail.split("@")[0];
+server/apiErrorHandling.ts:43:    stack: error instanceof Error ? error.stack : undefined,
+server/static.ts:24:  // traffic so the SPA fallback still returns public/index.html instead of
+server/static.ts:46:  app.use(express.static(distPath, { fallthrough: true, index: false }));
+server/vercel.rollup-externalization.test.ts:8:    expect(vercelEntrypoint).toContain('from "./static"');
+server/media-fallbacks.test.ts:9:describe("public media fallbacks", () => {
+server/media-fallbacks.test.ts:10:  it("keeps product and About image fallbacks on canonical Supabase public URLs", () => {
+server/media-fallbacks.test.ts:21:  it("guards product and About image elements with onError fallbacks", () => {
+server/smoothScroll.test.ts:101:    navigateWithSmoothScroll("/booking", undefined, 5);
+server/smtp.secrets.test.ts:59:function normalizeSecret(value: string | undefined) {
+server/smtpEmailNotifications.ts:16:  to: string | null | undefined;
+server/smtpEmailNotifications.ts:32:export function normalizeSmtpPassword(value: string | undefined) {
+server/smtpEmailNotifications.ts:36:function normalizeEnv(value: string | undefined) {
+server/smtpEmailNotifications.ts:148:function money(value: unknown, fallback = "confirmed in your payment receipt") {
+server/smtpEmailNotifications.ts:150:  if (!Number.isFinite(numberValue)) return fallback;
+server/admin-upload-checkout-regression.test.ts:9:  it("treats the configured owner email as an admin fallback for bearer-token admin sessions", () => {
+client/src/App.tsx:82:    <Suspense fallback={<RouteLoading />}>
+client/src/_core/hooks/useAuth.ts:15:  const meQuery = trpc.auth.me.useQuery(undefined, {
+client/src/_core/hooks/useAuth.ts:23:      utils.auth.me.setData(undefined, null);
+client/src/_core/hooks/useAuth.ts:36:      utils.auth.me.setData(undefined, null);
+client/src/_core/hooks/useAuth.ts:42:    if (typeof window !== "undefined") {
+client/src/_core/hooks/useAuth.ts:62:    if (typeof window === "undefined") return;
+client/src/components/AIChatBox.tsx:38:  placeholder?: string;
+client/src/components/AIChatBox.tsx:117:  placeholder = "Type your message...",
+client/src/components/AIChatBox.tsx:246:                        : undefined
+client/src/components/AIChatBox.tsx:289:                      : undefined
+client/src/components/AIChatBox.tsx:316:          placeholder={placeholder}
+client/src/components/DashboardLayout.tsx:127:  const [currentHash, setCurrentHash] = useState(() => (typeof window === "undefined" ? "" : window.location.hash));
+client/src/components/ErrorBoundary.tsx:20:  static getDerivedStateFromError(error: Error): State {
+client/src/components/ui/avatar.tsx:41:      data-slot="avatar-fallback"
+client/src/components/ui/chart.tsx:195:                {formatter && item?.value !== undefined && item.name ? (
+client/src/components/ui/chart.tsx:316:    return undefined;
+client/src/components/ui/chart.tsx:324:      : undefined;
+client/src/components/ui/command.tsx:76:          "placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+client/src/components/ui/field.tsx:190:  errors?: Array<{ message?: string } | undefined>;
+client/src/components/ui/input.tsx:57:        "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+client/src/components/ui/pagination.tsx:53:      aria-current={isActive ? "page" : undefined}
+client/src/components/ui/select.tsx:38:        "border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-fit items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+client/src/components/ui/textarea.tsx:56:        "border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 flex field-sizing-content min-h-16 w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+client/src/const.ts:9:  if (typeof window === "undefined") return null;
+client/src/const.ts:21:  if (typeof window === "undefined") return;
+client/src/const.ts:27:  if (typeof window === "undefined") return;
+client/src/const.ts:34:  const target = returnTo || (typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}${window.location.hash}` : "/admin");
+client/src/contexts/ThemeContext.tsx:11:const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+client/src/contexts/ThemeContext.tsx:49:    : undefined;
+client/src/hooks/useMobile.tsx:6:  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(
+client/src/hooks/useMobile.tsx:7:    undefined
+client/src/lib/smoothScroll.ts:4:  return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+client/src/lib/smoothScroll.ts:8:  if (typeof window === "undefined") return;
+client/src/lib/smoothScroll.ts:15:  if (typeof window === "undefined") return;
+client/src/lib/smoothScroll.ts:45:  if (typeof window === "undefined") return;
+client/src/main.tsx:15:  if (typeof window === "undefined") return;
+client/src/main.tsx:48:        const headers = new Headers(init?.headers ?? undefined);
+client/src/pages/ComponentShowcase.tsx:178:  const [date, setDate] = useState<Date | undefined>(new Date());
+client/src/pages/ComponentShowcase.tsx:190:  // AI ChatBox demo state
+client/src/pages/ComponentShowcase.tsx:222:        content: `This is a **demo response**. In a real app, you would call a tRPC mutation here:\n\n\`\`\`typescript\nconst chatMutation = trpc.ai.chat.useMutation({\n  onSuccess: (response) => {\n    setChatMessages(prev => [...prev, {\n      role: "assistant",\n      content: response.choices[0].message.content\n    }]);\n  }\n});\n\nchatMutation.mutate({ messages: newMessages });\n\`\`\`\n\nYour message was: "${content}"`,
+client/src/pages/ComponentShowcase.tsx:413:                  <Input id="email" type="email" placeholder="Email" />
+client/src/pages/ComponentShowcase.tsx:419:                    placeholder="Type your message here."
+client/src/pages/ComponentShowcase.tsx:426:                      <SelectValue placeholder="Select a fruit" />
+client/src/pages/ComponentShowcase.tsx:562:                        <CommandInput placeholder="Search frameworks..." />
+client/src/pages/ComponentShowcase.tsx:630:                          <SelectValue placeholder="MM" />
+client/src/pages/ComponentShowcase.tsx:655:                          <SelectValue placeholder="YYYY" />
+client/src/pages/ComponentShowcase.tsx:1039:                            placeholder="Type something..."
+client/src/pages/ComponentShowcase.tsx:1406:                      This is a demo with simulated responses. In a real app, you'd connect it to a tRPC mutation.
+client/src/pages/ComponentShowcase.tsx:1413:                    placeholder="Try sending a message..."
+client/src/pages/Home.tsx:88:              className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
+client/src/pages/Home.tsx:92:              placeholder="Search products"
+client/src/pages/Home.tsx:102:              className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
+client/src/pages/Home.tsx:106:              placeholder="Search products"
+client/src/pages/Home.tsx:139:                className="h-12 w-full rounded-2xl border border-[#d8bd74]/45 bg-white/60 py-3 pl-11 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
+client/src/pages/Home.tsx:143:                placeholder="Search products"
+client/src/pages/Home.tsx:242:        <input className="mt-3 w-full rounded-2xl border border-primary/20 bg-white px-4 py-3 text-base text-[#2e1b10] outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 sm:text-lg" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search braids, twists, aftercare, or shop products..." aria-label="Search services, styles, and shop products" />
+client/src/pages/Home.tsx:558:                placeholder="Email address"
+client/src/pages/Services.tsx:31:    if (typeof window === "undefined") return "";
+client/src/pages/Booking.tsx:96:function moneyToNumber(value: string | number | undefined) {
+client/src/pages/Booking.tsx:487:                  <input required value={form.clientName} onChange={event => set("clientName", event.target.value)} placeholder="Your full name" />
+client/src/pages/Booking.tsx:491:                  <input type="email" required value={form.clientEmail} onChange={event => set("clientEmail", event.target.value)} placeholder="your@email.com" />
+client/src/pages/Booking.tsx:495:                  <input required value={form.clientPhone} onChange={event => set("clientPhone", event.target.value)} placeholder="+44 7700 000000" />
+client/src/pages/Booking.tsx:501:                      <input required value={form.addressLine1} onChange={event => set("addressLine1", event.target.value)} placeholder="House number and street name" />
+client/src/pages/Booking.tsx:505:                      <input value={form.addressLine2} onChange={event => set("addressLine2", event.target.value)} placeholder="Flat, apartment, building (optional)" />
+client/src/pages/Booking.tsx:509:                      <input required value={form.city} onChange={event => set("city", event.target.value)} placeholder="City or town" />
+client/src/pages/Booking.tsx:513:                      <input required value={form.county} onChange={event => set("county", event.target.value)} placeholder="County" />
+client/src/pages/Booking.tsx:517:                      <input value={form.postcode} onChange={event => set("postcode", event.target.value)} placeholder="e.g. TA7 8HD" />
+client/src/pages/Booking.tsx:525:                  placeholder="Any appointment notes or special requests"
+client/src/pages/Shop.tsx:35:const fallbackVariant: ProductVariant = { name: "Default", colourHex: "#c8a95a" };
+client/src/pages/Shop.tsx:72:    variantId: item.variantId === undefined ? undefined : Number(item.variantId),
+client/src/pages/Shop.tsx:78:  const variants = product.variants?.length ? product.variants : [fallbackVariant];
+client/src/pages/Shop.tsx:80:  const selectedVariant = variants.find((variant) => String(variant.id ?? variant.name) === selectedVariantKey) ?? variants[0] ?? fallbackVariant;
+client/src/pages/Shop.tsx:185:    if (typeof window === "undefined") return "";
+client/src/pages/Shop.tsx:194:    if (typeof window === "undefined") return null;
+client/src/pages/Shop.tsx:210:      const variantId = variant?.id === undefined ? undefined : Number(variant.id);
+client/src/pages/Shop.tsx:325:              <input required placeholder="Name" value={delivery.customerName} onChange={(event) => setDelivery({ ...delivery, customerName: event.target.value })} />
+client/src/pages/Shop.tsx:326:              <input required type="email" placeholder="Email" value={delivery.customerEmail} onChange={(event) => setDelivery({ ...delivery, customerEmail: event.target.value })} />
+client/src/pages/Shop.tsx:327:              <input placeholder="Phone" value={delivery.customerPhone} onChange={(event) => setDelivery({ ...delivery, customerPhone: event.target.value })} />
+client/src/pages/Shop.tsx:328:              <input required placeholder="Delivery address" value={delivery.addressLine1} onChange={(event) => setDelivery({ ...delivery, addressLine1: event.target.value })} />
+client/src/pages/Shop.tsx:330:                <input placeholder="Address line 2 (optional)" value={delivery.addressLine2} onChange={(event) => setDelivery({ ...delivery, addressLine2: event.target.value })} />
+client/src/pages/Shop.tsx:331:              <input required placeholder="City" value={delivery.city} onChange={(event) => setDelivery({ ...delivery, city: event.target.value })} />
+client/src/pages/Shop.tsx:332:                <input placeholder="County" value={delivery.county} onChange={(event) => setDelivery({ ...delivery, county: event.target.value })} />
+client/src/pages/Shop.tsx:334:              <input placeholder="Postcode (optional if unavailable)" value={delivery.postcode} onChange={(event) => setDelivery({ ...delivery, postcode: event.target.value })} />
+client/src/pages/Shop.tsx:335:              <textarea placeholder="Delivery notes" value={delivery.deliveryNote} onChange={(event) => setDelivery({ ...delivery, deliveryNote: event.target.value })} />
+client/src/pages/TryOn.tsx:160:    setError(undefined);
+\n=== tRPC frontend hooks ===
+client/src/_core/hooks/useAuth.ts:15:  const meQuery = trpc.auth.me.useQuery(undefined, {
+client/src/_core/hooks/useAuth.ts:20:  const logoutMutation = trpc.auth.logout.useMutation({
+client/src/components/AIChatBox.tsx:79: *   const chatMutation = trpc.ai.chat.useMutation({
+client/src/pages/ComponentShowcase.tsx:222:        content: `This is a **demo response**. In a real app, you would call a tRPC mutation here:\n\n\`\`\`typescript\nconst chatMutation = trpc.ai.chat.useMutation({\n  onSuccess: (response) => {\n    setChatMessages(prev => [...prev, {\n      role: "assistant",\n      content: response.choices[0].message.content\n    }]);\n  }\n});\n\nchatMutation.mutate({ messages: newMessages });\n\`\`\`\n\nYour message was: "${content}"`,
+client/src/pages/Home.tsx:229:  const { data: services = [] } = trpc.public.services.useQuery({});
+client/src/pages/Home.tsx:230:  const { data: products = [] } = trpc.public.products.useQuery();
+client/src/pages/Home.tsx:260:  const { data: galleryItems = [] } = trpc.public.gallery.useQuery({ category: "All" });
+client/src/pages/Home.tsx:288:  const { data: styles = [] } = trpc.public.featuredServices.useQuery();
+client/src/pages/Home.tsx:289:  const { data: products = [] } = trpc.public.products.useQuery();
+client/src/pages/Home.tsx:290:  const { data: sections = [] } = trpc.public.websiteSections.useQuery();
+client/src/pages/Home.tsx:291:  const { data: reviews = [] } = trpc.public.reviews.useQuery();
+client/src/pages/Home.tsx:292:  const newsletter = trpc.public.newsletter.useMutation({
+client/src/pages/Services.tsx:34:  const { data = [], isLoading } = trpc.public.services.useQuery(serviceQueryInput);
+client/src/pages/Booking.tsx:168:  const { data: services = [], isLoading: servicesLoading } = trpc.public.services.useQuery({});
+client/src/pages/Booking.tsx:169:  const { data: products = [], isLoading: productsLoading } = trpc.public.products.useQuery();
+client/src/pages/Booking.tsx:178:  const create = trpc.public.createBooking.useMutation();
+client/src/pages/Booking.tsx:179:  const checkout = trpc.public.createDepositCheckout.useMutation();
+client/src/pages/Booking.tsx:180:  const availability = trpc.public.availability.useQuery();
+client/src/pages/Booking.tsx:181:  const paymentMode = trpc.public.paymentMode.useQuery();
+client/src/pages/Shop.tsx:179:  const { data } = trpc.public.products.useQuery();
+client/src/pages/Shop.tsx:180:  const order = trpc.public.createOrder.useMutation();
+client/src/pages/TryOn.tsx:147:  const upload = trpc.public.uploadTryOnPhoto.useMutation();
+client/src/pages/TryOn.tsx:148:  const generate = trpc.public.generateTryOn.useMutation();
+client/src/pages/Gallery.tsx:10:  const { data = [] } = trpc.public.gallery.useQuery({ category });
+client/src/pages/Reviews.tsx:9:  const submitReview = trpc.public.submitReview.useMutation();
+client/src/pages/Admin.tsx:109:  const summary = trpc.admin.summary.useQuery(undefined, { retry: false });
+client/src/pages/Admin.tsx:110:  const lists = trpc.admin.lists.useQuery(undefined, { retry: false });
+client/src/pages/Admin.tsx:111:  const insights = trpc.admin.insights.useQuery(undefined, { retry: false });
+client/src/pages/Admin.tsx:112:  const emailLogs = trpc.admin.listEmailNotificationLogs.useQuery(undefined, { retry: false });
+client/src/pages/Admin.tsx:133:  const moderate = trpc.admin.moderateReview.useMutation(opts);
+client/src/pages/Admin.tsx:134:  const blockAvailabilitySlot = trpc.admin.blockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot blocked"); } });
+client/src/pages/Admin.tsx:135:  const unblockAvailabilitySlot = trpc.admin.unblockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot unblocked"); } });
+client/src/pages/Admin.tsx:136:  const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => { scrollAdminFeedback("bookings"); toast.success("Review request sent"); } });
+client/src/pages/Admin.tsx:137:  const resendEmail = trpc.admin.resendEmailNotification.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("email-notifications"); toast.success("Email notification resend attempted"); }, onError: (error: any) => toast.error(error.message) });
+client/src/pages/Admin.tsx:138:  const updateInstagram = trpc.admin.updateInstagramSettings.useMutation({ onSuccess: () => { scrollAdminFeedback("instagram"); toast.success("Instagram feed settings saved"); } });
+client/src/pages/Admin.tsx:139:  const updateHomeServiceSurcharge = trpc.admin.updateHomeServiceSurcharge.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("content"); toast.success("Home service surcharge saved"); }, onError: (error: any) => toast.error(error.message) });
+client/src/pages/Admin.tsx:140:  const updateBooking = trpc.admin.updateBookingStatus.useMutation(opts);
+client/src/pages/Admin.tsx:141:  const updateOrder = trpc.admin.updateOrderStatus.useMutation(opts);
+client/src/pages/Admin.tsx:142:  const updateStock = trpc.admin.updateProductStock.useMutation(opts);
+client/src/pages/Admin.tsx:143:  const updateProductVariants = trpc.admin.updateProductVariants.useMutation(opts);
+client/src/pages/Admin.tsx:144:  const createProduct = trpc.admin.createProduct.useMutation({
+client/src/pages/Admin.tsx:153:  const updateProduct = trpc.admin.updateProduct.useMutation(opts);
+client/src/pages/Admin.tsx:154:  const deleteProduct = trpc.admin.deleteProduct.useMutation({
+client/src/pages/Admin.tsx:162:  const updateService = trpc.admin.updateService.useMutation(opts);
+client/src/pages/Admin.tsx:163:  const uploadProductImage = trpc.admin.uploadProductImage.useMutation({
+client/src/pages/Admin.tsx:171:  const uploadServiceImage = trpc.admin.uploadServiceImage.useMutation({
+client/src/pages/Admin.tsx:179:  const uploadGalleryImage = trpc.admin.uploadGalleryImage.useMutation({
+client/src/pages/Admin.tsx:187:  const uploadWebsiteSectionImage = trpc.admin.uploadWebsiteSectionImage.useMutation({
+client/src/pages/Admin.tsx:195:  const updateWebsiteSection = trpc.admin.updateWebsiteSection.useMutation(opts);
+client/src/pages/Admin.tsx:196:  const addGallery = trpc.admin.addGalleryImage.useMutation({
+client/src/pages/AdminLogin.tsx:27:  const requestReset = trpc.auth.requestPasswordReset.useMutation({
+client/src/pages/AdminLogin.tsx:37:  const login = trpc.auth.login.useMutation({
+client/src/pages/AdminResetPassword.tsx:24:  const updatePassword = trpc.auth.updatePassword.useMutation({

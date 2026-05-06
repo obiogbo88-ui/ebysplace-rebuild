@@ -116,6 +116,272 @@ export async function getDb() {
   return _db;
 }
 
+type SupabaseProductRow = Record<string, any>;
+
+type ProductVariantInput = { name: string; colourHex?: string; stockQuantity: number };
+
+type SupabaseColumnStyle = "camel" | "snake";
+
+function getSupabaseRestConfig() {
+  const rawUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const url = rawUrl?.replace(/\/$/, "");
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return null;
+  return { url, serviceRoleKey };
+}
+
+function cleanUndefinedValues<T extends Record<string, any>>(input: T) {
+  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)) as Partial<T>;
+}
+
+async function supabaseRest<T>(path: string, init: RequestInit = {}) {
+  const config = getSupabaseRestConfig();
+  if (!config) return { ok: false, status: 0, body: null as T | null, unavailable: true };
+  const response = await fetch(`${config.url}${path}`, {
+    ...init,
+    headers: {
+      apikey: config.serviceRoleKey,
+      Authorization: `Bearer ${config.serviceRoleKey}`,
+      "Content-Type": "application/json",
+      ...(init.headers || {}),
+    },
+  });
+  const text = await response.text();
+  let body: T | null = null;
+  if (text) {
+    try {
+      body = JSON.parse(text) as T;
+    } catch {
+      body = text as T;
+    }
+  }
+  if (!response.ok) console.warn("[Supabase Products] REST request failed", { path, status: response.status, body });
+  return { ok: response.ok, status: response.status, body, unavailable: false };
+}
+
+function formatProductPrice(value: unknown) {
+  const price = Number(value ?? 0);
+  return Number.isFinite(price) ? price.toFixed(2) : "0.00";
+}
+
+function normalizeStockStatus(value: unknown, stockQuantity: number): "in_stock" | "low_stock" | "out_of_stock" {
+  if (value === "in_stock" || value === "low_stock" || value === "out_of_stock") return value;
+  if (value === "active" || value === "published" || value === "available") return stockQuantity > 0 ? "in_stock" : "out_of_stock";
+  if (value === "inactive" || value === "draft" || value === "archived" || value === "disabled") return "out_of_stock";
+  if (stockQuantity <= 0) return "out_of_stock";
+  if (stockQuantity <= 10) return "low_stock";
+  return "in_stock";
+}
+
+function normalizeFeaturedFlag(value: unknown) {
+  return value === true || value === "true" || value === 1 ? "true" : "false";
+}
+
+function stockStatusAfterDecrement(stockQuantity: number, currentStatus?: unknown): "in_stock" | "low_stock" | "out_of_stock" {
+  if (stockQuantity <= 0) return "out_of_stock";
+  if (stockQuantity <= 10) return "low_stock";
+  return currentStatus === "out_of_stock" ? "in_stock" : normalizeStockStatus(currentStatus, stockQuantity);
+}
+
+function normalizeSupabaseProduct(row: SupabaseProductRow, variants: SupabaseProductRow[] = []) {
+  const id = Number(row.id);
+  const stockQuantity = Number(row.stockQuantity ?? row.stock ?? 0);
+  const stockStatus = normalizeStockStatus(row.stockStatus ?? row.status, Number.isFinite(stockQuantity) ? stockQuantity : 0);
+  const imageUrl = row.imageUrl ?? row.image_url ?? null;
+  const normalizedVariants = variants.map((variant) => {
+    const variantId = Number(variant.id);
+    const variantStock = Number(variant.stockQuantity ?? variant.stock ?? 0);
+    return {
+      ...variant,
+      id: Number.isFinite(variantId) && variantId > 0 ? variantId : undefined,
+      productId: Number(variant.productId ?? variant.product_id ?? id),
+      name: String(variant.name ?? variant.colour ?? "Default"),
+      colourHex: variant.colourHex ?? variant.colour_hex ?? variant.colour ?? "#c8a95a",
+      stockQuantity: Number.isFinite(variantStock) ? variantStock : 0,
+      stock: Number.isFinite(variantStock) ? variantStock : 0,
+    };
+  });
+  const normalized = {
+    ...row,
+    id: Number.isFinite(id) && id > 0 ? id : undefined,
+    name: String(row.name ?? "Untitled product"),
+    slug: String(row.slug ?? row.name ?? "product").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+    seoTitle: row.seoTitle ?? row.seo_title ?? `${row.name ?? "Product"} | Eby’s Place`,
+    seoDescription: row.seoDescription ?? row.seo_description ?? row.description ?? "Eby’s Place shop product.",
+    category: row.category ?? "Accessories",
+    description: row.description ?? "Eby’s Place shop product.",
+    price: formatProductPrice(row.price),
+    imageUrl,
+    image_url: imageUrl,
+    badge: row.badge ?? null,
+    stockStatus,
+    status: stockStatus,
+    stockQuantity: Number.isFinite(stockQuantity) ? stockQuantity : 0,
+    stock: Number.isFinite(stockQuantity) ? stockQuantity : 0,
+    colour: row.colour ?? normalizedVariants[0]?.name ?? null,
+    isFeatured: normalizeFeaturedFlag(row.isFeatured ?? row.is_featured),
+    variants: normalizedVariants,
+  };
+  return normalized;
+}
+
+async function getSupabaseProductColumnStyle(): Promise<SupabaseColumnStyle | null> {
+  const result = await supabaseRest<SupabaseProductRow[]>("/rest/v1/products?select=*&limit=1");
+  if (!result.ok || !Array.isArray(result.body)) return null;
+  const first = result.body[0];
+  if (first && ("image_url" in first || "stock" in first || "status" in first || "seo_title" in first)) return "snake";
+  return "camel";
+}
+
+async function getSupabaseVariantTableName() {
+  const camel = await supabaseRest<SupabaseProductRow[]>("/rest/v1/productVariants?select=*&limit=1");
+  if (camel.ok) return "productVariants";
+  const snake = await supabaseRest<SupabaseProductRow[]>("/rest/v1/product_variants?select=*&limit=1");
+  if (snake.ok) return "product_variants";
+  return null;
+}
+
+function supabaseProductPayload(input: Partial<typeof products.$inferInsert>, style: SupabaseColumnStyle) {
+  const stockQuantity = Number(input.stockQuantity ?? 0);
+  const base = {
+    name: input.name,
+    slug: input.slug,
+    category: input.category,
+    description: input.description,
+    price: input.price,
+    badge: input.badge,
+  };
+  if (style === "snake") {
+    return cleanUndefinedValues({
+      ...base,
+      image_url: input.imageUrl,
+      seo_title: input.seoTitle,
+      seo_description: input.seoDescription,
+      stock: Number.isFinite(stockQuantity) ? stockQuantity : undefined,
+      status: input.stockStatus,
+      is_featured: input.isFeatured,
+    });
+  }
+  return cleanUndefinedValues({
+    ...base,
+    imageUrl: input.imageUrl,
+    seoTitle: input.seoTitle,
+    seoDescription: input.seoDescription,
+    stockQuantity: input.stockQuantity,
+    stockStatus: input.stockStatus,
+    isFeatured: input.isFeatured,
+  });
+}
+
+function supabaseVariantPayload(variant: ProductVariantInput & { productId: number }, tableName: string) {
+  if (tableName === "product_variants") {
+    return cleanUndefinedValues({ product_id: variant.productId, name: variant.name, colour_hex: variant.colourHex, stock: variant.stockQuantity });
+  }
+  return cleanUndefinedValues({ productId: variant.productId, name: variant.name, colourHex: variant.colourHex, stockQuantity: variant.stockQuantity });
+}
+
+async function listSupabaseProducts() {
+  const style = await getSupabaseProductColumnStyle();
+  if (!style) return null;
+  const productResult = await supabaseRest<SupabaseProductRow[]>("/rest/v1/products?select=*");
+  if (!productResult.ok || !Array.isArray(productResult.body)) return null;
+  const variantTable = await getSupabaseVariantTableName();
+  const variantResult = variantTable ? await supabaseRest<SupabaseProductRow[]>(`/rest/v1/${variantTable}?select=*`) : { ok: false, body: [] as SupabaseProductRow[] };
+  const variants = variantResult.ok && Array.isArray(variantResult.body) ? variantResult.body : [];
+  return productResult.body
+    .map((product) => normalizeSupabaseProduct(product, variants.filter((variant) => Number(variant.productId ?? variant.product_id) === Number(product.id))))
+    .filter((product) => product.id && isPositivePrice(product.price))
+    .sort((a, b) => (b.isFeatured === "true" ? 1 : 0) - (a.isFeatured === "true" ? 1 : 0) || a.name.localeCompare(b.name));
+}
+
+async function createSupabaseProduct(input: typeof products.$inferInsert, variants: ProductVariantInput[] = []) {
+  const style = await getSupabaseProductColumnStyle();
+  if (!style) return null;
+  const result = await supabaseRest<SupabaseProductRow[]>("/rest/v1/products", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(supabaseProductPayload(input, style)),
+  });
+  if (!result.ok || !Array.isArray(result.body) || !result.body[0]?.id) throw new Error("Supabase product could not be saved with a database id.");
+  const product = normalizeSupabaseProduct(result.body[0]);
+  if (product.id && variants.length) await replaceSupabaseProductVariants(product.id, variants);
+  const refreshed = product.id ? await getSupabaseProductById(product.id) : null;
+  return refreshed ?? product;
+}
+
+async function getSupabaseProductById(id: number) {
+  const result = await supabaseRest<SupabaseProductRow[]>(`/rest/v1/products?select=*&id=eq.${encodeURIComponent(String(id))}&limit=1`);
+  if (!result.ok || !Array.isArray(result.body) || !result.body[0]) return null;
+  const variantTable = await getSupabaseVariantTableName();
+  const variantResult = variantTable ? await supabaseRest<SupabaseProductRow[]>(`/rest/v1/${variantTable}?select=*&${variantTable === "product_variants" ? "product_id" : "productId"}=eq.${encodeURIComponent(String(id))}`) : { ok: false, body: [] as SupabaseProductRow[] };
+  const variants = variantResult.ok && Array.isArray(variantResult.body) ? variantResult.body : [];
+  return normalizeSupabaseProduct(result.body[0], variants);
+}
+
+async function updateSupabaseProduct(id: number, input: Partial<typeof products.$inferInsert>) {
+  const style = await getSupabaseProductColumnStyle();
+  if (!style) return null;
+  const result = await supabaseRest<SupabaseProductRow[]>(`/rest/v1/products?id=eq.${encodeURIComponent(String(id))}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(supabaseProductPayload(input, style)),
+  });
+  if (!result.ok) throw new Error(`Supabase product ${id} could not be updated.`);
+  return result.body && Array.isArray(result.body) && result.body[0] ? normalizeSupabaseProduct(result.body[0]) : await getSupabaseProductById(id);
+}
+
+async function replaceSupabaseProductVariants(productId: number, variants: ProductVariantInput[]) {
+  const tableName = await getSupabaseVariantTableName();
+  if (!tableName) return null;
+  const productColumn = tableName === "product_variants" ? "product_id" : "productId";
+  const deleteResult = await supabaseRest(`/rest/v1/${tableName}?${productColumn}=eq.${encodeURIComponent(String(productId))}`, { method: "DELETE" });
+  if (!deleteResult.ok) throw new Error(`Existing Supabase variants for product ${productId} could not be replaced.`);
+  if (!variants.length) return { productId, variants: [] };
+  const payload = variants.map((variant) => supabaseVariantPayload({ ...variant, productId }, tableName));
+  const insertResult = await supabaseRest<SupabaseProductRow[]>(`/rest/v1/${tableName}`, {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(payload),
+  });
+  if (!insertResult.ok) throw new Error(`Supabase variants for product ${productId} could not be saved.`);
+  return { productId, variants: insertResult.body ?? [] };
+}
+
+async function deleteSupabaseProduct(id: number) {
+  const style = await getSupabaseProductColumnStyle();
+  if (!style) return null;
+  const tableName = await getSupabaseVariantTableName();
+  if (tableName) {
+    const productColumn = tableName === "product_variants" ? "product_id" : "productId";
+    await supabaseRest(`/rest/v1/${tableName}?${productColumn}=eq.${encodeURIComponent(String(id))}`, { method: "DELETE" });
+  }
+  const result = await supabaseRest(`/rest/v1/products?id=eq.${encodeURIComponent(String(id))}`, { method: "DELETE" });
+  if (!result.ok) throw new Error(`Supabase product ${id} could not be deleted.`);
+  return { id, deleted: true };
+}
+
+async function decrementSupabaseProductStock(productId: number, quantity: number, variantId?: number | null) {
+  const product = await getSupabaseProductById(productId);
+  if (!product?.id) return null;
+
+  if (variantId) {
+    const variantTable = await getSupabaseVariantTableName();
+    const variant = product.variants?.find((row: SupabaseProductRow) => Number(row.id) === Number(variantId));
+    if (variantTable && variant?.id) {
+      const style = variantTable === "product_variants" ? "snake" : "camel";
+      const nextVariantStock = Math.max(Number(variant.stockQuantity ?? variant.stock ?? 0) - quantity, 0);
+      await supabaseRest(`/rest/v1/${variantTable}?id=eq.${encodeURIComponent(String(variant.id))}`, {
+        method: "PATCH",
+        body: JSON.stringify(style === "snake" ? { stock: nextVariantStock } : { stockQuantity: nextVariantStock }),
+      });
+    }
+  }
+
+  const nextProductStock = Math.max(Number(product.stockQuantity ?? product.stock ?? 0) - quantity, 0);
+  const nextStatus = stockStatusAfterDecrement(nextProductStock, product.stockStatus ?? product.status);
+  return updateSupabaseProduct(product.id, { stockQuantity: nextProductStock, stockStatus: nextStatus });
+}
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
@@ -602,22 +868,8 @@ function isUsableImageUrl(value: unknown) {
 async function ensureSeedProducts(db: Awaited<ReturnType<typeof getDb>>) {
   if (!db) return;
   for (const product of seedProducts) {
-    await db.insert(products).values(product).onDuplicateKeyUpdate({
-      set: {
-        name: product.name,
-        seoTitle: product.seoTitle,
-        seoDescription: product.seoDescription,
-        category: product.category,
-        description: product.description,
-        price: product.price,
-        imageUrl: product.imageUrl,
-        badge: product.badge,
-        stockStatus: product.stockStatus,
-        stockQuantity: product.stockQuantity,
-        isFeatured: product.isFeatured,
-        updatedAt: new Date(),
-      },
-    });
+    const existing = await db.select({ id: products.id }).from(products).where(eq(products.slug, product.slug)).limit(1);
+    if (existing.length === 0) await db.insert(products).values(product);
   }
 }
 
@@ -654,20 +906,8 @@ async function seedIfNeeded() {
   if (!db || _seeded) return;
   _seeded = true;
   for (const service of seedServices) {
-    await db.insert(services).values(service).onDuplicateKeyUpdate({
-      set: {
-        name: service.name,
-        category: service.category,
-        description: service.description,
-        duration: service.duration,
-        priceFrom: service.priceFrom,
-        badge: service.badge,
-        isFeatured: service.isFeatured,
-        imageUrl: service.imageUrl,
-        sortOrder: service.sortOrder,
-        updatedAt: new Date(),
-      },
-    });
+    const existing = await db.select({ id: services.id }).from(services).where(eq(services.slug, service.slug)).limit(1);
+    if (existing.length === 0) await db.insert(services).values(service);
   }
   await ensureSeedProducts(db);
   const productRows = await db.select().from(products);
@@ -737,20 +977,27 @@ export async function listWebsiteSections() {
 }
 
 export async function listProducts() {
-  const fallback = seedProducts.map((product) => ({ ...product, variants: [] }));
+  const fallback = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
   try {
+    const supabaseProducts = await listSupabaseProducts();
+    if (supabaseProducts) return supabaseProducts;
     await seedIfNeeded();
     const db = await getDb();
     if (!db) return fallback;
     const productRows = await db.select().from(products).orderBy(desc(products.isFeatured), asc(products.name));
     const variantRows = await db.select().from(productVariants);
     const publicRows = productRows.filter((product) => isPositivePrice(product.price));
-    const safeRows = publicRows.length ? publicRows : seedProducts;
+    const safeRows = publicRows.length ? publicRows : fallback;
     return safeRows.map((product) => ({
       ...product,
+      id: Number(product.id),
       imageUrl: isUsableImageUrl(product.imageUrl) ? product.imageUrl : PRODUCT_IMAGE_FALLBACK_URL,
+      image_url: isUsableImageUrl(product.imageUrl) ? product.imageUrl : PRODUCT_IMAGE_FALLBACK_URL,
       seoTitle: product.seoTitle || `${product.name} | Eby’s Place`,
       seoDescription: product.seoDescription || product.description,
+      stock: product.stockQuantity,
+      status: product.stockStatus,
+      colour: null,
       variants: "id" in product ? variantRows.filter((variant) => variant.productId === product.id) : [],
     }));
   } catch (error) {
@@ -973,10 +1220,13 @@ export async function createOrderWithItems(input: { customerName: string; custom
   if (!db) return { id: Date.now(), items: input.items };
   await ensureOrderLocationColumns();
 
-  const [productRows, variantRows] = await Promise.all([
+  const supabaseProductRows = await listSupabaseProducts();
+  const [mysqlProductRows, mysqlVariantRows] = supabaseProductRows ? [[], []] : await Promise.all([
     db.select().from(products),
     db.select().from(productVariants),
   ]);
+  const productRows = supabaseProductRows ?? mysqlProductRows;
+  const variantRows = supabaseProductRows ? supabaseProductRows.flatMap((product) => product.variants ?? []) : mysqlVariantRows;
   const validatedItems = input.items.map((item) => {
     const product = productRows.find((row) => row.id === item.productId);
     if (!product) throw new Error(`Product ${item.productId} is no longer available.`);
@@ -1032,7 +1282,13 @@ export async function markOrderPaid(stripeCheckoutSessionId: string, stripePayme
   if (alreadyPaid) return;
 
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+  const supabaseProductRows = await listSupabaseProducts();
   for (const item of items) {
+    const supabaseProduct = supabaseProductRows?.find((product) => product.id === item.productId);
+    if (supabaseProduct) {
+      await decrementSupabaseProductStock(item.productId, item.quantity, item.variantId);
+      continue;
+    }
     if (item.variantId) {
       await db.update(productVariants)
         .set({ stockQuantity: sql`GREATEST(${productVariants.stockQuantity} - ${item.quantity}, 0)` })
@@ -1186,21 +1442,29 @@ export async function updateTryOnGeneration(id: number, input: { generatedImageU
 
 export async function adminSummary() {
   await seedIfNeeded();
+  const supabaseProducts = await listSupabaseProducts();
   const db = await getDb();
-  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, products: seedProducts.length, services: seedServices.length, tryOns: 0 };
-  const [bookingRows, orderRows, reviewRows, productRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
-  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, products: productRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
+  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0 };
+  const [bookingRows, orderRows, reviewRows, mysqlProductRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
+  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, products: supabaseProducts?.length ?? mysqlProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
 }
 
 export async function adminLists() {
   await seedIfNeeded();
+  const supabaseProducts = await listSupabaseProducts();
   const db = await getDb();
   if (db) await ensureBookingLocationColumns();
-  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: seedProducts.map((product) => ({ ...product, variants: [] })), services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+  const fallbackProducts = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
+  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   await ensureEmailNotificationLogTable();
-  const [bookingRows, orderRows, reviewRows, productRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
-  const productsWithVariants = productRows.map((product) => ({
+  const [bookingRows, orderRows, reviewRows, mysqlProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
+  const productsWithVariants = supabaseProducts ?? mysqlProductRows.map((product) => ({
     ...product,
+    id: Number(product.id),
+    image_url: product.imageUrl,
+    stock: product.stockQuantity,
+    status: product.stockStatus,
+    colour: null,
     seoTitle: product.seoTitle || `${product.name} | Eby’s Place`,
     seoDescription: product.seoDescription || product.description,
     variants: variantRows.filter((variant) => variant.productId === product.id),
@@ -1230,6 +1494,9 @@ export async function updateService(id: number, input: Partial<typeof services.$
 }
 
 export async function updateProduct(id: number, input: Partial<typeof products.$inferInsert>) {
+  if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
+  const supabaseProduct = await updateSupabaseProduct(id, input);
+  if (supabaseProduct) return supabaseProduct;
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.update(products).set(input).where(eq(products.id, id));
@@ -1237,20 +1504,37 @@ export async function updateProduct(id: number, input: Partial<typeof products.$
 }
 
 export async function createProduct(input: typeof products.$inferInsert, variants: Array<{ name: string; colourHex?: string; stockQuantity: number }> = []) {
+  const supabaseProduct = await createSupabaseProduct(input, variants);
+  if (supabaseProduct?.id) return supabaseProduct;
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const inserted = await db.insert(products).values(input).$returningId();
   const productId = inserted[0]?.id;
-  if (productId && variants.length) await db.insert(productVariants).values(variants.map((variant) => ({ ...variant, productId })));
-  return { id: productId, ...input };
+  if (!productId) throw new Error("Product could not be saved with a database id.");
+  if (variants.length) await db.insert(productVariants).values(variants.map((variant) => ({ ...variant, productId })));
+  return { id: productId, ...input, variants };
 }
 
 export async function replaceProductVariants(productId: number, variants: Array<{ name: string; colourHex?: string; stockQuantity: number }>) {
+  if (!Number.isFinite(productId) || productId <= 0) throw new Error("A valid Supabase product id is required.");
+  const supabaseResult = await replaceSupabaseProductVariants(productId, variants);
+  if (supabaseResult) return supabaseResult;
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.delete(productVariants).where(eq(productVariants.productId, productId));
   if (variants.length) await db.insert(productVariants).values(variants.map((variant) => ({ ...variant, productId })));
   return { productId, variants };
+}
+
+export async function deleteProduct(id: number) {
+  if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
+  const supabaseResult = await deleteSupabaseProduct(id);
+  if (supabaseResult) return supabaseResult;
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.delete(productVariants).where(eq(productVariants.productId, id));
+  await db.delete(products).where(eq(products.id, id));
+  return { id, deleted: true };
 }
 
 export async function updateOrderStatus(id: number, status: "draft" | "pending_payment" | "paid" | "fulfilling" | "shipped" | "completed" | "cancelled") {
@@ -1261,6 +1545,9 @@ export async function updateOrderStatus(id: number, status: "draft" | "pending_p
 }
 
 export async function updateProductStock(id: number, stockQuantity: number, stockStatus: "in_stock" | "low_stock" | "out_of_stock") {
+  if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
+  const supabaseProduct = await updateSupabaseProduct(id, { stockQuantity, stockStatus });
+  if (supabaseProduct) return { id, stockQuantity: supabaseProduct.stockQuantity ?? stockQuantity, stockStatus: supabaseProduct.stockStatus ?? stockStatus };
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.update(products).set({ stockQuantity, stockStatus }).where(eq(products.id, id));
