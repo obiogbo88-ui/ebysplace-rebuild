@@ -52,7 +52,7 @@ export default function Services() {
         </div>
 
         <div
-          className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7"
+          className="mt-10 flex flex-wrap gap-3"
           role="tablist"
           aria-label="Service categories"
         >
@@ -62,7 +62,7 @@ export default function Services() {
               type="button"
               onClick={() => setCategory(tab)}
               className={
-                category === tab ? "btn-gold w-full" : "btn-dark w-full"
+                category === tab ? "btn-gold" : "btn-dark"
               }
               aria-pressed={category === tab}
             >

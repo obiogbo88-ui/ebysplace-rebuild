@@ -323,7 +323,8 @@ export const appRouter = router({
     })).mutation(async ({ input }) => {
       const record = await db.createTryOnGeneration({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, status: "pending" });
       try {
-        const subjectDescription = input.gender === "man" ? "man" : input.gender === "child" ? "child" : "woman";
+        const subjectDescriptionMap: Record<string, string> = { man: "man", child: "child", woman: "woman" };
+        const subjectDescription = (input.gender && subjectDescriptionMap[input.gender]) || "woman";
         const ageDescription = input.ageGroup === "child" ? " (child)" : input.ageGroup === "teen" ? " (teenager)" : input.ageGroup === "mature" ? " (mature adult)" : "";
         const prompt = `Change ONLY the hairstyle of the ${subjectDescription}${ageDescription} in this photo to ${input.styleName}. Preserve the person’s skin tone, facial features, eye colour, expression, body, clothing, and background exactly — do not alter them in any way. Only modify the hair into neat, professional, realistic ${input.styleName} with the refined Eby’s Place salon finish. This style works beautifully on all skin tones, all genders, and all ages.`;
         const storageKey = input.originalImageUrl.startsWith("/")
