@@ -246,13 +246,9 @@ export default function Admin() {
       toast.error("Please save the product before uploading images.");
       return;
     }
-    if (!product.name || product.name.trim().length < 2) {
-      toast.error("Please enter a valid product name before uploading an image.");
-      return;
-    }
     try {
       const dataUrl = await fileToDataUrl(file);
-      await uploadProductImage.mutateAsync({ productId: Number(product.id), productName: product.name.trim(), dataUrl, fileName: file.name });
+      await uploadProductImage.mutateAsync({ productId: Number(product.id), productName: product.name.trim() || "product", dataUrl, fileName: file.name });
     } catch (error: any) {
       toast.error(error.message || "Product image upload failed");
     }
