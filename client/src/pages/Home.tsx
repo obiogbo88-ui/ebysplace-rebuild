@@ -21,6 +21,25 @@ const ABOUT_PORTRAIT_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/st
 const PRODUCT_THUMBNAIL_SIZES = "(max-width: 767px) calc(100vw - 2rem), (max-width: 1023px) calc((100vw - 4rem) / 2), (max-width: 1279px) calc((100vw - 5rem) / 4), 18rem";
 const PRODUCT_IMAGE_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
 
+const HERO_MOSAIC_IMAGES = [
+  {
+    src: "https://res.cloudinary.com/dfbweqelf/image/upload/v1774685398/1774615605353_u46ye4.png",
+    alt: "Woman with knotless braids – Eby's Place Somerset",
+  },
+  {
+    src: "https://res.cloudinary.com/dfbweqelf/image/upload/v1774696211/1774692679808_oftdgt.png",
+    alt: "Luxury box braids – Eby's Place Somerset",
+  },
+  {
+    src: "https://res.cloudinary.com/dfbweqelf/image/upload/v1774696249/1774692951485_ssb3ci.png",
+    alt: "Boho braids with curly ends – Eby's Place Somerset",
+  },
+  {
+    src: "https://res.cloudinary.com/dfbweqelf/image/upload/v1774696915/1774693278817_rptgp0.png",
+    alt: "Lemonade side-swept cornrow braids – Eby's Place Somerset",
+  },
+];
+
 const navLinks = [
   { href: "/services", label: "Services" },
   { href: "/booking", label: "Book" },
@@ -243,6 +262,33 @@ function HomepageLiveSearch() {
   );
 }
 
+function HomepageGalleryPreview() {
+  const { data: galleryItems = [] } = trpc.public.gallery.useQuery({ category: "All" });
+  const preview = (galleryItems as any[]).slice(0, 6);
+  if (preview.length === 0) return null;
+  return (
+    <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {preview.map((image: any) => (
+        <div className="lux-card overflow-hidden p-0" key={image.id}>
+          <div className="media-portrait overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
+            <img
+              src={image.imageUrl}
+              alt={image.altText || image.title}
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+          <div className="p-4">
+            <span className="pill inline-block text-xs">{image.category}</span>
+            <p className="mt-2 font-bold text-[#24170d]">{image.title}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
 export default function Home() {
   const { data: styles = [] } = trpc.public.featuredServices.useQuery();
   const { data: products = [] } = trpc.public.products.useQuery();
@@ -280,7 +326,7 @@ export default function Home() {
               fetchPriority="high"
             />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.34)_45%,rgba(247,238,222,.08)),linear-gradient(180deg,rgba(247,238,222,.06),rgba(20,12,5,.72))]" />
-            <div className="container relative z-10 py-20 md:py-28">
+            <div className="container relative z-10 grid items-center gap-8 py-20 md:grid-cols-[minmax(0,1fr)_auto] md:py-28">
               <div className="max-w-3xl py-5 [text-shadow:0_3px_22px_rgba(0,0,0,.88)] sm:py-8 md:py-10">
                 <ul className="hero-slogan-list max-w-[20rem] list-none space-y-0 p-0 lg:max-w-[30rem]" aria-label="Eby’s Place pain-free promise" data-placement="lower-left-side-away-from-model-face">
                   <li>Zero pain.</li>
@@ -306,6 +352,23 @@ export default function Home() {
                     <Wand2 className="mr-2 h-5 w-5" /> Try a braid style
                   </Link>
                 </div>
+              </div>
+              <div className="hidden shrink-0 lg:grid lg:grid-cols-2 lg:gap-3" aria-hidden="true">
+                {HERO_MOSAIC_IMAGES.map((image, index) => (
+                  <div
+                    key={index}
+                    className="h-52 w-44 overflow-hidden rounded-[1.4rem] border border-white/20 shadow-[0_16px_40px_rgba(0,0,0,.48)]"
+                    style={{ marginTop: index % 2 === 1 ? "2rem" : "0" }}
+                  >
+                    <img
+                      src={image.src}
+                      alt={image.alt}
+                      className="h-full w-full object-cover"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -463,6 +526,26 @@ export default function Home() {
                 </Link>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="section-pad">
+          <div className="container">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="pill w-fit">Gallery</p>
+                <h2 className="serif mt-4 text-4xl font-bold leading-tight md:text-5xl">
+                  Style inspiration
+                </h2>
+                <p className="mt-3 max-w-2xl text-white/65">
+                  A diverse gallery of braiding styles for women, men, and children of all backgrounds.
+                </p>
+              </div>
+              <Link className="btn-dark" href="/gallery">
+                View full gallery
+              </Link>
+            </div>
+            <HomepageGalleryPreview />
           </div>
         </section>
 

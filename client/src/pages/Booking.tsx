@@ -217,7 +217,7 @@ export default function Booking() {
               </div>
               {servicesLoading ? (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {[1, 2, 3, 4].map(n => <div key={n} className="h-28 animate-pulse rounded-2xl bg-[#f5ead7]" />)}
+                  {[1, 2, 3, 4].map(n => <div key={n} className="h-52 animate-pulse rounded-2xl bg-[#f5ead7]" />)}
                 </div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -226,21 +226,36 @@ export default function Booking() {
                       key={service.id ?? service.slug}
                       type="button"
                       onClick={() => { set("serviceName", service.name); setStep(1); }}
-                      className={`rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 ${form.serviceName === service.name ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/60"}`}
+                      className={`overflow-hidden rounded-3xl border p-0 text-left transition hover:-translate-y-0.5 ${form.serviceName === service.name ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/60"}`}
                     >
-                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{service.category}</span>
-                      <h3 className="serif mt-2 text-2xl font-bold text-[#24170d]">{service.name}</h3>
-                      {service.description ? <p className="mt-1 line-clamp-2 text-sm text-[#4a3014]">{service.description}</p> : null}
-                      <div className="mt-3 flex items-center justify-between">
-                        <span className="text-sm text-[#6f4b16]">{service.duration}</span>
-                        <b className="text-xl text-primary">from £{service.priceFrom}</b>
+                      {service.imageUrl ? (
+                        <div className="h-40 overflow-hidden rounded-t-3xl bg-[#f5ead7]">
+                          <img
+                            src={service.imageUrl}
+                            alt={`${service.name} braid style by Eby's Place`}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </div>
+                      ) : null}
+                      <div className="p-5">
+                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{service.category}</span>
+                        <h3 className="serif mt-2 text-2xl font-bold text-[#24170d]">{service.name}</h3>
+                        {service.description ? <p className="mt-1 line-clamp-2 text-sm text-[#4a3014]">{service.description}</p> : null}
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className="text-sm text-[#6f4b16]">{service.duration}</span>
+                          <b className="text-xl text-primary">from £{service.priceFrom}</b>
+                        </div>
                       </div>
                     </button>
                   ))}
                   {serviceOptions.length === 0 ? (
-                    <button type="button" onClick={() => { set("serviceName", "Knotless Braids"); setStep(1); }} className="rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-5 text-left">
-                      <h3 className="serif text-2xl font-bold text-[#24170d]">Knotless Braids</h3>
-                      <b className="mt-2 block text-xl text-primary">from £80</b>
+                    <button type="button" onClick={() => { set("serviceName", "Knotless Braids"); setStep(1); }} className="overflow-hidden rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-0 text-left">
+                      <div className="p-5">
+                        <h3 className="serif text-2xl font-bold text-[#24170d]">Knotless Braids</h3>
+                        <b className="mt-2 block text-xl text-primary">from £80</b>
+                      </div>
                     </button>
                   ) : null}
                 </div>
