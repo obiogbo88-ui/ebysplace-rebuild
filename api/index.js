@@ -1156,8 +1156,8 @@ async function notifyOwner(payload) {
 
 // server/stripeWebhook.ts
 function getStripeWebhookConfig() {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const secretKey = process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_SECRET_KEY?.trim();
+  const webhookSecret = process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET?.trim() || process.env.STRIPE_WEBHOOK_SECRET?.trim();
   if (!secretKey || !webhookSecret) return null;
   return { stripe: new Stripe(secretKey), webhookSecret };
 }
@@ -1674,8 +1674,11 @@ var orderInput = z2.object({
   })).min(1)
 });
 function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_SECRET_KEY?.trim() || "";
   if (!key) throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Stripe is not configured yet." });
+  if (!key.startsWith("sk_live_")) {
+    throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Live Stripe payments require a live Stripe secret key. Add EBYSPLACE_LIVE_STRIPE_SECRET_KEY or configure STRIPE_SECRET_KEY with a key that starts with sk_live_." });
+  }
   return new Stripe2(key);
 }
 function getOrigin(req) {
