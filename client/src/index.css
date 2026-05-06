@@ -276,18 +276,18 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
   backdrop-filter: blur(14px);
 }
 .mobile-sticky-booking .sticky-booking-cta-button {
-  background: rgba(255, 255, 255, 0.72) !important;
-  color: #2a1a0b !important;
-  border: 0 !important;
+  background: #111111 !important;
+  color: #C9A84C !important;
+  border: 1px solid #C9A84C !important;
   gap: 0.08rem;
   line-height: 1.25;
   text-decoration: none !important;
-  box-shadow: 0 12px 28px rgba(66, 42, 18, 0.12);
+  box-shadow: 0 12px 28px rgba(17, 17, 17, 0.26);
 }
 .mobile-sticky-booking .sticky-booking-cta-label,
 .mobile-sticky-booking .sticky-booking-cta-separator,
 .mobile-sticky-booking .sticky-booking-cta-accent {
-  color: #2a1a0b !important;
+  color: #C9A84C !important;
   font-size: 0.875rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -298,8 +298,9 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
 .mobile-sticky-booking .sticky-booking-cta-accent { line-height: 1.25; }
 .mobile-sticky-booking .sticky-booking-cta-button:hover,
 .mobile-sticky-booking .sticky-booking-cta-button:focus-visible {
-  background: rgba(255, 255, 255, 0.9) !important;
-  color: #8a641e !important;
+  background: #C9A84C !important;
+  color: #111111 !important;
+  border-color: #111111 !important;
 }
 .mobile-sticky-booking .sticky-booking-cta-button:hover .sticky-booking-cta-label,
 .mobile-sticky-booking .sticky-booking-cta-button:hover .sticky-booking-cta-separator,
@@ -307,7 +308,7 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
 .mobile-sticky-booking .sticky-booking-cta-button:focus-visible .sticky-booking-cta-label,
 .mobile-sticky-booking .sticky-booking-cta-button:focus-visible .sticky-booking-cta-separator,
 .mobile-sticky-booking .sticky-booking-cta-button:focus-visible .sticky-booking-cta-accent {
-  color: #8a641e !important;
+  color: #111111 !important;
   text-shadow: none;
 }
 
