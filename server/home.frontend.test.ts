@@ -323,6 +323,17 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(tryOnSource).toContain('toast.error("AI Try-On failed"');
   });
 
+  it("keeps the mobile sticky booking CTA text visibly high-contrast", () => {
+    expect(appSource).toContain('className="mobile-sticky-booking fixed inset-x-0 bottom-0 z-[70] px-4 py-3 md:hidden"');
+    expect(appSource).toContain('className="sticky-booking-cta-button flex min-h-12 w-full flex-col items-center justify-center rounded-full px-5 py-3 text-center text-base font-extrabold tracking-wide shadow-[0_14px_30px_rgba(17,17,17,.26)] transition"');
+    expect(appSource).toContain('className="sticky-booking-cta-label">Book Now</span>');
+    expect(appSource).toContain('className="sticky-booking-cta-accent">Secure £20 Deposit</span>');
+    expect(cssSource).toContain(".mobile-sticky-booking .sticky-booking-cta-button");
+    expect(cssSource).toContain("color: #C9A84C !important;");
+    expect(cssSource).toContain(".mobile-sticky-booking .sticky-booking-cta-accent { color: #C9A84C !important; font-size: .875rem; line-height: 1.2; }");
+    expect(cssSource).toContain("visibility: visible !important;");
+  });
+
   it("adds footer policy links and scrolls routed pages to the top", () => {
     expect(homeSource).toContain("/policies/shopping");
     expect(homeSource).toContain("Shopping Policy");

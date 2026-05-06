@@ -713,3 +713,5 @@
 - [x] Save checkpoint and sync the live Stripe secret configuration fix.
 
 - [x] Verify booking add-ons and shop products are all included in the Stripe checkout total.
+
+- [x] Fix the lower-screen CTA button so its written text is visible and readable across mobile and desktop.

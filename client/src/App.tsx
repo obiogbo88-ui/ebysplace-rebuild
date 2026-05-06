@@ -44,10 +44,10 @@ function MobileStickyBookingCta() {
   const isAdmin = location.startsWith("/admin");
   if (isAdmin) return null;
   return (
-    <div className="mobile-sticky-booking fixed inset-x-0 bottom-0 z-50 px-4 py-3 md:hidden" aria-label="Sticky mobile booking action">
-      <button type="button" onClick={() => navigateWithSmoothScroll("/booking", setLocation)} className="group flex min-h-12 w-full flex-col items-center justify-center rounded-full bg-[#111111] px-5 py-3 text-center font-bold shadow-[0_14px_30px_rgba(17,17,17,.26)] transition hover:bg-[#C9A84C]">
-        <span className="text-[#C9A84C] group-hover:text-[#111111]">Book Now</span>
-        <span className="text-sm text-[#C9A84C] group-hover:text-[#111111]">Secure £20 Deposit</span>
+    <div className="mobile-sticky-booking fixed inset-x-0 bottom-0 z-[70] px-4 py-3 md:hidden" aria-label="Sticky mobile booking action">
+      <button type="button" onClick={() => navigateWithSmoothScroll("/booking", setLocation)} className="sticky-booking-cta-button flex min-h-12 w-full flex-col items-center justify-center rounded-full px-5 py-3 text-center text-base font-extrabold tracking-wide shadow-[0_14px_30px_rgba(17,17,17,.26)] transition">
+        <span className="sticky-booking-cta-label">Book Now</span>
+        <span className="sticky-booking-cta-accent">Secure £20 Deposit</span>
       </button>
     </div>
   );
