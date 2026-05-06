@@ -411,23 +411,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bg-[#2f2418] py-8 text-center text-white">
-          <div className="container">
-            <p className="serif text-2xl font-bold leading-snug md:text-3xl">
-              Eby’s Place welcomes everyone.
-            </p>
-            <p className="mt-3 text-base font-medium text-white/80">
-              Beautiful braids for all ages, all genders, all backgrounds — every person deserves to see themselves here.
-            </p>
-            <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm font-semibold text-primary">
-              <span>✔ Women of all races &amp; skin tones</span>
-              <span>✔ Men’s braid styles</span>
-              <span>✔ Children of all ages</span>
-              <span>✔ Teens &amp; mature adults</span>
-            </div>
-          </div>
-        </section>
-
         <section className="section-pad">
           <div className="container">
             <div className="flex flex-wrap items-end justify-between gap-4">
