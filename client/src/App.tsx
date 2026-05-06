@@ -42,7 +42,8 @@ function ScrollToTop() {
 function FloatingWhatsAppButton() {
   const [location] = useLocation();
   const isAdmin = location.startsWith("/admin");
-  if (isAdmin) return null;
+  const isHome = location === "/";
+  if (isAdmin || isHome) return null;
 
   const whatsappUrl = "https://wa.me/447864585110?text=Hi%20Eby%27s%20Place%2C%20I%20would%20like%20to%20make%20an%20enquiry.";
 

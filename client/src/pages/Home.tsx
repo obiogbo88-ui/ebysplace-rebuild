@@ -10,7 +10,6 @@ import {
   ShoppingBag,
   Sparkles,
   Wand2,
-  MessageCircle,
   X,
 } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
@@ -600,15 +599,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-      <a
-        href="https://wa.me/447864585110"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-5 right-5 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_16px_38px_rgba(37,211,102,.36)] transition hover:-translate-y-1 hover:shadow-[0_20px_46px_rgba(37,211,102,.48)] focus:outline-none focus:ring-4 focus:ring-[#25D366]/35"
-        aria-label="Chat with Eby’s Place on WhatsApp"
-      >
-        <MessageCircle className="h-7 w-7" aria-hidden="true" />
-      </a>
       <SiteFooter />
     </div>
   );

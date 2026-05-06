@@ -798,3 +798,7 @@
 - [x] Diagnose checkout failure path and fix site-code issues or document required payment configuration steps if checkout is blocked by live payment settings.
 - [x] Add or update regression coverage for admin upload permissions and checkout failure handling.
 - [x] Validate admin upload and checkout fixes with checks, tests, build, project health, TODO verification, and checkpoint sync.
+
+- [x] Remove the visible green floating WhatsApp logo from the homepage/public website.
+- [x] Preserve unrelated homepage content, navigation, booking, shop, checkout, admin, and notification behavior while removing the WhatsApp floating logo.
+- [x] Validate the WhatsApp logo removal with tests, production build, project health, TODO verification, and checkpoint sync.
