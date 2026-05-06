@@ -706,3 +706,10 @@
 - [x] Send customer confirmation and owner summaries for paid shop orders, newsletter signups, and admin review requests
 - [x] Fix shop checkout UI so Address Line 2 and postcode are genuinely optional where allowed
 - [x] Add/update Vitest coverage for the payment, stock, notification, and optional-address automation fixes
+
+- [x] Fix live Stripe checkout secret resolution so configured live keys are accepted without the “sk_live_” blocking error.
+- [x] Add regression coverage for EBYSPLACE_LIVE_STRIPE_SECRET_KEY and STRIPE_SECRET_KEY live-mode selection.
+- [x] Validate booking/shop checkout configuration, tests, build, and project health after the live Stripe secret fix.
+- [x] Save checkpoint and sync the live Stripe secret configuration fix.
+
+- [x] Verify booking add-ons and shop products are all included in the Stripe checkout total.

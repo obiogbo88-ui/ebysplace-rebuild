@@ -72,12 +72,24 @@ const orderInput = z.object({
   })).min(1),
 });
 
+function normalizeStripeKey(value: string | undefined) {
+  return value?.trim().replace(/^['\"]|['\"]$/g, "") || "";
+}
+
 function getLiveStripeSecretKey() {
-  return process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_SECRET_KEY?.trim() || "";
+  const candidates = [
+    normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeStripeKey(process.env.STRIPE_SECRET_KEY),
+  ];
+  return candidates.find((key) => key.startsWith("sk_live_")) || candidates.find(Boolean) || "";
 }
 
 function getLiveStripePublishableKey() {
-  return process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY?.trim() || process.env.VITE_STRIPE_PUBLISHABLE_KEY?.trim() || "";
+  const candidates = [
+    normalizeStripeKey(process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY),
+    normalizeStripeKey(process.env.VITE_STRIPE_PUBLISHABLE_KEY),
+  ];
+  return candidates.find((key) => key.startsWith("pk_live_")) || candidates.find(Boolean) || "";
 }
 
 function getStripe() {
@@ -125,6 +137,31 @@ function buildBookingNote(input: { deliveryNote?: string; serviceLocation?: "stu
     `Optional add-ons: ${extras.addOns}`,
     `Optional shop products for appointment order: ${extras.bookingProducts}`,
   ].filter(Boolean).join("\n");
+}
+
+function poundsToMinorUnits(value: string | number) {
+  return Math.round(Number(value || 0) * 100);
+}
+
+function buildBookingCheckoutLineItems(input: { serviceName: string; homeServiceSurcharge: number; addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
+  return [
+    { price_data: { currency: "gbp", unit_amount: 2000, product_data: { name: "Eby’s Place £20 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 },
+    ...(input.homeServiceSurcharge > 0 ? [{ price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(input.homeServiceSurcharge), product_data: { name: "Eby’s Place Home Service travel surcharge", description: "Additional travel fee for a home-service appointment" } }, quantity: 1 }] : []),
+    ...(input.addOns || []).map((item) => ({
+      price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(item.price), product_data: { name: `Add-on: ${item.name}`, description: "Selected Eby’s Place appointment add-on" } },
+      quantity: 1,
+    })),
+    ...(input.bookingProducts || []).map((item) => ({
+      price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(item.unitPrice), product_data: { name: item.productName, description: "Eby’s Place shop product added to appointment checkout" } },
+      quantity: item.quantity,
+    })),
+  ];
+}
+
+function bookingExtrasTotal(input: { addOns?: Array<{ price: string }>; bookingProducts?: Array<{ quantity: number; unitPrice: string }> }) {
+  const addOnsTotal = (input.addOns || []).reduce((sum, item) => sum + Number(item.price), 0);
+  const productsTotal = (input.bookingProducts || []).reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0);
+  return addOnsTotal + productsTotal;
 }
 
 function decodeDataUrl(dataUrl: string) {
@@ -241,15 +278,25 @@ export const appRouter = router({
       });
       return { bookingId: booking.id, depositAmount: 20, homeServiceSurcharge: Number(homeServiceSurcharge), depositCurrency: "GBP", serviceLocation, message: "A £20 non-refundable deposit is required to secure your Eby’s Place appointment. You will receive on-screen confirmation after Stripe confirms payment.", customerNotification: "Your Eby’s Place booking request has been received. Add-ons and shop products are optional, and you can complete the secure Stripe deposit checkout now." };
     }),
-    createDepositCheckout: publicProcedure.input(z.object({ bookingId: z.number(), clientEmail: z.string().email(), clientName: z.string().min(2), serviceName: z.string().min(2) })).mutation(async ({ input, ctx }) => {
+    createDepositCheckout: publicProcedure.input(z.object({
+      bookingId: z.number(),
+      clientEmail: z.string().email(),
+      clientName: z.string().min(2),
+      serviceName: z.string().min(2),
+      addOns: z.array(bookingAddOnInput).default([]),
+      bookingProducts: z.array(bookingProductInput).default([]),
+    })).mutation(async ({ input, ctx }) => {
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
       const booking = await db.getBookingById(input.bookingId);
       const homeServiceSurcharge = Number(booking?.homeServiceSurcharge || 0);
-      const lineItems = [
-        { price_data: { currency: "gbp", unit_amount: 2000, product_data: { name: "Eby’s Place £20 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 },
-        ...(homeServiceSurcharge > 0 ? [{ price_data: { currency: "gbp", unit_amount: Math.round(homeServiceSurcharge * 100), product_data: { name: "Eby’s Place Home Service travel surcharge", description: "Additional travel fee for a home-service appointment" } }, quantity: 1 }] : []),
-      ];
+      const extrasTotal = bookingExtrasTotal(input);
+      const lineItems = buildBookingCheckoutLineItems({
+        serviceName: input.serviceName,
+        homeServiceSurcharge,
+        addOns: input.addOns,
+        bookingProducts: input.bookingProducts,
+      });
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         customer_email: input.clientEmail,
@@ -260,7 +307,7 @@ export const appRouter = router({
         allow_promotion_codes: true,
         success_url: `${origin}/booking/success?booking=${input.bookingId}`,
         cancel_url: `${origin}/booking?payment=cancelled&booking=${input.bookingId}`,
-        metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2) },
+        metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) },
       });
       if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a booking deposit checkout link. Please try again." });
       await db.updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);

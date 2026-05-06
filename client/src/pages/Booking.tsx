@@ -190,13 +190,15 @@ export default function Booking() {
       });
       toast.success(booking.customerNotification);
       toast.message("Opening Eby's Place secure checkout", {
-        description: "Your £20 non-refundable Eby's Place deposit page will open in a new tab.",
+        description: "Your deposit, selected add-ons, and selected appointment products will be included in one secure Stripe checkout.",
       });
       const session = await checkout.mutateAsync({
         bookingId: booking.bookingId,
         clientEmail: form.clientEmail,
         clientName: form.clientName,
         serviceName: form.serviceName,
+        addOns: selectedAddOns.map(({ id, name, price }) => ({ id, name, price })),
+        bookingProducts: selectedProducts,
       });
       if (session.checkoutUrl) window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
     } catch (error) {

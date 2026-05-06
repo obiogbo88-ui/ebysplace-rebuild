@@ -29,8 +29,9 @@ import {
 } from "drizzle-orm/pg-core";
 var userRoleEnum = pgEnum("user_role_enum", ["user", "admin"]);
 var trueFalseEnum = pgEnum("true_false_enum", ["true", "false"]);
-var serviceCategoryEnum = pgEnum("service_category_enum", ["Braids", "Twists", "Locs", "Kids Styles", "Add-ons"]);
+var serviceCategoryEnum = pgEnum("service_category_enum", ["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
 var bookingStatusEnum = pgEnum("booking_status_enum", ["pending", "confirmed", "completed", "cancelled"]);
+var bookingLocationTypeEnum = pgEnum("booking_location_type_enum", ["studio", "home_service"]);
 var depositStatusEnum = pgEnum("deposit_status_enum", ["unpaid", "checkout_started", "paid", "failed", "refunded"]);
 var productCategoryEnum = pgEnum("product_category_enum", ["Accessories", "Aftercare", "Hair Attachments"]);
 var stockStatusEnum = pgEnum("stock_status_enum", ["in_stock", "low_stock", "out_of_stock"]);
@@ -89,11 +90,14 @@ var bookings = pgTable("bookings", {
   clientName: varchar("clientName", { length: 180 }).notNull(),
   clientEmail: varchar("clientEmail", { length: 320 }).notNull(),
   clientPhone: varchar("clientPhone", { length: 80 }).notNull(),
-  addressLine1: varchar("addressLine1", { length: 255 }).notNull(),
-  city: varchar("city", { length: 120 }).notNull(),
+  serviceLocation: bookingLocationTypeEnum("serviceLocation").default("studio").notNull(),
+  addressLine1: varchar("addressLine1", { length: 255 }),
+  addressLine2: varchar("addressLine2", { length: 255 }),
+  city: varchar("city", { length: 120 }),
   county: varchar("county", { length: 120 }),
-  postcode: varchar("postcode", { length: 40 }).notNull(),
+  postcode: varchar("postcode", { length: 40 }),
   deliveryNote: text("deliveryNote"),
+  homeServiceSurcharge: numeric("homeServiceSurcharge", { precision: 10, scale: 2 }).default("0.00").notNull(),
   appointmentDate: varchar("appointmentDate", { length: 20 }).notNull(),
   appointmentTime: varchar("appointmentTime", { length: 20 }).notNull(),
   status: bookingStatusEnum("status").default("pending").notNull(),
@@ -133,10 +137,12 @@ var orders = pgTable("orders", {
   customerName: varchar("customerName", { length: 180 }).notNull(),
   customerEmail: varchar("customerEmail", { length: 320 }).notNull(),
   customerPhone: varchar("customerPhone", { length: 80 }),
-  addressLine1: varchar("addressLine1", { length: 255 }).notNull(),
-  city: varchar("city", { length: 120 }).notNull(),
+  serviceLocation: bookingLocationTypeEnum("serviceLocation").default("studio").notNull(),
+  addressLine1: varchar("addressLine1", { length: 255 }),
+  addressLine2: varchar("addressLine2", { length: 255 }),
+  city: varchar("city", { length: 120 }),
   county: varchar("county", { length: 120 }),
-  postcode: varchar("postcode", { length: 40 }).notNull(),
+  postcode: varchar("postcode", { length: 40 }),
   deliveryNote: text("deliveryNote"),
   status: orderStatusEnum("status").default("draft").notNull(),
   stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
@@ -504,10 +510,10 @@ var seedServices = [
     name: "Kids Braids",
     slug: "kids-braids",
     category: "Kids Styles",
-    description: "Gentle, age-appropriate braided styles created with patience, comfort, and neat finishing.",
+    description: "Gentle, age-appropriate braided styles created with patience, comfort, and neat finishing. We take our time so every child leaves happy.",
     duration: "2\u20134 hours",
     priceFrom: "55.00",
-    badge: "Family Friendly",
+    badge: "Child Friendly",
     isFeatured: "false",
     sortOrder: 15,
     imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png"
@@ -516,13 +522,121 @@ var seedServices = [
     name: "Kids Cornrows",
     slug: "kids-cornrows",
     category: "Kids Styles",
-    description: "Gentle cornrow styling for children with comfort-first care and tidy results.",
+    description: "Gentle cornrow styling for children of all ages, with comfort-first care, zero tension, and tidy results that last.",
     duration: "1.5\u20133 hours",
     priceFrom: "45.00",
-    badge: "Family Friendly",
+    badge: "Child Friendly",
     isFeatured: "false",
     sortOrder: 16,
     imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png"
+  },
+  {
+    name: "Kids Box Braids",
+    slug: "kids-box-braids",
+    category: "Kids Styles",
+    description: "Neat individual box braids for children, installed gently with lightweight hair and careful sectioning to protect young scalps.",
+    duration: "2\u20134 hours",
+    priceFrom: "60.00",
+    badge: "Child Friendly",
+    isFeatured: "false",
+    sortOrder: 17,
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png"
+  },
+  {
+    name: "Kids Knotless Braids",
+    slug: "kids-knotless-braids",
+    category: "Kids Styles",
+    description: "Feather-light knotless braids for children \u2014 no tension at the root, no discomfort. The kindest protective style for young hair.",
+    duration: "2.5\u20134 hours",
+    priceFrom: "65.00",
+    badge: "Child Friendly",
+    isFeatured: "false",
+    sortOrder: 18,
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png"
+  },
+  {
+    name: "Kids Twists",
+    slug: "kids-twists",
+    category: "Kids Styles",
+    description: "Soft, comfortable twists for children that are quick to install and gentle on sensitive scalps.",
+    duration: "1.5\u20133 hours",
+    priceFrom: "50.00",
+    badge: "Child Friendly",
+    isFeatured: "false",
+    sortOrder: 19,
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png"
+  },
+  {
+    name: "Back to School Styles",
+    slug: "back-to-school-styles",
+    category: "Kids Styles",
+    description: "Smart, neat, long-lasting protective styles for school \u2014 including cornrows, braids, and twists that stay tidy for weeks.",
+    duration: "2\u20134 hours",
+    priceFrom: "50.00",
+    badge: "Family Friendly",
+    isFeatured: "false",
+    sortOrder: 20,
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png"
+  },
+  {
+    name: "Men Cornrows",
+    slug: "men-cornrows",
+    category: "Men Styles",
+    description: "Clean, precise cornrow styling for men \u2014 laid flat and tailored to your preferred pattern for a sharp, low-maintenance look.",
+    duration: "1.5\u20133 hours",
+    priceFrom: "55.00",
+    badge: "Men's Style",
+    isFeatured: "false",
+    sortOrder: 21,
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png"
+  },
+  {
+    name: "Men Box Braids",
+    slug: "men-box-braids",
+    category: "Men Styles",
+    description: "Individual box braids for men, available in a range of lengths and sizes with a clean, polished finish.",
+    duration: "3\u20135 hours",
+    priceFrom: "80.00",
+    badge: "Men's Style",
+    isFeatured: "false",
+    sortOrder: 22,
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png"
+  },
+  {
+    name: "Men Twists",
+    slug: "men-twists",
+    category: "Men Styles",
+    description: "Smooth two-strand twists for men, offering a textured, protective style with a natural finish.",
+    duration: "2\u20134 hours",
+    priceFrom: "70.00",
+    badge: "Men's Style",
+    isFeatured: "false",
+    sortOrder: 23,
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png"
+  },
+  {
+    name: "Fulani Braids for Men",
+    slug: "fulani-braids-men",
+    category: "Men Styles",
+    description: "Bold Fulani-inspired braids for men with a statement front pattern and optional bead accessories.",
+    duration: "3\u20135 hours",
+    priceFrom: "90.00",
+    badge: "Men's Style",
+    isFeatured: "false",
+    sortOrder: 24,
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png"
+  },
+  {
+    name: "Locs for Men",
+    slug: "locs-men",
+    category: "Men Styles",
+    description: "Starter locs and faux loc installation for men \u2014 a protective journey or instant statement look with a clean finish.",
+    duration: "2\u20135 hours",
+    priceFrom: "85.00",
+    badge: "Men's Style",
+    isFeatured: "false",
+    sortOrder: 25,
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png"
   },
   {
     name: "Hair Wash & Prep",
@@ -805,10 +919,83 @@ async function submitReview(input) {
   const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).returning({ id: reviews.id });
   return { id: inserted[0]?.id ?? 0, status: "pending" };
 }
+function safeParseJson(value, fallback) {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+async function getWebsiteJsonSection(sectionKey, fallback) {
+  try {
+    await seedIfNeeded();
+    const db = await getDb();
+    if (!db) return fallback;
+    const rows = await db.select().from(websiteSections).where(eq(websiteSections.sectionKey, sectionKey)).limit(1);
+    return safeParseJson(rows[0]?.body, fallback);
+  } catch (error) {
+    console.warn(`[Database] Falling back for website JSON section ${sectionKey}`, error);
+    return fallback;
+  }
+}
+async function setWebsiteJsonSection(sectionKey, value) {
+  const db = await getDb();
+  const body = JSON.stringify(value);
+  if (!db) return { success: true };
+  await db.insert(websiteSections).values({
+    sectionKey,
+    title: sectionKey,
+    body
+  }).onConflictDoUpdate({ target: websiteSections.sectionKey, set: { body, updatedAt: sql`CURRENT_TIMESTAMP` } });
+  return { success: true };
+}
+async function getAvailabilitySettings() {
+  const settings = await getWebsiteJsonSection("availability_settings", { blockedSlots: [], homeServiceSurcharge: "0.00" });
+  return { blockedSlots: settings.blockedSlots || [], homeServiceSurcharge: settings.homeServiceSurcharge || "0.00" };
+}
+async function updateHomeServiceSurcharge(homeServiceSurcharge) {
+  const settings = await getAvailabilitySettings();
+  return setWebsiteJsonSection("availability_settings", { ...settings, homeServiceSurcharge });
+}
+async function blockBookingSlot(input) {
+  const settings = await getAvailabilitySettings();
+  const nextSlot = { date: input.date, time: input.time || "", reason: input.reason || "Unavailable" };
+  const blockedSlots = settings.blockedSlots.filter((slot) => !(slot.date === nextSlot.date && (slot.time || "") === nextSlot.time));
+  blockedSlots.push(nextSlot);
+  return setWebsiteJsonSection("availability_settings", { ...settings, blockedSlots });
+}
+async function unblockBookingSlot(input) {
+  const settings = await getAvailabilitySettings();
+  const blockedSlots = settings.blockedSlots.filter((slot) => !(slot.date === input.date && (slot.time || "") === (input.time || "")));
+  return setWebsiteJsonSection("availability_settings", { ...settings, blockedSlots });
+}
+async function isBookingSlotBlocked(date, time) {
+  const settings = await getAvailabilitySettings();
+  return settings.blockedSlots.some((slot) => slot.date === date && (!(slot.time || "").trim() || slot.time === time));
+}
+async function getInstagramSettings() {
+  return getWebsiteJsonSection("instagram_settings", {
+    handle: "@ebysplace",
+    feedUrl: "https://www.instagram.com/ebysplace/",
+    enabled: true,
+    note: "Connect the official Instagram feed provider when production social credentials are available."
+  });
+}
+async function updateInstagramSettings(input) {
+  return setWebsiteJsonSection("instagram_settings", input);
+}
+async function getBookingById(id) {
+  const db = await getDb();
+  if (!db) return null;
+  await ensureBookingLocationColumns();
+  const rows = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
+  return rows[0] ?? null;
+}
 async function subscribeNewsletter(email, productAlerts = false) {
   const db = await getDb();
   if (!db) return { success: true };
-  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onConflictDoUpdate({ target: newsletterSubscribers.email, set: { productAlerts: productAlerts ? "true" : "false" } });
+  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onConflictDoUpdate({ target: newsletterSubscribers.email, set: { productAlerts: productAlerts ? "true" : "false", createdAt: sql`CURRENT_TIMESTAMP` } });
   return { success: true };
 }
 async function listGallery(category) {
@@ -828,9 +1015,53 @@ async function listGallery(category) {
     return fallback;
   }
 }
+async function ensureBookingLocationColumns() {
+  const db = await getDb();
+  if (!db || !_pool) return;
+  await _pool.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_location_type_enum') THEN
+        CREATE TYPE booking_location_type_enum AS ENUM ('studio', 'home_service');
+      END IF;
+    END $$;
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "serviceLocation" booking_location_type_enum NOT NULL DEFAULT 'studio';
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "addressLine1" varchar(255);
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "addressLine2" varchar(255);
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "city" varchar(120);
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "county" varchar(120);
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "postcode" varchar(40);
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "deliveryNote" text;
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "homeServiceSurcharge" numeric(10,2) NOT NULL DEFAULT '0.00';
+    ALTER TABLE "bookings" ALTER COLUMN "addressLine1" DROP NOT NULL;
+    ALTER TABLE "bookings" ALTER COLUMN "city" DROP NOT NULL;
+    ALTER TABLE "bookings" ALTER COLUMN "postcode" DROP NOT NULL;
+  `);
+}
+async function ensureOrderLocationColumns() {
+  const db = await getDb();
+  if (!db || !_pool) return;
+  await _pool.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_location_type_enum') THEN
+        CREATE TYPE booking_location_type_enum AS ENUM ('studio', 'home_service');
+      END IF;
+    END $$;
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "serviceLocation" booking_location_type_enum NOT NULL DEFAULT 'studio';
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "addressLine1" varchar(255);
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "addressLine2" varchar(255);
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "city" varchar(120);
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "county" varchar(120);
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "postcode" varchar(40);
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "deliveryNote" text;
+    ALTER TABLE "orders" ALTER COLUMN "addressLine1" DROP NOT NULL;
+    ALTER TABLE "orders" ALTER COLUMN "city" DROP NOT NULL;
+    ALTER TABLE "orders" ALTER COLUMN "postcode" DROP NOT NULL;
+  `);
+}
 async function createBooking(input) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
+  await ensureBookingLocationColumns();
   const inserted = await db.insert(bookings).values(input).returning({ id: bookings.id });
   return { id: inserted[0]?.id ?? 0 };
 }
@@ -847,6 +1078,7 @@ async function markBookingDepositPaid(stripeCheckoutSessionId, stripePaymentInte
 async function getBookingByCheckoutSession(stripeCheckoutSessionId) {
   const db = await getDb();
   if (!db) return null;
+  await ensureBookingLocationColumns();
   const rows = await db.select().from(bookings).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
   return rows[0] ?? null;
 }
@@ -854,6 +1086,7 @@ async function createOrderWithItems(input) {
   await seedIfNeeded();
   const db = await getDb();
   if (!db) return { id: Date.now(), items: input.items };
+  await ensureOrderLocationColumns();
   const [productRows, variantRows] = await Promise.all([
     db.select().from(products),
     db.select().from(productVariants)
@@ -876,7 +1109,19 @@ async function createOrderWithItems(input) {
       unitPrice: Number(product.price).toFixed(2)
     };
   });
-  const inserted = await db.insert(orders).values({ customerName: input.customerName, customerEmail: input.customerEmail, customerPhone: input.customerPhone, addressLine1: input.addressLine1, city: input.city, county: input.county, postcode: input.postcode, deliveryNote: input.deliveryNote, status: "draft" }).returning({ id: orders.id });
+  const inserted = await db.insert(orders).values({
+    customerName: input.customerName,
+    customerEmail: input.customerEmail,
+    customerPhone: input.customerPhone || null,
+    serviceLocation: "home_service",
+    addressLine1: input.addressLine1?.trim() || null,
+    addressLine2: input.addressLine2?.trim() || null,
+    city: input.city?.trim() || null,
+    county: input.county?.trim() || null,
+    postcode: input.postcode?.trim() || null,
+    deliveryNote: input.deliveryNote?.trim() || null,
+    status: "draft"
+  }).returning({ id: orders.id });
   const orderId = inserted[0]?.id ?? 0;
   if (orderId && validatedItems.length) await db.insert(orderItems).values(validatedItems.map((item) => ({ ...item, orderId })));
   return { id: orderId, items: validatedItems };
@@ -889,13 +1134,35 @@ async function updateOrderCheckout(id, stripeCheckoutSessionId, stripePaymentInt
 async function markOrderPaid(stripeCheckoutSessionId, stripePaymentIntentId) {
   const db = await getDb();
   if (!db) return;
-  await db.update(orders).set({ status: "paid", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId));
+  await ensureOrderLocationColumns();
+  const matchingOrders = await db.select().from(orders).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
+  const order = matchingOrders[0];
+  if (!order) return;
+  const alreadyPaid = ["paid", "fulfilling", "shipped", "completed"].includes(order.status);
+  await db.update(orders).set({ status: "paid", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, order.id));
+  if (alreadyPaid) return;
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+  for (const item of items) {
+    if (item.variantId) {
+      await db.update(productVariants).set({ stockQuantity: sql`GREATEST(${productVariants.stockQuantity} - ${item.quantity}, 0)` }).where(eq(productVariants.id, item.variantId));
+    }
+    await db.update(products).set({
+      stockQuantity: sql`GREATEST(${products.stockQuantity} - ${item.quantity}, 0)`,
+      stockStatus: sql`CASE WHEN GREATEST(${products.stockQuantity} - ${item.quantity}, 0) = 0 THEN 'out_of_stock'::stock_status_enum ELSE ${products.stockStatus} END`
+    }).where(eq(products.id, item.productId));
+  }
 }
 async function getOrderByCheckoutSession(stripeCheckoutSessionId) {
   const db = await getDb();
   if (!db) return null;
+  await ensureOrderLocationColumns();
   const rows = await db.select().from(orders).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
   return rows[0] ?? null;
+}
+async function getOrderItemsByOrderId(orderId) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
 }
 async function recordAnalytics(eventName, pagePath, metadata) {
   const db = await getDb();
@@ -924,7 +1191,8 @@ async function adminSummary() {
 async function adminLists() {
   await seedIfNeeded();
   const db = await getDb();
-  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: seedProducts.map((product) => ({ ...product, variants: [] })), services: seedServices, gallery: [], tryOns: [], sections: [] };
+  if (db) await ensureBookingLocationColumns();
+  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: seedProducts.map((product) => ({ ...product, variants: [] })), services: seedServices, gallery: [], tryOns: [], sections: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   const [bookingRows, orderRows, reviewRows, productRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder))]);
   const productsWithVariants = productRows.map((product) => ({
     ...product,
@@ -932,7 +1200,7 @@ async function adminLists() {
     seoDescription: product.seoDescription || product.description,
     variants: variantRows.filter((variant) => variant.productId === product.id)
   }));
-  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows };
+  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows, availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
 }
 async function moderateReview(id, status) {
   const db = await getDb();
@@ -1092,11 +1360,22 @@ async function sendTwilioMessage(input) {
 async function sendCustomerSms(input) {
   return sendTwilioMessage({ ...input, channel: "sms" });
 }
+async function sendCustomerWhatsApp(input) {
+  return sendTwilioMessage({ ...input, channel: "whatsapp" });
+}
 async function sendCustomerSmsSafely(input) {
   try {
     return await sendCustomerSms(input);
   } catch (error) {
     console.warn("[CustomerSMS] Notification skipped", error);
+    return { sent: false, reason: "exception" };
+  }
+}
+async function sendCustomerWhatsAppSafely(input) {
+  try {
+    return await sendCustomerWhatsApp(input);
+  } catch (error) {
+    console.warn("[CustomerWhatsApp] Notification skipped", error);
     return { sent: false, reason: "exception" };
   }
 }
@@ -1112,6 +1391,87 @@ ${input.content}`.slice(0, 1500);
     sms: sms.status === "fulfilled" ? sms.value : { sent: false, reason: "exception" },
     whatsapp: whatsapp.status === "fulfilled" ? whatsapp.value : { sent: false, reason: "exception" }
   };
+}
+function isValidEmail(value) {
+  return Boolean(value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()));
+}
+async function sendCustomerEmailSafely(input) {
+  try {
+    const apiKey = process.env.SENDGRID_API_KEY;
+    const from = process.env.SENDGRID_FROM_EMAIL || process.env.CUSTOMER_EMAIL_FROM;
+    if (!apiKey || !from || !isValidEmail(input.to)) {
+      return { sent: false, reason: "email_provider_not_configured_or_invalid_address" };
+    }
+    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: input.to.trim() }] }],
+        from: { email: from },
+        subject: input.subject,
+        content: [{ type: "text/plain", value: input.body.slice(0, 12e3) }]
+      })
+    });
+    if (!response.ok) {
+      const details = await response.text().catch(() => "");
+      console.warn("[CustomerEmail] Send failed", response.status, details.slice(0, 300));
+      return { sent: false, reason: "email_provider_error" };
+    }
+    return { sent: true };
+  } catch (error) {
+    console.warn("[CustomerEmail] Notification skipped", error);
+    return { sent: false, reason: "exception" };
+  }
+}
+async function sendOwnerSmsAndWhatsAppSafely(body) {
+  const ownerPhone = process.env.EBYSPLACE_OWNER_PHONE_E164 || process.env.OWNER_PHONE_E164 || process.env.TWILIO_OWNER_PHONE;
+  const results = await Promise.allSettled([
+    sendCustomerSmsSafely({ to: ownerPhone, body }),
+    sendCustomerWhatsAppSafely({ to: ownerPhone, body })
+  ]);
+  return results.map((result) => result.status === "fulfilled" ? result.value : { sent: false, reason: "exception" });
+}
+async function sendReviewRequestEmailSafely(input) {
+  const reviewUrl = input.reviewUrl || (input.bookingId ? `/reviews?booking=${input.bookingId}` : "/reviews");
+  return sendCustomerEmailSafely({
+    to: input.to,
+    subject: "How was your Eby\u2019s Place appointment?",
+    body: [
+      `Hi ${input.customerName || "there"},`,
+      `Thank you for visiting Eby\u2019s Place for ${input.serviceName || "your appointment"}.`,
+      `Please leave a review here: ${reviewUrl}`,
+      "Reviews are checked by the Eby\u2019s Place team before appearing publicly."
+    ].join("\n\n")
+  });
+}
+async function sendNewsletterWelcomeEmailSafely(input) {
+  return sendCustomerEmailSafely({
+    to: input.to,
+    subject: "Welcome to Eby\u2019s Place updates",
+    body: [
+      "Hi there,",
+      "Thank you for joining Eby\u2019s Place updates. You will receive styling news, braid-care guidance, booking reminders, and selected product updates from the Eby\u2019s Place team.",
+      input.productAlerts ? "You are also subscribed to product and stock alerts for Eby\u2019s Place braid-care essentials." : "You can opt into product alerts whenever you want updates on braid-care essentials.",
+      "If this was not you, you can ignore this email."
+    ].join("\n\n")
+  });
+}
+async function sendShopOrderPaidEmailSafely(input) {
+  return sendCustomerEmailSafely({
+    to: input.to,
+    subject: `Eby\u2019s Place shop order #${input.orderId} confirmed`,
+    body: [
+      `Hi ${input.customerName || "there"},`,
+      `Your Eby\u2019s Place shop payment has been confirmed for order #${input.orderId}.`,
+      input.deliveryAddress ? `Delivery address: ${input.deliveryAddress}` : "Delivery address: provided during checkout.",
+      input.itemsSummary ? `Items:
+${input.itemsSummary}` : "The Eby\u2019s Place team is preparing your order.",
+      "Stripe will send your payment receipt to the email used at checkout."
+    ].join("\n\n")
+  });
 }
 
 // server/_core/notification.ts
@@ -1155,9 +1515,19 @@ async function notifyOwner(payload) {
 }
 
 // server/stripeWebhook.ts
+var STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
+function normalizeStripeKey(value) {
+  return value?.trim().replace(/^['\"]|['\"]$/g, "") || "";
+}
 function getStripeWebhookConfig() {
-  const secretKey = process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_SECRET_KEY?.trim();
-  const webhookSecret = process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET?.trim() || process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  const secretKey = [
+    normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeStripeKey(process.env.STRIPE_SECRET_KEY)
+  ].find((key) => key.startsWith("sk_live_")) || [
+    normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeStripeKey(process.env.STRIPE_SECRET_KEY)
+  ].find(Boolean);
+  const webhookSecret = normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET) || normalizeStripeKey(process.env.STRIPE_WEBHOOK_SECRET);
   if (!secretKey || !webhookSecret) return null;
   return { stripe: new Stripe(secretKey), webhookSecret };
 }
@@ -1194,10 +1564,40 @@ function registerStripeWebhook(app2) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await markBookingDepositPaid(session.id, paymentIntentId);
           const booking = await getBookingByCheckoutSession(session.id);
-          await sendCustomerSmsSafely({
-            to: booking?.clientPhone,
-            body: `Your Eby\u2019s Place \xA320 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured.`
-          });
+          const remainingBalance = booking?.estimatedPrice != null ? Math.max(Number(booking.estimatedPrice || 0) + Number(booking.homeServiceSurcharge || 0) - 20, 0).toFixed(2) : null;
+          const customerConfirmation = `Your Eby\u2019s Place \xA320 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured. Stripe will also email the payment receipt to the checkout email address.`;
+          const bookingLocation = booking?.serviceLocation ?? session.metadata?.service_location ?? "studio";
+          const homeServiceAddress = [booking?.addressLine1, booking?.addressLine2, booking?.city, booking?.county, booking?.postcode].filter(Boolean).join(", ");
+          const locationConfirmation = bookingLocation === "home_service" ? `Home service address: ${homeServiceAddress || "the address provided during booking"}` : `Studio visit address: ${STUDIO_CONFIRMATION_ADDRESS}`;
+          await Promise.allSettled([
+            sendCustomerSmsSafely({
+              to: booking?.clientPhone,
+              body: customerConfirmation
+            }),
+            sendCustomerWhatsAppSafely({
+              to: booking?.clientPhone,
+              body: customerConfirmation
+            }),
+            sendCustomerEmailSafely({
+              to: booking?.clientEmail ?? session.customer_email,
+              subject: "Eby\u2019s Place booking deposit confirmed",
+              body: [
+                `Hi ${booking?.clientName ?? session.metadata?.customer_name ?? "there"},`,
+                "Thank you for booking with Eby\u2019s Place.",
+                customerConfirmation,
+                `Service: ${booking?.serviceName ?? session.metadata?.service_name ?? "selected service"}`,
+                `Date and time: ${booking?.appointmentDate ?? "date TBC"}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""}`,
+                `Appointment location: ${bookingLocation === "home_service" ? "Home service" : "Eby\u2019s Place studio"}`,
+                locationConfirmation,
+                "Deposit paid: \xA320.00 non-refundable booking deposit.",
+                remainingBalance ? `Estimated remaining balance due at appointment: \xA3${remainingBalance}.` : "Remaining balance: confirmed by Eby\u2019s Place according to your final service and add-ons.",
+                booking?.deliveryNote ? `Booking notes and optional selections:
+${booking.deliveryNote}` : void 0,
+                "If anything needs changing, please contact Eby\u2019s Place before your appointment."
+              ].filter(Boolean).join("\n\n")
+            })
+          ]);
+          await sendOwnerSmsAndWhatsAppSafely(`Booking deposit paid: ${booking?.clientName ?? session.metadata?.customer_name ?? "Customer"} booked ${booking?.serviceName ?? session.metadata?.service_name ?? "a service"} on ${booking?.appointmentDate ?? "date TBC"} at ${booking?.appointmentTime ?? "time TBC"}. Email: ${booking?.clientEmail ?? session.customer_email ?? "not provided"}`);
           await notifyOwner({
             title: "Eby\u2019s Place deposit paid",
             content: [
@@ -1215,10 +1615,38 @@ function registerStripeWebhook(app2) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await markOrderPaid(session.id, paymentIntentId);
           const order = await getOrderByCheckoutSession(session.id);
-          await sendCustomerSmsSafely({
-            to: order?.customerPhone,
-            body: `Eby\u2019s Place has received payment for order #${order?.id ?? session.metadata?.order_id ?? ""}. We will prepare your items and keep you updated.`
-          });
+          const deliveryAddress = [order?.addressLine1, order?.addressLine2, order?.city, order?.county, order?.postcode].filter(Boolean).join(", ");
+          const orderReference = order?.id ?? session.metadata?.order_id ?? "";
+          const orderItems2 = order?.id ? await getOrderItemsByOrderId(order.id) : [];
+          const itemsSummary = orderItems2.length ? orderItems2.map((item) => `${item.quantity} \xD7 ${item.variantName ? `${item.productName} \u2014 ${item.variantName}` : item.productName} (\xA3${(Number(item.unitPrice) * Number(item.quantity)).toFixed(2)})`).join("\n") : "Items recorded in your Stripe checkout.";
+          const totalPaid = orderItems2.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity), 0).toFixed(2);
+          const orderEmailBody = [
+            `Hi ${order?.customerName ?? session.metadata?.customer_name ?? "there"},`,
+            "Thank you for shopping with Eby\u2019s Place.",
+            `Order reference: #${orderReference}`,
+            `Products and quantities:
+${itemsSummary}`,
+            orderItems2.length ? `Total paid: \xA3${totalPaid}` : "Total paid: confirmed in your Stripe receipt.",
+            `Delivery address: ${deliveryAddress || "provided during checkout"}`,
+            "Estimated delivery: 3-5 working days after dispatch."
+          ].join("\n\n");
+          await Promise.allSettled([
+            sendCustomerSmsSafely({
+              to: order?.customerPhone,
+              body: `Eby's Place has received payment for order #${orderReference}. We will prepare your items and keep you updated.`
+            }),
+            sendShopOrderPaidEmailSafely({
+              to: order?.customerEmail ?? session.customer_email,
+              customerName: order?.customerName ?? session.metadata?.customer_name,
+              orderId: orderReference,
+              deliveryAddress: deliveryAddress || "provided during checkout",
+              itemsSummary: `${itemsSummary}
+
+${orderItems2.length ? `Total paid: \xA3${totalPaid}` : "Total paid: confirmed in your Stripe receipt."}
+Estimated delivery: 3-5 working days after dispatch.`
+            }),
+            sendOwnerSmsAndWhatsAppSafely(`New Eby's Place shop order paid: ${order?.customerName ?? session.metadata?.customer_name ?? "Customer"}, order #${orderReference}, deliver to ${deliveryAddress || "address on order"}.`)
+          ]);
           await notifyOwner({
             title: "Eby\u2019s Place shop order paid",
             content: [
@@ -1231,6 +1659,22 @@ function registerStripeWebhook(app2) {
             ].filter(Boolean).join("\n")
           }).catch((error) => console.warn("[StripeWebhook] Owner order notification failed", error));
         }
+      }
+      if (event.type === "payment_intent.succeeded") {
+        const paymentIntent = event.data.object;
+        console.log("[StripeWebhook] Payment intent succeeded", paymentIntent.id);
+      }
+      if (event.type === "payment_intent.payment_failed") {
+        const paymentIntent = event.data.object;
+        const failureMessage = paymentIntent.last_payment_error?.message || "Stripe reported a failed payment attempt.";
+        await notifyOwner({
+          title: "Eby\u2019s Place payment failed",
+          content: [
+            `Stripe payment failed for payment intent ${paymentIntent.id}.`,
+            `Reason: ${failureMessage}`,
+            paymentIntent.receipt_email ? `Customer email: ${paymentIntent.receipt_email}` : void 0
+          ].filter(Boolean).join("\n")
+        }).catch((error) => console.warn("[StripeWebhook] Owner failed-payment notification failed", error));
       }
       console.log("[StripeWebhook] Processed event", event.type, event.id);
       res.json({ received: true });
@@ -1634,35 +2078,51 @@ async function authenticateSupabaseRequest(req) {
 }
 
 // server/routers.ts
-var serviceCategory = z2.enum(["Braids", "Twists", "Locs", "Kids Styles", "Add-ons"]);
+var serviceCategory = z2.enum(["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
 var bookingStatus = z2.enum(["pending", "confirmed", "completed", "cancelled"]);
 var reviewStatus = z2.enum(["approved", "rejected"]);
 var orderStatus = z2.enum(["draft", "pending_payment", "paid", "fulfilling", "shipped", "completed", "cancelled"]);
 var productStockStatus = z2.enum(["in_stock", "low_stock", "out_of_stock"]);
 var productCategory = z2.enum(["Accessories", "Aftercare", "Hair Attachments"]);
 var galleryCategory = z2.enum(["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"]);
+var bookingAddOnInput = z2.object({
+  id: z2.string().min(2),
+  name: z2.string().min(2),
+  price: z2.string().regex(/^\d+(\.\d{2})?$/)
+}).strict();
+var bookingProductInput = z2.object({
+  productId: z2.number(),
+  productName: z2.string().min(2),
+  quantity: z2.number().int().positive(),
+  unitPrice: z2.string().regex(/^\d+(\.\d{2})?$/)
+}).strict();
 var bookingInput = z2.object({
   serviceId: z2.number().optional(),
+  serviceLocation: z2.enum(["studio", "home_service"]).default("studio"),
   serviceName: z2.string().min(2),
   clientName: z2.string().min(2),
   clientEmail: z2.string().email(),
   clientPhone: z2.string().min(6),
-  addressLine1: z2.string().min(3),
-  city: z2.string().min(2),
+  addressLine1: z2.string().optional(),
+  addressLine2: z2.string().optional(),
+  city: z2.string().optional(),
   county: z2.string().optional(),
-  postcode: z2.string().min(3),
+  postcode: z2.string().optional().default(""),
   deliveryNote: z2.string().optional(),
   appointmentDate: z2.string().min(8),
-  appointmentTime: z2.string().min(4)
+  appointmentTime: z2.string().min(4),
+  addOns: z2.array(bookingAddOnInput).default([]),
+  bookingProducts: z2.array(bookingProductInput).default([])
 });
 var orderInput = z2.object({
   customerName: z2.string().min(2),
   customerEmail: z2.string().email(),
   customerPhone: z2.string().optional(),
-  addressLine1: z2.string().min(3),
-  city: z2.string().min(2),
+  addressLine1: z2.string().optional(),
+  addressLine2: z2.string().optional(),
+  city: z2.string().optional(),
   county: z2.string().optional(),
-  postcode: z2.string().min(3),
+  postcode: z2.string().optional().default(""),
   deliveryNote: z2.string().optional(),
   items: z2.array(z2.object({
     productId: z2.number(),
@@ -1673,13 +2133,33 @@ var orderInput = z2.object({
     unitPrice: z2.string().regex(/^\d+(\.\d{2})?$/)
   })).min(1)
 });
+function normalizeStripeKey2(value) {
+  return value?.trim().replace(/^['\"]|['\"]$/g, "") || "";
+}
+function getLiveStripeSecretKey() {
+  const candidates = [
+    normalizeStripeKey2(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeStripeKey2(process.env.STRIPE_SECRET_KEY)
+  ];
+  return candidates.find((key) => key.startsWith("sk_live_")) || candidates.find(Boolean) || "";
+}
+function getLiveStripePublishableKey() {
+  const candidates = [
+    normalizeStripeKey2(process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY),
+    normalizeStripeKey2(process.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  ];
+  return candidates.find((key) => key.startsWith("pk_live_")) || candidates.find(Boolean) || "";
+}
 function getStripe() {
-  const key = process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_SECRET_KEY?.trim();
+  const key = getLiveStripeSecretKey();
   if (!key) throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Stripe is not configured yet." });
   if (!key.startsWith("sk_live_")) {
     throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Live Stripe payments require a live Stripe secret key. Add EBYSPLACE_LIVE_STRIPE_SECRET_KEY or configure STRIPE_SECRET_KEY with a key that starts with sk_live_." });
   }
   return new Stripe2(key);
+}
+function getLivePaymentMode() {
+  return { stripeMode: "live", publishableKeyConfigured: Boolean(getLiveStripePublishableKey().startsWith("pk_live_")) };
 }
 function getOrigin(req) {
   const origin = req.headers.origin;
@@ -1691,6 +2171,43 @@ async function notifyOwnerSafely(title, content) {
   } catch (error) {
     console.warn("[Notification] Owner notification skipped", error);
   }
+}
+function formatBookingExtras(input) {
+  const addOns = input.addOns?.length ? input.addOns.map((item) => `${item.name} (\xA3${item.price})`).join(", ") : "None selected";
+  const bookingProducts = input.bookingProducts?.length ? input.bookingProducts.map((item) => `${item.quantity} \xD7 ${item.productName} (\xA3${item.unitPrice})`).join(", ") : "None selected";
+  return { addOns, bookingProducts };
+}
+function buildBookingNote(input) {
+  const extras = formatBookingExtras(input);
+  return [
+    input.deliveryNote?.trim() ? input.deliveryNote.trim() : void 0,
+    `Service location: ${input.serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}`,
+    input.homeServiceSurcharge && Number(input.homeServiceSurcharge) > 0 ? `Home service surcharge: \xA3${input.homeServiceSurcharge}` : void 0,
+    `Optional add-ons: ${extras.addOns}`,
+    `Optional shop products for appointment order: ${extras.bookingProducts}`
+  ].filter(Boolean).join("\n");
+}
+function poundsToMinorUnits(value) {
+  return Math.round(Number(value || 0) * 100);
+}
+function buildBookingCheckoutLineItems(input) {
+  return [
+    { price_data: { currency: "gbp", unit_amount: 2e3, product_data: { name: "Eby\u2019s Place \xA320 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 },
+    ...input.homeServiceSurcharge > 0 ? [{ price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(input.homeServiceSurcharge), product_data: { name: "Eby\u2019s Place Home Service travel surcharge", description: "Additional travel fee for a home-service appointment" } }, quantity: 1 }] : [],
+    ...(input.addOns || []).map((item) => ({
+      price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(item.price), product_data: { name: `Add-on: ${item.name}`, description: "Selected Eby\u2019s Place appointment add-on" } },
+      quantity: 1
+    })),
+    ...(input.bookingProducts || []).map((item) => ({
+      price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(item.unitPrice), product_data: { name: item.productName, description: "Eby\u2019s Place shop product added to appointment checkout" } },
+      quantity: item.quantity
+    }))
+  ];
+}
+function bookingExtrasTotal(input) {
+  const addOnsTotal = (input.addOns || []).reduce((sum, item) => sum + Number(item.price), 0);
+  const productsTotal = (input.bookingProducts || []).reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0);
+  return addOnsTotal + productsTotal;
 }
 function decodeDataUrl(dataUrl) {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -1723,10 +2240,23 @@ var appRouter = router({
     services: publicProcedure.input(z2.object({ category: serviceCategory.optional() }).optional()).query(({ input }) => listServices(input?.category)),
     featuredServices: publicProcedure.query(() => listFeaturedServices()),
     products: publicProcedure.query(() => listProducts()),
+    availability: publicProcedure.query(() => getAvailabilitySettings()),
+    paymentMode: publicProcedure.query(() => getLivePaymentMode()),
+    instagramSettings: publicProcedure.query(() => getInstagramSettings()),
     websiteSections: publicProcedure.query(() => listWebsiteSections()),
     reviews: publicProcedure.query(() => listApprovedReviews()),
     gallery: publicProcedure.input(z2.object({ category: z2.string().optional() }).optional()).query(({ input }) => listGallery(input?.category)),
-    newsletter: publicProcedure.input(z2.object({ email: z2.string().email(), productAlerts: z2.boolean().default(false) })).mutation(({ input }) => subscribeNewsletter(input.email, input.productAlerts)),
+    newsletter: publicProcedure.input(z2.object({ email: z2.string().email(), productAlerts: z2.boolean().default(false) })).mutation(async ({ input }) => {
+      const result = await subscribeNewsletter(input.email, input.productAlerts);
+      await Promise.allSettled([
+        sendNewsletterWelcomeEmailSafely({ to: input.email, productAlerts: input.productAlerts }),
+        notifyOwnerSafely(
+          "New Eby\u2019s Place newsletter signup",
+          `${input.email} joined Eby\u2019s Place updates${input.productAlerts ? " with product alerts" : ""}.`
+        )
+      ]);
+      return { ...result, customerNotification: "You\u2019re subscribed to Eby\u2019s Place updates." };
+    }),
     submitReview: publicProcedure.input(z2.object({ customerName: z2.string().min(2), rating: z2.number().min(1).max(5), reviewText: z2.string().min(10) })).mutation(async ({ input }) => {
       const review = await submitReview(input);
       await notifyOwnerSafely(
@@ -1742,7 +2272,21 @@ var appRouter = router({
       return { ...review, customerNotification: "Thank you for reviewing Eby\u2019s Place. Your review has been received and is pending approval." };
     }),
     createBooking: publicProcedure.input(bookingInput).mutation(async ({ input }) => {
-      const booking = await createBooking({ ...input, status: "pending", depositStatus: "unpaid" });
+      const { addOns, bookingProducts, ...bookingFields } = input;
+      const serviceLocation = input.serviceLocation || "studio";
+      const settings = await getAvailabilitySettings();
+      const homeServiceSurcharge = serviceLocation === "home_service" ? Number(settings.homeServiceSurcharge || 0).toFixed(2) : "0.00";
+      if (serviceLocation === "home_service") {
+        const missing = [input.clientName, input.addressLine1, input.city, input.county].some((value) => !value?.trim());
+        if (missing) throw new TRPCError4({ code: "BAD_REQUEST", message: "Home Service bookings require the customer name, address line 1, city, and county. Postcode is optional." });
+      }
+      const sanitizedBookingFields = serviceLocation === "studio" ? { ...bookingFields, serviceLocation, addressLine1: "Studio visit", addressLine2: null, city: "Studio", county: null, postcode: "STUDIO", homeServiceSurcharge } : { ...bookingFields, serviceLocation, addressLine1: input.addressLine1.trim(), addressLine2: input.addressLine2?.trim() || null, city: input.city.trim(), county: input.county?.trim() || null, postcode: input.postcode?.trim() || "", homeServiceSurcharge };
+      const bookingNote = buildBookingNote({ ...input, serviceLocation, homeServiceSurcharge });
+      if (await isBookingSlotBlocked(input.appointmentDate, input.appointmentTime)) {
+        throw new TRPCError4({ code: "BAD_REQUEST", message: "That date or time has been blocked by Eby\u2019s Place. Please choose another slot." });
+      }
+      const booking = await createBooking({ ...sanitizedBookingFields, deliveryNote: bookingNote, status: "pending", depositStatus: "unpaid" });
+      const extras = formatBookingExtras({ addOns, bookingProducts });
       await notifyOwnerSafely(
         "New Eby\u2019s Place booking request",
         [
@@ -1753,36 +2297,59 @@ var appRouter = router({
           `Email: ${input.clientEmail}`,
           `Phone: ${input.clientPhone}`,
           `Appointment: ${input.appointmentDate} at ${input.appointmentTime}`,
-          `Address: ${input.addressLine1}, ${input.city}${input.county ? `, ${input.county}` : ""}, ${input.postcode}`,
+          `Location type: ${serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}`,
+          serviceLocation === "home_service" ? `Customer address: ${[input.addressLine1, input.addressLine2, input.city, input.county, input.postcode].filter(Boolean).join(", ")}` : void 0,
+          serviceLocation === "home_service" ? `Home service surcharge: \xA3${homeServiceSurcharge}` : void 0,
+          `Optional add-ons: ${extras.addOns}`,
+          `Optional shop products: ${extras.bookingProducts}`,
           input.deliveryNote ? `Notes: ${input.deliveryNote}` : void 0
         ].filter(Boolean).join("\n")
       );
       await sendCustomerSmsSafely({
         to: input.clientPhone,
-        body: `Eby\u2019s Place received your ${input.serviceName} booking request for ${input.appointmentDate} at ${input.appointmentTime}. Please complete the \xA320 Stripe deposit on the website to secure it.`
+        body: `Eby\u2019s Place received your ${input.serviceName} booking request for ${input.appointmentDate} at ${input.appointmentTime}. Please complete the \xA320 Stripe deposit on the website to secure it. Optional add-ons/products are recorded only when selected.`
       });
-      return { bookingId: booking.id, depositAmount: 20, depositCurrency: "GBP", message: "A \xA320 non-refundable deposit is required to secure your Eby\u2019s Place appointment. You will receive on-screen confirmation after Stripe confirms payment.", customerNotification: "Your Eby\u2019s Place booking request has been received. Please complete the secure Stripe deposit checkout to confirm the appointment." };
+      return { bookingId: booking.id, depositAmount: 20, homeServiceSurcharge: Number(homeServiceSurcharge), depositCurrency: "GBP", serviceLocation, message: "A \xA320 non-refundable deposit is required to secure your Eby\u2019s Place appointment. You will receive on-screen confirmation after Stripe confirms payment.", customerNotification: "Your Eby\u2019s Place booking request has been received. Add-ons and shop products are optional, and you can complete the secure Stripe deposit checkout now." };
     }),
-    createDepositCheckout: publicProcedure.input(z2.object({ bookingId: z2.number(), clientEmail: z2.string().email(), clientName: z2.string().min(2), serviceName: z2.string().min(2) })).mutation(async ({ input, ctx }) => {
+    createDepositCheckout: publicProcedure.input(z2.object({
+      bookingId: z2.number(),
+      clientEmail: z2.string().email(),
+      clientName: z2.string().min(2),
+      serviceName: z2.string().min(2),
+      addOns: z2.array(bookingAddOnInput).default([]),
+      bookingProducts: z2.array(bookingProductInput).default([])
+    })).mutation(async ({ input, ctx }) => {
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
+      const booking = await getBookingById(input.bookingId);
+      const homeServiceSurcharge = Number(booking?.homeServiceSurcharge || 0);
+      const extrasTotal = bookingExtrasTotal(input);
+      const lineItems = buildBookingCheckoutLineItems({
+        serviceName: input.serviceName,
+        homeServiceSurcharge,
+        addOns: input.addOns,
+        bookingProducts: input.bookingProducts
+      });
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         customer_email: input.clientEmail,
         client_reference_id: input.bookingId.toString(),
         payment_intent_data: { receipt_email: input.clientEmail, description: `Eby\u2019s Place booking deposit for ${input.serviceName}`, statement_descriptor_suffix: "EBYSPLACE" },
         custom_text: { submit: { message: "You are paying Eby\u2019s Place securely. Your booking deposit confirmation and receipt will use the email entered for checkout." } },
-        line_items: [{ price_data: { currency: "gbp", unit_amount: 2e3, product_data: { name: "Eby\u2019s Place \xA320 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 }],
+        line_items: lineItems,
         allow_promotion_codes: true,
         success_url: `${origin}/booking/success?booking=${input.bookingId}`,
-        cancel_url: `${origin}/booking?booking=${input.bookingId}`,
-        metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp" }
+        cancel_url: `${origin}/booking?payment=cancelled&booking=${input.bookingId}`,
+        metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) }
       });
       if (!session.url) throw new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a booking deposit checkout link. Please try again." });
       await updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),
     createOrder: publicProcedure.input(orderInput).mutation(async ({ input, ctx }) => {
+      if (!input.addressLine1?.trim() || !input.city?.trim()) {
+        throw new TRPCError4({ code: "BAD_REQUEST", message: "Shop orders require delivery address line 1 and city. Postcode is optional." });
+      }
       const order = await createOrderWithItems(input);
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
@@ -1851,11 +2418,16 @@ var appRouter = router({
       styleName: z2.string().min(2),
       originalImageUrl: z2.string().min(5),
       originalImageKey: z2.string().min(3).optional(),
-      mimeType: z2.string().optional()
+      mimeType: z2.string().optional(),
+      gender: z2.enum(["woman", "man", "child"]).optional(),
+      ageGroup: z2.enum(["child", "teen", "adult", "mature"]).optional()
     })).mutation(async ({ input }) => {
       const record = await createTryOnGeneration({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, status: "pending" });
       try {
-        const prompt = `Change ONLY the hairstyle of the person in this photo to ${input.styleName}. Keep the person's face, skin tone, eye color, facial features, expression, body, background, and clothing EXACTLY the same \u2014 do not alter them in any way. Only modify the hair into neat, professional, realistic ${input.styleName} with the refined Eby\u2019s Place salon finish.`;
+        const subjectDescriptionMap = { man: "man", child: "child", woman: "woman" };
+        const subjectDescription = input.gender && subjectDescriptionMap[input.gender] || "woman";
+        const ageDescription = input.ageGroup === "child" ? " (child)" : input.ageGroup === "teen" ? " (teenager)" : input.ageGroup === "mature" ? " (mature adult)" : "";
+        const prompt = `Change ONLY the hairstyle of the ${subjectDescription}${ageDescription} in this photo to ${input.styleName}. Preserve the person\u2019s skin tone, facial features, eye colour, expression, body, clothing, and background exactly \u2014 do not alter them in any way. Only modify the hair into neat, professional, realistic ${input.styleName} with the refined Eby\u2019s Place salon finish. This style works beautifully on all skin tones, all genders, and all ages.`;
         const storageKey = input.originalImageUrl.startsWith("/") ? input.originalImageKey ?? decodeURIComponent(input.originalImageUrl.replace("/", "")) : null;
         const editableImageUrl = storageKey ? await storageGetSignedUrl(storageKey) : input.originalImageUrl;
         const mimeType = input.mimeType?.startsWith("image/") ? input.mimeType : "image/jpeg";
@@ -1866,8 +2438,10 @@ var appRouter = router({
           [
             `A visitor generated an AI Try-On preview on the website.`,
             `Try-On ID: ${record.id}`,
-            `Style: ${input.styleName}`
-          ].join("\n")
+            `Style: ${input.styleName}`,
+            input.gender ? `Gender: ${input.gender}` : void 0,
+            input.ageGroup ? `Age group: ${input.ageGroup}` : void 0
+          ].filter(Boolean).join("\n")
         );
         return { id: record.id, generatedImageUrl: result.url, status: "completed", customerNotification: "Your Eby\u2019s Place AI Try-On preview is ready." };
       } catch (error) {
@@ -1884,6 +2458,16 @@ var appRouter = router({
     moderateReview: adminProcedure.input(z2.object({ id: z2.number(), status: reviewStatus })).mutation(({ input }) => moderateReview(input.id, input.status)),
     updateBookingStatus: adminProcedure.input(z2.object({ id: z2.number(), status: bookingStatus })).mutation(({ input }) => updateBookingStatus(input.id, input.status)),
     updateOrderStatus: adminProcedure.input(z2.object({ id: z2.number(), status: orderStatus })).mutation(({ input }) => updateOrderStatus(input.id, input.status)),
+    blockAvailabilitySlot: adminProcedure.input(z2.object({ date: z2.string().min(4), time: z2.string().optional(), reason: z2.string().optional() })).mutation(({ input }) => blockBookingSlot(input)),
+    unblockAvailabilitySlot: adminProcedure.input(z2.object({ date: z2.string().min(4), time: z2.string().optional() })).mutation(({ input }) => unblockBookingSlot(input)),
+    updateInstagramSettings: adminProcedure.input(z2.object({ handle: z2.string().min(2), feedUrl: z2.string().url(), enabled: z2.boolean(), note: z2.string().optional() })).mutation(({ input }) => updateInstagramSettings(input)),
+    updateHomeServiceSurcharge: adminProcedure.input(z2.object({ homeServiceSurcharge: z2.string().regex(/^\d+(\.\d{2})?$/) })).mutation(({ input }) => updateHomeServiceSurcharge(input.homeServiceSurcharge)),
+    sendReviewRequest: adminProcedure.input(z2.object({ bookingId: z2.number() })).mutation(async ({ input }) => {
+      const booking = await getBookingById(input.bookingId);
+      if (!booking) throw new TRPCError4({ code: "NOT_FOUND", message: "Booking not found." });
+      await sendReviewRequestEmailSafely({ to: booking.clientEmail, customerName: booking.clientName, bookingId: booking.id, serviceName: booking.serviceName, reviewUrl: `/reviews?booking=${booking.id}` });
+      return { success: true };
+    }),
     updateService: adminProcedure.input(z2.object({ id: z2.number(), name: z2.string().min(2).optional(), description: z2.string().min(10).optional(), duration: z2.string().min(2).optional(), priceFrom: z2.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z2.string().optional(), imageUrl: z2.string().min(5).optional(), isBookable: z2.enum(["true", "false"]).optional(), isFeatured: z2.enum(["true", "false"]).optional() })).mutation(({ input }) => {
       const { id, ...changes } = input;
       return updateService(id, changes);

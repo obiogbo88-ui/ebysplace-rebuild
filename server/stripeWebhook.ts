@@ -7,9 +7,19 @@ import { sendCustomerEmailSafely, sendShopOrderPaidEmailSafely, sendCustomerSmsS
 
 const STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
 
+function normalizeStripeKey(value: string | undefined) {
+  return value?.trim().replace(/^['\"]|['\"]$/g, "") || "";
+}
+
 function getStripeWebhookConfig() {
-  const secretKey = process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_SECRET_KEY?.trim();
-  const webhookSecret = process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET?.trim() || process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  const secretKey = [
+    normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeStripeKey(process.env.STRIPE_SECRET_KEY),
+  ].find((key) => key.startsWith("sk_live_")) || [
+    normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeStripeKey(process.env.STRIPE_SECRET_KEY),
+  ].find(Boolean);
+  const webhookSecret = normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET) || normalizeStripeKey(process.env.STRIPE_WEBHOOK_SECRET);
   if (!secretKey || !webhookSecret) return null;
   return { stripe: new Stripe(secretKey), webhookSecret };
 }
