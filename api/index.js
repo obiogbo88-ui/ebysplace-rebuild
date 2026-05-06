@@ -11,36 +11,38 @@ import Stripe from "stripe";
 
 // server/db.ts
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 
 // drizzle/schema.ts
 import {
   bigint,
-  integer,
-  jsonb,
-  numeric,
-  pgEnum,
-  pgTable,
-  serial,
+  decimal,
+  int,
+  json,
+  mysqlEnum,
+  mysqlTable,
   text,
   timestamp,
   varchar
-} from "drizzle-orm/pg-core";
-var userRoleEnum = pgEnum("user_role_enum", ["user", "admin"]);
-var trueFalseEnum = pgEnum("true_false_enum", ["true", "false"]);
-var serviceCategoryEnum = pgEnum("service_category_enum", ["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
-var bookingStatusEnum = pgEnum("booking_status_enum", ["pending", "confirmed", "completed", "cancelled"]);
-var bookingLocationTypeEnum = pgEnum("booking_location_type_enum", ["studio", "home_service"]);
-var depositStatusEnum = pgEnum("deposit_status_enum", ["unpaid", "checkout_started", "paid", "failed", "refunded"]);
-var productCategoryEnum = pgEnum("product_category_enum", ["Accessories", "Aftercare", "Hair Attachments"]);
-var stockStatusEnum = pgEnum("stock_status_enum", ["in_stock", "low_stock", "out_of_stock"]);
-var orderStatusEnum = pgEnum("order_status_enum", ["draft", "pending_payment", "paid", "fulfilling", "shipped", "completed", "cancelled"]);
-var galleryCategoryEnum = pgEnum("gallery_category_enum", ["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"]);
-var reviewStatusEnum = pgEnum("review_status_enum", ["pending", "approved", "rejected"]);
-var tryOnStatusEnum = pgEnum("try_on_status_enum", ["pending", "completed", "failed"]);
-var users = pgTable("users", {
-  id: serial("id").primaryKey(),
+} from "drizzle-orm/mysql-core";
+var userRoleEnum = (name) => mysqlEnum(name, ["user", "admin"]);
+var trueFalseEnum = (name) => mysqlEnum(name, ["true", "false"]);
+var serviceCategoryEnum = (name) => mysqlEnum(name, ["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
+var bookingStatusEnum = (name) => mysqlEnum(name, ["pending", "confirmed", "completed", "cancelled"]);
+var bookingLocationTypeEnum = (name) => mysqlEnum(name, ["studio", "home_service"]);
+var depositStatusEnum = (name) => mysqlEnum(name, ["unpaid", "checkout_started", "paid", "failed", "refunded"]);
+var productCategoryEnum = (name) => mysqlEnum(name, ["Accessories", "Aftercare", "Hair Attachments"]);
+var stockStatusEnum = (name) => mysqlEnum(name, ["in_stock", "low_stock", "out_of_stock"]);
+var orderStatusEnum = (name) => mysqlEnum(name, ["draft", "pending_payment", "paid", "fulfilling", "shipped", "completed", "cancelled"]);
+var galleryCategoryEnum = (name) => mysqlEnum(name, ["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"]);
+var reviewStatusEnum = (name) => mysqlEnum(name, ["pending", "approved", "rejected"]);
+var tryOnStatusEnum = (name) => mysqlEnum(name, ["pending", "completed", "failed"]);
+var emailNotificationStatusEnum = (name) => mysqlEnum(name, ["pending", "sent", "failed", "retried"]);
+var emailNotificationAudienceEnum = (name) => mysqlEnum(name, ["owner", "customer"]);
+var emailNotificationEntityEnum = (name) => mysqlEnum(name, ["booking", "order"]);
+var users = mysqlTable("users", {
+  id: int("id").autoincrement().primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -51,8 +53,8 @@ var users = pgTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull()
 });
-var websiteSections = pgTable("websiteSections", {
-  id: serial("id").primaryKey(),
+var websiteSections = mysqlTable("websiteSections", {
+  id: int("id").autoincrement().primaryKey(),
   sectionKey: varchar("sectionKey", { length: 80 }).notNull().unique(),
   title: varchar("title", { length: 255 }).notNull(),
   eyebrow: varchar("eyebrow", { length: 160 }),
@@ -62,30 +64,30 @@ var websiteSections = pgTable("websiteSections", {
   imageUrl: varchar("imageUrl", { length: 800 }),
   portraitImageUrl: varchar("portraitImageUrl", { length: 800 }),
   portraitDescription: text("portraitDescription"),
-  sortOrder: integer("sortOrder").default(0).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
   isPublished: trueFalseEnum("isPublished").default("true").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var services = pgTable("services", {
-  id: serial("id").primaryKey(),
+var services = mysqlTable("services", {
+  id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 180 }).notNull(),
   slug: varchar("slug", { length: 220 }).notNull().unique(),
   category: serviceCategoryEnum("category").notNull(),
   description: text("description").notNull(),
   duration: varchar("duration", { length: 80 }).notNull(),
-  priceFrom: numeric("priceFrom", { precision: 10, scale: 2 }).notNull(),
+  priceFrom: decimal("priceFrom", { precision: 10, scale: 2 }).notNull(),
   badge: varchar("badge", { length: 80 }),
   imageUrl: varchar("imageUrl", { length: 800 }),
   isBookable: trueFalseEnum("isBookable").default("true").notNull(),
   isFeatured: trueFalseEnum("isFeatured").default("false").notNull(),
-  sortOrder: integer("sortOrder").default(0).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var bookings = pgTable("bookings", {
-  id: serial("id").primaryKey(),
-  serviceId: integer("serviceId"),
+var bookings = mysqlTable("bookings", {
+  id: int("id").autoincrement().primaryKey(),
+  serviceId: int("serviceId"),
   serviceName: varchar("serviceName", { length: 180 }).notNull(),
   clientName: varchar("clientName", { length: 180 }).notNull(),
   clientEmail: varchar("clientEmail", { length: 320 }).notNull(),
@@ -97,7 +99,7 @@ var bookings = pgTable("bookings", {
   county: varchar("county", { length: 120 }),
   postcode: varchar("postcode", { length: 40 }),
   deliveryNote: text("deliveryNote"),
-  homeServiceSurcharge: numeric("homeServiceSurcharge", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  homeServiceSurcharge: decimal("homeServiceSurcharge", { precision: 10, scale: 2 }).default("0.00").notNull(),
   appointmentDate: varchar("appointmentDate", { length: 20 }).notNull(),
   appointmentTime: varchar("appointmentTime", { length: 20 }).notNull(),
   status: bookingStatusEnum("status").default("pending").notNull(),
@@ -107,33 +109,33 @@ var bookings = pgTable("bookings", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var products = pgTable("products", {
-  id: serial("id").primaryKey(),
+var products = mysqlTable("products", {
+  id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 180 }).notNull(),
   slug: varchar("slug", { length: 220 }).notNull().unique(),
   seoTitle: varchar("seoTitle", { length: 255 }),
   seoDescription: text("seoDescription"),
   category: productCategoryEnum("category").notNull(),
   description: text("description").notNull(),
-  price: numeric("price", { precision: 10, scale: 2 }).notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   imageUrl: varchar("imageUrl", { length: 800 }),
   badge: varchar("badge", { length: 80 }),
   stockStatus: stockStatusEnum("stockStatus").default("in_stock").notNull(),
-  stockQuantity: integer("stockQuantity").default(0).notNull(),
+  stockQuantity: int("stockQuantity").default(0).notNull(),
   isFeatured: trueFalseEnum("isFeatured").default("false").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var productVariants = pgTable("productVariants", {
-  id: serial("id").primaryKey(),
-  productId: integer("productId").notNull(),
+var productVariants = mysqlTable("productVariants", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("productId").notNull(),
   name: varchar("name", { length: 120 }).notNull(),
   colourHex: varchar("colourHex", { length: 20 }),
-  stockQuantity: integer("stockQuantity").default(0).notNull(),
+  stockQuantity: int("stockQuantity").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var orders = pgTable("orders", {
-  id: serial("id").primaryKey(),
+var orders = mysqlTable("orders", {
+  id: int("id").autoincrement().primaryKey(),
   customerName: varchar("customerName", { length: 180 }).notNull(),
   customerEmail: varchar("customerEmail", { length: 320 }).notNull(),
   customerPhone: varchar("customerPhone", { length: 80 }),
@@ -150,52 +152,71 @@ var orders = pgTable("orders", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var orderItems = pgTable("orderItems", {
-  id: serial("id").primaryKey(),
-  orderId: integer("orderId").notNull(),
-  productId: integer("productId").notNull(),
-  variantId: integer("variantId"),
+var orderItems = mysqlTable("orderItems", {
+  id: int("id").autoincrement().primaryKey(),
+  orderId: int("orderId").notNull(),
+  productId: int("productId").notNull(),
+  variantId: int("variantId"),
   productName: varchar("productName", { length: 180 }).notNull(),
   variantName: varchar("variantName", { length: 120 }),
-  quantity: integer("quantity").default(1).notNull(),
-  unitPrice: numeric("unitPrice", { precision: 10, scale: 2 }).notNull()
+  quantity: int("quantity").default(1).notNull(),
+  unitPrice: decimal("unitPrice", { precision: 10, scale: 2 }).notNull()
 });
-var galleryImages = pgTable("galleryImages", {
-  id: serial("id").primaryKey(),
+var galleryImages = mysqlTable("galleryImages", {
+  id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 180 }).notNull(),
   category: galleryCategoryEnum("category").notNull(),
   imageUrl: varchar("imageUrl", { length: 800 }).notNull(),
   altText: varchar("altText", { length: 255 }).notNull(),
   isPublished: trueFalseEnum("isPublished").default("true").notNull(),
-  sortOrder: integer("sortOrder").default(0).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var reviews = pgTable("reviews", {
-  id: serial("id").primaryKey(),
+var reviews = mysqlTable("reviews", {
+  id: int("id").autoincrement().primaryKey(),
   customerName: varchar("customerName", { length: 180 }).notNull(),
-  rating: integer("rating").notNull(),
+  rating: int("rating").notNull(),
   reviewText: text("reviewText").notNull(),
   status: reviewStatusEnum("status").default("pending").notNull(),
   source: varchar("source", { length: 80 }).default("website").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var newsletterSubscribers = pgTable("newsletterSubscribers", {
-  id: serial("id").primaryKey(),
+var newsletterSubscribers = mysqlTable("newsletterSubscribers", {
+  id: int("id").autoincrement().primaryKey(),
   email: varchar("email", { length: 320 }).notNull().unique(),
   productAlerts: trueFalseEnum("productAlerts").default("false").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var analyticsEvents = pgTable("analyticsEvents", {
-  id: serial("id").primaryKey(),
+var analyticsEvents = mysqlTable("analyticsEvents", {
+  id: int("id").autoincrement().primaryKey(),
   eventName: varchar("eventName", { length: 120 }).notNull(),
   pagePath: varchar("pagePath", { length: 500 }).notNull(),
-  metadata: jsonb("metadata"),
+  metadata: json("metadata"),
   createdAtMs: bigint("createdAtMs", { mode: "number" }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var tryOnGenerations = pgTable("tryOnGenerations", {
-  id: serial("id").primaryKey(),
+var emailNotificationLogs = mysqlTable("emailNotificationLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  entityType: emailNotificationEntityEnum("entityType").notNull(),
+  entityId: int("entityId").notNull(),
+  audience: emailNotificationAudienceEnum("audience").notNull(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  bodyPreview: text("bodyPreview"),
+  status: emailNotificationStatusEnum("status").default("pending").notNull(),
+  provider: varchar("provider", { length: 80 }).default("zoho_smtp").notNull(),
+  smtpHost: varchar("smtpHost", { length: 255 }),
+  messageId: varchar("messageId", { length: 255 }),
+  errorMessage: text("errorMessage"),
+  attempts: int("attempts").default(0).notNull(),
+  lastAttemptAtMs: bigint("lastAttemptAtMs", { mode: "number" }),
+  sentAtMs: bigint("sentAtMs", { mode: "number" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull()
+});
+var tryOnGenerations = mysqlTable("tryOnGenerations", {
+  id: int("id").autoincrement().primaryKey(),
   styleName: varchar("styleName", { length: 160 }).notNull(),
   originalImageUrl: varchar("originalImageUrl", { length: 800 }).notNull(),
   generatedImageUrl: varchar("generatedImageUrl", { length: 800 }),
@@ -208,21 +229,24 @@ var tryOnGenerations = pgTable("tryOnGenerations", {
 // server/db.ts
 var _pool = null;
 var _db = null;
+function getDbUnchecked(pool) {
+  return drizzle(pool);
+}
 var _seeded = false;
 var _unsupportedDatabaseUrlWarned = false;
 var _missingDatabaseUrlWarned = false;
 var _databaseConnectionFailed = false;
 var _lastDatabaseUrlFingerprint = null;
-function isPostgresConnectionString(connectionString) {
+function isMysqlConnectionString(connectionString) {
   try {
     const parsed = new URL(connectionString);
-    return parsed.protocol === "postgres:" || parsed.protocol === "postgresql:";
+    return ["mysql:", "mysql2:", "mariadb:"].includes(parsed.protocol);
   } catch {
     return false;
   }
 }
 function requiresSsl(connectionString) {
-  return /supabase\.co|sslmode=require/i.test(connectionString);
+  return /ssl-mode=require|sslmode=require|tidbcloud|planetscale|mysql.database.azure.com/i.test(connectionString);
 }
 function getDatabaseUrl() {
   return process.env.DATABASE_URL?.trim() || "";
@@ -251,17 +275,17 @@ async function getDb() {
   if (_lastDatabaseUrlFingerprint !== fingerprint) {
     _lastDatabaseUrlFingerprint = fingerprint;
     _databaseConnectionFailed = false;
-    console.error("[Database] DATABASE_URL detected for PostgreSQL initialisation", {
+    console.error("[Database] DATABASE_URL detected for MySQL initialisation", {
       fingerprint,
-      isPostgres: isPostgresConnectionString(connectionString),
+      isMysql: isMysqlConnectionString(connectionString),
       requiresSsl: requiresSsl(connectionString),
       nodeEnv: process.env.NODE_ENV,
       vercelEnv: process.env.VERCEL_ENV
     });
   }
-  if (!isPostgresConnectionString(connectionString)) {
+  if (!isMysqlConnectionString(connectionString)) {
     if (!_unsupportedDatabaseUrlWarned) {
-      console.error("[Database] Ignoring non-PostgreSQL DATABASE_URL. The production app expects a Supabase PostgreSQL connection string and will use safe seed-data fallbacks until one is configured.", { fingerprint });
+      console.error("[Database] Ignoring non-MySQL DATABASE_URL. The app expects a MySQL/TiDB connection string and will use safe seed-data fallbacks until one is configured.", { fingerprint });
       _unsupportedDatabaseUrlWarned = true;
     }
     return null;
@@ -269,19 +293,20 @@ async function getDb() {
   if (_databaseConnectionFailed) return null;
   if (!_db) {
     try {
-      _pool = new Pool({
-        connectionString,
-        max: 3,
-        idleTimeoutMillis: 1e4,
-        connectionTimeoutMillis: 1e4,
+      _pool = mysql.createPool({
+        uri: connectionString,
+        connectionLimit: 3,
+        maxIdle: 3,
+        idleTimeout: 1e4,
+        connectTimeout: 1e4,
         ssl: requiresSsl(connectionString) ? { rejectUnauthorized: false } : void 0
       });
       await _pool.query("select 1");
-      _db = drizzle(_pool);
-      console.error("[Database] PostgreSQL connection initialised", { fingerprint });
+      _db = getDbUnchecked(_pool);
+      console.error("[Database] MySQL connection initialised", { fingerprint });
     } catch (error) {
-      console.error("[Database] Failed to initialise PostgreSQL connection; falling back to seed data for public reads.", { fingerprint, error });
-      await _pool?.end().catch((closeError) => console.error("[Database] Failed to close broken PostgreSQL pool", closeError));
+      console.error("[Database] Failed to initialise MySQL connection; falling back to seed data for public reads.", { fingerprint, error });
+      await _pool?.end().catch((closeError) => console.error("[Database] Failed to close broken MySQL pool", closeError));
       _pool = null;
       _db = null;
       _databaseConnectionFailed = true;
@@ -313,7 +338,7 @@ async function upsertUser(user) {
   }
   if (!values.lastSignedIn) values.lastSignedIn = /* @__PURE__ */ new Date();
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = /* @__PURE__ */ new Date();
-  await db.insert(users).values(values).onConflictDoUpdate({ target: users.openId, set: { ...updateSet, updatedAt: /* @__PURE__ */ new Date() } });
+  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: { ...updateSet, updatedAt: /* @__PURE__ */ new Date() } });
 }
 var imageBySlug = {
   "knotless-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
@@ -751,8 +776,7 @@ function isUsableImageUrl(value) {
 async function ensureSeedProducts(db) {
   if (!db) return;
   for (const product of seedProducts) {
-    await db.insert(products).values(product).onConflictDoUpdate({
-      target: products.slug,
+    await db.insert(products).values(product).onDuplicateKeyUpdate({
       set: {
         name: product.name,
         seoTitle: product.seoTitle,
@@ -801,8 +825,7 @@ async function seedIfNeeded() {
   if (!db || _seeded) return;
   _seeded = true;
   for (const service of seedServices) {
-    await db.insert(services).values(service).onConflictDoUpdate({
-      target: services.slug,
+    await db.insert(services).values(service).onDuplicateKeyUpdate({
       set: {
         name: service.name,
         category: service.category,
@@ -916,7 +939,7 @@ async function listApprovedReviews() {
 async function submitReview(input) {
   const db = await getDb();
   if (!db) return { id: Date.now(), status: "pending" };
-  const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).returning({ id: reviews.id });
+  const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).$returningId();
   return { id: inserted[0]?.id ?? 0, status: "pending" };
 }
 function safeParseJson(value, fallback) {
@@ -947,7 +970,7 @@ async function setWebsiteJsonSection(sectionKey, value) {
     sectionKey,
     title: sectionKey,
     body
-  }).onConflictDoUpdate({ target: websiteSections.sectionKey, set: { body, updatedAt: sql`CURRENT_TIMESTAMP` } });
+  }).onDuplicateKeyUpdate({ set: { body, updatedAt: sql`CURRENT_TIMESTAMP` } });
   return { success: true };
 }
 async function getAvailabilitySettings() {
@@ -995,7 +1018,7 @@ async function getBookingById(id) {
 async function subscribeNewsletter(email, productAlerts = false) {
   const db = await getDb();
   if (!db) return { success: true };
-  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onConflictDoUpdate({ target: newsletterSubscribers.email, set: { productAlerts: productAlerts ? "true" : "false", createdAt: sql`CURRENT_TIMESTAMP` } });
+  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onDuplicateKeyUpdate({ set: { productAlerts: productAlerts ? "true" : "false", createdAt: sql`CURRENT_TIMESTAMP` } });
   return { success: true };
 }
 async function listGallery(category) {
@@ -1015,54 +1038,54 @@ async function listGallery(category) {
     return fallback;
   }
 }
+async function tableColumnExists(tableName, columnName) {
+  if (!_pool) return false;
+  const [rows] = await _pool.query(
+    "SELECT COUNT(*) AS count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+    [tableName, columnName]
+  );
+  return Number(rows[0]?.count ?? 0) > 0;
+}
+async function addColumnIfMissing(tableName, columnName, definition) {
+  if (!_pool) return;
+  if (!await tableColumnExists(tableName, columnName)) {
+    await _pool.query(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`);
+  }
+}
+async function makeColumnNullableIfPresent(tableName, columnName, definition) {
+  if (!_pool) return;
+  if (await tableColumnExists(tableName, columnName)) {
+    await _pool.query(`ALTER TABLE \`${tableName}\` MODIFY COLUMN \`${columnName}\` ${definition}`);
+  }
+}
 async function ensureBookingLocationColumns() {
   const db = await getDb();
   if (!db || !_pool) return;
-  await _pool.query(`
-    DO $$ BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_location_type_enum') THEN
-        CREATE TYPE booking_location_type_enum AS ENUM ('studio', 'home_service');
-      END IF;
-    END $$;
-    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "serviceLocation" booking_location_type_enum NOT NULL DEFAULT 'studio';
-    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "addressLine1" varchar(255);
-    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "addressLine2" varchar(255);
-    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "city" varchar(120);
-    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "county" varchar(120);
-    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "postcode" varchar(40);
-    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "deliveryNote" text;
-    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "homeServiceSurcharge" numeric(10,2) NOT NULL DEFAULT '0.00';
-    ALTER TABLE "bookings" ALTER COLUMN "addressLine1" DROP NOT NULL;
-    ALTER TABLE "bookings" ALTER COLUMN "city" DROP NOT NULL;
-    ALTER TABLE "bookings" ALTER COLUMN "postcode" DROP NOT NULL;
-  `);
+  await addColumnIfMissing("bookings", "serviceLocation", "enum('studio','home_service') NOT NULL DEFAULT 'studio'");
+  await addColumnIfMissing("bookings", "addressLine2", "varchar(255) NULL");
+  await addColumnIfMissing("bookings", "county", "varchar(120) NULL");
+  await addColumnIfMissing("bookings", "deliveryNote", "text NULL");
+  await addColumnIfMissing("bookings", "homeServiceSurcharge", "decimal(10,2) NOT NULL DEFAULT '0.00'");
+  await makeColumnNullableIfPresent("bookings", "addressLine1", "varchar(255) NULL");
+  await makeColumnNullableIfPresent("bookings", "city", "varchar(120) NULL");
+  await makeColumnNullableIfPresent("bookings", "postcode", "varchar(40) NULL");
 }
 async function ensureOrderLocationColumns() {
   const db = await getDb();
   if (!db || !_pool) return;
-  await _pool.query(`
-    DO $$ BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_location_type_enum') THEN
-        CREATE TYPE booking_location_type_enum AS ENUM ('studio', 'home_service');
-      END IF;
-    END $$;
-    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "serviceLocation" booking_location_type_enum NOT NULL DEFAULT 'studio';
-    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "addressLine1" varchar(255);
-    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "addressLine2" varchar(255);
-    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "city" varchar(120);
-    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "county" varchar(120);
-    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "postcode" varchar(40);
-    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "deliveryNote" text;
-    ALTER TABLE "orders" ALTER COLUMN "addressLine1" DROP NOT NULL;
-    ALTER TABLE "orders" ALTER COLUMN "city" DROP NOT NULL;
-    ALTER TABLE "orders" ALTER COLUMN "postcode" DROP NOT NULL;
-  `);
+  await addColumnIfMissing("orders", "serviceLocation", "enum('studio','home_service') NOT NULL DEFAULT 'studio'");
+  await addColumnIfMissing("orders", "addressLine2", "varchar(255) NULL");
+  await addColumnIfMissing("orders", "county", "varchar(120) NULL");
+  await addColumnIfMissing("orders", "deliveryNote", "text NULL");
+  await makeColumnNullableIfPresent("orders", "addressLine1", "varchar(255) NULL");
+  await makeColumnNullableIfPresent("orders", "city", "varchar(120) NULL");
+  await makeColumnNullableIfPresent("orders", "postcode", "varchar(40) NULL");
 }
 async function createBooking(input) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
   await ensureBookingLocationColumns();
-  const inserted = await db.insert(bookings).values(input).returning({ id: bookings.id });
+  const inserted = await db.insert(bookings).values(input).$returningId();
   return { id: inserted[0]?.id ?? 0 };
 }
 async function updateBookingCheckout(id, stripeCheckoutSessionId, stripePaymentIntentId) {
@@ -1121,7 +1144,7 @@ async function createOrderWithItems(input) {
     postcode: input.postcode?.trim() || null,
     deliveryNote: input.deliveryNote?.trim() || null,
     status: "draft"
-  }).returning({ id: orders.id });
+  }).$returningId();
   const orderId = inserted[0]?.id ?? 0;
   if (orderId && validatedItems.length) await db.insert(orderItems).values(validatedItems.map((item) => ({ ...item, orderId })));
   return { id: orderId, items: validatedItems };
@@ -1148,7 +1171,7 @@ async function markOrderPaid(stripeCheckoutSessionId, stripePaymentIntentId) {
     }
     await db.update(products).set({
       stockQuantity: sql`GREATEST(${products.stockQuantity} - ${item.quantity}, 0)`,
-      stockStatus: sql`CASE WHEN GREATEST(${products.stockQuantity} - ${item.quantity}, 0) = 0 THEN 'out_of_stock'::stock_status_enum ELSE ${products.stockStatus} END`
+      stockStatus: sql`CASE WHEN GREATEST(${products.stockQuantity} - ${item.quantity}, 0) = 0 THEN 'out_of_stock' ELSE ${products.stockStatus} END`
     }).where(eq(products.id, item.productId));
   }
 }
@@ -1159,10 +1182,90 @@ async function getOrderByCheckoutSession(stripeCheckoutSessionId) {
   const rows = await db.select().from(orders).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
   return rows[0] ?? null;
 }
+async function getOrderById(id) {
+  const db = await getDb();
+  if (!db) return null;
+  await ensureOrderLocationColumns();
+  const rows = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+  return rows[0] ?? null;
+}
 async function getOrderItemsByOrderId(orderId) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+}
+async function ensureEmailNotificationLogTable() {
+  await getDb();
+  if (!_pool) return;
+  await _pool.query(`CREATE TABLE IF NOT EXISTS \`emailNotificationLogs\` (
+    \`id\` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    \`entityType\` enum('booking','order') NOT NULL,
+    \`entityId\` int NOT NULL,
+    \`audience\` enum('owner','customer') NOT NULL,
+    \`recipientEmail\` varchar(320) NOT NULL,
+    \`subject\` varchar(255) NOT NULL,
+    \`bodyPreview\` text NULL,
+    \`status\` enum('pending','sent','failed','retried') NOT NULL DEFAULT 'pending',
+    \`provider\` varchar(80) NOT NULL DEFAULT 'zoho_smtp',
+    \`smtpHost\` varchar(255) NULL,
+    \`messageId\` varchar(255) NULL,
+    \`errorMessage\` text NULL,
+    \`attempts\` int NOT NULL DEFAULT 0,
+    \`lastAttemptAtMs\` bigint NULL,
+    \`sentAtMs\` bigint NULL,
+    \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX \`emailNotificationLogs_entity_idx\` (\`entityType\`, \`entityId\`),
+    INDEX \`emailNotificationLogs_status_idx\` (\`status\`)
+  )`);
+}
+async function createEmailNotificationLog(input) {
+  const db = await getDb();
+  if (!db) return { id: Date.now(), ...input, status: input.status ?? "pending" };
+  await ensureEmailNotificationLogTable();
+  const inserted = await db.insert(emailNotificationLogs).values({
+    entityType: input.entityType,
+    entityId: input.entityId,
+    audience: input.audience,
+    recipientEmail: input.recipientEmail,
+    subject: input.subject,
+    bodyPreview: input.bodyPreview ?? null,
+    status: input.status ?? "pending",
+    smtpHost: input.smtpHost ?? null,
+    messageId: input.messageId ?? null,
+    errorMessage: input.errorMessage ?? null,
+    attempts: 0,
+    lastAttemptAtMs: Date.now()
+  }).$returningId();
+  return { id: inserted[0]?.id ?? 0 };
+}
+async function updateEmailNotificationLog(id, input) {
+  const db = await getDb();
+  if (!db) return { id, ...input };
+  await ensureEmailNotificationLogTable();
+  await db.update(emailNotificationLogs).set({
+    status: input.status,
+    smtpHost: input.smtpHost ?? null,
+    messageId: input.messageId ?? null,
+    errorMessage: input.errorMessage ?? null,
+    sentAtMs: input.sentAtMs ?? null,
+    lastAttemptAtMs: Date.now(),
+    attempts: sql`${emailNotificationLogs.attempts} + 1`
+  }).where(eq(emailNotificationLogs.id, id));
+  return { id, ...input };
+}
+async function listEmailNotificationLogs(limit = 80) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureEmailNotificationLogTable();
+  return db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(limit);
+}
+async function getEmailNotificationLogById(id) {
+  const db = await getDb();
+  if (!db) return null;
+  await ensureEmailNotificationLogTable();
+  const rows = await db.select().from(emailNotificationLogs).where(eq(emailNotificationLogs.id, id)).limit(1);
+  return rows[0] ?? null;
 }
 async function recordAnalytics(eventName, pagePath, metadata) {
   const db = await getDb();
@@ -1173,7 +1276,7 @@ async function recordAnalytics(eventName, pagePath, metadata) {
 async function createTryOnGeneration(input) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
-  const inserted = await db.insert(tryOnGenerations).values({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, generatedImageUrl: input.generatedImageUrl, status: input.status ?? "pending", errorMessage: input.errorMessage }).returning({ id: tryOnGenerations.id });
+  const inserted = await db.insert(tryOnGenerations).values({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, generatedImageUrl: input.generatedImageUrl, status: input.status ?? "pending", errorMessage: input.errorMessage }).$returningId();
   return { id: inserted[0]?.id ?? 0 };
 }
 async function updateTryOnGeneration(id, input) {
@@ -1192,15 +1295,16 @@ async function adminLists() {
   await seedIfNeeded();
   const db = await getDb();
   if (db) await ensureBookingLocationColumns();
-  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: seedProducts.map((product) => ({ ...product, variants: [] })), services: seedServices, gallery: [], tryOns: [], sections: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
-  const [bookingRows, orderRows, reviewRows, productRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder))]);
+  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: seedProducts.map((product) => ({ ...product, variants: [] })), services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+  await ensureEmailNotificationLogTable();
+  const [bookingRows, orderRows, reviewRows, productRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
   const productsWithVariants = productRows.map((product) => ({
     ...product,
     seoTitle: product.seoTitle || `${product.name} | Eby\u2019s Place`,
     seoDescription: product.seoDescription || product.description,
     variants: variantRows.filter((variant) => variant.productId === product.id)
   }));
-  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows, availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows, emailNotifications: emailNotificationRows, availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
 }
 async function moderateReview(id, status) {
   const db = await getDb();
@@ -1229,7 +1333,7 @@ async function updateProduct(id, input) {
 async function createProduct(input, variants = []) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const inserted = await db.insert(products).values(input).returning({ id: products.id });
+  const inserted = await db.insert(products).values(input).$returningId();
   const productId = inserted[0]?.id;
   if (productId && variants.length) await db.insert(productVariants).values(variants.map((variant) => ({ ...variant, productId })));
   return { id: productId, ...input };
@@ -1256,13 +1360,13 @@ async function updateProductStock(id, stockQuantity, stockStatus) {
 async function addGalleryImage(input) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const result = await db.insert(galleryImages).values(input).returning({ id: galleryImages.id });
+  const result = await db.insert(galleryImages).values(input).$returningId();
   return { id: result[0]?.id, ...input };
 }
 async function updateWebsiteSection(sectionKey, input) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  await db.insert(websiteSections).values({ sectionKey, title: input.title ?? sectionKey, ...input }).onConflictDoUpdate({ target: websiteSections.sectionKey, set: { ...input, updatedAt: /* @__PURE__ */ new Date() } });
+  await db.insert(websiteSections).values({ sectionKey, title: input.title ?? sectionKey, ...input }).onDuplicateKeyUpdate({ set: { ...input, updatedAt: /* @__PURE__ */ new Date() } });
   return { sectionKey, ...input };
 }
 async function adminInsights() {
@@ -1514,8 +1618,243 @@ async function notifyOwner(payload) {
   return Boolean(result.sms.sent || result.whatsapp.sent);
 }
 
-// server/stripeWebhook.ts
+// server/smtpEmailNotifications.ts
+import nodemailer from "nodemailer";
 var STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
+var CONTACT_PHONE = "+447864585110";
+var CONTACT_EMAIL = "info@ebysplace.com";
+function trimQuotes(value) {
+  return value.trim().replace(/^['\"]|['\"]$/g, "").trim();
+}
+function normalizeSmtpPassword(value) {
+  return trimQuotes(value ?? "").replace(/[\s\u200B-\u200D\uFEFF]+/g, "");
+}
+function normalizeEnv(value) {
+  return trimQuotes(value ?? "");
+}
+function getSmtpConfig() {
+  const host = normalizeEnv(process.env.SMTP_HOST) || "smtp.zoho.eu";
+  const port = Number(normalizeEnv(process.env.SMTP_PORT) || "465");
+  const user = normalizeEnv(process.env.SMTP_USER) || CONTACT_EMAIL;
+  const pass = normalizeSmtpPassword(process.env.SMTP_PASS);
+  const from = normalizeEnv(process.env.SMTP_FROM) || user;
+  const ownerEmail = normalizeEnv(process.env.EBYSPLACE_OWNER_EMAIL) || CONTACT_EMAIL;
+  const secure = port === 465;
+  return { host, port, secure, user, pass, from, ownerEmail };
+}
+function assertSmtpConfigReady() {
+  const config = getSmtpConfig();
+  const missing = [
+    !config.host && "SMTP_HOST",
+    !config.port && "SMTP_PORT",
+    !config.user && "SMTP_USER",
+    !config.pass && "SMTP_PASS",
+    !config.from && "SMTP_FROM",
+    !config.ownerEmail && "EBYSPLACE_OWNER_EMAIL"
+  ].filter(Boolean);
+  if (missing.length) throw new Error(`Missing SMTP configuration: ${missing.join(", ")}`);
+  return config;
+}
+function createTransport() {
+  const config = assertSmtpConfigReady();
+  return nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    requireTLS: !config.secure,
+    auth: {
+      user: config.user,
+      pass: config.pass
+    }
+  });
+}
+function preview(body) {
+  return body.replace(/\s+/g, " ").trim().slice(0, 900);
+}
+async function sendAndLogEmail(payload, mode = "initial", existingLogId) {
+  const config = getSmtpConfig();
+  if (!payload.to?.trim()) {
+    const errorMessage = `No ${payload.audience} recipient email is available for ${payload.entityType} #${payload.entityId}.`;
+    const logId2 = existingLogId ?? (await createEmailNotificationLog({
+      entityType: payload.entityType,
+      entityId: payload.entityId,
+      audience: payload.audience,
+      recipientEmail: "missing-recipient@invalid.local",
+      subject: payload.subject,
+      bodyPreview: preview(payload.body),
+      status: "failed",
+      smtpHost: config.host,
+      errorMessage
+    })).id;
+    if (existingLogId) await updateEmailNotificationLog(existingLogId, { status: "failed", errorMessage, smtpHost: config.host });
+    return { status: "failed", logId: logId2, errorMessage };
+  }
+  const pendingStatus = mode === "resend" ? "retried" : "pending";
+  const logId = existingLogId ?? (await createEmailNotificationLog({
+    entityType: payload.entityType,
+    entityId: payload.entityId,
+    audience: payload.audience,
+    recipientEmail: payload.to.trim(),
+    subject: payload.subject,
+    bodyPreview: preview(payload.body),
+    status: pendingStatus,
+    smtpHost: config.host
+  })).id;
+  try {
+    const transporter = createTransport();
+    const result = await transporter.sendMail({
+      from: config.from,
+      to: payload.to.trim(),
+      subject: payload.subject,
+      text: payload.body
+    });
+    await updateEmailNotificationLog(logId, {
+      status: mode === "resend" ? "retried" : "sent",
+      messageId: result.messageId,
+      errorMessage: null,
+      smtpHost: config.host,
+      sentAtMs: Date.now()
+    });
+    return { status: mode === "resend" ? "retried" : "sent", logId, messageId: result.messageId };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn(`[SMTP] Failed to send ${payload.entityType} ${payload.audience} email`, { entityId: payload.entityId, errorMessage });
+    await updateEmailNotificationLog(logId, {
+      status: "failed",
+      errorMessage,
+      smtpHost: config.host
+    });
+    return { status: "failed", logId, errorMessage };
+  }
+}
+function money(value, fallback = "confirmed in your Stripe receipt") {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return fallback;
+  return `\xA3${numberValue.toFixed(2)}`;
+}
+function bookingReference(booking) {
+  return booking?.id ? `BOOK-${String(booking.id).padStart(5, "0")}` : "Booking reference pending";
+}
+function orderReference(order) {
+  return order?.id ? `ORDER-${String(order.id).padStart(5, "0")}` : "Order reference pending";
+}
+function bookingLocationText(booking) {
+  if (booking?.serviceLocation === "home_service") {
+    const address = [booking.addressLine1, booking.addressLine2, booking.city, booking.county, booking.postcode].filter(Boolean).join(", ");
+    return `Home service address: ${address || "address supplied with the booking"}`;
+  }
+  return `Studio address: ${STUDIO_CONFIRMATION_ADDRESS}`;
+}
+function orderDeliveryText(order) {
+  const address = [order?.addressLine1, order?.addressLine2, order?.city, order?.county, order?.postcode].filter(Boolean).join(", ");
+  if (address) return `Delivery address: ${address}`;
+  return order?.serviceLocation === "studio" ? "Collection/visit option: Eby\u2019s Place studio" : "Delivery/collection information: provided during checkout";
+}
+function buildBookingEmailPayloads(booking, session) {
+  const config = getSmtpConfig();
+  const reference = bookingReference(booking);
+  const amountPaid = session?.amount_total != null ? money(Number(session.amount_total) / 100) : "\xA320.00 deposit";
+  const priceLine = booking?.estimatedPrice != null ? money(Number(booking.estimatedPrice) + Number(booking.homeServiceSurcharge || 0)) : amountPaid;
+  const customerName = booking?.clientName ?? session?.metadata?.customer_name ?? "Customer";
+  const serviceName = booking?.serviceName ?? session?.metadata?.service_name ?? "Selected service";
+  const dateTime = `${booking?.appointmentDate ?? "Date TBC"}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""}`;
+  const paymentStatus = booking?.depositStatus === "paid" ? "Paid" : "Stripe payment confirmed";
+  const notes = booking?.deliveryNote || "No customer notes provided.";
+  const ownerBody = [
+    "A new paid Eby\u2019s Place booking has been confirmed through Stripe.",
+    `Booking reference: ${reference}`,
+    `Customer name: ${customerName}`,
+    `Customer phone: ${booking?.clientPhone ?? "Not provided"}`,
+    `Customer email: ${booking?.clientEmail ?? session?.customer_email ?? "Not provided"}`,
+    `Service/hairstyle booked: ${serviceName}`,
+    `Booking date and time: ${dateTime}`,
+    `Price/payment amount: ${priceLine}`,
+    `Payment status: ${paymentStatus}`,
+    `Stripe session: ${session?.id ?? "Not available"}`,
+    `Customer notes: ${notes}`,
+    bookingLocationText(booking)
+  ].join("\n");
+  const customerBody = [
+    `Hi ${customerName},`,
+    "Thank you for booking with Eby\u2019s Place. Your Stripe payment has been received and your appointment is secured.",
+    `Booking reference: ${reference}`,
+    `Service/hairstyle booked: ${serviceName}`,
+    `Booking date and time: ${dateTime}`,
+    `Amount paid or amount due: ${amountPaid}`,
+    bookingLocationText(booking),
+    "If you need to update your appointment, please contact Eby\u2019s Place as soon as possible.",
+    `Contact: ${CONTACT_EMAIL} | WhatsApp/phone: ${CONTACT_PHONE}`
+  ].join("\n\n");
+  return [
+    { entityType: "booking", entityId: Number(booking?.id ?? session?.metadata?.booking_id ?? 0), audience: "owner", to: config.ownerEmail, subject: `New paid booking: ${reference}`, body: ownerBody },
+    { entityType: "booking", entityId: Number(booking?.id ?? session?.metadata?.booking_id ?? 0), audience: "customer", to: booking?.clientEmail ?? session?.customer_email ?? session?.metadata?.customer_email, subject: `Eby\u2019s Place booking confirmation: ${reference}`, body: customerBody }
+  ];
+}
+function buildOrderEmailPayloads(order, items, session) {
+  const config = getSmtpConfig();
+  const reference = orderReference(order);
+  const customerName = order?.customerName ?? session?.metadata?.customer_name ?? "Customer";
+  const itemsSummary = items.length ? items.map((item) => `${item.quantity} \xD7 ${item.variantName ? `${item.productName} \u2014 ${item.variantName}` : item.productName} (${money(Number(item.unitPrice) * Number(item.quantity))})`).join("\n") : "Products recorded in Stripe checkout.";
+  const totalPaid = items.length ? money(items.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity), 0)) : session?.amount_total != null ? money(Number(session.amount_total) / 100) : "confirmed in your Stripe receipt";
+  const deliveryText = orderDeliveryText(order);
+  const paymentStatus = order?.status === "paid" ? "Paid" : "Stripe payment confirmed";
+  const ownerBody = [
+    "A new paid Eby\u2019s Place shop order has been confirmed through Stripe.",
+    `Order reference: ${reference}`,
+    `Customer name: ${customerName}`,
+    `Customer phone: ${order?.customerPhone ?? "Not provided"}`,
+    `Customer email: ${order?.customerEmail ?? session?.customer_email ?? "Not provided"}`,
+    `Products ordered:
+${itemsSummary}`,
+    `Total amount paid: ${totalPaid}`,
+    deliveryText,
+    `Payment status: ${paymentStatus}`,
+    `Stripe session: ${session?.id ?? "Not available"}`
+  ].join("\n");
+  const customerBody = [
+    `Hi ${customerName},`,
+    "Thank you for shopping with Eby\u2019s Place. Your payment has been received and your order is being prepared.",
+    `Order reference: ${reference}`,
+    `Products ordered:
+${itemsSummary}`,
+    `Total paid: ${totalPaid}`,
+    deliveryText,
+    "Eby\u2019s Place will contact you if any delivery or collection details need confirming.",
+    `Contact: ${CONTACT_EMAIL} | WhatsApp/phone: ${CONTACT_PHONE}`
+  ].join("\n\n");
+  return [
+    { entityType: "order", entityId: Number(order?.id ?? session?.metadata?.order_id ?? 0), audience: "owner", to: config.ownerEmail, subject: `New paid shop order: ${reference}`, body: ownerBody },
+    { entityType: "order", entityId: Number(order?.id ?? session?.metadata?.order_id ?? 0), audience: "customer", to: order?.customerEmail ?? session?.customer_email ?? session?.metadata?.customer_email, subject: `Eby\u2019s Place order confirmation: ${reference}`, body: customerBody }
+  ];
+}
+async function sendBookingPaymentEmailsSafely(booking, session) {
+  const payloads = buildBookingEmailPayloads(booking, session);
+  return Promise.all(payloads.map((payload) => sendAndLogEmail(payload).catch((error) => ({ status: "failed", errorMessage: error instanceof Error ? error.message : String(error) }))));
+}
+async function sendOrderPaymentEmailsSafely(order, items, session) {
+  const payloads = buildOrderEmailPayloads(order, items, session);
+  return Promise.all(payloads.map((payload) => sendAndLogEmail(payload).catch((error) => ({ status: "failed", errorMessage: error instanceof Error ? error.message : String(error) }))));
+}
+async function resendEmailNotificationLog(logId) {
+  const log = await getEmailNotificationLogById(logId);
+  if (!log) throw new Error("Email notification log not found.");
+  if (log.entityType === "booking") {
+    const booking = await getBookingById(log.entityId);
+    if (!booking) throw new Error("Booking for email resend was not found.");
+    const payload2 = buildBookingEmailPayloads(booking, { metadata: { booking_id: booking.id }, customer_email: booking.clientEmail }).find((item) => item.audience === log.audience);
+    if (!payload2) throw new Error("Booking email payload could not be rebuilt.");
+    return sendAndLogEmail(payload2, "resend", log.id);
+  }
+  const order = await getOrderById(log.entityId);
+  if (!order) throw new Error("Order for email resend was not found.");
+  const items = await getOrderItemsByOrderId(order.id);
+  const payload = buildOrderEmailPayloads(order, items, { metadata: { order_id: order.id }, customer_email: order.customerEmail }).find((item) => item.audience === log.audience);
+  if (!payload) throw new Error("Order email payload could not be rebuilt.");
+  return sendAndLogEmail(payload, "resend", log.id);
+}
+
+// server/stripeWebhook.ts
+var STUDIO_CONFIRMATION_ADDRESS2 = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
 function normalizeStripeKey(value) {
   return value?.trim().replace(/^['\"]|['\"]$/g, "") || "";
 }
@@ -1564,11 +1903,14 @@ function registerStripeWebhook(app2) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await markBookingDepositPaid(session.id, paymentIntentId);
           const booking = await getBookingByCheckoutSession(session.id);
+          if (booking) {
+            await sendBookingPaymentEmailsSafely(booking, session).catch((error) => console.warn("[StripeWebhook] SMTP booking email workflow failed", error));
+          }
           const remainingBalance = booking?.estimatedPrice != null ? Math.max(Number(booking.estimatedPrice || 0) + Number(booking.homeServiceSurcharge || 0) - 20, 0).toFixed(2) : null;
           const customerConfirmation = `Your Eby\u2019s Place \xA320 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured. Stripe will also email the payment receipt to the checkout email address.`;
           const bookingLocation = booking?.serviceLocation ?? session.metadata?.service_location ?? "studio";
           const homeServiceAddress = [booking?.addressLine1, booking?.addressLine2, booking?.city, booking?.county, booking?.postcode].filter(Boolean).join(", ");
-          const locationConfirmation = bookingLocation === "home_service" ? `Home service address: ${homeServiceAddress || "the address provided during booking"}` : `Studio visit address: ${STUDIO_CONFIRMATION_ADDRESS}`;
+          const locationConfirmation = bookingLocation === "home_service" ? `Home service address: ${homeServiceAddress || "the address provided during booking"}` : `Studio visit address: ${STUDIO_CONFIRMATION_ADDRESS2}`;
           await Promise.allSettled([
             sendCustomerSmsSafely({
               to: booking?.clientPhone,
@@ -1616,14 +1958,17 @@ ${booking.deliveryNote}` : void 0,
           await markOrderPaid(session.id, paymentIntentId);
           const order = await getOrderByCheckoutSession(session.id);
           const deliveryAddress = [order?.addressLine1, order?.addressLine2, order?.city, order?.county, order?.postcode].filter(Boolean).join(", ");
-          const orderReference = order?.id ?? session.metadata?.order_id ?? "";
+          const orderReference2 = order?.id ?? session.metadata?.order_id ?? "";
           const orderItems2 = order?.id ? await getOrderItemsByOrderId(order.id) : [];
+          if (order) {
+            await sendOrderPaymentEmailsSafely(order, orderItems2, session).catch((error) => console.warn("[StripeWebhook] SMTP order email workflow failed", error));
+          }
           const itemsSummary = orderItems2.length ? orderItems2.map((item) => `${item.quantity} \xD7 ${item.variantName ? `${item.productName} \u2014 ${item.variantName}` : item.productName} (\xA3${(Number(item.unitPrice) * Number(item.quantity)).toFixed(2)})`).join("\n") : "Items recorded in your Stripe checkout.";
           const totalPaid = orderItems2.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity), 0).toFixed(2);
           const orderEmailBody = [
             `Hi ${order?.customerName ?? session.metadata?.customer_name ?? "there"},`,
             "Thank you for shopping with Eby\u2019s Place.",
-            `Order reference: #${orderReference}`,
+            `Order reference: #${orderReference2}`,
             `Products and quantities:
 ${itemsSummary}`,
             orderItems2.length ? `Total paid: \xA3${totalPaid}` : "Total paid: confirmed in your Stripe receipt.",
@@ -1633,19 +1978,19 @@ ${itemsSummary}`,
           await Promise.allSettled([
             sendCustomerSmsSafely({
               to: order?.customerPhone,
-              body: `Eby's Place has received payment for order #${orderReference}. We will prepare your items and keep you updated.`
+              body: `Eby's Place has received payment for order #${orderReference2}. We will prepare your items and keep you updated.`
             }),
             sendShopOrderPaidEmailSafely({
               to: order?.customerEmail ?? session.customer_email,
               customerName: order?.customerName ?? session.metadata?.customer_name,
-              orderId: orderReference,
+              orderId: orderReference2,
               deliveryAddress: deliveryAddress || "provided during checkout",
               itemsSummary: `${itemsSummary}
 
 ${orderItems2.length ? `Total paid: \xA3${totalPaid}` : "Total paid: confirmed in your Stripe receipt."}
 Estimated delivery: 3-5 working days after dispatch.`
             }),
-            sendOwnerSmsAndWhatsAppSafely(`New Eby's Place shop order paid: ${order?.customerName ?? session.metadata?.customer_name ?? "Customer"}, order #${orderReference}, deliver to ${deliveryAddress || "address on order"}.`)
+            sendOwnerSmsAndWhatsAppSafely(`New Eby's Place shop order paid: ${order?.customerName ?? session.metadata?.customer_name ?? "Customer"}, order #${orderReference2}, deliver to ${deliveryAddress || "address on order"}.`)
           ]);
           await notifyOwner({
             title: "Eby\u2019s Place shop order paid",
@@ -1931,10 +2276,10 @@ async function supabaseAuthFetch(path2, init = {}) {
     console.error("[Auth] Failed reading Supabase Auth response body", { path: path2, status: response.status, error });
     return "";
   });
-  let json = null;
+  let json2 = null;
   if (body) {
     try {
-      json = JSON.parse(body);
+      json2 = JSON.parse(body);
     } catch (error) {
       console.error("[Auth] Supabase Auth returned non-JSON response", {
         path: path2,
@@ -1946,11 +2291,11 @@ async function supabaseAuthFetch(path2, init = {}) {
     }
   }
   if (!response.ok) {
-    const message = typeof json?.msg === "string" ? json.msg : typeof json?.message === "string" ? json.message : "Supabase Auth request failed.";
+    const message = typeof json2?.msg === "string" ? json2.msg : typeof json2?.message === "string" ? json2.message : "Supabase Auth request failed.";
     console.error("[Auth] Supabase Auth request failed", { path: path2, method: init.method ?? "GET", status: response.status, message });
     throw new TRPCError3({ code: response.status === 401 || response.status === 400 ? "UNAUTHORIZED" : "BAD_REQUEST", message });
   }
-  return json;
+  return json2;
 }
 async function signInAdminWithPassword(email, password) {
   const normalizedEmail = email.trim().toLowerCase();
@@ -2455,6 +2800,7 @@ var appRouter = router({
   admin: router({
     summary: adminProcedure.query(() => adminSummary()),
     lists: adminProcedure.query(() => adminLists()),
+    listEmailNotificationLogs: adminProcedure.query(() => listEmailNotificationLogs()),
     moderateReview: adminProcedure.input(z2.object({ id: z2.number(), status: reviewStatus })).mutation(({ input }) => moderateReview(input.id, input.status)),
     updateBookingStatus: adminProcedure.input(z2.object({ id: z2.number(), status: bookingStatus })).mutation(({ input }) => updateBookingStatus(input.id, input.status)),
     updateOrderStatus: adminProcedure.input(z2.object({ id: z2.number(), status: orderStatus })).mutation(({ input }) => updateOrderStatus(input.id, input.status)),
@@ -2467,6 +2813,14 @@ var appRouter = router({
       if (!booking) throw new TRPCError4({ code: "NOT_FOUND", message: "Booking not found." });
       await sendReviewRequestEmailSafely({ to: booking.clientEmail, customerName: booking.clientName, bookingId: booking.id, serviceName: booking.serviceName, reviewUrl: `/reviews?booking=${booking.id}` });
       return { success: true };
+    }),
+    resendEmailNotification: adminProcedure.input(z2.object({ logId: z2.number().int().positive() })).mutation(async ({ input }) => {
+      try {
+        const result = await resendEmailNotificationLog(input.logId);
+        return { success: result.status === "sent" || result.status === "retried", result };
+      } catch (error) {
+        throw new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Email resend failed." });
+      }
     }),
     updateService: adminProcedure.input(z2.object({ id: z2.number(), name: z2.string().min(2).optional(), description: z2.string().min(10).optional(), duration: z2.string().min(2).optional(), priceFrom: z2.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z2.string().optional(), imageUrl: z2.string().min(5).optional(), isBookable: z2.enum(["true", "false"]).optional(), isFeatured: z2.enum(["true", "false"]).optional() })).mutation(({ input }) => {
       const { id, ...changes } = input;

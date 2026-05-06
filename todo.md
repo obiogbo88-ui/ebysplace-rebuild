@@ -715,3 +715,50 @@
 - [x] Verify booking add-ons and shop products are all included in the Stripe checkout total.
 
 - [x] Fix the lower-screen CTA button so its written text is visible and readable across mobile and desktop.
+
+- [ ] Audit Stripe environment variable names, live/test key selection, backend-only secret boundaries, and webhook secret format.
+- [ ] Identify the exact backend blocker preventing Stripe checkout payments from completing.
+- [ ] Verify and fix booking checkout session creation, customer metadata, success/cancel URLs, and selected service/product pricing.
+- [ ] Verify and fix shop checkout session creation, customer metadata, delivery details, success/cancel URLs, and cart pricing.
+- [ ] Verify Stripe webhook endpoint, raw-body signature verification, event coverage, and database payment status updates.
+- [ ] Verify database connectivity, schema, migrations, permissions, and write paths for bookings, orders, payment records, customer details, and admin content.
+- [ ] Fix admin dashboard upload and management for gallery images, service images, product images, product details, service descriptions, prices, availability, and booking/order status.
+- [ ] Confirm uploaded admin content appears correctly on the public website.
+- [ ] Add regression tests for the real Stripe/database/admin upload blockers found.
+- [ ] Run logs, full tests, production build, project health checks, and save a checkpoint for the checkout/admin upload fix.
+
+- [ ] Replace the top navigation Book CTA with a Shop CTA that links directly to the shop page.
+- [ ] Add a visible homepage search bar near the hero section for services, hairstyles, products, and food items.
+- [ ] Reduce and align the footer logo so it remains readable without dominating the footer.
+- [ ] Restyle the mobile/menu list Book CTA to match the rest of the menu list items instead of appearing as a dark button.
+
+- [x] Restore/add a floating bottom-right WhatsApp enquiry button linking to https://wa.me/447864585110 with the requested pre-filled message on mobile and desktop.
+
+- [x] Configure Zoho SMTP support using SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, and EBYSPLACE_OWNER_EMAIL without hardcoding the Zoho app password.
+- [x] Add database-backed email notification logs with status values sent, failed, pending, and retried for bookings and shop orders.
+- [x] Send owner/admin and customer booking confirmation emails after Stripe checkout.session.completed.
+- [x] Send owner/admin and customer shop order confirmation emails after Stripe checkout.session.completed.
+- [x] Ensure email failures never block checkout success, are logged for admin review, and keep booking/order data saved first.
+- [x] Add admin dashboard email notification status visibility and a manual resend email action.
+- [x] Add regression tests for SMTP configuration, booking/shop email rendering, failure logging, and manual resend behavior.
+- [x] Test SMTP connection behavior for smtp.zoho.com:587 and document whether smtppro.zoho.com:587 is still needed.
+
+- [x] Configure Zoho SMTP support using SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, and EBYSPLACE_OWNER_EMAIL without hardcoding the Zoho app password.
+- [x] Add database-backed email notification logs with status values sent, failed, pending, and retried for bookings and shop orders.
+- [x] Send owner/admin and customer booking confirmation emails after Stripe checkout.session.completed.
+- [x] Send owner/admin and customer shop order confirmation emails after Stripe checkout.session.completed.
+- [x] Ensure email failures never block checkout success, are logged for admin review, and keep booking/order data saved first.
+- [x] Add admin dashboard email notification status visibility and a manual resend email action.
+- [x] Add regression tests for SMTP configuration, booking/shop email rendering, failure logging, and manual resend behavior.
+- [x] Test SMTP connection behavior for smtp.zoho.com:587 and document whether smtppro.zoho.com:587 is still needed.
+
+- [x] Securely capture and validate the newly generated Zoho app password for SMTP_PASS before proceeding with SMTP email implementation.
+
+- [x] Retry Zoho SMTP authentication using the user's newly generated app password entered through the secure SMTP_PASS prompt.
+
+- [x] Switch SMTP configuration to Zoho EU using smtp.zoho.eu on port 465 with secure TLS as the primary path.
+- [x] Normalize SMTP_PASS usage by trimming spaces, quotes, line breaks, and hidden surrounding characters before SMTP authentication.
+- [x] Confirm the application code and environment are not still using smtp.zoho.com, smtppro.zoho.com, or stale Vercel/GitHub SMTP variables.
+- [x] If smtp.zoho.eu:465 fails, test smtp.zoho.eu:587 with STARTTLS as the fallback path. Primary smtp.zoho.eu:465 passed, so fallback was not required.
+
+- [x] Save a final checkpoint after validation so the completed Zoho email notification work syncs to the connected GitHub repository.

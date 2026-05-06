@@ -15,6 +15,7 @@ import {
   UploadCloud,
   Activity,
   Users,
+  Mail,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,6 +29,7 @@ type AdminListData = {
   sections?: any[];
   availability?: { blockedSlots?: any[]; homeServiceSurcharge?: string };
   instagram?: { handle?: string; feedUrl?: string; enabled?: boolean; note?: string };
+  emailNotifications?: any[];
 };
 
 function Stat({ label, value, icon: Icon }: { label: string; value: number | string; icon: any }) {
@@ -54,6 +56,7 @@ const productCategories = ["Accessories", "Aftercare", "Hair Attachments"] as co
 const adminOverviewActions = [
   { label: "Bookings", sectionId: "bookings", description: "Review and update appointment statuses." },
   { label: "Orders", sectionId: "orders", description: "Open protected shop order fulfilment." },
+  { label: "Email Notifications", sectionId: "email-notifications", description: "View email delivery status and resend failed notifications." },
   { label: "Products", sectionId: "products", description: "Manage shop stock, colours, prices, and SEO." },
   { label: "Services", sectionId: "services", description: "Update public braid service details." },
   { label: "Gallery", sectionId: "gallery", description: "Add or organise gallery images." },
@@ -105,11 +108,13 @@ export default function Admin() {
   const summary = trpc.admin.summary.useQuery(undefined, { retry: false });
   const lists = trpc.admin.lists.useQuery(undefined, { retry: false });
   const insights = trpc.admin.insights.useQuery(undefined, { retry: false });
+  const emailLogs = trpc.admin.listEmailNotificationLogs.useQuery(undefined, { retry: false });
   const utils = trpc.useUtils();
   const refresh = () => {
     utils.admin.lists.invalidate();
     utils.admin.summary.invalidate();
     utils.admin.insights.invalidate();
+    utils.admin.listEmailNotificationLogs.invalidate();
   };
   const scrollAdminFeedback = (sectionId: string) => {
     setOpenPanels((current) => new Set(current).add(sectionId));
@@ -128,6 +133,7 @@ export default function Admin() {
   const blockAvailabilitySlot = trpc.admin.blockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot blocked"); } });
   const unblockAvailabilitySlot = trpc.admin.unblockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot unblocked"); } });
   const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => { scrollAdminFeedback("bookings"); toast.success("Review request sent"); } });
+  const resendEmail = trpc.admin.resendEmailNotification.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("email-notifications"); toast.success("Email notification resend attempted"); }, onError: (error: any) => toast.error(error.message) });
   const updateInstagram = trpc.admin.updateInstagramSettings.useMutation({ onSuccess: () => { scrollAdminFeedback("instagram"); toast.success("Instagram feed settings saved"); } });
   const updateHomeServiceSurcharge = trpc.admin.updateHomeServiceSurcharge.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("content"); toast.success("Home service surcharge saved"); }, onError: (error: any) => toast.error(error.message) });
   const updateBooking = trpc.admin.updateBookingStatus.useMutation(opts);
@@ -196,6 +202,7 @@ export default function Admin() {
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["activity-monitoring"]));
   const data = (lists.data || {}) as AdminListData;
+  const emailNotificationRows = emailLogs.data || data.emailNotifications || [];
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
   const togglePanel = (panelId: string) => setOpenPanels((current) => {
     const next = new Set(current);
@@ -420,6 +427,37 @@ export default function Admin() {
               </div>
             )) : <p className="text-white/55">No shop orders yet.</p>}
           </div>
+          </AdminPanel>
+
+          <AdminPanel id="email-notifications" eyebrow="Zoho EU SMTP" title="Email notifications" description="Review booking and shop confirmation delivery status, including customer and owner messages sent through smtp.zoho.eu." icon={Mail} open={isPanelOpen("email-notifications")} onToggle={() => togglePanel("email-notifications")}>
+            <div className="mt-5 grid gap-4">
+              {emailLogs.isLoading ? <p className="text-sm text-white/55">Loading email notification logs...</p> : null}
+              {emailNotificationRows.length ? emailNotificationRows.map((log: any) => {
+                const statusClass = log.status === "sent" ? "bg-emerald-500/15 text-emerald-100 border-emerald-300/30" : log.status === "failed" ? "bg-red-500/15 text-red-100 border-red-300/30" : "bg-primary/15 text-primary border-primary/30";
+                const lastAttempt = log.lastAttemptAtMs ? new Date(Number(log.lastAttemptAtMs)).toLocaleString() : log.sentAtMs ? new Date(Number(log.sentAtMs)).toLocaleString() : log.createdAt ? new Date(log.createdAt).toLocaleString() : "Not attempted yet";
+                const canResend = log.status !== "sent";
+                return (
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4" key={log.id}>
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${statusClass}`}>{log.status}</span>
+                          <b className="text-primary">{log.entityType === "booking" ? "Booking" : "Shop order"} #{log.entityId}</b>
+                          <span className="text-xs uppercase tracking-[0.18em] text-white/45">{log.audience}</span>
+                        </div>
+                        <p className="mt-2 text-sm text-white/80">{log.subject}</p>
+                        <p className="mt-1 break-all text-xs text-white/55">To: {log.recipientEmail}</p>
+                        <p className="mt-1 text-xs text-white/45">Provider: {log.provider || "zoho_smtp"} · Host: {log.smtpHost || "smtp.zoho.eu"} · Attempts: {log.attempts ?? 0}</p>
+                        <p className="mt-1 text-xs text-white/45">Last activity: {lastAttempt}</p>
+                        {log.errorMessage ? <p className="mt-2 rounded-xl border border-red-300/20 bg-red-500/10 p-3 text-xs text-red-100">{log.errorMessage}</p> : null}
+                        {log.bodyPreview ? <p className="mt-2 text-xs text-white/45">Preview: {log.bodyPreview}</p> : null}
+                      </div>
+                      {canResend ? <button className="btn-gold shrink-0 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60" type="button" disabled={resendEmail.isPending} onClick={() => resendEmail.mutate({ logId: log.id })}>{resendEmail.isPending ? "Resending..." : "Resend email"}</button> : <span className="rounded-full border border-emerald-300/25 px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-100">Delivered</span>}
+                    </div>
+                  </div>
+                );
+              }) : <p className="text-white/55">No Zoho SMTP email notification logs yet. New paid bookings and shop orders will appear here after Stripe checkout completion.</p>}
+            </div>
           </AdminPanel>
 
           <AdminPanel id="reviews" eyebrow="Trust & reputation" title="Reviews moderator" description="Approve or reject customer reviews from a focused moderation panel without crowding the daily overview." icon={MessageSquare} open={isPanelOpen("reviews")} onToggle={() => togglePanel("reviews")}>

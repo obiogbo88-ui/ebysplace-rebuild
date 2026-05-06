@@ -76,35 +76,33 @@ describe("live production repair safeguards", () => {
     expect(homeSource).not.toContain("/ebysplace_header_video_64d5fea4.mp4");
   });
 
-  it("uses a Supabase-compatible PostgreSQL adapter for production tRPC database access", () => {
+  it("uses a MySQL-compatible adapter for production tRPC database access", () => {
     const dbSource = readProjectFile("server/db.ts");
     const schemaSource = readProjectFile("drizzle/schema.ts");
     const packageSource = readProjectFile("package.json");
     const drizzleConfigSource = readProjectFile("drizzle.config.ts");
 
-    expect(dbSource).toContain('from "drizzle-orm/node-postgres"');
-    expect(dbSource).toContain('from "pg"');
-    expect(dbSource).toContain("new Pool({");
-    expect(dbSource).toContain("isPostgresConnectionString");
-    expect(dbSource).toContain('parsed.protocol === "postgres:" || parsed.protocol === "postgresql:"');
+    expect(dbSource).toContain('from "drizzle-orm/mysql2"');
+    expect(dbSource).toContain('from "mysql2/promise"');
+    expect(dbSource).toContain("mysql.createPool({");
+    expect(dbSource).toContain("isMysqlConnectionString");
+    expect(dbSource).toContain('["mysql:", "mysql2:", "mariadb:"].includes(parsed.protocol)');
     expect(dbSource).toContain("DATABASE_URL is missing");
-    expect(dbSource).toContain("DATABASE_URL detected for PostgreSQL initialisation");
-    expect(dbSource).toContain("Ignoring non-PostgreSQL DATABASE_URL");
-    expect(dbSource).toContain("Failed to initialise PostgreSQL connection");
+    expect(dbSource).toContain("DATABASE_URL detected for MySQL initialisation");
+    expect(dbSource).toContain("Ignoring non-MySQL DATABASE_URL");
+    expect(dbSource).toContain("Failed to initialise MySQL connection");
     expect(dbSource).toContain("await _pool.query(\"select 1\")");
     expect(dbSource).toContain("ssl: requiresSsl(connectionString)");
-    expect(dbSource).toContain("onConflictDoUpdate");
-    expect(dbSource).toContain("returning({ id:");
-    expect(dbSource).not.toContain("drizzle-orm/mysql2");
-    expect(dbSource).not.toContain("onDuplicateKeyUpdate");
-    expect(dbSource).not.toContain("$returningId");
-    expect(schemaSource).toContain('from "drizzle-orm/pg-core"');
-    expect(schemaSource).toContain('pgTable("users"');
-    expect(schemaSource).not.toContain("mysqlTable");
-    expect(packageSource).toContain('"pg"');
-    expect(packageSource).not.toContain('"mysql2"');
-    expect(drizzleConfigSource).toContain('dialect: "postgresql"');
-    expect(drizzleConfigSource).not.toContain('dialect: "mysql"');
+    expect(dbSource).toContain("onDuplicateKeyUpdate");
+    expect(dbSource).toContain("$returningId");
+    expect(dbSource).not.toContain("drizzle-orm/node-postgres");
+    expect(dbSource).not.toContain("onConflictDoUpdate");
+    expect(schemaSource).toContain('from "drizzle-orm/mysql-core"');
+    expect(schemaSource).toContain('mysqlTable("users"');
+    expect(schemaSource).not.toContain("pgTable");
+    expect(packageSource).toContain('"mysql2"');
+    expect(drizzleConfigSource).toContain('dialect: "mysql"');
+    expect(drizzleConfigSource).not.toContain('dialect: "postgresql"');
   });
 
   it("keeps the Supabase production seed runner on the corrected project URL and public media bucket", () => {

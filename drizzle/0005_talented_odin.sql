@@ -1,0 +1,20 @@
+CREATE TABLE `emailNotificationLogs` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`entityType` enum('booking','order') NOT NULL,
+	`entityId` int NOT NULL,
+	`audience` enum('owner','customer') NOT NULL,
+	`recipientEmail` varchar(320) NOT NULL,
+	`subject` varchar(255) NOT NULL,
+	`bodyPreview` text,
+	`status` enum('pending','sent','failed','retried') NOT NULL DEFAULT 'pending',
+	`provider` varchar(80) NOT NULL DEFAULT 'zoho_smtp',
+	`smtpHost` varchar(255),
+	`messageId` varchar(255),
+	`errorMessage` text,
+	`attempts` int NOT NULL DEFAULT 0,
+	`lastAttemptAtMs` bigint,
+	`sentAtMs` bigint,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `emailNotificationLogs_id` PRIMARY KEY(`id`)
+);

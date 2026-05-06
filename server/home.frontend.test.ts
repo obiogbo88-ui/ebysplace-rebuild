@@ -178,11 +178,13 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("Modern automation");
   });
 
-  it("adds the requested WhatsApp shortcut and moves the beauty slogan to the footer", () => {
-    expect(homeSource).toContain('href="https://wa.me/447864585110"');
-    expect(homeSource).toContain("Chat with Eby’s Place on WhatsApp");
-    expect(homeSource).toContain("MessageCircle");
-    expect(homeSource).toContain("bg-[#25D366]");
+  it("adds the requested sitewide floating WhatsApp shortcut and moves the beauty slogan to the footer", () => {
+    expect(appSource).toContain("function FloatingWhatsAppButton()");
+    expect(appSource).toContain("https://wa.me/447864585110?text=Hi%20Eby%27s%20Place%2C%20I%20would%20like%20to%20make%20an%20enquiry.");
+    expect(appSource).toContain("Message Eby’s Place on WhatsApp");
+    expect(appSource).toContain("bottom-24 right-4");
+    expect(appSource).toContain("md:bottom-6 md:right-6");
+    expect(appSource).toContain("<FloatingWhatsAppButton />");
     expect(homeSource).toContain("Beauty in every strand");
     expect(homeSource.lastIndexOf("Beauty in every strand")).toBeGreaterThan(homeSource.indexOf("export function SiteFooter"));
     expect(homeSource.indexOf("Beauty in every strand")).toBe(homeSource.lastIndexOf("Beauty in every strand"));

@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import * as db from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendCustomerEmailSafely, sendShopOrderPaidEmailSafely, sendCustomerSmsSafely, sendCustomerWhatsAppSafely, sendOwnerSmsAndWhatsAppSafely } from "./customerNotifications";
+import { sendBookingPaymentEmailsSafely, sendOrderPaymentEmailsSafely } from "./smtpEmailNotifications";
 
 const STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
 
@@ -61,6 +62,9 @@ export function registerStripeWebhook(app: Application) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await db.markBookingDepositPaid(session.id, paymentIntentId);
           const booking = await db.getBookingByCheckoutSession(session.id);
+          if (booking) {
+            void sendBookingPaymentEmailsSafely(booking, session).catch((error) => console.warn("[StripeWebhook] SMTP booking email workflow failed", error));
+          }
           const remainingBalance = booking?.estimatedPrice != null ? Math.max(Number(booking.estimatedPrice || 0) + Number(booking.homeServiceSurcharge || 0) - 20, 0).toFixed(2) : null;
           const customerConfirmation = `Your Eby’s Place £20 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured. Stripe will also email the payment receipt to the checkout email address.`;
           const bookingLocation = booking?.serviceLocation ?? session.metadata?.service_location ?? "studio";
@@ -116,6 +120,9 @@ export function registerStripeWebhook(app: Application) {
           const deliveryAddress = [order?.addressLine1, order?.addressLine2, order?.city, order?.county, order?.postcode].filter(Boolean).join(", ");
           const orderReference = order?.id ?? session.metadata?.order_id ?? "";
           const orderItems = order?.id ? await db.getOrderItemsByOrderId(order.id) : [];
+          if (order) {
+            void sendOrderPaymentEmailsSafely(order, orderItems, session).catch((error) => console.warn("[StripeWebhook] SMTP order email workflow failed", error));
+          }
           const itemsSummary = orderItems.length
             ? orderItems.map((item) => `${item.quantity} × ${item.variantName ? `${item.productName} — ${item.variantName}` : item.productName} (£${(Number(item.unitPrice) * Number(item.quantity)).toFixed(2)})`).join("\n")
             : "Items recorded in your Stripe checkout.";

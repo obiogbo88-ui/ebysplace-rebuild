@@ -9,6 +9,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely } from "./customerNotifications";
+import { resendEmailNotificationLog } from "./smtpEmailNotifications";
 import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
 import * as db from "./db";
 
@@ -425,6 +426,7 @@ export const appRouter = router({
   admin: router({
     summary: adminProcedure.query(() => db.adminSummary()),
     lists: adminProcedure.query(() => db.adminLists()),
+    listEmailNotificationLogs: adminProcedure.query(() => db.listEmailNotificationLogs()),
     moderateReview: adminProcedure.input(z.object({ id: z.number(), status: reviewStatus })).mutation(({ input }) => db.moderateReview(input.id, input.status)),
     updateBookingStatus: adminProcedure.input(z.object({ id: z.number(), status: bookingStatus })).mutation(({ input }) => db.updateBookingStatus(input.id, input.status)),
     updateOrderStatus: adminProcedure.input(z.object({ id: z.number(), status: orderStatus })).mutation(({ input }) => db.updateOrderStatus(input.id, input.status)),
@@ -437,6 +439,14 @@ export const appRouter = router({
       if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });
       await sendReviewRequestEmailSafely({ to: booking.clientEmail, customerName: booking.clientName, bookingId: booking.id, serviceName: booking.serviceName, reviewUrl: `/reviews?booking=${booking.id}` });
       return { success: true };
+    }),
+    resendEmailNotification: adminProcedure.input(z.object({ logId: z.number().int().positive() })).mutation(async ({ input }) => {
+      try {
+        const result = await resendEmailNotificationLog(input.logId);
+        return { success: result.status === "sent" || result.status === "retried", result };
+      } catch (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Email resend failed." });
+      }
     }),
     updateService: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), description: z.string().min(10).optional(), duration: z.string().min(2).optional(), priceFrom: z.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z.string().optional(), imageUrl: z.string().min(5).optional(), isBookable: z.enum(["true", "false"]).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
       const { id, ...changes } = input;
