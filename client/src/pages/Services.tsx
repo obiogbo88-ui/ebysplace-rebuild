@@ -49,7 +49,7 @@ export default function Services() {
             <span className="gold-text">braiding catalogue.</span>
           </h1>
           <p className="mt-5 max-w-3xl text-lg leading-8 text-white/68">
-            Choose from the full Somerset, UK service menu. Every booking
+            Choose from the full Somerset, UK service catalogue. Every booking
             clearly presents the £20 non-refundable deposit before
             checkout, and every style is framed around comfort, longevity, and
             scalp respect.
@@ -89,9 +89,9 @@ export default function Services() {
               <p className="text-sm font-bold uppercase tracking-[.24em] text-primary">
                 {category}
               </p>
-              <h2 className="serif mt-2 text-4xl font-bold">{category === "All" ? "Full service menu" : `${category} menu`}</h2>
+              <h2 className="serif mt-2 text-4xl font-bold">{category === "All" ? "Full service catalogue" : `${category} services`}</h2>
               <p className="mt-3 max-w-3xl text-white/65">
-                {initialSearchTerm ? `Showing services matching “${initialSearchTerm}”. Clear the search from your browser address bar to view the full menu again.` : categoryIntro[category]}
+                {initialSearchTerm ? `Showing services matching “${initialSearchTerm}”. Clear the search from your browser address bar to view the full catalogue again.` : categoryIntro[category]}
               </p>
             </div>
             <button type="button" className="btn-gold" onClick={() => navigateWithSmoothScroll("/booking")}>
