@@ -4,7 +4,9 @@
 
 CREATE TYPE "user_role_enum" AS ENUM ('user', 'admin');
 CREATE TYPE "true_false_enum" AS ENUM ('true', 'false');
-CREATE TYPE "service_category_enum" AS ENUM ('Braids', 'Twists', 'Locs', 'Kids Styles', 'Add-ons');
+CREATE TYPE "service_category_enum" AS ENUM ('Braids', 'Twists', 'Locs', 'Kids Styles', 'Men Styles', 'Add-ons');
+-- Migration note: if adding Men Styles to an existing database, run:
+-- ALTER TYPE "service_category_enum" ADD VALUE 'Men Styles' BEFORE 'Add-ons';
 CREATE TYPE "booking_status_enum" AS ENUM ('pending', 'confirmed', 'completed', 'cancelled');
 CREATE TYPE "deposit_status_enum" AS ENUM ('unpaid', 'checkout_started', 'paid', 'failed', 'refunded');
 CREATE TYPE "product_category_enum" AS ENUM ('Accessories', 'Aftercare', 'Hair Attachments');
