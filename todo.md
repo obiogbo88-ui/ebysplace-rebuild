@@ -762,3 +762,7 @@
 - [x] If smtp.zoho.eu:465 fails, test smtp.zoho.eu:587 with STARTTLS as the fallback path. Primary smtp.zoho.eu:465 passed, so fallback was not required.
 
 - [x] Save a final checkpoint after validation so the completed Zoho email notification work syncs to the connected GitHub repository.
+
+- [x] Fix shop checkout cart payload so every item submits a valid numeric productId instead of undefined.
+- [x] Add regression coverage for shop checkout payload mapping from products and variants.
+- [x] Validate the shop checkout fix with targeted tests, full checks, production build, and a checkpoint sync to GitHub.

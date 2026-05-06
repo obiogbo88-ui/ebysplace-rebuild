@@ -63,6 +63,18 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(shopSource).toContain("lg:grid-cols-[minmax(0,1fr)_420px]");
   });
 
+  it("normalizes shop cart product IDs before submitting checkout items", () => {
+    const shopSource = readSource("client/src/pages/Shop.tsx");
+
+    expect(shopSource).toContain("function normalizeProductId(product: ShopProduct)");
+    expect(shopSource).toContain("const rawId = product.id ?? (product as ShopProduct & { productId?: number | string }).productId;");
+    expect(shopSource).toContain("const productId = normalizeProductId(product);");
+    expect(shopSource).toContain("return [...current, { productId, variantId, productName: product.name");
+    expect(shopSource).toContain("const checkoutItems = normalizeCartForCheckout(cart);");
+    expect(shopSource).toContain("items: checkoutItems");
+    expect(shopSource).not.toContain("items: cart");
+  });
+
   it("keeps every main public and admin page responsive between mobile and desktop views", () => {
     const pages = ["Home", "Services", "Booking", "Shop", "TryOn", "Braiders", "Gallery", "Reviews", "Admin"];
 

@@ -59,6 +59,21 @@ function productMatchesSearch(product: ShopProduct, query: string) {
   return searchableText.includes(query.toLowerCase());
 }
 
+function normalizeProductId(product: ShopProduct) {
+  const rawId = product.id ?? (product as ShopProduct & { productId?: number | string }).productId;
+  const productId = Number(rawId);
+  return Number.isFinite(productId) && productId > 0 ? productId : null;
+}
+
+function normalizeCartForCheckout(cart: CartItem[]) {
+  return cart.map((item) => ({
+    ...item,
+    productId: Number(item.productId),
+    variantId: item.variantId === undefined ? undefined : Number(item.variantId),
+    quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
+  }));
+}
+
 function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product: ShopProduct, variant?: ProductVariant) => void }) {
   const variants = product.variants?.length ? product.variants : [fallbackVariant];
   const [selectedVariantKey, setSelectedVariantKey] = useState(String(variants[0]?.id ?? variants[0]?.name ?? "Default"));
@@ -186,11 +201,17 @@ export default function Shop() {
   }, []);
 
   const add = (product: ShopProduct, variant?: ProductVariant) => {
+    const productId = normalizeProductId(product);
+    if (!productId) {
+      toast.error("This product needs to refresh before checkout. Please reload the shop and try again.");
+      return;
+    }
     setCart((current) => {
-      const key = `${product.id}:${variant?.id ?? variant?.name ?? "default"}`;
+      const variantId = variant?.id === undefined ? undefined : Number(variant.id);
+      const key = `${productId}:${variantId ?? variant?.name ?? "default"}`;
       const existing = current.find((item) => `${item.productId}:${item.variantId ?? item.variantName ?? "default"}` === key);
       if (existing) return current.map((item) => `${item.productId}:${item.variantId ?? item.variantName ?? "default"}` === key ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...current, { productId: product.id, variantId: variant?.id, productName: product.name, variantName: variant?.name, quantity: 1, unitPrice: product.price }];
+      return [...current, { productId, variantId, productName: product.name, variantName: variant?.name, quantity: 1, unitPrice: product.price }];
     });
     toast.success(`${product.name} added to your bag`);
     smoothScrollToElement("shop-checkout", 80);
@@ -205,7 +226,12 @@ export default function Shop() {
       smoothScrollToElement("shop-checkout", 80);
       return;
     }
-    const result = await order.mutateAsync({ ...delivery, items: cart });
+    const checkoutItems = normalizeCartForCheckout(cart);
+    if (checkoutItems.some((item) => !Number.isFinite(item.productId) || item.productId <= 0)) {
+      toast.error("Please remove and re-add the affected product before checkout.");
+      return;
+    }
+    const result = await order.mutateAsync({ ...delivery, items: checkoutItems });
     toast.success(result.customerNotification);
     if (result.checkoutUrl) {
       window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
