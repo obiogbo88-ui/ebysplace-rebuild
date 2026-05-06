@@ -436,7 +436,7 @@ export default function Home() {
               <div>
                 <p className="pill w-fit">Popular styles</p>
                 <h2 className="serif mt-4 text-4xl font-bold leading-tight md:text-5xl">
-                  Signature braid menu
+                  Signature braid catalogue
                 </h2>
               </div>
               <Link className="btn-dark" href="/services">

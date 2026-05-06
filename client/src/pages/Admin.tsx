@@ -539,7 +539,7 @@ export default function Admin() {
             </div>
           </AdminPanel>
 
-          <AdminPanel id="services" eyebrow="Service menu" title="Services prices editor" description="Maintain braid-service pricing, duration, and service imagery from a dedicated owner-only panel." icon={Scissors} open={isPanelOpen("services")} onToggle={() => togglePanel("services")}>
+          <AdminPanel id="services" eyebrow="Service catalogue" title="Services prices editor" description="Maintain braid-service pricing, duration, and service imagery from a dedicated owner-only panel." icon={Scissors} open={isPanelOpen("services")} onToggle={() => togglePanel("services")}>
             <div className="mt-5 grid gap-4">
               {(data.services || []).map((service: any) => (
                 <div className="rounded-2xl border border-white/10 p-4" key={service.id}>
