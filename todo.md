@@ -664,3 +664,8 @@
 - [x] Add at least 60px top and bottom padding around the homepage live product/service search bar.
 - [x] Give the homepage search bar more breathing room from surrounding sections so it no longer feels cramped.
 - [x] Increase white space between homepage sections overall for a more premium luxury feel across mobile, tablet, and desktop.
+
+- [x] Diagnose and fix checkout error: “Live Stripe payments require the live STRIPE_SECRET_KEY environment variable” during booking or shop checkout.
+- [x] Verify live Stripe secret handling uses the configured environment variable safely without exposing the key or hardcoding test/live secrets.
+- [x] Validate booking deposit and shop checkout after the Stripe environment/configuration fix with tests, build, and project health checks.
+- [ ] Save checkpoint and sync the Stripe checkout error fix.

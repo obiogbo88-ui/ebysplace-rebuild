@@ -72,17 +72,25 @@ const orderInput = z.object({
   })).min(1),
 });
 
+function getLiveStripeSecretKey() {
+  return process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_SECRET_KEY?.trim() || "";
+}
+
+function getLiveStripePublishableKey() {
+  return process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY?.trim() || process.env.VITE_STRIPE_PUBLISHABLE_KEY?.trim() || "";
+}
+
 function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  const key = getLiveStripeSecretKey();
   if (!key) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Stripe is not configured yet." });
   if (!key.startsWith("sk_live_")) {
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Live Stripe payments require the live STRIPE_SECRET_KEY environment variable." });
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Live Stripe payments require a live Stripe secret key. Add EBYSPLACE_LIVE_STRIPE_SECRET_KEY or configure STRIPE_SECRET_KEY with a key that starts with sk_live_." });
   }
   return new Stripe(key);
 }
 
 function getLivePaymentMode() {
-  return { stripeMode: "live" as const, publishableKeyConfigured: Boolean(process.env.VITE_STRIPE_PUBLISHABLE_KEY?.trim()?.startsWith("pk_live_")) };
+  return { stripeMode: "live" as const, publishableKeyConfigured: Boolean(getLiveStripePublishableKey().startsWith("pk_live_")) };
 }
 
 function getOrigin(req: Request) {

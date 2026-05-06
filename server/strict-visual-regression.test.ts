@@ -120,6 +120,6 @@ describe("strict visual-only change regression coverage", () => {
     websiteStyles.forEach((style) => expect(tryOnSource).toContain(`\"${style}\"`));
     expect(tryOnSource).toContain("trpc.public.uploadTryOnPhoto.useMutation()");
     expect(tryOnSource).toContain("trpc.public.generateTryOn.useMutation()");
-    expect(tryOnSource).toContain("Preview braid styles while preserving your face.");
+    expect(tryOnSource).toContain("This is a visual preview before booking, not a guarantee of an exact finished salon result.");
   });
 });

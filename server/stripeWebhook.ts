@@ -8,8 +8,8 @@ import { sendCustomerEmailSafely, sendCustomerSmsSafely, sendCustomerWhatsAppSaf
 const STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
 
 function getStripeWebhookConfig() {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const secretKey = process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_SECRET_KEY?.trim();
+  const webhookSecret = process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET?.trim() || process.env.STRIPE_WEBHOOK_SECRET?.trim();
   if (!secretKey || !webhookSecret) return null;
   return { stripe: new Stripe(secretKey), webhookSecret };
 }

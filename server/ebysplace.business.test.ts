@@ -45,7 +45,9 @@ describe("Eby’s Place platform business rules", () => {
   beforeEach(() => {
     process.env.DATABASE_URL = "";
     process.env.STRIPE_SECRET_KEY = ["sk", "live", "mock"].join("_");
+    process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY = ["sk", "live", "mock"].join("_");
     process.env.STRIPE_WEBHOOK_SECRET = "webhook_secret_mock";
+    process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET = "webhook_secret_mock";
     stripeCreateSessionMock.mockReset();
     stripeConstructEventMock.mockReset();
     notifyOwnerMock.mockReset();
@@ -92,12 +94,12 @@ describe("Eby’s Place platform business rules", () => {
         "Braid Takedown",
       ]),
     );
-    expect(new Set(services.map((service) => service.category))).toEqual(new Set(["Braids", "Twists", "Locs", "Kids Styles", "Add-ons"]));
+    expect(new Set(services.map((service) => service.category))).toEqual(new Set(["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]));
   });
 
   it("maps every exact service name to an uploaded HD service image", async () => {
     const services = await db.listServices();
-    expect(services).toHaveLength(20);
+    expect(services).toHaveLength(29);
     for (const service of services) {
       expect(service.imageUrl, `${service.name} needs a migrated Supabase service image`).toMatch(/^https:\/\/jcyoipbiplzrocrrhwkp\.supabase\.co\/storage\/v1\/object\/public\/ebysplace-media\/ebysplace_service_/);
     }
@@ -162,6 +164,24 @@ describe("Eby’s Place platform business rules", () => {
       }),
     }));
     expect(JSON.stringify(stripeCreateSessionMock.mock.calls[0][0])).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
+  });
+
+  it("uses project-specific live Stripe secret override when the platform-managed Stripe key is not live", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_platform_managed_key";
+    process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY = ["sk", "live", "project", "override"].join("_");
+    stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_live_override", url: "https://checkout.stripe.com/live-override", payment_intent: "pi_live_override" });
+    const caller = appRouter.createCaller(publicContext());
+
+    const result = await caller.public.createDepositCheckout({
+      bookingId: 43,
+      clientEmail: "client@example.com",
+      clientName: "Test Client",
+      serviceName: "Knotless Braids",
+    });
+
+    expect(result.checkoutUrl).toBe("https://checkout.stripe.com/live-override");
+    expect(stripeCreateSessionMock).toHaveBeenCalledOnce();
+    delete process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY;
   });
 
   it("creates Stripe Checkout sessions for shop product orders with Eby’s Place customer-facing copy", async () => {

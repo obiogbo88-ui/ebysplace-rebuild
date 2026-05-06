@@ -264,7 +264,7 @@ describe("Eby’s Place landing page visual refinements", () => {
   it("keeps customer-facing notification and sign-in copy Eby’s Place branded without third-party platform wording", () => {
     const customerNotificationSources = [bookingSource, shopSource, reviewsSource, tryOnSource, loginDialogSource].join("\n");
     expect(customerNotificationSources).toContain("Eby’s Place");
-    expect(bookingSource).toContain("Opening Eby’s Place secure checkout");
+    expect(bookingSource).toContain("Opening Eby's Place secure checkout");
     expect(bookingSource).toContain("booking.customerNotification");
     expect(shopSource).toContain("result.customerNotification");
     expect(reviewsSource).toContain("result.customerNotification");

@@ -26,16 +26,16 @@ describe("Eby’s Place staged booking frontend", () => {
     expect(bookingSource).toContain("canContinueFromDate");
     expect(bookingSource).toContain("canContinueFromDetails");
     expect(bookingSource).toContain("Continue to deposit");
-    expect(bookingSource).toContain("Continue to £20 Deposit");
+    expect(bookingSource).toContain("Pay £20 Deposit");
     expect(bookingSource).toContain("createDepositCheckout.useMutation");
     expect(bookingSource).toContain("window.open(session.checkoutUrl");
   });
 
   it("keeps the mobile style selector and selected-service note readable without changing booking flow", () => {
-    expect(bookingSource).toContain("booking-style-panel grid gap-5");
-    expect(bookingSource).toContain("className=\"booking-style-select\"");
-    expect(bookingSource).toContain("booking-selected-service rounded-3xl");
-    expect(bookingSource).toContain("text-[#3a2615]");
+    expect(bookingSource).toContain("overflow-hidden rounded-3xl border p-0 text-left");
+    expect(bookingSource).toContain("from £{service.priceFrom}");
+    expect(bookingSource).toContain("rounded-full border border-primary/30 bg-primary/10");
+    expect(bookingSource).toContain("text-[#4a3014]");
     expect(cssSource).toContain(".booking-style-select { width: 100%; max-width: 100%; overflow-wrap: anywhere; white-space: normal; }");
     expect(cssSource).toContain(".booking-selected-service { color: #3a2615; overflow-wrap: anywhere; word-break: normal; }");
     expect(cssSource).toContain("@media (max-width: 640px)");
