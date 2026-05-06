@@ -38,7 +38,8 @@ describe("strict visual-only change regression coverage", () => {
     const tryOnSource = source("client/src/pages/TryOn.tsx");
     const adminSource = source("client/src/pages/Admin.tsx");
 
-    expect(appSource).toContain("window.scrollTo({ top: 0, left: 0, behavior: \"auto\" })");
+    expect(appSource).toContain('afterRouteScroll(`${location}${window.location.hash || ""}`, 40)');
+    expect(appSource).toContain('navigateWithSmoothScroll("/booking", setLocation)');
     expect(appSource).toContain("const Services = lazy(() => import(\"./pages/Services\"));");
     expect(appSource).toContain("<Route path=\"/services\" component={Services} />");
     expect(appSource).toContain("<Route path=\"/booking\" component={Booking} />");
@@ -46,8 +47,8 @@ describe("strict visual-only change regression coverage", () => {
     expect(appSource).toContain("<Route path=\"/ai-try-on\" component={TryOn} />");
     expect(appSource).toContain("<Route path=\"/admin\" component={Admin} />");
     expect(homeSource).toContain("href=\"/services\"");
-    expect(homeSource).toContain("href=\"/booking\"");
-    expect(homeSource).toContain("href=\"/shop\"");
+    expect(homeSource).toContain('navigateWithSmoothScroll("/booking", setLocation)');
+    expect(homeSource).toContain('navigateWithSmoothScroll("/shop", setLocation)');
     expect(homeSource).toContain("href=\"/ai-try-on\"");
     expect(bookingSource).toContain("trpc.public.createBooking.useMutation()");
     expect(bookingSource).toContain("trpc.public.createDepositCheckout.useMutation()");

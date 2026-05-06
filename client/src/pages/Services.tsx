@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "wouter";
 import { CalendarDays, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { navigateWithSmoothScroll, smoothScrollToTop } from "@/lib/smoothScroll";
 import { SiteFooter, SiteHeader } from "./Home";
 
 const tabs = ["All", "Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"] as const;
@@ -60,7 +60,10 @@ export default function Services() {
             <button
               key={tab}
               type="button"
-              onClick={() => setCategory(tab)}
+              onClick={() => {
+                setCategory(tab);
+                smoothScrollToTop(40);
+              }}
               className={
                 category === tab ? "btn-gold" : "btn-dark"
               }
@@ -82,9 +85,9 @@ export default function Services() {
                 {categoryIntro[category]}
               </p>
             </div>
-            <Link className="btn-gold" href="/booking">
+            <button type="button" className="btn-gold" onClick={() => navigateWithSmoothScroll("/booking")}>
               <CalendarDays className="mr-2 h-5 w-5" /> Start booking
-            </Link>
+            </button>
           </div>
 
           {isLoading ? (
@@ -139,12 +142,13 @@ export default function Services() {
                     </b>
                   </div>
                     {isBookable ? (
-                      <Link
-                        href={`/booking?service=${encodeURIComponent(service.name)}`}
+                      <button
+                        type="button"
+                        onClick={() => navigateWithSmoothScroll(`/booking?service=${encodeURIComponent(service.name)}`)}
                         className="btn-gold mt-5 w-full"
                       >
                         Book This Style
-                      </Link>
+                      </button>
                     ) : (
                       <button className="btn-dark mt-5 w-full cursor-not-allowed opacity-70" type="button" disabled>
                         Currently unavailable

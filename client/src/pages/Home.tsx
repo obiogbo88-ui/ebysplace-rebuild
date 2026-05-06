@@ -1,5 +1,6 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { navigateWithSmoothScroll, smoothScrollToTop } from "@/lib/smoothScroll";
 import {
   CalendarDays,
   Heart,
@@ -52,13 +53,14 @@ const navLinks = [
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
+  const [, setLocation] = useLocation();
 
   const handleProductSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const query = productSearch.trim();
     const target = query ? `/shop?search=${encodeURIComponent(query)}` : "/shop";
     setMenuOpen(false);
-    window.location.assign(target);
+    navigateWithSmoothScroll(target, setLocation);
   };
 
   return (
@@ -115,9 +117,9 @@ export function SiteHeader() {
             />
           </form>
           <div className="hidden sm:block">
-            <Link className="btn-gold px-2.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm" href="/booking">
+            <button type="button" className="btn-gold px-2.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}>
               Book
-            </Link>
+            </button>
           </div>
           <button
             type="button"
@@ -170,6 +172,7 @@ export function SiteHeader() {
 }
 
 export function SiteFooter() {
+  const [, setLocation] = useLocation();
   return (
     <footer className="border-t border-[#d8bd74]/45 bg-[#f5ead7] py-12 text-[#2a1a0b]">
       <div className="container grid gap-8 md:grid-cols-5">
@@ -198,8 +201,8 @@ export function SiteFooter() {
           <h4 className="font-bold text-primary">Quick Links</h4>
           <div className="mt-3 grid gap-2 text-sm font-semibold text-[#4f3720]">
             <Link href="/services">Services & Pricing</Link>
-            <Link href="/booking">Book Appointment</Link>
-            <Link href="/shop">Shop</Link>
+            <button type="button" className="text-left" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}>Book Appointment</button>
+            <button type="button" className="text-left" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>Shop</button>
             <Link href="/ai-try-on">AI Try-On</Link>
             <Link href="/braiders-near-me">Braiders Near Me</Link>
           </div>
@@ -232,6 +235,7 @@ export function SiteFooter() {
 
 function HomepageLiveSearch() {
   const [query, setQuery] = useState("");
+  const [, setLocation] = useLocation();
   const { data: services = [] } = trpc.public.services.useQuery({});
   const { data: products = [] } = trpc.public.products.useQuery();
   const results = useMemo(() => {
@@ -249,11 +253,11 @@ function HomepageLiveSearch() {
         {query.trim().length >= 2 ? (
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {results.length ? results.map((result) => (
-              <a key={`${result.type}-${result.title}`} href={result.href} className="rounded-2xl border border-white/10 bg-[#FAF7F2] p-4 transition hover:border-primary/50 hover:bg-[#fff8df]">
+              <button key={`${result.type}-${result.title}`} type="button" onClick={() => navigateWithSmoothScroll(result.href, setLocation)} className="rounded-2xl border border-white/10 bg-[#FAF7F2] p-4 text-left transition hover:border-primary/50 hover:bg-[#fff8df]">
                 <span className="pill text-[0.65rem]">{result.type}</span>
                 <b className="mt-2 block text-primary">{result.title}</b>
                 <small className="mt-1 block text-[#4A4A4A]">{result.detail}</small>
-              </a>
+              </button>
             )) : <p className="rounded-2xl border border-primary/20 bg-[#FAF7F2] p-4 text-sm text-[#4A4A4A] sm:col-span-2 lg:col-span-3">No matching services or products yet. Try “braids”, “twists”, or “aftercare”.</p>}
           </div>
         ) : <p className="mt-3 text-sm font-medium text-[#4A4A4A]">Start typing to search services and shop products instantly.</p>}
@@ -290,11 +294,14 @@ function HomepageGalleryPreview() {
 
 
 export default function Home() {
+  const [, setLocation] = useLocation();
   const { data: styles = [] } = trpc.public.featuredServices.useQuery();
   const { data: products = [] } = trpc.public.products.useQuery();
   const { data: sections = [] } = trpc.public.websiteSections.useQuery();
   const { data: reviews = [] } = trpc.public.reviews.useQuery();
-  const newsletter = trpc.public.newsletter.useMutation();
+  const newsletter = trpc.public.newsletter.useMutation({
+    onSuccess: () => smoothScrollToTop(40),
+  });
   const [email, setEmail] = useState("");
   const aboutSection = (sections as any[]).find((section) => section.sectionKey === "about_us") || {
     eyebrow: "Our Story",
@@ -345,9 +352,9 @@ export default function Home() {
                   sacrificing comfort, confidence, or scalp health.
                 </p>
                 <div className="mt-9 flex flex-wrap gap-4">
-                  <Link className="btn-gold" href="/booking">
+                  <button type="button" className="btn-gold" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}>
                     <CalendarDays className="mr-2 h-5 w-5" /> Book with £20 deposit
-                  </Link>
+                  </button>
                   <Link className="btn-dark bg-[#171009]/82 shadow-[0_16px_45px_rgba(0,0,0,.38)]" href="/ai-try-on">
                     <Wand2 className="mr-2 h-5 w-5" /> Try a braid style
                   </Link>
@@ -448,9 +455,9 @@ export default function Home() {
                       <span>{s.duration}</span>
                       <b className="text-primary">From £{s.priceFrom}</b>
                     </div>
-                    <Link className="btn-gold mt-5 w-full" href="/booking">
+                    <button type="button" className="btn-gold mt-5 w-full" onClick={() => navigateWithSmoothScroll(`/booking?service=${encodeURIComponent(s.name)}`, setLocation)}>
                       Book This Style
-                    </Link>
+                    </button>
                   </div>
                 </article>
               ))}
@@ -461,9 +468,9 @@ export default function Home() {
         <section className="section-pad bg-white/[0.04]">
           <div className="container">
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <Link className="btn-gold order-2 md:order-1" href="/shop">
+              <button type="button" className="btn-gold order-2 md:order-1" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
                 Shop products
-              </Link>
+              </button>
               <div className="order-1 w-full text-left md:order-2 md:w-auto md:text-right">
                 <p className="pill w-fit md:ml-auto">
                   <ShoppingBag className="mr-2 inline h-4 w-4" /> Shop preview
@@ -478,9 +485,10 @@ export default function Home() {
             </div>
             <div className="mt-10 grid gap-5 md:grid-cols-3">
               {featuredShopProducts.map(product => (
-                <Link
-                  className="lux-card group block min-w-0 overflow-hidden p-0 transition hover:-translate-y-1 hover:border-primary/55 hover:shadow-[0_22px_55px_rgba(189,140,52,.24)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  href="/shop"
+                <button
+                  type="button"
+                  className="lux-card group block w-full min-w-0 overflow-hidden p-0 text-left transition hover:-translate-y-1 hover:border-primary/55 hover:shadow-[0_22px_55px_rgba(189,140,52,.24)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  onClick={() => navigateWithSmoothScroll(`/shop?search=${encodeURIComponent(product.name)}`, setLocation)}
                   key={product.id ?? product.slug}
                   aria-label={`View ${product.name} and all Eby’s Place shop products`}
                 >
@@ -506,7 +514,7 @@ export default function Home() {
                       <span className="text-sm font-bold text-[#4a3014]">View shop</span>
                     </div>
                   </div>
-                </Link>
+                </button>
               ))}
             </div>
           </div>
@@ -534,9 +542,9 @@ export default function Home() {
 
         <section className="py-8 overflow-hidden bg-[#efe0c7]/78 text-[#24170d] md:py-10">
           <div className="container">
-            <Link className="btn-gold w-fit px-5 py-3 text-sm" href="/reviews" aria-label="Leave a review for Eby’s Place">
+            <button type="button" className="btn-gold w-fit px-5 py-3 text-sm" onClick={() => navigateWithSmoothScroll("/reviews", setLocation)} aria-label="Leave a review for Eby’s Place">
               <span className="sr-only">Live testimonials </span>Leave a Review
-            </Link>
+            </button>
           </div>
           <div className="review-marquee mt-5" aria-label="Moving Eby’s Place customer reviews">
             <div className="review-marquee-track">

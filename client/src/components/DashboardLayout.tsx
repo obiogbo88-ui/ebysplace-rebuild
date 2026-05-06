@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getAdminLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
+import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { CalendarDays, Home, Images, Instagram, LayoutDashboard, LogOut, MessageSquare, Package, PanelLeft, Scissors, ShoppingBag, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -85,7 +86,7 @@ export default function DashboardLayout({
           >
             Sign in with email
           </Button>
-          <Button type="button" variant="outline" onClick={() => window.location.assign("/")} className="w-full border-[#d8b66b]/50 bg-white text-[#2f2418] hover:bg-[#fff7df]">
+          <Button type="button" variant="outline" onClick={() => navigateWithSmoothScroll("/")} className="w-full border-[#d8b66b]/50 bg-white text-[#2f2418] hover:bg-[#fff7df]">
             Back to website
           </Button>
         </div>
@@ -142,11 +143,7 @@ function DashboardLayoutContent({
   }, []);
 
   const returnToHomepage = () => {
-    if (typeof window !== "undefined") {
-      window.location.assign(`${window.location.origin}/`);
-      return;
-    }
-    setLocation("/");
+    navigateWithSmoothScroll("/", setLocation);
   };
 
   const handleSignOut = async () => {
@@ -158,10 +155,8 @@ function DashboardLayoutContent({
     const [pathname, sectionId] = path.split("#");
     setLocation(path);
     if (pathname === "/admin" && sectionId) {
-      window.setTimeout(() => {
-        document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-        setCurrentHash(`#${sectionId}`);
-      }, 0);
+      smoothScrollToElement(sectionId, 60);
+      setCurrentHash(`#${sectionId}`);
       return;
     }
     setCurrentHash("");

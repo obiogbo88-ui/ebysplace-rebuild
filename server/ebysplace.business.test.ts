@@ -9,12 +9,29 @@ import type { TrpcContext } from "./_core/context";
 const stripeCreateSessionMock = vi.hoisted(() => vi.fn());
 const stripeConstructEventMock = vi.hoisted(() => vi.fn());
 const notifyOwnerMock = vi.hoisted(() => vi.fn());
+const sendCustomerEmailSafelyMock = vi.hoisted(() => vi.fn());
+const sendShopOrderPaidEmailSafelyMock = vi.hoisted(() => vi.fn());
+const sendCustomerSmsSafelyMock = vi.hoisted(() => vi.fn());
+const sendCustomerWhatsAppSafelyMock = vi.hoisted(() => vi.fn());
+const sendOwnerSmsAndWhatsAppSafelyMock = vi.hoisted(() => vi.fn());
+const sendReviewRequestEmailSafelyMock = vi.hoisted(() => vi.fn());
+const sendNewsletterWelcomeEmailSafelyMock = vi.hoisted(() => vi.fn());
 const storagePutMock = vi.hoisted(() => vi.fn());
 const storageGetSignedUrlMock = vi.hoisted(() => vi.fn());
 const generateImageMock = vi.hoisted(() => vi.fn());
 
 vi.mock("./_core/notification", () => ({
   notifyOwner: notifyOwnerMock,
+}));
+
+vi.mock("./customerNotifications", () => ({
+  sendCustomerEmailSafely: sendCustomerEmailSafelyMock,
+  sendShopOrderPaidEmailSafely: sendShopOrderPaidEmailSafelyMock,
+  sendCustomerSmsSafely: sendCustomerSmsSafelyMock,
+  sendCustomerWhatsAppSafely: sendCustomerWhatsAppSafelyMock,
+  sendOwnerSmsAndWhatsAppSafely: sendOwnerSmsAndWhatsAppSafelyMock,
+  sendReviewRequestEmailSafely: sendReviewRequestEmailSafelyMock,
+  sendNewsletterWelcomeEmailSafely: sendNewsletterWelcomeEmailSafelyMock,
 }));
 
 vi.mock("./storage", () => ({
@@ -51,10 +68,24 @@ describe("Eby’s Place platform business rules", () => {
     stripeCreateSessionMock.mockReset();
     stripeConstructEventMock.mockReset();
     notifyOwnerMock.mockReset();
+    sendCustomerEmailSafelyMock.mockReset();
+    sendShopOrderPaidEmailSafelyMock.mockReset();
+    sendCustomerSmsSafelyMock.mockReset();
+    sendCustomerWhatsAppSafelyMock.mockReset();
+    sendOwnerSmsAndWhatsAppSafelyMock.mockReset();
+    sendReviewRequestEmailSafelyMock.mockReset();
+    sendNewsletterWelcomeEmailSafelyMock.mockReset();
     storagePutMock.mockReset();
     storageGetSignedUrlMock.mockReset();
     generateImageMock.mockReset();
     notifyOwnerMock.mockResolvedValue(true);
+    sendCustomerEmailSafelyMock.mockResolvedValue({ sent: true });
+    sendShopOrderPaidEmailSafelyMock.mockResolvedValue({ sent: true });
+    sendCustomerSmsSafelyMock.mockResolvedValue({ sent: true });
+    sendCustomerWhatsAppSafelyMock.mockResolvedValue({ sent: true });
+    sendOwnerSmsAndWhatsAppSafelyMock.mockResolvedValue([{ sent: true }, { sent: true }]);
+    sendReviewRequestEmailSafelyMock.mockResolvedValue({ sent: true });
+    sendNewsletterWelcomeEmailSafelyMock.mockResolvedValue({ sent: true });
     storagePutMock.mockResolvedValue({ url: "/try-on/uploads/test-customer-photo.jpg", key: "try-on/uploads/test-customer-photo.jpg" });
     storageGetSignedUrlMock.mockResolvedValue("https://signed-storage.example.test/try-on/uploads/test-customer-photo.jpg");
     generateImageMock.mockResolvedValue({ url: "/try-on/generated/result.jpg" });
@@ -178,7 +209,7 @@ describe("Eby’s Place platform business rules", () => {
       payment_intent_data: expect.objectContaining({ receipt_email: "client@example.com", description: "Eby’s Place booking deposit for Goddess Braids", statement_descriptor_suffix: "EBYSPLACE" }),
       custom_text: { submit: { message: "You are paying Eby’s Place securely. Your booking deposit confirmation and receipt will use the email entered for checkout." } },
       success_url: "https://example.test/booking/success?booking=42",
-      cancel_url: "https://example.test/booking?booking=42",
+      cancel_url: "https://example.test/booking?payment=cancelled&booking=42",
       allow_promotion_codes: true,
       metadata: expect.objectContaining({
         booking_id: "42",
@@ -281,6 +312,19 @@ describe("Eby’s Place platform business rules", () => {
       },
     });
     const markPaidSpy = vi.spyOn(db, "markBookingDepositPaid").mockResolvedValueOnce(undefined);
+    const getBookingSpy = vi.spyOn(db, "getBookingByCheckoutSession").mockResolvedValueOnce({
+      id: 42,
+      clientName: "Test Client",
+      clientEmail: "client@example.com",
+      clientPhone: "07123456789",
+      serviceName: "Goddess Braids",
+      appointmentDate: "2026-07-01",
+      appointmentTime: "10:00",
+      serviceLocation: "studio",
+      estimatedPrice: "180.00",
+      homeServiceSurcharge: "0.00",
+      deliveryNote: "Keep braids waist length",
+    } as any);
     const app = express();
     registerStripeWebhook(app);
     const server = app.listen(0);
@@ -294,6 +338,21 @@ describe("Eby’s Place platform business rules", () => {
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({ received: true });
       expect(markPaidSpy).toHaveBeenCalledWith("cs_live_mock", "pi_live_mock");
+      expect(sendCustomerSmsSafelyMock).toHaveBeenCalledWith(expect.objectContaining({
+        to: "07123456789",
+        body: expect.stringContaining("Goddess Braids"),
+      }));
+      expect(sendCustomerWhatsAppSafelyMock).toHaveBeenCalledWith(expect.objectContaining({
+        to: "07123456789",
+        body: expect.stringContaining("£20 booking deposit has been confirmed"),
+      }));
+      expect(sendCustomerEmailSafelyMock).toHaveBeenCalledWith(expect.objectContaining({
+        to: "client@example.com",
+        subject: "Eby’s Place booking deposit confirmed",
+        body: expect.stringContaining("Studio visit address"),
+      }));
+      expect(sendCustomerEmailSafelyMock.mock.calls[0][0].body).toContain("Estimated remaining balance due at appointment: £160.00.");
+      expect(sendOwnerSmsAndWhatsAppSafelyMock).toHaveBeenCalledWith(expect.stringContaining("Booking deposit paid"));
       expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
         title: "Eby’s Place deposit paid",
         content: expect.stringContaining("Goddess Braids"),
@@ -301,6 +360,7 @@ describe("Eby’s Place platform business rules", () => {
       expect(JSON.stringify(notifyOwnerMock.mock.calls)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     } finally {
       markPaidSpy.mockRestore();
+      getBookingSpy.mockRestore();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   });
@@ -324,6 +384,20 @@ describe("Eby’s Place platform business rules", () => {
       },
     });
     const markOrderPaidSpy = vi.spyOn(db, "markOrderPaid").mockResolvedValueOnce(undefined);
+    const getOrderSpy = vi.spyOn(db, "getOrderByCheckoutSession").mockResolvedValueOnce({
+      id: 88,
+      customerName: "Shop Client",
+      customerEmail: "shop-client@example.com",
+      customerPhone: "07123456789",
+      addressLine1: "1 Gold Street",
+      addressLine2: null,
+      city: "London",
+      county: "Greater London",
+      postcode: null,
+    } as any);
+    const getOrderItemsSpy = vi.spyOn(db, "getOrderItemsByOrderId").mockResolvedValueOnce([
+      { productName: "X-Pression Braiding Hair", variantName: "Colour 30", quantity: 2, unitPrice: "8.50" },
+    ] as any);
     const app = express();
     registerStripeWebhook(app);
     const server = app.listen(0);
@@ -337,6 +411,19 @@ describe("Eby’s Place platform business rules", () => {
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({ received: true });
       expect(markOrderPaidSpy).toHaveBeenCalledWith("cs_shop_live_mock", "pi_shop_live_mock");
+      expect(sendCustomerSmsSafelyMock).toHaveBeenCalledWith(expect.objectContaining({
+        to: "07123456789",
+        body: expect.stringContaining("order #88"),
+      }));
+      expect(sendShopOrderPaidEmailSafelyMock).toHaveBeenCalledWith(expect.objectContaining({
+        to: "shop-client@example.com",
+        customerName: "Shop Client",
+        orderId: 88,
+        deliveryAddress: "1 Gold Street, London, Greater London",
+        itemsSummary: expect.stringContaining("2 × X-Pression Braiding Hair — Colour 30 (£17.00)"),
+      }));
+      expect(sendShopOrderPaidEmailSafelyMock.mock.calls[0][0].itemsSummary).toContain("Total paid: £17.00");
+      expect(sendOwnerSmsAndWhatsAppSafelyMock).toHaveBeenCalledWith(expect.stringContaining("New Eby's Place shop order paid"));
       expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
         title: "Eby’s Place shop order paid",
         content: expect.stringContaining("Order ID: 88"),
@@ -344,6 +431,42 @@ describe("Eby’s Place platform business rules", () => {
       expect(JSON.stringify(notifyOwnerMock.mock.calls)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     } finally {
       markOrderPaidSpy.mockRestore();
+      getOrderSpy.mockRestore();
+      getOrderItemsSpy.mockRestore();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it("notifies the owner when Stripe reports a failed payment intent", async () => {
+    stripeConstructEventMock.mockReturnValueOnce({
+      id: "evt_live_failed_payment",
+      type: "payment_intent.payment_failed",
+      data: {
+        object: {
+          id: "pi_failed_123",
+          receipt_email: "client@example.com",
+          last_payment_error: { message: "Your card was declined." },
+        },
+      },
+    });
+    const app = express();
+    registerStripeWebhook(app);
+    const server = app.listen(0);
+    try {
+      const port = (server.address() as AddressInfo).port;
+      const response = await fetch(`http://127.0.0.1:${port}/api/stripe/webhook`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "stripe-signature": "live_signature" },
+        body: JSON.stringify({ id: "evt_live_failed_payment" }),
+      });
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({ received: true });
+      expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Eby’s Place payment failed",
+        content: expect.stringContaining("Your card was declined."),
+      }));
+      expect(notifyOwnerMock.mock.calls[0][0].content).toContain("client@example.com");
+    } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   });

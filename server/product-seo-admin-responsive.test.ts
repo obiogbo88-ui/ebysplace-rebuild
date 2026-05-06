@@ -113,7 +113,8 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(shopSource).toContain("PRODUCT_IMAGE_FALLBACK_SRC");
     expect(shopSource).toContain("src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}");
     expect(shopSource).toContain("onError={(event) =>");
-    expect(appSource).toContain("document.getElementById(hash.slice(1))?.scrollIntoView");
+    expect(appSource).toContain('afterRouteScroll(`${location}${window.location.hash || ""}`, 40)');
+    expect(appSource).toContain('import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";');
   });
 
   it("keeps admin dashboard exit paths, clean overview actions, and protected overview data scoped to admin", () => {
@@ -124,9 +125,9 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(layoutSource).toContain("Back to Website");
     expect(layoutSource).toContain("Back to website homepage");
     expect(layoutSource).toContain("handleSignOut");
-    expect(layoutSource).toContain("window.location.assign(`${window.location.origin}/`)");
+    expect(layoutSource).toContain('navigateWithSmoothScroll("/", setLocation)');
     expect(layoutSource).toContain("navigateAdminMenu");
-    expect(layoutSource).toContain("scrollIntoView({ behavior: \"smooth\", block: \"start\" })");
+    expect(layoutSource).toContain('smoothScrollToElement(sectionId, 60)');
     expect(adminSource).toContain("Back to Homepage");
     expect(adminSource).toContain("adminOverviewActions");
     expect(adminSource).toContain("Eby’s Place command centre");

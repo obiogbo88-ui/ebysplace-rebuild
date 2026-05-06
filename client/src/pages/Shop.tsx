@@ -1,6 +1,7 @@
 import { type FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { SiteFooter, SiteHeader } from "./Home";
 
 type CartItem = {
@@ -184,12 +185,16 @@ export default function Shop() {
     return null;
   }, []);
 
-  const add = (product: ShopProduct, variant?: ProductVariant) => setCart((current) => {
-    const key = `${product.id}:${variant?.id ?? variant?.name ?? "default"}`;
-    const existing = current.find((item) => `${item.productId}:${item.variantId ?? item.variantName ?? "default"}` === key);
-    if (existing) return current.map((item) => `${item.productId}:${item.variantId ?? item.variantName ?? "default"}` === key ? { ...item, quantity: item.quantity + 1 } : item);
-    return [...current, { productId: product.id, variantId: variant?.id, productName: product.name, variantName: variant?.name, quantity: 1, unitPrice: product.price }];
-  });
+  const add = (product: ShopProduct, variant?: ProductVariant) => {
+    setCart((current) => {
+      const key = `${product.id}:${variant?.id ?? variant?.name ?? "default"}`;
+      const existing = current.find((item) => `${item.productId}:${item.variantId ?? item.variantName ?? "default"}` === key);
+      if (existing) return current.map((item) => `${item.productId}:${item.variantId ?? item.variantName ?? "default"}` === key ? { ...item, quantity: item.quantity + 1 } : item);
+      return [...current, { productId: product.id, variantId: variant?.id, productName: product.name, variantName: variant?.name, quantity: 1, unitPrice: product.price }];
+    });
+    toast.success(`${product.name} added to your bag`);
+    smoothScrollToElement("shop-checkout", 80);
+  };
 
   const changeQty = (index: number, quantity: number) => setCart((current) => current.map((item, idx) => idx === index ? { ...item, quantity: Math.max(1, quantity) } : item));
   const remove = (index: number) => setCart((current) => current.filter((_, idx) => idx !== index));
@@ -197,6 +202,7 @@ export default function Shop() {
     event.preventDefault();
     if (!delivery.addressLine1.trim() || !delivery.city.trim()) {
       toast.error("Please add your delivery address and city before opening secure checkout.");
+      smoothScrollToElement("shop-checkout", 80);
       return;
     }
     const result = await order.mutateAsync({ ...delivery, items: cart });
@@ -227,7 +233,7 @@ export default function Shop() {
               <p className="text-lg font-semibold">
                 Showing {visibleProducts.length} result{visibleProducts.length === 1 ? "" : "s"} for <span className="text-primary">“{searchQuery}”</span>
               </p>
-              <a className="btn-dark w-fit bg-white/90 px-4 py-2 text-sm" href="/shop">Clear search</a>
+              <button type="button" className="btn-dark w-fit bg-white/90 px-4 py-2 text-sm" onClick={() => navigateWithSmoothScroll("/shop")}>Clear search</button>
             </div>
           </div>
         ) : null}
@@ -252,12 +258,12 @@ export default function Shop() {
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">No products found</p>
                 <h2 className="serif mt-2 text-3xl font-bold">Try another search term.</h2>
                 <p className="mt-3 text-white/72">Search by product name, care need, colour, or braid accessory. You can also clear the search to see every Eby’s Place product.</p>
-                <a className="btn-gold mt-5" href="/shop">View all products</a>
+                <button type="button" className="btn-gold mt-5" onClick={() => navigateWithSmoothScroll("/shop")}>View all products</button>
               </div>
             )}
           </div>
 
-          <aside className="lux-card h-fit min-w-0 lg:sticky lg:top-24">
+          <aside id="shop-checkout" className="lux-card h-fit scroll-mt-28 min-w-0 lg:sticky lg:top-24">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-primary/80">Checkout</p>

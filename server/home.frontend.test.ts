@@ -82,7 +82,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain(">\n            EBYSPLACE\n          </span>");
     expect(homeSource).toContain("HEADER_LOGO_SRC");
     expect(homeSource).toContain("https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png");
-    expect(homeSource.indexOf("HEADER_LOGO_SRC")).toBeLessThan(homeSource.indexOf('href="/booking"'));
+    expect(homeSource.indexOf("HEADER_LOGO_SRC")).toBeLessThan(homeSource.indexOf('navigateWithSmoothScroll("/booking", setLocation)'));
   });
 
   it("keeps admin access hidden from public navigation while preserving direct admin routes", () => {
@@ -98,12 +98,12 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain('role="search" aria-label="Mobile product search"');
     expect(homeSource).toContain('placeholder="Search products"');
     expect(homeSource).toContain('`/shop?search=${encodeURIComponent(query)}`');
-    expect(homeSource).toContain('window.location.assign(target)');
+    expect(homeSource).toContain('navigateWithSmoothScroll(target, setLocation)');
     expect(shopSource).toContain('new URLSearchParams(window.location.search).get("search")');
     expect(shopSource).toContain('function productMatchesSearch(product: ShopProduct, query: string)');
     expect(shopSource).toContain('Showing {visibleProducts.length} result');
     expect(shopSource).toContain('No products found');
-    expect(shopSource).toContain('href="/shop">Clear search</a>');
+    expect(shopSource).toContain('navigateWithSmoothScroll("/shop")');
   });
 
   it("uses the supplied stretched and blended clickable top logo while matching the lower logo colour", () => {
@@ -328,7 +328,8 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("Shopping Policy");
     expect(homeSource).toContain("/policies/returns");
     expect(homeSource).toContain("Returns Policy");
-    expect(appSource).toContain("window.scrollTo({ top: 0, left: 0, behavior: \"auto\" })");
+    expect(appSource).toContain('afterRouteScroll(`${location}${window.location.hash || ""}`, 40)');
+    expect(appSource).toContain('import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";');
     expect(appSource).toContain("/policies/privacy");
     expect(appSource).toContain("/policies/shopping");
     expect(appSource).toContain("/policies/returns");

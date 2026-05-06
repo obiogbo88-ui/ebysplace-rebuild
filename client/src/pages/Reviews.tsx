@@ -1,5 +1,6 @@
 import { SiteFooter, SiteHeader } from "@/pages/Home";
 import { trpc } from "@/lib/trpc";
+import { smoothScrollToTop } from "@/lib/smoothScroll";
 import { CheckCircle2, Copy, Facebook, MessageCircle, Star } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ export default function Reviews() {
     const result = await submitReview.mutateAsync({ customerName, rating, reviewText });
     toast.success(result.customerNotification);
     setSubmitted(true);
+    smoothScrollToTop(40);
     setCustomerName("");
     setRating(5);
     setReviewText("");

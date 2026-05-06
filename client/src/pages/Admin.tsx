@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
@@ -110,20 +111,25 @@ export default function Admin() {
     utils.admin.summary.invalidate();
     utils.admin.insights.invalidate();
   };
+  const scrollAdminFeedback = (sectionId: string) => {
+    setOpenPanels((current) => new Set(current).add(sectionId));
+    smoothScrollToElement(sectionId, 60);
+  };
   const opts = {
     onSuccess: () => {
       refresh();
+      scrollAdminFeedback("activity-monitoring");
       toast.success("Admin update saved");
     },
     onError: (error: any) => toast.error(error.message),
   };
 
   const moderate = trpc.admin.moderateReview.useMutation(opts);
-  const blockAvailabilitySlot = trpc.admin.blockAvailabilitySlot.useMutation({ onSuccess: () => { toast.success("Availability slot blocked"); refresh(); } });
-  const unblockAvailabilitySlot = trpc.admin.unblockAvailabilitySlot.useMutation({ onSuccess: () => { toast.success("Availability slot unblocked"); refresh(); } });
-  const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => toast.success("Review request sent") });
-  const updateInstagram = trpc.admin.updateInstagramSettings.useMutation({ onSuccess: () => toast.success("Instagram feed settings saved") });
-  const updateHomeServiceSurcharge = trpc.admin.updateHomeServiceSurcharge.useMutation({ onSuccess: () => { toast.success("Home service surcharge saved"); refresh(); }, onError: (error: any) => toast.error(error.message) });
+  const blockAvailabilitySlot = trpc.admin.blockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot blocked"); } });
+  const unblockAvailabilitySlot = trpc.admin.unblockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot unblocked"); } });
+  const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => { scrollAdminFeedback("bookings"); toast.success("Review request sent"); } });
+  const updateInstagram = trpc.admin.updateInstagramSettings.useMutation({ onSuccess: () => { scrollAdminFeedback("instagram"); toast.success("Instagram feed settings saved"); } });
+  const updateHomeServiceSurcharge = trpc.admin.updateHomeServiceSurcharge.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("content"); toast.success("Home service surcharge saved"); }, onError: (error: any) => toast.error(error.message) });
   const updateBooking = trpc.admin.updateBookingStatus.useMutation(opts);
   const updateOrder = trpc.admin.updateOrderStatus.useMutation(opts);
   const updateStock = trpc.admin.updateProductStock.useMutation(opts);
@@ -132,6 +138,7 @@ export default function Admin() {
     onSuccess: () => {
       refresh();
       setNewProduct({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
+      scrollAdminFeedback("products");
       toast.success("Shop product uploaded");
     },
     onError: (error: any) => toast.error(error.message),
@@ -143,6 +150,7 @@ export default function Admin() {
       const productId = variables && typeof variables === "object" ? variables.productId : undefined;
       if (!productId) setNewProduct((current) => ({ ...current, imageUrl: uploaded.url }));
       refresh();
+      scrollAdminFeedback("products");
       toast.success(productId ? "Product image uploaded and saved" : "Product image uploaded. Add the product details and save it to the shop.");
     },
     onError: (error: any) => toast.error(error.message),
@@ -150,6 +158,7 @@ export default function Admin() {
   const uploadServiceImage = trpc.admin.uploadServiceImage.useMutation({
     onSuccess: () => {
       refresh();
+      scrollAdminFeedback("services");
       toast.success("Service image uploaded and saved");
     },
     onError: (error: any) => toast.error(error.message),
@@ -157,6 +166,7 @@ export default function Admin() {
   const uploadGalleryImage = trpc.admin.uploadGalleryImage.useMutation({
     onSuccess: (uploaded) => {
       setGallery((current) => ({ ...current, imageUrl: uploaded.url }));
+      scrollAdminFeedback("gallery");
       toast.success("Gallery image uploaded. Add a title and save it to the gallery.");
     },
     onError: (error: any) => toast.error(error.message),
@@ -164,6 +174,7 @@ export default function Admin() {
   const uploadWebsiteSectionImage = trpc.admin.uploadWebsiteSectionImage.useMutation({
     onSuccess: () => {
       refresh();
+      scrollAdminFeedback("content");
       toast.success("About Us round image uploaded and saved");
     },
     onError: (error: any) => toast.error(error.message),
@@ -173,6 +184,7 @@ export default function Admin() {
     onSuccess: () => {
       refresh();
       setGallery({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
+      scrollAdminFeedback("gallery");
       toast.success("Gallery image saved");
     },
     onError: (error: any) => toast.error(error.message),
@@ -192,11 +204,11 @@ export default function Admin() {
     return next;
   });
   const openPublicHomepage = () => {
-    window.location.assign(`${window.location.origin}/`);
+    navigateWithSmoothScroll("/");
   };
   const openProtectedOverviewSection = (sectionId: string, label: string) => {
     setOpenPanels((current) => new Set(current).add(sectionId));
-    window.setTimeout(() => document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+    smoothScrollToElement(sectionId, 60);
     window.history.replaceState(null, "", `${window.location.pathname}#${sectionId}`);
     refresh();
     toast.success(`${label} opened with protected admin data refreshed`);

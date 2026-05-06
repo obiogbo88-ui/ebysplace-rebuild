@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { smoothScrollToTop } from "@/lib/smoothScroll";
 import { SiteFooter, SiteHeader } from "./Home";
 import { ChevronLeft } from "lucide-react";
 
@@ -116,15 +117,26 @@ export default function Booking() {
   const availability = trpc.public.availability.useQuery();
   const bookingBlockedSlots = availability.data?.blockedSlots || [];
   const homeServiceSurcharge = Number(availability.data?.homeServiceSurcharge || 0);
+  const checkoutReturn = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("payment") === "cancelled" ? { status: "cancelled" as const, bookingId: params.get("booking") } : null;
+  }, []);
   const selectedSlotBlocked = bookingBlockedSlots.some((slot: any) => slot.date === form.appointmentDate && (!slot.time || slot.time === form.appointmentTime));
   // Regression anchors: Choose style, Date & time, Your details, Deposit, setStep(1), Selecting a style automatically moves you to appointment timing., canContinueFromDate, Continue to deposit.
   const set = (key: string, value: string) => setForm(current => ({ ...current, [key]: value }));
 
   useEffect(() => {
-    const preselected = new URLSearchParams(window.location.search).get("service");
+    const params = new URLSearchParams(window.location.search);
+    const preselected = params.get("service");
     if (preselected) {
       set("serviceName", preselected);
-      setStep(1);
+      goToStep(1);
+    }
+    if (params.get("payment") === "cancelled") {
+      goToStep(6);
+      toast.error("Stripe deposit was not completed", {
+        description: "No deposit was taken. Review your booking and click Pay £20 Deposit again when ready.",
+      });
     }
   }, []);
 
@@ -145,8 +157,13 @@ export default function Booking() {
       : [...current, { productId, productName: product.name, quantity: 1, unitPrice: product.price }]);
   }
 
+  function goToStep(nextStep: number) {
+    setStep(nextStep);
+    smoothScrollToTop(60);
+  }
+
   function goBack() {
-    if (step > 0) setStep(s => s - 1);
+    if (step > 0) goToStep(step - 1);
   }
 
   function continueToAddons() {
@@ -156,7 +173,7 @@ export default function Booking() {
       });
       return;
     }
-    setStep(4);
+    goToStep(4);
   }
 
   async function submit(event: React.FormEvent) {
@@ -201,6 +218,15 @@ export default function Booking() {
           Seven simple steps — choose your service, pick a date and time, select your location, enter your details, add optional extras, and pay a £20 Stripe deposit to confirm.
         </p>
 
+        {checkoutReturn ? (
+          <div className="mt-6 rounded-3xl border border-amber-300/35 bg-amber-300/10 p-5 text-amber-50" role="status">
+            <p className="font-semibold">Stripe deposit not completed</p>
+            <p className="mt-2 text-sm text-amber-50/85">
+              Your Eby’s Place booking{checkoutReturn.bookingId ? ` #${checkoutReturn.bookingId}` : ""} is still waiting for the £20 deposit. No payment was taken, and you can review the details below before starting secure Stripe checkout again.
+            </p>
+          </div>
+        ) : null}
+
         <div className="mt-6 rounded-3xl border border-primary/30 bg-primary/10 p-5 text-white/85">
           <b className="text-primary">48-hour cancellation policy</b>
           <p className="mt-2 text-sm leading-6">Cancel 48 hours or more before your appointment for a full deposit refund. Cancellations under 48 hours are non-refundable — please choose your date and time carefully.</p>
@@ -225,7 +251,7 @@ export default function Booking() {
                     <button
                       key={service.id ?? service.slug}
                       type="button"
-                      onClick={() => { set("serviceName", service.name); setStep(1); }}
+                      onClick={() => { set("serviceName", service.name); goToStep(1); }}
                       className={`overflow-hidden rounded-3xl border p-0 text-left transition hover:-translate-y-0.5 ${form.serviceName === service.name ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/60"}`}
                     >
                       {service.imageUrl ? (
@@ -251,7 +277,7 @@ export default function Booking() {
                     </button>
                   ))}
                   {serviceOptions.length === 0 ? (
-                    <button type="button" onClick={() => { set("serviceName", "Knotless Braids"); setStep(1); }} className="overflow-hidden rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-0 text-left">
+                    <button type="button" onClick={() => { set("serviceName", "Knotless Braids"); goToStep(1); }} className="overflow-hidden rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-0 text-left">
                       <div className="p-5">
                         <h3 className="serif text-2xl font-bold text-[#24170d]">Knotless Braids</h3>
                         <b className="mt-2 block text-xl text-primary">from £80</b>
@@ -302,7 +328,7 @@ export default function Booking() {
                   type="button"
                   className="btn-gold"
                   disabled={!canContinueFromDate}
-                  onClick={() => { if (canContinueFromDate) setStep(2); }}
+                  onClick={() => { if (canContinueFromDate) goToStep(2); }}
                 >
                   Confirm Date and Time
                 </button>
@@ -334,7 +360,7 @@ export default function Booking() {
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => { set("serviceLocation", option.value); setStep(3); }}
+                    onClick={() => { set("serviceLocation", option.value); goToStep(3); }}
                     className="flex min-h-[160px] flex-col gap-3 rounded-3xl border border-[#d8bd74]/45 bg-white/70 p-7 text-left transition hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_16px_40px_rgba(189,140,52,.18)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <span className="text-4xl">{option.emoji}</span>
@@ -438,8 +464,8 @@ export default function Booking() {
               </div>
               <div className="flex flex-wrap gap-3">
                 <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
-                <button type="button" className="btn-dark" onClick={() => setStep(5)}>Skip add-ons</button>
-                <button type="button" className="btn-gold" onClick={() => setStep(5)}>
+                <button type="button" className="btn-dark" onClick={() => goToStep(5)}>Skip add-ons</button>
+                <button type="button" className="btn-gold" onClick={() => goToStep(5)}>
                   {selectedAddOns.length > 0 ? "Continue with " + selectedAddOns.length + " add-on" + (selectedAddOns.length > 1 ? "s" : "") : "Continue"}
                 </button>
               </div>
@@ -481,8 +507,8 @@ export default function Booking() {
               </div>
               <div className="flex flex-wrap gap-3">
                 <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
-                <button type="button" className="btn-dark" onClick={() => setStep(6)}>Skip products</button>
-                <button type="button" className="btn-gold" onClick={() => setStep(6)}>
+                <button type="button" className="btn-dark" onClick={() => goToStep(6)}>Skip products</button>
+                <button type="button" className="btn-gold" onClick={() => goToStep(6)}>
                   {selectedProducts.length > 0 ? "Continue with " + selectedProducts.length + " product" + (selectedProducts.length > 1 ? "s" : "") : "Continue"}
                 </button>
               </div>

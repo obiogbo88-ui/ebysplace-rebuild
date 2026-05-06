@@ -259,7 +259,7 @@ export const appRouter = router({
         line_items: lineItems,
         allow_promotion_codes: true,
         success_url: `${origin}/booking/success?booking=${input.bookingId}`,
-        cancel_url: `${origin}/booking?booking=${input.bookingId}`,
+        cancel_url: `${origin}/booking?payment=cancelled&booking=${input.bookingId}`,
         metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2) },
       });
       if (!session.url) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a booking deposit checkout link. Please try again." });
