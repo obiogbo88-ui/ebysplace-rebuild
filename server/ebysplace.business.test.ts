@@ -134,6 +134,31 @@ describe("Eby’s Place platform business rules", () => {
     }));
   });
 
+  it("accepts a home-service booking when postcode is left blank", async () => {
+    const caller = appRouter.createCaller(publicContext());
+
+    const result = await caller.public.createBooking({
+      serviceLocation: "home_service",
+      serviceName: "Knotless Braids",
+      clientName: "Test Client",
+      clientEmail: "client@example.com",
+      clientPhone: "07123456789",
+      addressLine1: "1 Gold Street",
+      city: "London",
+      county: "Greater London",
+      postcode: "",
+      deliveryNote: "Postcode intentionally omitted",
+      appointmentDate: "2026-07-02",
+      appointmentTime: "11:00",
+    });
+
+    expect(result.depositAmount).toBe(20);
+    expect(result.customerNotification).toContain("Eby’s Place");
+    expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining("Customer address: 1 Gold Street, London, Greater London"),
+    }));
+  });
+
   it("creates Stripe Checkout sessions with booking metadata and dynamic redirects", async () => {
     stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_live_123", url: "https://checkout.stripe.com/session", payment_intent: "pi_live_123" });
     const caller = appRouter.createCaller(publicContext());
@@ -381,6 +406,14 @@ describe("Eby’s Place platform business rules", () => {
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
+  });
+
+
+  it("keeps shop delivery postcode optional in frontend checkout copy", () => {
+    const source = require("node:fs").readFileSync(require("node:path").join(process.cwd(), "client/src/pages/Shop.tsx"), "utf8");
+    expect(source).toContain('placeholder="Postcode (optional if unavailable)"');
+    expect(source).toContain('Please add your delivery address and city before opening secure checkout.');
+    expect(source).not.toContain('required placeholder="Address line 2 (optional)"');
   });
 
   it("returns an admin summary fallback with seeded services and products", async () => {

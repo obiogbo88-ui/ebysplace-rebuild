@@ -669,3 +669,40 @@
 - [x] Verify live Stripe secret handling uses the configured environment variable safely without exposing the key or hardcoding test/live secrets.
 - [x] Validate booking deposit and shop checkout after the Stripe environment/configuration fix with tests, build, and project health checks.
 - [x] Save checkpoint and sync the Stripe checkout error fix.
+
+- [ ] Implement a shared smooth scroll-to-top/section helper for page changes, section changes, success messages, and confirmation workflows.
+- [ ] Add smooth scroll progression across booking steps: service selection, date/time, location, details, add-ons, shop products, and confirmation page.
+- [ ] Ensure homepage Book Now, service-card booking, newsletter success, and Leave a Review navigation scroll smoothly to the top of the destination content.
+- [ ] Ensure Services page Book Now actions navigate to the booking page at the top with the selected service pre-selected.
+- [ ] Ensure Shop add-to-cart confirmation scrolls smoothly to the top of the shop and checkout progression scrolls to the top of checkout content.
+- [ ] Ensure Reviews form submission scrolls smoothly to the top and displays the thank-you message.
+- [ ] Ensure Admin save/confirm actions scroll smoothly to the top of the relevant admin section with success feedback.
+- [ ] Add or update automated coverage for smooth-scroll helpers and critical booking/public/shop/review/admin workflows.
+- [ ] Validate TypeScript, Vitest, production build, and project health before saving the smooth-scroll workflow checkpoint.
+- [ ] Save checkpoint and sync the smooth-scroll workflow changes to GitHub.
+
+- [x] Fix booking flow postcode validation so an empty postcode is accepted with no minimum character error.
+- [x] Update booking validation tests to prove postcode is completely optional when blank.
+- [x] Run targeted tests, full validation checks, and project health checks for the postcode validation fix.
+- [ ] Save checkpoint and sync the optional postcode booking validation fix to GitHub.
+
+- [ ] Audit booking payment flow end to end: Stripe £20 deposit checkout, successful webhook persistence, customer confirmation email, owner WhatsApp/SMS, and booking success redirect.
+- [ ] Audit shop payment flow end to end: full Stripe checkout, successful webhook persistence, stock reduction, customer order email, owner WhatsApp/SMS, and order success redirect.
+- [x] Fix database schema support for booking and shop checkout records, including serviceLocation, addressLine1, addressLine2, city, county, postcode, and deliveryNote where relevant.
+- [x] Make all optional booking/shop address fields nullable with no minimum validation, especially postcode.
+- [ ] Ensure Stripe webhook `/api/stripe/webhook` handles checkout.session.completed, payment_intent.succeeded, and payment_intent.payment_failed safely.
+- [ ] Ensure payment failure flows show customers a clear retryable error message.
+- [ ] Ensure booking confirmation email includes service name, date, time, location, deposit paid, remaining balance, and studio or home address details.
+- [ ] Ensure shop order confirmation email includes products, quantities, total paid, delivery address, and estimated delivery of 3-5 working days.
+- [x] Ensure review request email is sent automatically when admin marks a booking completed.
+- [x] Ensure newsletter welcome email is sent after newsletter signup.
+- [x] Ensure owner WhatsApp and SMS notifications are sent for new bookings, new shop orders, and new newsletter subscribers.
+- [x] Add or update automated coverage for database schema support, optional fields, payment webhook automations, emails, notifications, and success/failure redirects.
+- [x] Run targeted payment tests, full test suite, production build, and project health checks for the end-to-end payment automation updates.
+- [ ] Save checkpoint and sync the end-to-end payment automation updates to GitHub.
+
+- [x] Ensure booking/order address and postcode database fields are nullable where optional while preserving required home-service validation
+- [x] Reduce shop product and variant stock automatically after successful Stripe shop payment without double-decrementing duplicate webhooks
+- [x] Send customer confirmation and owner summaries for paid shop orders, newsletter signups, and admin review requests
+- [x] Fix shop checkout UI so Address Line 2 and postcode are genuinely optional where allowed
+- [x] Add/update Vitest coverage for the payment, stock, notification, and optional-address automation fixes

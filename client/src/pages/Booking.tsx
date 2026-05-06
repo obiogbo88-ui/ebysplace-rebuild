@@ -131,7 +131,7 @@ export default function Booking() {
   const homeAddressRequired = form.serviceLocation === "home_service";
   const canContinueFromDate = Boolean(form.appointmentDate && form.appointmentTime && !selectedSlotBlocked);
   const canContinueFromDetails = Boolean(
-    form.clientName && form.clientEmail && form.clientPhone && (!homeAddressRequired || (form.addressLine1 && form.city && form.county && form.postcode))
+    form.clientName && form.clientEmail && form.clientPhone && (!homeAddressRequired || (form.addressLine1 && form.city && form.county))
   );
 
   function toggleAddOn(addOn: AddOnOption) {
@@ -391,8 +391,8 @@ export default function Booking() {
                       <input required value={form.county} onChange={event => set("county", event.target.value)} placeholder="County" />
                     </label>
                     <label className="font-semibold text-[#24170d]">
-                      Postcode
-                      <input required value={form.postcode} onChange={event => set("postcode", event.target.value)} placeholder="e.g. TA7 8HD" />
+                      Postcode (optional)
+                      <input value={form.postcode} onChange={event => set("postcode", event.target.value)} placeholder="e.g. TA7 8HD" />
                     </label>
                   </>
                 ) : null}

@@ -22,9 +22,13 @@ describe("Eby’s Place staged booking frontend", () => {
     expect(bookingSource).toContain("Selecting a style automatically moves you to appointment timing.");
   });
 
-  it("requires date and client details before opening Stripe deposit checkout", () => {
+  it("requires date and core client details before opening Stripe deposit checkout while keeping postcode optional", () => {
     expect(bookingSource).toContain("canContinueFromDate");
     expect(bookingSource).toContain("canContinueFromDetails");
+    expect(bookingSource).toContain("form.addressLine1 && form.city && form.county");
+    expect(bookingSource).not.toContain("form.addressLine1 && form.city && form.county && form.postcode");
+    expect(bookingSource).toContain("Postcode (optional)");
+    expect(bookingSource).not.toContain("<input required value={form.postcode}");
     expect(bookingSource).toContain("Continue to deposit");
     expect(bookingSource).toContain("Pay £20 Deposit");
     expect(bookingSource).toContain("createDepositCheckout.useMutation");

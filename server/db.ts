@@ -897,8 +897,38 @@ async function ensureBookingLocationColumns() {
       END IF;
     END $$;
     ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "serviceLocation" booking_location_type_enum NOT NULL DEFAULT 'studio';
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "addressLine1" varchar(255);
     ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "addressLine2" varchar(255);
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "city" varchar(120);
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "county" varchar(120);
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "postcode" varchar(40);
+    ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "deliveryNote" text;
     ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "homeServiceSurcharge" numeric(10,2) NOT NULL DEFAULT '0.00';
+    ALTER TABLE "bookings" ALTER COLUMN "addressLine1" DROP NOT NULL;
+    ALTER TABLE "bookings" ALTER COLUMN "city" DROP NOT NULL;
+    ALTER TABLE "bookings" ALTER COLUMN "postcode" DROP NOT NULL;
+  `);
+}
+
+async function ensureOrderLocationColumns() {
+  const db = await getDb();
+  if (!db || !_pool) return;
+  await _pool.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_location_type_enum') THEN
+        CREATE TYPE booking_location_type_enum AS ENUM ('studio', 'home_service');
+      END IF;
+    END $$;
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "serviceLocation" booking_location_type_enum NOT NULL DEFAULT 'studio';
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "addressLine1" varchar(255);
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "addressLine2" varchar(255);
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "city" varchar(120);
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "county" varchar(120);
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "postcode" varchar(40);
+    ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "deliveryNote" text;
+    ALTER TABLE "orders" ALTER COLUMN "addressLine1" DROP NOT NULL;
+    ALTER TABLE "orders" ALTER COLUMN "city" DROP NOT NULL;
+    ALTER TABLE "orders" ALTER COLUMN "postcode" DROP NOT NULL;
   `);
 }
 
@@ -930,10 +960,11 @@ export async function getBookingByCheckoutSession(stripeCheckoutSessionId: strin
   return rows[0] ?? null;
 }
 
-export async function createOrderWithItems(input: { customerName: string; customerEmail: string; customerPhone?: string; addressLine1: string; city: string; county?: string; postcode: string; deliveryNote?: string; items: Array<{ productId: number; variantId?: number; productName: string; variantName?: string; quantity: number; unitPrice: string }> }) {
+export async function createOrderWithItems(input: { customerName: string; customerEmail: string; customerPhone?: string; addressLine1?: string | null; addressLine2?: string | null; city?: string | null; county?: string | null; postcode?: string | null; deliveryNote?: string; items: Array<{ productId: number; variantId?: number; productName: string; variantName?: string; quantity: number; unitPrice: string }> }) {
   await seedIfNeeded();
   const db = await getDb();
   if (!db) return { id: Date.now(), items: input.items };
+  await ensureOrderLocationColumns();
 
   const [productRows, variantRows] = await Promise.all([
     db.select().from(products),
@@ -958,7 +989,19 @@ export async function createOrderWithItems(input: { customerName: string; custom
     };
   });
 
-  const inserted = await db.insert(orders).values({ customerName: input.customerName, customerEmail: input.customerEmail, customerPhone: input.customerPhone, addressLine1: input.addressLine1, city: input.city, county: input.county, postcode: input.postcode, deliveryNote: input.deliveryNote, status: "draft" }).returning({ id: orders.id });
+  const inserted = await db.insert(orders).values({
+    customerName: input.customerName,
+    customerEmail: input.customerEmail,
+    customerPhone: input.customerPhone || null,
+    serviceLocation: "home_service",
+    addressLine1: input.addressLine1?.trim() || null,
+    addressLine2: input.addressLine2?.trim() || null,
+    city: input.city?.trim() || null,
+    county: input.county?.trim() || null,
+    postcode: input.postcode?.trim() || null,
+    deliveryNote: input.deliveryNote?.trim() || null,
+    status: "draft",
+  }).returning({ id: orders.id });
   const orderId = inserted[0]?.id ?? 0;
   if (orderId && validatedItems.length) await db.insert(orderItems).values(validatedItems.map((item) => ({ ...item, orderId })));
   return { id: orderId, items: validatedItems };
@@ -973,14 +1016,42 @@ export async function updateOrderCheckout(id: number, stripeCheckoutSessionId: s
 export async function markOrderPaid(stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
   const db = await getDb();
   if (!db) return;
-  await db.update(orders).set({ status: "paid", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId));
+  await ensureOrderLocationColumns();
+  const matchingOrders = await db.select().from(orders).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
+  const order = matchingOrders[0];
+  if (!order) return;
+  const alreadyPaid = ["paid", "fulfilling", "shipped", "completed"].includes(order.status);
+  await db.update(orders).set({ status: "paid", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, order.id));
+  if (alreadyPaid) return;
+
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+  for (const item of items) {
+    if (item.variantId) {
+      await db.update(productVariants)
+        .set({ stockQuantity: sql`GREATEST(${productVariants.stockQuantity} - ${item.quantity}, 0)` })
+        .where(eq(productVariants.id, item.variantId));
+    }
+    await db.update(products)
+      .set({
+        stockQuantity: sql`GREATEST(${products.stockQuantity} - ${item.quantity}, 0)`,
+        stockStatus: sql`CASE WHEN GREATEST(${products.stockQuantity} - ${item.quantity}, 0) = 0 THEN 'out_of_stock'::stock_status_enum ELSE ${products.stockStatus} END`,
+      })
+      .where(eq(products.id, item.productId));
+  }
 }
 
 export async function getOrderByCheckoutSession(stripeCheckoutSessionId: string) {
   const db = await getDb();
   if (!db) return null;
+  await ensureOrderLocationColumns();
   const rows = await db.select().from(orders).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId)).limit(1);
   return rows[0] ?? null;
+}
+
+export async function getOrderItemsByOrderId(orderId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
 }
 
 export async function recordAnalytics(eventName: string, pagePath: string, metadata?: unknown) {

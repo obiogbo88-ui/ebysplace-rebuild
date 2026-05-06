@@ -3,7 +3,7 @@ import express, { type Application, type Request, type Response } from "express"
 import Stripe from "stripe";
 import * as db from "./db";
 import { notifyOwner } from "./_core/notification";
-import { sendCustomerEmailSafely, sendCustomerSmsSafely, sendCustomerWhatsAppSafely, sendOwnerSmsAndWhatsAppSafely } from "./customerNotifications";
+import { sendCustomerEmailSafely, sendShopOrderPaidEmailSafely, sendCustomerSmsSafely, sendCustomerWhatsAppSafely, sendOwnerSmsAndWhatsAppSafely } from "./customerNotifications";
 
 const STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
 

@@ -8,7 +8,7 @@ import { generateImage } from "./_core/imageGeneration";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
-import { sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely } from "./customerNotifications";
+import { sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely } from "./customerNotifications";
 import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
 import * as db from "./db";
 
@@ -44,7 +44,7 @@ const bookingInput = z.object({
   addressLine2: z.string().optional(),
   city: z.string().optional(),
   county: z.string().optional(),
-  postcode: z.string().min(1),
+  postcode: z.string().optional().default(""),
   deliveryNote: z.string().optional(),
   appointmentDate: z.string().min(8),
   appointmentTime: z.string().min(4),
@@ -60,7 +60,7 @@ const orderInput = z.object({
   addressLine2: z.string().optional(),
   city: z.string().optional(),
   county: z.string().optional(),
-  postcode: z.string().min(1),
+  postcode: z.string().optional().default(""),
   deliveryNote: z.string().optional(),
   items: z.array(z.object({
     productId: z.number(),
@@ -173,7 +173,17 @@ export const appRouter = router({
     websiteSections: publicProcedure.query(() => db.listWebsiteSections()),
     reviews: publicProcedure.query(() => db.listApprovedReviews()),
     gallery: publicProcedure.input(z.object({ category: z.string().optional() }).optional()).query(({ input }) => db.listGallery(input?.category)),
-    newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(({ input }) => db.subscribeNewsletter(input.email, input.productAlerts)),
+    newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(async ({ input }) => {
+      const result = await db.subscribeNewsletter(input.email, input.productAlerts);
+      await Promise.allSettled([
+        sendNewsletterWelcomeEmailSafely({ to: input.email, productAlerts: input.productAlerts }),
+        notifyOwnerSafely(
+          "New Eby’s Place newsletter signup",
+          `${input.email} joined Eby’s Place updates${input.productAlerts ? " with product alerts" : ""}.`
+        ),
+      ]);
+      return { ...result, customerNotification: "You’re subscribed to Eby’s Place updates." };
+    }),
     submitReview: publicProcedure.input(z.object({ customerName: z.string().min(2), rating: z.number().min(1).max(5), reviewText: z.string().min(10) })).mutation(async ({ input }) => {
       const review = await db.submitReview(input);
       await notifyOwnerSafely(
@@ -194,12 +204,12 @@ export const appRouter = router({
       const settings = await db.getAvailabilitySettings();
       const homeServiceSurcharge = serviceLocation === "home_service" ? Number(settings.homeServiceSurcharge || 0).toFixed(2) : "0.00";
       if (serviceLocation === "home_service") {
-        const missing = [input.clientName, input.addressLine1, input.city, input.county, input.postcode].some((value) => !value?.trim());
-        if (missing) throw new TRPCError({ code: "BAD_REQUEST", message: "Home Service bookings require the customer name, full address, city, county, and postcode." });
+        const missing = [input.clientName, input.addressLine1, input.city, input.county].some((value) => !value?.trim());
+        if (missing) throw new TRPCError({ code: "BAD_REQUEST", message: "Home Service bookings require the customer name, address line 1, city, and county. Postcode is optional." });
       }
       const sanitizedBookingFields = serviceLocation === "studio"
         ? { ...bookingFields, serviceLocation, addressLine1: "Studio visit", addressLine2: null, city: "Studio", county: null, postcode: "STUDIO", homeServiceSurcharge }
-        : { ...bookingFields, serviceLocation, addressLine1: input.addressLine1!.trim(), addressLine2: input.addressLine2?.trim() || null, city: input.city!.trim(), county: input.county?.trim() || null, postcode: input.postcode!.trim(), homeServiceSurcharge };
+        : { ...bookingFields, serviceLocation, addressLine1: input.addressLine1!.trim(), addressLine2: input.addressLine2?.trim() || null, city: input.city!.trim(), county: input.county?.trim() || null, postcode: input.postcode?.trim() || "", homeServiceSurcharge };
       const bookingNote = buildBookingNote({ ...input, serviceLocation, homeServiceSurcharge });
       if (await db.isBookingSlotBlocked(input.appointmentDate, input.appointmentTime)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "That date or time has been blocked by Eby’s Place. Please choose another slot." });
@@ -257,6 +267,9 @@ export const appRouter = router({
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),
     createOrder: publicProcedure.input(orderInput).mutation(async ({ input, ctx }) => {
+      if (!input.addressLine1?.trim() || !input.city?.trim()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Shop orders require delivery address line 1 and city. Postcode is optional." });
+      }
       const order = await db.createOrderWithItems(input);
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
@@ -375,7 +388,7 @@ export const appRouter = router({
     sendReviewRequest: adminProcedure.input(z.object({ bookingId: z.number() })).mutation(async ({ input }) => {
       const booking = await db.getBookingById(input.bookingId);
       if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });
-      await sendReviewRequestEmailSafely({ to: booking.clientEmail, customerName: booking.clientName, serviceName: booking.serviceName, reviewUrl: "/reviews" });
+      await sendReviewRequestEmailSafely({ to: booking.clientEmail, customerName: booking.clientName, bookingId: booking.id, serviceName: booking.serviceName, reviewUrl: `/reviews?booking=${booking.id}` });
       return { success: true };
     }),
     updateService: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), description: z.string().min(10).optional(), duration: z.string().min(2).optional(), priceFrom: z.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z.string().optional(), imageUrl: z.string().min(5).optional(), isBookable: z.enum(["true", "false"]).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {

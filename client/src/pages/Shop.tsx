@@ -195,6 +195,10 @@ export default function Shop() {
   const remove = (index: number) => setCart((current) => current.filter((_, idx) => idx !== index));
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!delivery.addressLine1.trim() || !delivery.city.trim()) {
+      toast.error("Please add your delivery address and city before opening secure checkout.");
+      return;
+    }
     const result = await order.mutateAsync({ ...delivery, items: cart });
     toast.success(result.customerNotification);
     if (result.checkoutUrl) {
@@ -291,11 +295,11 @@ export default function Shop() {
               <input placeholder="Phone" value={delivery.customerPhone} onChange={(event) => setDelivery({ ...delivery, customerPhone: event.target.value })} />
               <input required placeholder="Delivery address" value={delivery.addressLine1} onChange={(event) => setDelivery({ ...delivery, addressLine1: event.target.value })} />
               <div className="grid gap-3 sm:grid-cols-2">
-                <input required placeholder="Address line 2 (optional)" value={delivery.addressLine2} onChange={(event) => setDelivery({ ...delivery, addressLine2: event.target.value })} />
+                <input placeholder="Address line 2 (optional)" value={delivery.addressLine2} onChange={(event) => setDelivery({ ...delivery, addressLine2: event.target.value })} />
               <input required placeholder="City" value={delivery.city} onChange={(event) => setDelivery({ ...delivery, city: event.target.value })} />
                 <input placeholder="County" value={delivery.county} onChange={(event) => setDelivery({ ...delivery, county: event.target.value })} />
               </div>
-              <input required placeholder="Postcode" value={delivery.postcode} onChange={(event) => setDelivery({ ...delivery, postcode: event.target.value })} />
+              <input placeholder="Postcode (optional if unavailable)" value={delivery.postcode} onChange={(event) => setDelivery({ ...delivery, postcode: event.target.value })} />
               <textarea placeholder="Delivery notes" value={delivery.deliveryNote} onChange={(event) => setDelivery({ ...delivery, deliveryNote: event.target.value })} />
               <button disabled={!cart.length || order.isPending} className="btn-gold disabled:cursor-not-allowed disabled:opacity-50">Pay securely with Stripe</button>
               {order.isSuccess && <p className="rounded-2xl border border-primary/30 bg-primary/10 p-3 font-semibold text-primary">Secure Stripe checkout opened in a new tab.</p>}

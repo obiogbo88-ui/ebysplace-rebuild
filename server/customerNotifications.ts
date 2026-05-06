@@ -151,7 +151,7 @@ export async function sendCustomerEmailSafely(input: EmailInput) {
 
 
 export async function sendOwnerSmsAndWhatsAppSafely(body: string) {
-  const ownerPhone = process.env.EBYSPLACE_OWNER_PHONE_E164 || '+447864585110';
+  const ownerPhone = process.env.EBYSPLACE_OWNER_PHONE_E164 || process.env.OWNER_PHONE_E164 || process.env.TWILIO_OWNER_PHONE;
   const results = await Promise.allSettled([
     sendCustomerSmsSafely({ to: ownerPhone, body }),
     sendCustomerWhatsAppSafely({ to: ownerPhone, body }),
@@ -159,8 +159,8 @@ export async function sendOwnerSmsAndWhatsAppSafely(body: string) {
   return results.map((result) => result.status === 'fulfilled' ? result.value : { sent: false, reason: 'exception' });
 }
 
-export async function sendReviewRequestEmailSafely(input: { to?: string | null; customerName?: string | null; bookingId: number; serviceName?: string | null }) {
-  const reviewUrl = `/reviews?booking=${input.bookingId}`;
+export async function sendReviewRequestEmailSafely(input: { to?: string | null; customerName?: string | null; bookingId?: number | null; serviceName?: string | null; reviewUrl?: string | null }) {
+  const reviewUrl = input.reviewUrl || (input.bookingId ? `/reviews?booking=${input.bookingId}` : '/reviews');
   return sendCustomerEmailSafely({
     to: input.to,
     subject: 'How was your Eby’s Place appointment?',
@@ -169,6 +169,33 @@ export async function sendReviewRequestEmailSafely(input: { to?: string | null; 
       `Thank you for visiting Eby’s Place for ${input.serviceName || 'your appointment'}.`,
       `Please leave a review here: ${reviewUrl}`,
       'Reviews are checked by the Eby’s Place team before appearing publicly.'
+    ].join('\n\n'),
+  });
+}
+
+export async function sendNewsletterWelcomeEmailSafely(input: { to?: string | null; productAlerts?: boolean }) {
+  return sendCustomerEmailSafely({
+    to: input.to,
+    subject: 'Welcome to Eby’s Place updates',
+    body: [
+      'Hi there,',
+      'Thank you for joining Eby’s Place updates. You will receive styling news, braid-care guidance, booking reminders, and selected product updates from the Eby’s Place team.',
+      input.productAlerts ? 'You are also subscribed to product and stock alerts for Eby’s Place braid-care essentials.' : 'You can opt into product alerts whenever you want updates on braid-care essentials.',
+      'If this was not you, you can ignore this email.'
+    ].join('\n\n'),
+  });
+}
+
+export async function sendShopOrderPaidEmailSafely(input: { to?: string | null; customerName?: string | null; orderId: number | string; deliveryAddress?: string; itemsSummary?: string }) {
+  return sendCustomerEmailSafely({
+    to: input.to,
+    subject: `Eby’s Place shop order #${input.orderId} confirmed`,
+    body: [
+      `Hi ${input.customerName || 'there'},`,
+      `Your Eby’s Place shop payment has been confirmed for order #${input.orderId}.`,
+      input.deliveryAddress ? `Delivery address: ${input.deliveryAddress}` : 'Delivery address: provided during checkout.',
+      input.itemsSummary ? `Items:\n${input.itemsSummary}` : 'The Eby’s Place team is preparing your order.',
+      'Stripe will send your payment receipt to the email used at checkout.'
     ].join('\n\n'),
   });
 }
