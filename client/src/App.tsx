@@ -45,7 +45,7 @@ function MobileStickyBookingCta() {
   if (isAdmin) return null;
   return (
     <div className="mobile-sticky-booking fixed inset-x-0 bottom-0 z-50 px-4 py-3 md:hidden" aria-label="Sticky mobile booking action">
-      <button type="button" onClick={() => navigateWithSmoothScroll("/booking", setLocation)} className="flex min-h-12 w-full items-center justify-center rounded-full bg-[#111111] px-5 py-3 text-center text-sm font-extrabold uppercase tracking-[0.18em] text-[#C9A84C] shadow-[0_14px_30px_rgba(17,17,17,.26)] transition hover:bg-[#C9A84C] hover:text-[#111111]">
+      <button type="button" onClick={() => navigateWithSmoothScroll("/booking", setLocation)} className="flex min-h-12 w-full items-center justify-center rounded-full bg-[#111111] px-5 py-3 text-center font-bold text-[#C9A84C] shadow-[0_14px_30px_rgba(17,17,17,.26)] transition hover:bg-[#C9A84C] hover:text-[#111111]">
         Book Now · Secure £20 Deposit
       </button>
     </div>
