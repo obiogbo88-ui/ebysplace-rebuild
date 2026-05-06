@@ -1674,7 +1674,7 @@ var orderInput = z2.object({
   })).min(1)
 });
 function getStripe() {
-  const key = process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_SECRET_KEY?.trim() || "";
+  const key = process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_SECRET_KEY?.trim();
   if (!key) throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Stripe is not configured yet." });
   if (!key.startsWith("sk_live_")) {
     throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Live Stripe payments require a live Stripe secret key. Add EBYSPLACE_LIVE_STRIPE_SECRET_KEY or configure STRIPE_SECRET_KEY with a key that starts with sk_live_." });
