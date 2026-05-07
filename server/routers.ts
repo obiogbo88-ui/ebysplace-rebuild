@@ -193,16 +193,23 @@ function extensionFromFileName(fileName: string) {
 async function uploadDataUrlAsset(input: { dataUrl: string; fileName: string; folder: string }) {
   const { mimeType, buffer } = decodeDataUrl(input.dataUrl);
   const extension = extensionFromFileName(input.fileName);
-  if (!ALLOWED_ADMIN_IMAGE_EXTENSIONS.has(extension) || !ALLOWED_ADMIN_IMAGE_MIME_TYPES.has(mimeType.toLowerCase())) {
+  const normalizedMimeType = mimeType.toLowerCase();
+  if (!ALLOWED_ADMIN_IMAGE_EXTENSIONS.has(extension) || !ALLOWED_ADMIN_IMAGE_MIME_TYPES.has(normalizedMimeType)) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Allowed image formats: jpg, jpeg, png, webp, heic, heif." });
   }
-  if ((extension === "heic" || extension === "heif" || mimeType === "image/heic" || mimeType === "image/heif")) {
+  if ((extension === "heic" || extension === "heif" || normalizedMimeType === "image/heic" || normalizedMimeType === "image/heif")) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "HEIC/HEIF files must be converted to JPG or WebP before upload." });
   }
   if (buffer.byteLength > 7 * 1024 * 1024) {
     throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Please upload an image smaller than 7MB." });
   }
-  const normalizedExtension = mimeType.includes("jpeg") ? "jpg" : mimeType.includes("webp") ? "webp" : mimeType.split("/")[1] || "png";
+  let normalizedExtension = "png";
+  if (mimeType.includes("jpeg")) normalizedExtension = "jpg";
+  else if (mimeType.includes("webp")) normalizedExtension = "webp";
+  else {
+    const mimeExtension = mimeType.split("/")[1];
+    if (mimeExtension) normalizedExtension = mimeExtension;
+  }
   const baseName = input.fileName.replace(/\.[^.]+$/, "").replace(/[^a-z0-9.-]/gi, "-").toLowerCase() || "upload";
   const uploaded = await storagePut(`${input.folder}/${Date.now()}-${baseName}.${normalizedExtension}`, buffer, mimeType);
   return { url: uploaded.url, key: uploaded.key, mimeType };

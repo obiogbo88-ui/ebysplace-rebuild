@@ -124,8 +124,8 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(dbSource).toContain("export async function updateWebsiteSection");
     expect(dbSource).toContain("export async function updateBookingStatus");
     expect(dbSource).toContain("export async function updateOrderStatus");
-    expect(dbSource).toContain("const existing = await db.select({ id: services.id }).from(services).where(eq(services.slug, service.slug)).limit(1);");
-    expect(dbSource).toContain("if (existing.length === 0) await db.insert(products).values(product);");
+    expect(dbSource).toContain("await db.insert(services).values(seedServices).onConflictDoUpdate({");
+    expect(dbSource).toContain("await db.insert(products).values(seedProducts).onConflictDoUpdate({");
     expect(adminSource).toContain("updateService.mutate");
     expect(adminSource).toContain("updateWebsiteSection.mutate");
     expect(adminSource).toContain("addGallery.mutate");

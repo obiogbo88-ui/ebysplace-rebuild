@@ -56,6 +56,7 @@ function fileToDataUrl(file: File) {
 const ADMIN_UPLOAD_ACCEPT = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
 const ADMIN_ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "heic", "heif"]);
 const ADMIN_ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"]);
+const MAX_UPLOAD_BASENAME_LENGTH = 120;
 
 function uploadFileExtension(file: File) {
   const lastDot = file.name.lastIndexOf(".");
@@ -63,7 +64,7 @@ function uploadFileExtension(file: File) {
 }
 
 function sanitizeUploadBaseName(fileName: string) {
-  return (fileName.replace(/\.[^.]+$/, "").replace(/[^a-z0-9.-]/gi, "-").toLowerCase() || "upload").slice(0, 120);
+  return (fileName.replace(/\.[^.]+$/, "").replace(/[^a-z0-9.-]/gi, "-").toLowerCase() || "upload").slice(0, MAX_UPLOAD_BASENAME_LENGTH);
 }
 
 function isHeicLikeFile(file: File) {
@@ -80,8 +81,13 @@ async function normalizeAdminUploadFile(file: File) {
   }
   if (!isHeicLikeFile(file)) return file;
 
-  const convertedBlob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
-  const normalizedBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+  let conversionResult: Blob | Blob[];
+  try {
+    conversionResult = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+  } catch {
+    throw new Error("HEIC/HEIF conversion failed. Please try a different image or use Safari/Chrome on a recent iPhone.");
+  }
+  const normalizedBlob = Array.isArray(conversionResult) ? conversionResult[0] : conversionResult;
   if (!(normalizedBlob instanceof Blob)) {
     throw new Error("Could not convert HEIC/HEIF image. Please try another photo.");
   }
