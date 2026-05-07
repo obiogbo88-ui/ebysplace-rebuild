@@ -24,6 +24,7 @@ let _pool: Pool | null = null;
 let _db: any | null = null;
 
 let _seeded = false;
+let _seedingPromise: Promise<void> | null = null;
 let _unsupportedDatabaseUrlWarned = false;
 let _missingDatabaseUrlWarned = false;
 let _databaseConnectionFailed = false;
@@ -828,14 +829,14 @@ export const seedReviews = [
 
 async function ensureSeedReviews(db: Awaited<ReturnType<typeof getDb>>) {
   if (!db) return;
-  for (const review of seedReviews) {
-    const existing = await db
-      .select({ id: reviews.id })
-      .from(reviews)
-      .where(and(eq(reviews.customerName, review.customerName), eq(reviews.reviewText, review.reviewText)))
-      .limit(1);
-    if (existing.length === 0) await db.insert(reviews).values(review);
-  }
+  await db.insert(reviews).values(seedReviews).onConflictDoUpdate({
+    target: [reviews.customerName, reviews.reviewText, reviews.source],
+    set: {
+      rating: sql`excluded."rating"`,
+      status: sql`excluded."status"`,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    },
+  });
 }
 
 export const seedGallery = [
@@ -863,22 +864,36 @@ function isUsableImageUrl(value: unknown) {
 
 async function ensureSeedProducts(db: Awaited<ReturnType<typeof getDb>>) {
   if (!db) return;
-  for (const product of seedProducts) {
-    const existing = await db.select({ id: products.id }).from(products).where(eq(products.slug, product.slug)).limit(1);
-    if (existing.length === 0) await db.insert(products).values(product);
-  }
+  await db.insert(products).values(seedProducts).onConflictDoUpdate({
+    target: products.slug,
+    set: {
+      name: sql`excluded."name"`,
+      category: sql`excluded."category"`,
+      description: sql`excluded."description"`,
+      price: sql`excluded."price"`,
+      imageUrl: sql`excluded."imageUrl"`,
+      badge: sql`excluded."badge"`,
+      seoTitle: sql`excluded."seoTitle"`,
+      seoDescription: sql`excluded."seoDescription"`,
+      stockStatus: sql`excluded."stockStatus"`,
+      stockQuantity: sql`excluded."stockQuantity"`,
+      isFeatured: sql`excluded."isFeatured"`,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    },
+  });
 }
 
 async function ensureSeedGallery(db: Awaited<ReturnType<typeof getDb>>) {
   if (!db) return;
-  for (const item of seedGallery) {
-    const existing = await db.select({ id: galleryImages.id }).from(galleryImages).where(eq(galleryImages.title, item.title)).limit(1);
-    if (existing.length === 0) {
-      await db.insert(galleryImages).values(item);
-    } else {
-      await db.update(galleryImages).set({ ...item, isPublished: "true" }).where(eq(galleryImages.id, existing[0].id));
-    }
-  }
+  await db.insert(galleryImages).values(seedGallery.map((item) => ({ ...item, isPublished: "true" as const }))).onConflictDoUpdate({
+    target: [galleryImages.title, galleryImages.category],
+    set: {
+      imageUrl: sql`excluded."imageUrl"`,
+      altText: sql`excluded."altText"`,
+      sortOrder: sql`excluded."sortOrder"`,
+      isPublished: sql`excluded."isPublished"`,
+    },
+  });
 }
 
 export const seedWebsiteSections = [
@@ -900,22 +915,76 @@ export const seedWebsiteSections = [
 async function seedIfNeeded() {
   const db = await getDb();
   if (!db || _seeded) return;
-  _seeded = true;
-  for (const service of seedServices) {
-    const existing = await db.select({ id: services.id }).from(services).where(eq(services.slug, service.slug)).limit(1);
-    if (existing.length === 0) await db.insert(services).values(service);
-  }
-  await ensureSeedProducts(db);
-  const productRows = await db.select().from(products);
-  const variantRows = await db.select().from(productVariants);
-  const scarf = productRows.find((product) => product.slug === "satin-edge-scarf");
-  const hair = productRows.find((product) => product.slug === "premium-braiding-hair");
-  if (scarf && !variantRows.some((variant) => variant.productId === scarf.id)) await db.insert(productVariants).values([{ productId: scarf.id, name: "Black", colourHex: "#111111", stockQuantity: 18 }, { productId: scarf.id, name: "Gold", colourHex: "#c8a95a", stockQuantity: 16 }]);
-  if (hair && !variantRows.some((variant) => variant.productId === hair.id)) await db.insert(productVariants).values([{ productId: hair.id, name: "1B Natural Black", colourHex: "#1b1715", stockQuantity: 42 }, { productId: hair.id, name: "30 Auburn", colourHex: "#8a4b2a", stockQuantity: 28 }, { productId: hair.id, name: "613 Blonde", colourHex: "#d6b779", stockQuantity: 24 }]);
-  await ensureSeedReviews(db);
-  const existingSections = await db.select().from(websiteSections).where(eq(websiteSections.sectionKey, "about_us")).limit(1);
-  if (existingSections.length === 0) await db.insert(websiteSections).values(seedWebsiteSections);
-  await ensureSeedGallery(db);
+  if (_seedingPromise) return _seedingPromise;
+  _seedingPromise = (async () => {
+    await db.insert(services).values(seedServices).onConflictDoUpdate({
+      target: services.slug,
+      set: {
+        name: sql`excluded."name"`,
+        category: sql`excluded."category"`,
+        description: sql`excluded."description"`,
+        duration: sql`excluded."duration"`,
+        priceFrom: sql`excluded."priceFrom"`,
+        badge: sql`excluded."badge"`,
+        imageUrl: sql`excluded."imageUrl"`,
+        isBookable: sql`excluded."isBookable"`,
+        isFeatured: sql`excluded."isFeatured"`,
+        sortOrder: sql`excluded."sortOrder"`,
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+      },
+    });
+    await ensureSeedProducts(db);
+    const productRows = await db.select().from(products);
+    const scarf = productRows.find((product) => product.slug === "satin-edge-scarf");
+    const hair = productRows.find((product) => product.slug === "premium-braiding-hair");
+    if (scarf) {
+      await db.insert(productVariants).values([
+        { productId: scarf.id, name: "Black", colourHex: "#111111", stockQuantity: 18 },
+        { productId: scarf.id, name: "Gold", colourHex: "#c8a95a", stockQuantity: 16 },
+      ]).onConflictDoUpdate({
+        target: [productVariants.productId, productVariants.name],
+        set: {
+          colourHex: sql`excluded."colourHex"`,
+          stockQuantity: sql`excluded."stockQuantity"`,
+        },
+      });
+    }
+    if (hair) {
+      await db.insert(productVariants).values([
+        { productId: hair.id, name: "1B Natural Black", colourHex: "#1b1715", stockQuantity: 42 },
+        { productId: hair.id, name: "30 Auburn", colourHex: "#8a4b2a", stockQuantity: 28 },
+        { productId: hair.id, name: "613 Blonde", colourHex: "#d6b779", stockQuantity: 24 },
+      ]).onConflictDoUpdate({
+        target: [productVariants.productId, productVariants.name],
+        set: {
+          colourHex: sql`excluded."colourHex"`,
+          stockQuantity: sql`excluded."stockQuantity"`,
+        },
+      });
+    }
+    await ensureSeedReviews(db);
+    await db.insert(websiteSections).values(seedWebsiteSections).onConflictDoUpdate({
+      target: websiteSections.sectionKey,
+      set: {
+        title: sql`excluded."title"`,
+        eyebrow: sql`excluded."eyebrow"`,
+        body: sql`excluded."body"`,
+        ctaLabel: sql`excluded."ctaLabel"`,
+        ctaHref: sql`excluded."ctaHref"`,
+        imageUrl: sql`excluded."imageUrl"`,
+        portraitImageUrl: sql`excluded."portraitImageUrl"`,
+        portraitDescription: sql`excluded."portraitDescription"`,
+        sortOrder: sql`excluded."sortOrder"`,
+        isPublished: sql`excluded."isPublished"`,
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+      },
+    });
+    await ensureSeedGallery(db);
+    _seeded = true;
+  })().finally(() => {
+    _seedingPromise = null;
+  });
+  await _seedingPromise;
 }
 
 function mergeWithSeedServices(rows: Array<typeof services.$inferSelect>, category?: string) {
@@ -1204,7 +1273,6 @@ export async function getBookingByCheckoutSession(stripeCheckoutSessionId: strin
 }
 
 export async function createOrderWithItems(input: { customerName: string; customerEmail: string; customerPhone?: string; addressLine1?: string | null; addressLine2?: string | null; city?: string | null; county?: string | null; postcode?: string | null; deliveryNote?: string; items: Array<{ productId: number; variantId?: number; productName: string; variantName?: string; quantity: number; unitPrice: string }> }) {
-  await seedIfNeeded();
   const db = await getDb();
   if (!db) return { id: Date.now(), items: input.items };
   await ensureOrderLocationColumns();

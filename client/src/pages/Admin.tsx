@@ -3,6 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import heic2any from "heic2any";
 import {
   CalendarDays,
   Images,
@@ -50,6 +51,47 @@ function fileToDataUrl(file: File) {
     reader.onerror = () => reject(new Error("Could not read the selected image."));
     reader.readAsDataURL(file);
   });
+}
+
+const ADMIN_UPLOAD_ACCEPT = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
+const ADMIN_ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "heic", "heif"]);
+const ADMIN_ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"]);
+const MAX_UPLOAD_BASENAME_LENGTH = 120;
+
+function uploadFileExtension(file: File) {
+  const lastDot = file.name.lastIndexOf(".");
+  return lastDot >= 0 ? file.name.slice(lastDot + 1).toLowerCase() : "";
+}
+
+function sanitizeUploadBaseName(fileName: string) {
+  return (fileName.replace(/\.[^.]+$/, "").replace(/[^a-z0-9.-]/gi, "-").toLowerCase() || "upload").slice(0, MAX_UPLOAD_BASENAME_LENGTH);
+}
+
+function isHeicLikeFile(file: File) {
+  const extension = uploadFileExtension(file);
+  const mime = (file.type || "").toLowerCase();
+  return extension === "heic" || extension === "heif" || mime === "image/heic" || mime === "image/heif";
+}
+
+async function normalizeAdminUploadFile(file: File) {
+  const extension = uploadFileExtension(file);
+  const mime = (file.type || "").toLowerCase();
+  if (!ADMIN_ALLOWED_EXTENSIONS.has(extension) || !ADMIN_ALLOWED_MIME_TYPES.has(mime)) {
+    throw new Error("Allowed image formats: jpg, jpeg, png, webp, heic, heif.");
+  }
+  if (!isHeicLikeFile(file)) return file;
+
+  let conversionResult: Blob | Blob[];
+  try {
+    conversionResult = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+  } catch {
+    throw new Error("HEIC/HEIF conversion failed. Please try a different image or use Safari/Chrome on a recent iPhone.");
+  }
+  const normalizedBlob = Array.isArray(conversionResult) ? conversionResult[0] : conversionResult;
+  if (!(normalizedBlob instanceof Blob)) {
+    throw new Error("Could not convert HEIC/HEIF image. Please try another photo.");
+  }
+  return new File([normalizedBlob], `${sanitizeUploadBaseName(file.name)}.jpg`, { type: "image/jpeg" });
 }
 
 const galleryCategories = ["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"] as const;
@@ -256,8 +298,9 @@ export default function Admin() {
       return;
     }
     try {
-      const dataUrl = await fileToDataUrl(file);
-      await uploadProductImage.mutateAsync({ productId: Number(product.id), productName: product.name.trim() || "product", dataUrl, fileName: file.name });
+      const normalizedFile = await normalizeAdminUploadFile(file);
+      const dataUrl = await fileToDataUrl(normalizedFile);
+      await uploadProductImage.mutateAsync({ productId: Number(product.id), productName: product.name.trim() || "product", dataUrl, fileName: normalizedFile.name });
     } catch (error: any) {
       toast.error(error.message || "Product image upload failed");
     }
@@ -267,8 +310,9 @@ export default function Admin() {
     if (!file) return;
     try {
       setUploadingServiceId(service.id);
-      const dataUrl = await fileToDataUrl(file);
-      await uploadServiceImage.mutateAsync({ serviceId: service.id, serviceName: service.name, dataUrl, fileName: file.name });
+      const normalizedFile = await normalizeAdminUploadFile(file);
+      const dataUrl = await fileToDataUrl(normalizedFile);
+      await uploadServiceImage.mutateAsync({ serviceId: service.id, serviceName: service.name, dataUrl, fileName: normalizedFile.name });
     } catch (error: any) {
       toast.error(error.message || "Service image upload failed");
     } finally {
@@ -279,8 +323,9 @@ export default function Admin() {
   async function handleGalleryImageUpload(file?: File) {
     if (!file) return;
     try {
-      const dataUrl = await fileToDataUrl(file);
-      await uploadGalleryImage.mutateAsync({ dataUrl, fileName: file.name });
+      const normalizedFile = await normalizeAdminUploadFile(file);
+      const dataUrl = await fileToDataUrl(normalizedFile);
+      await uploadGalleryImage.mutateAsync({ dataUrl, fileName: normalizedFile.name });
     } catch (error: any) {
       toast.error(error.message || "Gallery image upload failed");
     }
@@ -289,8 +334,9 @@ export default function Admin() {
   async function handleAboutPortraitUpload(file?: File) {
     if (!file) return;
     try {
-      const dataUrl = await fileToDataUrl(file);
-      await uploadWebsiteSectionImage.mutateAsync({ sectionKey: "about_us", imageRole: "portrait", dataUrl, fileName: file.name });
+      const normalizedFile = await normalizeAdminUploadFile(file);
+      const dataUrl = await fileToDataUrl(normalizedFile);
+      await uploadWebsiteSectionImage.mutateAsync({ sectionKey: "about_us", imageRole: "portrait", dataUrl, fileName: normalizedFile.name });
     } catch (error: any) {
       toast.error(error.message || "About Us round image upload failed");
     }
@@ -523,7 +569,7 @@ export default function Admin() {
                       <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Badge<input defaultValue={product.badge || ""} id={`product-badge-${product.id}`} /></label>
                     </div>
                     <div className="rounded-2xl bg-white/[0.04] p-3 text-sm text-white/70"><b className="text-primary">SEO preview:</b> {product.seoTitle || `${product.name} | Eby’s Place`}<span className="block text-white/55">{product.seoDescription || product.description}</span></div>
-                    <details className="rounded-2xl border border-primary/20 bg-black/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-primary">Update product image</summary><div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]"><input id={`product-image-${product.id}`} defaultValue={product.imageUrl || ""} placeholder="Product image URL" /><label className="btn-dark cursor-pointer py-2"><UploadCloud className="mr-2 h-4 w-4" /> Upload product image<input className="sr-only" type="file" accept="image/*" onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])} /></label></div>{product.imageUrl && <div className="mt-3 media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" /></div>}</details>
+                    <details className="rounded-2xl border border-primary/20 bg-black/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-primary">Update product image</summary><div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]"><input id={`product-image-${product.id}`} defaultValue={product.imageUrl || ""} placeholder="Product image URL" /><label className="btn-dark cursor-pointer py-2"><UploadCloud className="mr-2 h-4 w-4" /> Upload product image<input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])} /></label></div>{product.imageUrl && <div className="mt-3 media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" /></div>}</details>
                     <div className="rounded-2xl border border-primary/20 bg-black/20 p-3 text-sm text-white/70">
                       <b className="block text-primary">Shop colour previews</b>
                       <span className="mt-1 block text-white/55">These are the colour options customers click on the shop page to update the product preview before checkout.</span>
@@ -575,7 +621,7 @@ export default function Admin() {
                           <input id={`service-image-${service.id}`} defaultValue={service.imageUrl || ""} placeholder="Service image URL" />
                           <label className="btn-dark cursor-pointer py-2">
                             <UploadCloud className="mr-2 h-4 w-4" /> {uploadingServiceId === service.id ? "Uploading…" : "Upload image"}
-                            <input className="sr-only" type="file" accept="image/*" disabled={uploadingServiceId === service.id} onChange={(event) => handleServiceImageUpload(service, event.target.files?.[0])} />
+                            <input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} disabled={uploadingServiceId === service.id} onChange={(event) => handleServiceImageUpload(service, event.target.files?.[0])} />
                           </label>
                         </div>
                       </details>
@@ -599,7 +645,7 @@ export default function Admin() {
                       {about.portraitImageUrl || about.imageUrl ? <img className="h-full w-full rounded-full object-cover object-[center_18%]" src={about.portraitImageUrl || about.imageUrl} alt="About Us round preview" /> : <div className="flex h-full w-full items-center justify-center rounded-full text-center text-xs text-white/40">No round image</div>}
                     </div>
                     <div className="grid gap-3">
-                      <label className="btn-dark cursor-pointer justify-start"><UploadCloud className="mr-2 h-4 w-4" /> {uploadWebsiteSectionImage.isPending ? "Uploading About Us round image…" : "Upload About Us round image"}<input className="sr-only" type="file" accept="image/*" disabled={uploadWebsiteSectionImage.isPending} onChange={(event) => handleAboutPortraitUpload(event.target.files?.[0])} /></label>
+                      <label className="btn-dark cursor-pointer justify-start"><UploadCloud className="mr-2 h-4 w-4" /> {uploadWebsiteSectionImage.isPending ? "Uploading About Us round image…" : "Upload About Us round image"}<input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} disabled={uploadWebsiteSectionImage.isPending} onChange={(event) => handleAboutPortraitUpload(event.target.files?.[0])} /></label>
                       <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Round image URL<input id="about-portrait-image" defaultValue={about.portraitImageUrl || about.imageUrl || ""} placeholder="Supabase Storage public image URL" /></label>
                       <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Description beneath round image<textarea id="about-portrait-description" defaultValue={about.portraitDescription || "Eberechi Ogbo | Founder & Service Lead"} rows={3} /></label>
                     </div>
@@ -620,7 +666,7 @@ export default function Admin() {
               </select>
               <label className="btn-dark cursor-pointer justify-start">
                 <UploadCloud className="mr-2 h-4 w-4" /> {uploadGalleryImage.isPending ? "Uploading image…" : "Upload gallery image"}
-                <input className="sr-only" type="file" accept="image/*" disabled={uploadGalleryImage.isPending} onChange={(event) => handleGalleryImageUpload(event.target.files?.[0])} />
+                <input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} disabled={uploadGalleryImage.isPending} onChange={(event) => handleGalleryImageUpload(event.target.files?.[0])} />
               </label>
               <input required placeholder="S3 image URL" value={gallery.imageUrl} onChange={(event) => setGallery({ ...gallery, imageUrl: event.target.value })} />
               {gallery.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={gallery.imageUrl} alt="Gallery preview" /></div>}

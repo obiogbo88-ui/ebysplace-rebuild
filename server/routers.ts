@@ -181,17 +181,37 @@ function decodeDataUrl(dataUrl: string) {
   return { mimeType: match[1], buffer: Buffer.from(match[2], "base64") };
 }
 
+const ALLOWED_ADMIN_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "heic", "heif"]);
+const ALLOWED_ADMIN_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"]);
+
+function extensionFromFileName(fileName: string) {
+  const lastDot = fileName.lastIndexOf(".");
+  if (lastDot < 0) return "";
+  return fileName.slice(lastDot + 1).toLowerCase();
+}
+
 async function uploadDataUrlAsset(input: { dataUrl: string; fileName: string; folder: string }) {
   const { mimeType, buffer } = decodeDataUrl(input.dataUrl);
-  if (!mimeType.startsWith("image/")) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Only image uploads are supported for admin media." });
+  const extension = extensionFromFileName(input.fileName);
+  const normalizedMimeType = mimeType.toLowerCase();
+  if (!ALLOWED_ADMIN_IMAGE_EXTENSIONS.has(extension) || !ALLOWED_ADMIN_IMAGE_MIME_TYPES.has(normalizedMimeType)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Allowed image formats: jpg, jpeg, png, webp, heic, heif." });
+  }
+  if ((extension === "heic" || extension === "heif" || normalizedMimeType === "image/heic" || normalizedMimeType === "image/heif")) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "HEIC/HEIF files must be converted to JPG or WebP before upload." });
   }
   if (buffer.byteLength > 7 * 1024 * 1024) {
     throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Please upload an image smaller than 7MB." });
   }
-  const extension = mimeType.includes("jpeg") ? "jpg" : mimeType.split("/")[1] || "png";
+  let normalizedExtension = "png";
+  if (mimeType.includes("jpeg")) normalizedExtension = "jpg";
+  else if (mimeType.includes("webp")) normalizedExtension = "webp";
+  else {
+    const mimeExtension = mimeType.split("/")[1];
+    if (mimeExtension) normalizedExtension = mimeExtension;
+  }
   const baseName = input.fileName.replace(/\.[^.]+$/, "").replace(/[^a-z0-9.-]/gi, "-").toLowerCase() || "upload";
-  const uploaded = await storagePut(`${input.folder}/${Date.now()}-${baseName}.${extension}`, buffer, mimeType);
+  const uploaded = await storagePut(`${input.folder}/${Date.now()}-${baseName}.${normalizedExtension}`, buffer, mimeType);
   return { url: uploaded.url, key: uploaded.key, mimeType };
 }
 
