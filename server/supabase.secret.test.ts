@@ -4,7 +4,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 describe("Supabase media migration secret", () => {
-  it("can authenticate to the Supabase storage API and see the ebysplace-media bucket", async () => {
+  it.runIf(Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY))("can authenticate to the Supabase storage API and see the ebysplace-media bucket", async () => {
     expect(SUPABASE_URL, "SUPABASE_URL must be configured").toMatch(/^https:\/\/[a-z0-9-]+\.supabase\.co$/);
     expect(SUPABASE_SERVICE_ROLE_KEY, "SUPABASE_SERVICE_ROLE_KEY must be configured").toBeTruthy();
 

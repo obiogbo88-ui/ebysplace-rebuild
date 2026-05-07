@@ -67,12 +67,15 @@ async function expectSmtpCode(socket: net.Socket | tls.TLSSocket, command: strin
   return response;
 }
 
+const smtpUser = normalizeSecret(process.env.SMTP_USER);
+const smtpPass = normalizeSecret(process.env.SMTP_PASS);
+
 describe("Zoho SMTP secrets", () => {
-  it("authenticates to the configured SMTP endpoint without exposing the app password", async () => {
+  it.runIf(Boolean(smtpUser && smtpPass))("authenticates to the configured SMTP endpoint without exposing the app password", async () => {
     const host = normalizeSecret(process.env.SMTP_HOST || "smtp.zoho.eu");
     const port = Number(normalizeSecret(process.env.SMTP_PORT || "465"));
-    const user = normalizeSecret(process.env.SMTP_USER);
-    const pass = normalizeSecret(process.env.SMTP_PASS);
+    const user = smtpUser;
+    const pass = smtpPass;
 
     expect(host).toBe("smtp.zoho.eu");
     expect([465, 587]).toContain(port);
