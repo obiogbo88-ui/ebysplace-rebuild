@@ -11,38 +11,39 @@ import Stripe from "stripe";
 
 // server/db.ts
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 
 // drizzle/schema.ts
 import {
   bigint,
-  decimal,
-  int,
+  integer,
   json,
-  mysqlEnum,
-  mysqlTable,
+  numeric,
+  pgEnum,
+  pgTable,
+  serial,
   text,
   timestamp,
   varchar
-} from "drizzle-orm/mysql-core";
-var userRoleEnum = (name) => mysqlEnum(name, ["user", "admin"]);
-var trueFalseEnum = (name) => mysqlEnum(name, ["true", "false"]);
-var serviceCategoryEnum = (name) => mysqlEnum(name, ["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
-var bookingStatusEnum = (name) => mysqlEnum(name, ["pending", "confirmed", "completed", "cancelled"]);
-var bookingLocationTypeEnum = (name) => mysqlEnum(name, ["studio", "home_service"]);
-var depositStatusEnum = (name) => mysqlEnum(name, ["unpaid", "checkout_started", "paid", "failed", "refunded"]);
-var productCategoryEnum = (name) => mysqlEnum(name, ["Accessories", "Aftercare", "Hair Attachments"]);
-var stockStatusEnum = (name) => mysqlEnum(name, ["in_stock", "low_stock", "out_of_stock"]);
-var orderStatusEnum = (name) => mysqlEnum(name, ["draft", "pending_payment", "paid", "fulfilling", "shipped", "completed", "cancelled"]);
-var galleryCategoryEnum = (name) => mysqlEnum(name, ["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"]);
-var reviewStatusEnum = (name) => mysqlEnum(name, ["pending", "approved", "rejected"]);
-var tryOnStatusEnum = (name) => mysqlEnum(name, ["pending", "completed", "failed"]);
-var emailNotificationStatusEnum = (name) => mysqlEnum(name, ["pending", "sent", "failed", "retried"]);
-var emailNotificationAudienceEnum = (name) => mysqlEnum(name, ["owner", "customer"]);
-var emailNotificationEntityEnum = (name) => mysqlEnum(name, ["booking", "order"]);
-var users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
+} from "drizzle-orm/pg-core";
+var userRoleEnum = pgEnum("user_role_enum", ["user", "admin"]);
+var trueFalseEnum = pgEnum("true_false_enum", ["true", "false"]);
+var serviceCategoryEnum = pgEnum("service_category_enum", ["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
+var bookingStatusEnum = pgEnum("booking_status_enum", ["pending", "confirmed", "completed", "cancelled"]);
+var bookingLocationTypeEnum = pgEnum("booking_location_type_enum", ["studio", "home_service"]);
+var depositStatusEnum = pgEnum("deposit_status_enum", ["unpaid", "checkout_started", "paid", "failed", "refunded"]);
+var productCategoryEnum = pgEnum("product_category_enum", ["Accessories", "Aftercare", "Hair Attachments"]);
+var stockStatusEnum = pgEnum("stock_status_enum", ["in_stock", "low_stock", "out_of_stock"]);
+var orderStatusEnum = pgEnum("order_status_enum", ["draft", "pending_payment", "paid", "fulfilling", "shipped", "completed", "cancelled"]);
+var galleryCategoryEnum = pgEnum("gallery_category_enum", ["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"]);
+var reviewStatusEnum = pgEnum("review_status_enum", ["pending", "approved", "rejected"]);
+var tryOnStatusEnum = pgEnum("try_on_status_enum", ["pending", "completed", "failed"]);
+var emailNotificationStatusEnum = pgEnum("email_notification_status_enum", ["pending", "sent", "failed", "retried"]);
+var emailNotificationAudienceEnum = pgEnum("email_notification_audience_enum", ["owner", "customer"]);
+var emailNotificationEntityEnum = pgEnum("email_notification_entity_enum", ["booking", "order"]);
+var users = pgTable("users", {
+  id: serial("id").primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -53,8 +54,8 @@ var users = mysqlTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull()
 });
-var websiteSections = mysqlTable("websiteSections", {
-  id: int("id").autoincrement().primaryKey(),
+var websiteSections = pgTable("websiteSections", {
+  id: serial("id").primaryKey(),
   sectionKey: varchar("sectionKey", { length: 80 }).notNull().unique(),
   title: varchar("title", { length: 255 }).notNull(),
   eyebrow: varchar("eyebrow", { length: 160 }),
@@ -64,30 +65,30 @@ var websiteSections = mysqlTable("websiteSections", {
   imageUrl: varchar("imageUrl", { length: 800 }),
   portraitImageUrl: varchar("portraitImageUrl", { length: 800 }),
   portraitDescription: text("portraitDescription"),
-  sortOrder: int("sortOrder").default(0).notNull(),
+  sortOrder: integer("sortOrder").default(0).notNull(),
   isPublished: trueFalseEnum("isPublished").default("true").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var services = mysqlTable("services", {
-  id: int("id").autoincrement().primaryKey(),
+var services = pgTable("services", {
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 180 }).notNull(),
   slug: varchar("slug", { length: 220 }).notNull().unique(),
   category: serviceCategoryEnum("category").notNull(),
   description: text("description").notNull(),
   duration: varchar("duration", { length: 80 }).notNull(),
-  priceFrom: decimal("priceFrom", { precision: 10, scale: 2 }).notNull(),
+  priceFrom: numeric("priceFrom", { precision: 10, scale: 2 }).notNull(),
   badge: varchar("badge", { length: 80 }),
   imageUrl: varchar("imageUrl", { length: 800 }),
   isBookable: trueFalseEnum("isBookable").default("true").notNull(),
   isFeatured: trueFalseEnum("isFeatured").default("false").notNull(),
-  sortOrder: int("sortOrder").default(0).notNull(),
+  sortOrder: integer("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var bookings = mysqlTable("bookings", {
-  id: int("id").autoincrement().primaryKey(),
-  serviceId: int("serviceId"),
+var bookings = pgTable("bookings", {
+  id: serial("id").primaryKey(),
+  serviceId: integer("serviceId"),
   serviceName: varchar("serviceName", { length: 180 }).notNull(),
   clientName: varchar("clientName", { length: 180 }).notNull(),
   clientEmail: varchar("clientEmail", { length: 320 }).notNull(),
@@ -99,7 +100,7 @@ var bookings = mysqlTable("bookings", {
   county: varchar("county", { length: 120 }),
   postcode: varchar("postcode", { length: 40 }),
   deliveryNote: text("deliveryNote"),
-  homeServiceSurcharge: decimal("homeServiceSurcharge", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  homeServiceSurcharge: numeric("homeServiceSurcharge", { precision: 10, scale: 2 }).default("0.00").notNull(),
   appointmentDate: varchar("appointmentDate", { length: 20 }).notNull(),
   appointmentTime: varchar("appointmentTime", { length: 20 }).notNull(),
   status: bookingStatusEnum("status").default("pending").notNull(),
@@ -109,33 +110,33 @@ var bookings = mysqlTable("bookings", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var products = mysqlTable("products", {
-  id: int("id").autoincrement().primaryKey(),
+var products = pgTable("products", {
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 180 }).notNull(),
   slug: varchar("slug", { length: 220 }).notNull().unique(),
   seoTitle: varchar("seoTitle", { length: 255 }),
   seoDescription: text("seoDescription"),
   category: productCategoryEnum("category").notNull(),
   description: text("description").notNull(),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  price: numeric("price", { precision: 10, scale: 2 }).notNull(),
   imageUrl: varchar("imageUrl", { length: 800 }),
   badge: varchar("badge", { length: 80 }),
   stockStatus: stockStatusEnum("stockStatus").default("in_stock").notNull(),
-  stockQuantity: int("stockQuantity").default(0).notNull(),
+  stockQuantity: integer("stockQuantity").default(0).notNull(),
   isFeatured: trueFalseEnum("isFeatured").default("false").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var productVariants = mysqlTable("productVariants", {
-  id: int("id").autoincrement().primaryKey(),
-  productId: int("productId").notNull(),
+var productVariants = pgTable("productVariants", {
+  id: serial("id").primaryKey(),
+  productId: integer("productId").notNull(),
   name: varchar("name", { length: 120 }).notNull(),
   colourHex: varchar("colourHex", { length: 20 }),
-  stockQuantity: int("stockQuantity").default(0).notNull(),
+  stockQuantity: integer("stockQuantity").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var orders = mysqlTable("orders", {
-  id: int("id").autoincrement().primaryKey(),
+var orders = pgTable("orders", {
+  id: serial("id").primaryKey(),
   customerName: varchar("customerName", { length: 180 }).notNull(),
   customerEmail: varchar("customerEmail", { length: 320 }).notNull(),
   customerPhone: varchar("customerPhone", { length: 80 }),
@@ -152,54 +153,54 @@ var orders = mysqlTable("orders", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var orderItems = mysqlTable("orderItems", {
-  id: int("id").autoincrement().primaryKey(),
-  orderId: int("orderId").notNull(),
-  productId: int("productId").notNull(),
-  variantId: int("variantId"),
+var orderItems = pgTable("orderItems", {
+  id: serial("id").primaryKey(),
+  orderId: integer("orderId").notNull(),
+  productId: integer("productId").notNull(),
+  variantId: integer("variantId"),
   productName: varchar("productName", { length: 180 }).notNull(),
   variantName: varchar("variantName", { length: 120 }),
-  quantity: int("quantity").default(1).notNull(),
-  unitPrice: decimal("unitPrice", { precision: 10, scale: 2 }).notNull()
+  quantity: integer("quantity").default(1).notNull(),
+  unitPrice: numeric("unitPrice", { precision: 10, scale: 2 }).notNull()
 });
-var galleryImages = mysqlTable("galleryImages", {
-  id: int("id").autoincrement().primaryKey(),
+var galleryImages = pgTable("galleryImages", {
+  id: serial("id").primaryKey(),
   title: varchar("title", { length: 180 }).notNull(),
   category: galleryCategoryEnum("category").notNull(),
   imageUrl: varchar("imageUrl", { length: 800 }).notNull(),
   altText: varchar("altText", { length: 255 }).notNull(),
   isPublished: trueFalseEnum("isPublished").default("true").notNull(),
-  sortOrder: int("sortOrder").default(0).notNull(),
+  sortOrder: integer("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var reviews = mysqlTable("reviews", {
-  id: int("id").autoincrement().primaryKey(),
+var reviews = pgTable("reviews", {
+  id: serial("id").primaryKey(),
   customerName: varchar("customerName", { length: 180 }).notNull(),
-  rating: int("rating").notNull(),
+  rating: integer("rating").notNull(),
   reviewText: text("reviewText").notNull(),
   status: reviewStatusEnum("status").default("pending").notNull(),
   source: varchar("source", { length: 80 }).default("website").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var newsletterSubscribers = mysqlTable("newsletterSubscribers", {
-  id: int("id").autoincrement().primaryKey(),
+var newsletterSubscribers = pgTable("newsletterSubscribers", {
+  id: serial("id").primaryKey(),
   email: varchar("email", { length: 320 }).notNull().unique(),
   productAlerts: trueFalseEnum("productAlerts").default("false").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var analyticsEvents = mysqlTable("analyticsEvents", {
-  id: int("id").autoincrement().primaryKey(),
+var analyticsEvents = pgTable("analyticsEvents", {
+  id: serial("id").primaryKey(),
   eventName: varchar("eventName", { length: 120 }).notNull(),
   pagePath: varchar("pagePath", { length: 500 }).notNull(),
   metadata: json("metadata"),
   createdAtMs: bigint("createdAtMs", { mode: "number" }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
-var emailNotificationLogs = mysqlTable("emailNotificationLogs", {
-  id: int("id").autoincrement().primaryKey(),
+var emailNotificationLogs = pgTable("emailNotificationLogs", {
+  id: serial("id").primaryKey(),
   entityType: emailNotificationEntityEnum("entityType").notNull(),
-  entityId: int("entityId").notNull(),
+  entityId: integer("entityId").notNull(),
   audience: emailNotificationAudienceEnum("audience").notNull(),
   recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
   subject: varchar("subject", { length: 255 }).notNull(),
@@ -209,14 +210,14 @@ var emailNotificationLogs = mysqlTable("emailNotificationLogs", {
   smtpHost: varchar("smtpHost", { length: 255 }),
   messageId: varchar("messageId", { length: 255 }),
   errorMessage: text("errorMessage"),
-  attempts: int("attempts").default(0).notNull(),
+  attempts: integer("attempts").default(0).notNull(),
   lastAttemptAtMs: bigint("lastAttemptAtMs", { mode: "number" }),
   sentAtMs: bigint("sentAtMs", { mode: "number" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
-var tryOnGenerations = mysqlTable("tryOnGenerations", {
-  id: int("id").autoincrement().primaryKey(),
+var tryOnGenerations = pgTable("tryOnGenerations", {
+  id: serial("id").primaryKey(),
   styleName: varchar("styleName", { length: 160 }).notNull(),
   originalImageUrl: varchar("originalImageUrl", { length: 800 }).notNull(),
   generatedImageUrl: varchar("generatedImageUrl", { length: 800 }),
@@ -229,24 +230,21 @@ var tryOnGenerations = mysqlTable("tryOnGenerations", {
 // server/db.ts
 var _pool = null;
 var _db = null;
-function getDbUnchecked(pool) {
-  return drizzle(pool);
-}
 var _seeded = false;
 var _unsupportedDatabaseUrlWarned = false;
 var _missingDatabaseUrlWarned = false;
 var _databaseConnectionFailed = false;
 var _lastDatabaseUrlFingerprint = null;
-function isMysqlConnectionString(connectionString) {
+function isPostgresConnectionString(connectionString) {
   try {
     const parsed = new URL(connectionString);
-    return ["mysql:", "mysql2:", "mariadb:"].includes(parsed.protocol);
+    return ["postgresql:", "postgres:"].includes(parsed.protocol);
   } catch {
     return false;
   }
 }
 function requiresSsl(connectionString) {
-  return /ssl-mode=require|sslmode=require|tidbcloud|planetscale|mysql.database.azure.com/i.test(connectionString);
+  return /sslmode=require|ssl=true|supabase\.co/i.test(connectionString);
 }
 function getDatabaseUrl() {
   return process.env.DATABASE_URL?.trim() || "";
@@ -275,17 +273,17 @@ async function getDb() {
   if (_lastDatabaseUrlFingerprint !== fingerprint) {
     _lastDatabaseUrlFingerprint = fingerprint;
     _databaseConnectionFailed = false;
-    console.error("[Database] DATABASE_URL detected for MySQL initialisation", {
+    console.error("[Database] DATABASE_URL detected for PostgreSQL initialisation", {
       fingerprint,
-      isMysql: isMysqlConnectionString(connectionString),
+      isPostgres: isPostgresConnectionString(connectionString),
       requiresSsl: requiresSsl(connectionString),
       nodeEnv: process.env.NODE_ENV,
       vercelEnv: process.env.VERCEL_ENV
     });
   }
-  if (!isMysqlConnectionString(connectionString)) {
+  if (!isPostgresConnectionString(connectionString)) {
     if (!_unsupportedDatabaseUrlWarned) {
-      console.error("[Database] Ignoring non-MySQL DATABASE_URL. The app expects a MySQL/TiDB connection string and will use safe seed-data fallbacks until one is configured.", { fingerprint });
+      console.error("[Database] Ignoring non-PostgreSQL DATABASE_URL. The app expects a postgresql:// connection string (e.g. from Supabase) and will use safe seed-data fallbacks until one is configured.", { fingerprint });
       _unsupportedDatabaseUrlWarned = true;
     }
     return null;
@@ -293,26 +291,261 @@ async function getDb() {
   if (_databaseConnectionFailed) return null;
   if (!_db) {
     try {
-      _pool = mysql.createPool({
-        uri: connectionString,
-        connectionLimit: 3,
-        maxIdle: 3,
-        idleTimeout: 1e4,
-        connectTimeout: 1e4,
+      _pool = new Pool({
+        connectionString,
+        max: 3,
+        idleTimeoutMillis: 1e4,
+        connectionTimeoutMillis: 1e4,
         ssl: requiresSsl(connectionString) ? { rejectUnauthorized: false } : void 0
       });
-      await _pool.query("select 1");
-      _db = getDbUnchecked(_pool);
-      console.error("[Database] MySQL connection initialised", { fingerprint });
+      await _pool.query("SELECT 1");
+      _db = drizzle(_pool);
+      console.error("[Database] PostgreSQL connection initialised", { fingerprint });
     } catch (error) {
-      console.error("[Database] Failed to initialise MySQL connection; falling back to seed data for public reads.", { fingerprint, error });
-      await _pool?.end().catch((closeError) => console.error("[Database] Failed to close broken MySQL pool", closeError));
+      console.error("[Database] Failed to initialise PostgreSQL connection; falling back to seed data for public reads.", { fingerprint, error });
+      await _pool?.end().catch((closeError) => console.error("[Database] Failed to close broken PostgreSQL pool", closeError));
       _pool = null;
       _db = null;
       _databaseConnectionFailed = true;
     }
   }
   return _db;
+}
+function getSupabaseRestConfig() {
+  const rawUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const url = rawUrl?.replace(/\/$/, "");
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return null;
+  return { url, serviceRoleKey };
+}
+function cleanUndefinedValues(input) {
+  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== void 0));
+}
+async function supabaseRest(path2, init = {}) {
+  const config = getSupabaseRestConfig();
+  if (!config) return { ok: false, status: 0, body: null, unavailable: true };
+  const response = await fetch(`${config.url}${path2}`, {
+    ...init,
+    headers: {
+      apikey: config.serviceRoleKey,
+      Authorization: `Bearer ${config.serviceRoleKey}`,
+      "Content-Type": "application/json",
+      ...init.headers || {}
+    }
+  });
+  const text2 = await response.text();
+  let body = null;
+  if (text2) {
+    try {
+      body = JSON.parse(text2);
+    } catch {
+      body = text2;
+    }
+  }
+  if (!response.ok) console.warn("[Supabase Products] REST request failed", { path: path2, status: response.status, body });
+  return { ok: response.ok, status: response.status, body, unavailable: false };
+}
+function formatProductPrice(value) {
+  const price = Number(value ?? 0);
+  return Number.isFinite(price) ? price.toFixed(2) : "0.00";
+}
+function normalizeStockStatus(value, stockQuantity) {
+  if (value === "in_stock" || value === "low_stock" || value === "out_of_stock") return value;
+  if (value === "active" || value === "published" || value === "available") return stockQuantity > 0 ? "in_stock" : "out_of_stock";
+  if (value === "inactive" || value === "draft" || value === "archived" || value === "disabled") return "out_of_stock";
+  if (stockQuantity <= 0) return "out_of_stock";
+  if (stockQuantity <= 10) return "low_stock";
+  return "in_stock";
+}
+function normalizeFeaturedFlag(value) {
+  return value === true || value === "true" || value === 1 ? "true" : "false";
+}
+function stockStatusAfterDecrement(stockQuantity, currentStatus) {
+  if (stockQuantity <= 0) return "out_of_stock";
+  if (stockQuantity <= 10) return "low_stock";
+  return currentStatus === "out_of_stock" ? "in_stock" : normalizeStockStatus(currentStatus, stockQuantity);
+}
+function normalizeSupabaseProduct(row, variants = []) {
+  const id = Number(row.id);
+  const stockQuantity = Number(row.stockQuantity ?? row.stock ?? 0);
+  const stockStatus = normalizeStockStatus(row.stockStatus ?? row.status, Number.isFinite(stockQuantity) ? stockQuantity : 0);
+  const imageUrl = row.imageUrl ?? row.image_url ?? null;
+  const normalizedVariants = variants.map((variant) => {
+    const variantId = Number(variant.id);
+    const variantStock = Number(variant.stockQuantity ?? variant.stock ?? 0);
+    return {
+      ...variant,
+      id: Number.isFinite(variantId) && variantId > 0 ? variantId : void 0,
+      productId: Number(variant.productId ?? variant.product_id ?? id),
+      name: String(variant.name ?? variant.colour ?? "Default"),
+      colourHex: variant.colourHex ?? variant.colour_hex ?? variant.colour ?? "#c8a95a",
+      stockQuantity: Number.isFinite(variantStock) ? variantStock : 0,
+      stock: Number.isFinite(variantStock) ? variantStock : 0
+    };
+  });
+  const normalized = {
+    ...row,
+    id: Number.isFinite(id) && id > 0 ? id : void 0,
+    name: String(row.name ?? "Untitled product"),
+    slug: String(row.slug ?? row.name ?? "product").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+    seoTitle: row.seoTitle ?? row.seo_title ?? `${row.name ?? "Product"} | Eby\u2019s Place`,
+    seoDescription: row.seoDescription ?? row.seo_description ?? row.description ?? "Eby\u2019s Place shop product.",
+    category: row.category ?? "Accessories",
+    description: row.description ?? "Eby\u2019s Place shop product.",
+    price: formatProductPrice(row.price),
+    imageUrl,
+    image_url: imageUrl,
+    badge: row.badge ?? null,
+    stockStatus,
+    status: stockStatus,
+    stockQuantity: Number.isFinite(stockQuantity) ? stockQuantity : 0,
+    stock: Number.isFinite(stockQuantity) ? stockQuantity : 0,
+    colour: row.colour ?? normalizedVariants[0]?.name ?? null,
+    isFeatured: normalizeFeaturedFlag(row.isFeatured ?? row.is_featured),
+    variants: normalizedVariants
+  };
+  return normalized;
+}
+async function getSupabaseProductColumnStyle() {
+  const result = await supabaseRest("/rest/v1/products?select=*&limit=1");
+  if (!result.ok || !Array.isArray(result.body)) return null;
+  const first = result.body[0];
+  if (first && ("image_url" in first || "stock" in first || "status" in first || "seo_title" in first)) return "snake";
+  return "camel";
+}
+async function getSupabaseVariantTableName() {
+  const camel = await supabaseRest("/rest/v1/productVariants?select=*&limit=1");
+  if (camel.ok) return "productVariants";
+  const snake = await supabaseRest("/rest/v1/product_variants?select=*&limit=1");
+  if (snake.ok) return "product_variants";
+  return null;
+}
+function supabaseProductPayload(input, style) {
+  const stockQuantity = Number(input.stockQuantity ?? 0);
+  const base = {
+    name: input.name,
+    slug: input.slug,
+    category: input.category,
+    description: input.description,
+    price: input.price,
+    badge: input.badge
+  };
+  if (style === "snake") {
+    return cleanUndefinedValues({
+      ...base,
+      image_url: input.imageUrl,
+      seo_title: input.seoTitle,
+      seo_description: input.seoDescription,
+      stock: Number.isFinite(stockQuantity) ? stockQuantity : void 0,
+      status: input.stockStatus,
+      is_featured: input.isFeatured
+    });
+  }
+  return cleanUndefinedValues({
+    ...base,
+    imageUrl: input.imageUrl,
+    seoTitle: input.seoTitle,
+    seoDescription: input.seoDescription,
+    stockQuantity: input.stockQuantity,
+    stockStatus: input.stockStatus,
+    isFeatured: input.isFeatured
+  });
+}
+function supabaseVariantPayload(variant, tableName) {
+  if (tableName === "product_variants") {
+    return cleanUndefinedValues({ product_id: variant.productId, name: variant.name, colour_hex: variant.colourHex, stock: variant.stockQuantity });
+  }
+  return cleanUndefinedValues({ productId: variant.productId, name: variant.name, colourHex: variant.colourHex, stockQuantity: variant.stockQuantity });
+}
+async function listSupabaseProducts() {
+  const style = await getSupabaseProductColumnStyle();
+  if (!style) return null;
+  const productResult = await supabaseRest("/rest/v1/products?select=*");
+  if (!productResult.ok || !Array.isArray(productResult.body)) return null;
+  const variantTable = await getSupabaseVariantTableName();
+  const variantResult = variantTable ? await supabaseRest(`/rest/v1/${variantTable}?select=*`) : { ok: false, body: [] };
+  const variants = variantResult.ok && Array.isArray(variantResult.body) ? variantResult.body : [];
+  return productResult.body.map((product) => normalizeSupabaseProduct(product, variants.filter((variant) => Number(variant.productId ?? variant.product_id) === Number(product.id)))).filter((product) => product.id && isPositivePrice(product.price)).sort((a, b) => (b.isFeatured === "true" ? 1 : 0) - (a.isFeatured === "true" ? 1 : 0) || a.name.localeCompare(b.name));
+}
+async function createSupabaseProduct(input, variants = []) {
+  const style = await getSupabaseProductColumnStyle();
+  if (!style) return null;
+  const result = await supabaseRest("/rest/v1/products", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(supabaseProductPayload(input, style))
+  });
+  if (!result.ok || !Array.isArray(result.body) || !result.body[0]?.id) throw new Error("Supabase product could not be saved with a database id.");
+  const product = normalizeSupabaseProduct(result.body[0]);
+  if (product.id && variants.length) await replaceSupabaseProductVariants(product.id, variants);
+  const refreshed = product.id ? await getSupabaseProductById(product.id) : null;
+  return refreshed ?? product;
+}
+async function getSupabaseProductById(id) {
+  const result = await supabaseRest(`/rest/v1/products?select=*&id=eq.${encodeURIComponent(String(id))}&limit=1`);
+  if (!result.ok || !Array.isArray(result.body) || !result.body[0]) return null;
+  const variantTable = await getSupabaseVariantTableName();
+  const variantResult = variantTable ? await supabaseRest(`/rest/v1/${variantTable}?select=*&${variantTable === "product_variants" ? "product_id" : "productId"}=eq.${encodeURIComponent(String(id))}`) : { ok: false, body: [] };
+  const variants = variantResult.ok && Array.isArray(variantResult.body) ? variantResult.body : [];
+  return normalizeSupabaseProduct(result.body[0], variants);
+}
+async function updateSupabaseProduct(id, input) {
+  const style = await getSupabaseProductColumnStyle();
+  if (!style) return null;
+  const result = await supabaseRest(`/rest/v1/products?id=eq.${encodeURIComponent(String(id))}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(supabaseProductPayload(input, style))
+  });
+  if (!result.ok) throw new Error(`Supabase product ${id} could not be updated.`);
+  return result.body && Array.isArray(result.body) && result.body[0] ? normalizeSupabaseProduct(result.body[0]) : await getSupabaseProductById(id);
+}
+async function replaceSupabaseProductVariants(productId, variants) {
+  const tableName = await getSupabaseVariantTableName();
+  if (!tableName) return null;
+  const productColumn = tableName === "product_variants" ? "product_id" : "productId";
+  const deleteResult = await supabaseRest(`/rest/v1/${tableName}?${productColumn}=eq.${encodeURIComponent(String(productId))}`, { method: "DELETE" });
+  if (!deleteResult.ok) throw new Error(`Existing Supabase variants for product ${productId} could not be replaced.`);
+  if (!variants.length) return { productId, variants: [] };
+  const payload = variants.map((variant) => supabaseVariantPayload({ ...variant, productId }, tableName));
+  const insertResult = await supabaseRest(`/rest/v1/${tableName}`, {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(payload)
+  });
+  if (!insertResult.ok) throw new Error(`Supabase variants for product ${productId} could not be saved.`);
+  return { productId, variants: insertResult.body ?? [] };
+}
+async function deleteSupabaseProduct(id) {
+  const style = await getSupabaseProductColumnStyle();
+  if (!style) return null;
+  const tableName = await getSupabaseVariantTableName();
+  if (tableName) {
+    const productColumn = tableName === "product_variants" ? "product_id" : "productId";
+    await supabaseRest(`/rest/v1/${tableName}?${productColumn}=eq.${encodeURIComponent(String(id))}`, { method: "DELETE" });
+  }
+  const result = await supabaseRest(`/rest/v1/products?id=eq.${encodeURIComponent(String(id))}`, { method: "DELETE" });
+  if (!result.ok) throw new Error(`Supabase product ${id} could not be deleted.`);
+  return { id, deleted: true };
+}
+async function decrementSupabaseProductStock(productId, quantity, variantId) {
+  const product = await getSupabaseProductById(productId);
+  if (!product?.id) return null;
+  if (variantId) {
+    const variantTable = await getSupabaseVariantTableName();
+    const variant = product.variants?.find((row) => Number(row.id) === Number(variantId));
+    if (variantTable && variant?.id) {
+      const style = variantTable === "product_variants" ? "snake" : "camel";
+      const nextVariantStock = Math.max(Number(variant.stockQuantity ?? variant.stock ?? 0) - quantity, 0);
+      await supabaseRest(`/rest/v1/${variantTable}?id=eq.${encodeURIComponent(String(variant.id))}`, {
+        method: "PATCH",
+        body: JSON.stringify(style === "snake" ? { stock: nextVariantStock } : { stockQuantity: nextVariantStock })
+      });
+    }
+  }
+  const nextProductStock = Math.max(Number(product.stockQuantity ?? product.stock ?? 0) - quantity, 0);
+  const nextStatus = stockStatusAfterDecrement(nextProductStock, product.stockStatus ?? product.status);
+  return updateSupabaseProduct(product.id, { stockQuantity: nextProductStock, stockStatus: nextStatus });
 }
 async function upsertUser(user) {
   if (!user.openId) throw new Error("User openId is required for upsert");
@@ -338,7 +571,7 @@ async function upsertUser(user) {
   }
   if (!values.lastSignedIn) values.lastSignedIn = /* @__PURE__ */ new Date();
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = /* @__PURE__ */ new Date();
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: { ...updateSet, updatedAt: /* @__PURE__ */ new Date() } });
+  await db.insert(users).values(values).onConflictDoUpdate({ target: users.openId, set: { ...updateSet, updatedAt: /* @__PURE__ */ new Date() } });
 }
 var imageBySlug = {
   "knotless-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
@@ -776,22 +1009,8 @@ function isUsableImageUrl(value) {
 async function ensureSeedProducts(db) {
   if (!db) return;
   for (const product of seedProducts) {
-    await db.insert(products).values(product).onDuplicateKeyUpdate({
-      set: {
-        name: product.name,
-        seoTitle: product.seoTitle,
-        seoDescription: product.seoDescription,
-        category: product.category,
-        description: product.description,
-        price: product.price,
-        imageUrl: product.imageUrl,
-        badge: product.badge,
-        stockStatus: product.stockStatus,
-        stockQuantity: product.stockQuantity,
-        isFeatured: product.isFeatured,
-        updatedAt: /* @__PURE__ */ new Date()
-      }
-    });
+    const existing = await db.select({ id: products.id }).from(products).where(eq(products.slug, product.slug)).limit(1);
+    if (existing.length === 0) await db.insert(products).values(product);
   }
 }
 async function ensureSeedGallery(db) {
@@ -825,20 +1044,8 @@ async function seedIfNeeded() {
   if (!db || _seeded) return;
   _seeded = true;
   for (const service of seedServices) {
-    await db.insert(services).values(service).onDuplicateKeyUpdate({
-      set: {
-        name: service.name,
-        category: service.category,
-        description: service.description,
-        duration: service.duration,
-        priceFrom: service.priceFrom,
-        badge: service.badge,
-        isFeatured: service.isFeatured,
-        imageUrl: service.imageUrl,
-        sortOrder: service.sortOrder,
-        updatedAt: /* @__PURE__ */ new Date()
-      }
-    });
+    const existing = await db.select({ id: services.id }).from(services).where(eq(services.slug, service.slug)).limit(1);
+    if (existing.length === 0) await db.insert(services).values(service);
   }
   await ensureSeedProducts(db);
   const productRows = await db.select().from(products);
@@ -903,20 +1110,27 @@ async function listWebsiteSections() {
   }
 }
 async function listProducts() {
-  const fallback = seedProducts.map((product) => ({ ...product, variants: [] }));
+  const fallback = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
   try {
+    const supabaseProducts = await listSupabaseProducts();
+    if (supabaseProducts) return supabaseProducts;
     await seedIfNeeded();
     const db = await getDb();
     if (!db) return fallback;
     const productRows = await db.select().from(products).orderBy(desc(products.isFeatured), asc(products.name));
     const variantRows = await db.select().from(productVariants);
     const publicRows = productRows.filter((product) => isPositivePrice(product.price));
-    const safeRows = publicRows.length ? publicRows : seedProducts;
+    const safeRows = publicRows.length ? publicRows : fallback;
     return safeRows.map((product) => ({
       ...product,
+      id: Number(product.id),
       imageUrl: isUsableImageUrl(product.imageUrl) ? product.imageUrl : PRODUCT_IMAGE_FALLBACK_URL,
+      image_url: isUsableImageUrl(product.imageUrl) ? product.imageUrl : PRODUCT_IMAGE_FALLBACK_URL,
       seoTitle: product.seoTitle || `${product.name} | Eby\u2019s Place`,
       seoDescription: product.seoDescription || product.description,
+      stock: product.stockQuantity,
+      status: product.stockStatus,
+      colour: null,
       variants: "id" in product ? variantRows.filter((variant) => variant.productId === product.id) : []
     }));
   } catch (error) {
@@ -939,7 +1153,7 @@ async function listApprovedReviews() {
 async function submitReview(input) {
   const db = await getDb();
   if (!db) return { id: Date.now(), status: "pending" };
-  const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).$returningId();
+  const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).returning({ id: reviews.id });
   return { id: inserted[0]?.id ?? 0, status: "pending" };
 }
 function safeParseJson(value, fallback) {
@@ -970,7 +1184,7 @@ async function setWebsiteJsonSection(sectionKey, value) {
     sectionKey,
     title: sectionKey,
     body
-  }).onDuplicateKeyUpdate({ set: { body, updatedAt: sql`CURRENT_TIMESTAMP` } });
+  }).onConflictDoUpdate({ target: websiteSections.sectionKey, set: { body, updatedAt: sql`CURRENT_TIMESTAMP` } });
   return { success: true };
 }
 async function getAvailabilitySettings() {
@@ -1018,7 +1232,7 @@ async function getBookingById(id) {
 async function subscribeNewsletter(email, productAlerts = false) {
   const db = await getDb();
   if (!db) return { success: true };
-  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onDuplicateKeyUpdate({ set: { productAlerts: productAlerts ? "true" : "false", createdAt: sql`CURRENT_TIMESTAMP` } });
+  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onConflictDoUpdate({ target: newsletterSubscribers.email, set: { productAlerts: productAlerts ? "true" : "false" } });
   return { success: true };
 }
 async function listGallery(category) {
@@ -1038,54 +1252,48 @@ async function listGallery(category) {
     return fallback;
   }
 }
-async function tableColumnExists(tableName, columnName) {
-  if (!_pool) return false;
-  const [rows] = await _pool.query(
-    "SELECT COUNT(*) AS count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
-    [tableName, columnName]
-  );
-  return Number(rows[0]?.count ?? 0) > 0;
-}
-async function addColumnIfMissing(tableName, columnName, definition) {
+async function addPgColumnIfMissing(tableName, columnName, definition) {
   if (!_pool) return;
-  if (!await tableColumnExists(tableName, columnName)) {
-    await _pool.query(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`);
+  try {
+    await _pool.query(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "${columnName}" ${definition}`);
+  } catch (err) {
+    console.warn(`[Database] Could not add column ${tableName}.${columnName}`, err);
   }
 }
-async function makeColumnNullableIfPresent(tableName, columnName, definition) {
+async function makePgColumnNullable(tableName, columnName) {
   if (!_pool) return;
-  if (await tableColumnExists(tableName, columnName)) {
-    await _pool.query(`ALTER TABLE \`${tableName}\` MODIFY COLUMN \`${columnName}\` ${definition}`);
+  try {
+    await _pool.query(`ALTER TABLE "${tableName}" ALTER COLUMN "${columnName}" DROP NOT NULL`);
+  } catch (err) {
+    console.warn(`[Database] Could not make column ${tableName}.${columnName} nullable`, err);
   }
 }
 async function ensureBookingLocationColumns() {
-  const db = await getDb();
-  if (!db || !_pool) return;
-  await addColumnIfMissing("bookings", "serviceLocation", "enum('studio','home_service') NOT NULL DEFAULT 'studio'");
-  await addColumnIfMissing("bookings", "addressLine2", "varchar(255) NULL");
-  await addColumnIfMissing("bookings", "county", "varchar(120) NULL");
-  await addColumnIfMissing("bookings", "deliveryNote", "text NULL");
-  await addColumnIfMissing("bookings", "homeServiceSurcharge", "decimal(10,2) NOT NULL DEFAULT '0.00'");
-  await makeColumnNullableIfPresent("bookings", "addressLine1", "varchar(255) NULL");
-  await makeColumnNullableIfPresent("bookings", "city", "varchar(120) NULL");
-  await makeColumnNullableIfPresent("bookings", "postcode", "varchar(40) NULL");
+  if (!_pool) return;
+  await addPgColumnIfMissing("bookings", "serviceLocation", "TEXT NOT NULL DEFAULT 'studio'");
+  await addPgColumnIfMissing("bookings", "addressLine2", "VARCHAR(255)");
+  await addPgColumnIfMissing("bookings", "county", "VARCHAR(120)");
+  await addPgColumnIfMissing("bookings", "deliveryNote", "TEXT");
+  await addPgColumnIfMissing("bookings", "homeServiceSurcharge", "NUMERIC(10,2) NOT NULL DEFAULT 0.00");
+  await makePgColumnNullable("bookings", "addressLine1");
+  await makePgColumnNullable("bookings", "city");
+  await makePgColumnNullable("bookings", "postcode");
 }
 async function ensureOrderLocationColumns() {
-  const db = await getDb();
-  if (!db || !_pool) return;
-  await addColumnIfMissing("orders", "serviceLocation", "enum('studio','home_service') NOT NULL DEFAULT 'studio'");
-  await addColumnIfMissing("orders", "addressLine2", "varchar(255) NULL");
-  await addColumnIfMissing("orders", "county", "varchar(120) NULL");
-  await addColumnIfMissing("orders", "deliveryNote", "text NULL");
-  await makeColumnNullableIfPresent("orders", "addressLine1", "varchar(255) NULL");
-  await makeColumnNullableIfPresent("orders", "city", "varchar(120) NULL");
-  await makeColumnNullableIfPresent("orders", "postcode", "varchar(40) NULL");
+  if (!_pool) return;
+  await addPgColumnIfMissing("orders", "serviceLocation", "TEXT NOT NULL DEFAULT 'studio'");
+  await addPgColumnIfMissing("orders", "addressLine2", "VARCHAR(255)");
+  await addPgColumnIfMissing("orders", "county", "VARCHAR(120)");
+  await addPgColumnIfMissing("orders", "deliveryNote", "TEXT");
+  await makePgColumnNullable("orders", "addressLine1");
+  await makePgColumnNullable("orders", "city");
+  await makePgColumnNullable("orders", "postcode");
 }
 async function createBooking(input) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
   await ensureBookingLocationColumns();
-  const inserted = await db.insert(bookings).values(input).$returningId();
+  const inserted = await db.insert(bookings).values(input).returning({ id: bookings.id });
   return { id: inserted[0]?.id ?? 0 };
 }
 async function updateBookingCheckout(id, stripeCheckoutSessionId, stripePaymentIntentId) {
@@ -1110,10 +1318,13 @@ async function createOrderWithItems(input) {
   const db = await getDb();
   if (!db) return { id: Date.now(), items: input.items };
   await ensureOrderLocationColumns();
-  const [productRows, variantRows] = await Promise.all([
+  const supabaseProductRows = await listSupabaseProducts();
+  const [dbProductRows, dbVariantRows] = supabaseProductRows ? [[], []] : await Promise.all([
     db.select().from(products),
     db.select().from(productVariants)
   ]);
+  const productRows = supabaseProductRows ?? dbProductRows;
+  const variantRows = supabaseProductRows ? supabaseProductRows.flatMap((product) => product.variants ?? []) : dbVariantRows;
   const validatedItems = input.items.map((item) => {
     const product = productRows.find((row) => row.id === item.productId);
     if (!product) throw new Error(`Product ${item.productId} is no longer available.`);
@@ -1144,7 +1355,7 @@ async function createOrderWithItems(input) {
     postcode: input.postcode?.trim() || null,
     deliveryNote: input.deliveryNote?.trim() || null,
     status: "draft"
-  }).$returningId();
+  }).returning({ id: orders.id });
   const orderId = inserted[0]?.id ?? 0;
   if (orderId && validatedItems.length) await db.insert(orderItems).values(validatedItems.map((item) => ({ ...item, orderId })));
   return { id: orderId, items: validatedItems };
@@ -1165,7 +1376,13 @@ async function markOrderPaid(stripeCheckoutSessionId, stripePaymentIntentId) {
   await db.update(orders).set({ status: "paid", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, order.id));
   if (alreadyPaid) return;
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+  const supabaseProductRows = await listSupabaseProducts();
   for (const item of items) {
+    const supabaseProduct = supabaseProductRows?.find((product) => product.id === item.productId);
+    if (supabaseProduct) {
+      await decrementSupabaseProductStock(item.productId, item.quantity, item.variantId);
+      continue;
+    }
     if (item.variantId) {
       await db.update(productVariants).set({ stockQuantity: sql`GREATEST(${productVariants.stockQuantity} - ${item.quantity}, 0)` }).where(eq(productVariants.id, item.variantId));
     }
@@ -1195,29 +1412,32 @@ async function getOrderItemsByOrderId(orderId) {
   return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
 }
 async function ensureEmailNotificationLogTable() {
-  await getDb();
   if (!_pool) return;
-  await _pool.query(`CREATE TABLE IF NOT EXISTS \`emailNotificationLogs\` (
-    \`id\` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    \`entityType\` enum('booking','order') NOT NULL,
-    \`entityId\` int NOT NULL,
-    \`audience\` enum('owner','customer') NOT NULL,
-    \`recipientEmail\` varchar(320) NOT NULL,
-    \`subject\` varchar(255) NOT NULL,
-    \`bodyPreview\` text NULL,
-    \`status\` enum('pending','sent','failed','retried') NOT NULL DEFAULT 'pending',
-    \`provider\` varchar(80) NOT NULL DEFAULT 'zoho_smtp',
-    \`smtpHost\` varchar(255) NULL,
-    \`messageId\` varchar(255) NULL,
-    \`errorMessage\` text NULL,
-    \`attempts\` int NOT NULL DEFAULT 0,
-    \`lastAttemptAtMs\` bigint NULL,
-    \`sentAtMs\` bigint NULL,
-    \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX \`emailNotificationLogs_entity_idx\` (\`entityType\`, \`entityId\`),
-    INDEX \`emailNotificationLogs_status_idx\` (\`status\`)
-  )`);
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "emailNotificationLogs" (
+      "id" SERIAL PRIMARY KEY,
+      "entityType" TEXT NOT NULL,
+      "entityId" INTEGER NOT NULL,
+      "audience" TEXT NOT NULL,
+      "recipientEmail" VARCHAR(320) NOT NULL,
+      "subject" VARCHAR(255) NOT NULL,
+      "bodyPreview" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'pending',
+      "provider" VARCHAR(80) NOT NULL DEFAULT 'zoho_smtp',
+      "smtpHost" VARCHAR(255),
+      "messageId" VARCHAR(255),
+      "errorMessage" TEXT,
+      "attempts" INTEGER NOT NULL DEFAULT 0,
+      "lastAttemptAtMs" BIGINT,
+      "sentAtMs" BIGINT,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "emailNotificationLogs_entity_idx" ON "emailNotificationLogs" ("entityType", "entityId")`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "emailNotificationLogs_status_idx" ON "emailNotificationLogs" ("status")`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure emailNotificationLogs table", err);
+  }
 }
 async function createEmailNotificationLog(input) {
   const db = await getDb();
@@ -1236,7 +1456,7 @@ async function createEmailNotificationLog(input) {
     errorMessage: input.errorMessage ?? null,
     attempts: 0,
     lastAttemptAtMs: Date.now()
-  }).$returningId();
+  }).returning({ id: emailNotificationLogs.id });
   return { id: inserted[0]?.id ?? 0 };
 }
 async function updateEmailNotificationLog(id, input) {
@@ -1250,6 +1470,7 @@ async function updateEmailNotificationLog(id, input) {
     errorMessage: input.errorMessage ?? null,
     sentAtMs: input.sentAtMs ?? null,
     lastAttemptAtMs: Date.now(),
+    updatedAt: /* @__PURE__ */ new Date(),
     attempts: sql`${emailNotificationLogs.attempts} + 1`
   }).where(eq(emailNotificationLogs.id, id));
   return { id, ...input };
@@ -1276,7 +1497,7 @@ async function recordAnalytics(eventName, pagePath, metadata) {
 async function createTryOnGeneration(input) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
-  const inserted = await db.insert(tryOnGenerations).values({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, generatedImageUrl: input.generatedImageUrl, status: input.status ?? "pending", errorMessage: input.errorMessage }).$returningId();
+  const inserted = await db.insert(tryOnGenerations).values({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, generatedImageUrl: input.generatedImageUrl, status: input.status ?? "pending", errorMessage: input.errorMessage }).returning({ id: tryOnGenerations.id });
   return { id: inserted[0]?.id ?? 0 };
 }
 async function updateTryOnGeneration(id, input) {
@@ -1286,20 +1507,28 @@ async function updateTryOnGeneration(id, input) {
 }
 async function adminSummary() {
   await seedIfNeeded();
+  const supabaseProducts = await listSupabaseProducts();
   const db = await getDb();
-  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, products: seedProducts.length, services: seedServices.length, tryOns: 0 };
-  const [bookingRows, orderRows, reviewRows, productRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
-  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, products: productRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
+  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0 };
+  const [bookingRows, orderRows, reviewRows, dbProductRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
+  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, products: supabaseProducts?.length ?? dbProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
 }
 async function adminLists() {
   await seedIfNeeded();
+  const supabaseProducts = await listSupabaseProducts();
   const db = await getDb();
   if (db) await ensureBookingLocationColumns();
-  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: seedProducts.map((product) => ({ ...product, variants: [] })), services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+  const fallbackProducts = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
+  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   await ensureEmailNotificationLogTable();
-  const [bookingRows, orderRows, reviewRows, productRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
-  const productsWithVariants = productRows.map((product) => ({
+  const [bookingRows, orderRows, reviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
+  const productsWithVariants = supabaseProducts ?? dbProductRows.map((product) => ({
     ...product,
+    id: Number(product.id),
+    image_url: product.imageUrl,
+    stock: product.stockQuantity,
+    status: product.stockStatus,
+    colour: null,
     seoTitle: product.seoTitle || `${product.name} | Eby\u2019s Place`,
     seoDescription: product.seoDescription || product.description,
     variants: variantRows.filter((variant) => variant.productId === product.id)
@@ -1325,25 +1554,44 @@ async function updateService(id, input) {
   return { id, ...input };
 }
 async function updateProduct(id, input) {
+  if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
+  const supabaseProduct = await updateSupabaseProduct(id, input);
+  if (supabaseProduct) return supabaseProduct;
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.update(products).set(input).where(eq(products.id, id));
   return { id, ...input };
 }
 async function createProduct(input, variants = []) {
+  const supabaseProduct = await createSupabaseProduct(input, variants);
+  if (supabaseProduct?.id) return supabaseProduct;
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const inserted = await db.insert(products).values(input).$returningId();
+  const inserted = await db.insert(products).values(input).returning({ id: products.id });
   const productId = inserted[0]?.id;
-  if (productId && variants.length) await db.insert(productVariants).values(variants.map((variant) => ({ ...variant, productId })));
-  return { id: productId, ...input };
+  if (!productId) throw new Error("Product could not be saved with a database id.");
+  if (variants.length) await db.insert(productVariants).values(variants.map((variant) => ({ ...variant, productId })));
+  return { id: productId, ...input, variants };
 }
 async function replaceProductVariants(productId, variants) {
+  if (!Number.isFinite(productId) || productId <= 0) throw new Error("A valid Supabase product id is required.");
+  const supabaseResult = await replaceSupabaseProductVariants(productId, variants);
+  if (supabaseResult) return supabaseResult;
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.delete(productVariants).where(eq(productVariants.productId, productId));
   if (variants.length) await db.insert(productVariants).values(variants.map((variant) => ({ ...variant, productId })));
   return { productId, variants };
+}
+async function deleteProduct(id) {
+  if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
+  const supabaseResult = await deleteSupabaseProduct(id);
+  if (supabaseResult) return supabaseResult;
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.delete(productVariants).where(eq(productVariants.productId, id));
+  await db.delete(products).where(eq(products.id, id));
+  return { id, deleted: true };
 }
 async function updateOrderStatus(id, status) {
   const db = await getDb();
@@ -1352,6 +1600,9 @@ async function updateOrderStatus(id, status) {
   return { id, status };
 }
 async function updateProductStock(id, stockQuantity, stockStatus) {
+  if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
+  const supabaseProduct = await updateSupabaseProduct(id, { stockQuantity, stockStatus });
+  if (supabaseProduct) return { id, stockQuantity: supabaseProduct.stockQuantity ?? stockQuantity, stockStatus: supabaseProduct.stockStatus ?? stockStatus };
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.update(products).set({ stockQuantity, stockStatus }).where(eq(products.id, id));
@@ -1360,13 +1611,13 @@ async function updateProductStock(id, stockQuantity, stockStatus) {
 async function addGalleryImage(input) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const result = await db.insert(galleryImages).values(input).$returningId();
+  const result = await db.insert(galleryImages).values(input).returning({ id: galleryImages.id });
   return { id: result[0]?.id, ...input };
 }
 async function updateWebsiteSection(sectionKey, input) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  await db.insert(websiteSections).values({ sectionKey, title: input.title ?? sectionKey, ...input }).onDuplicateKeyUpdate({ set: { ...input, updatedAt: /* @__PURE__ */ new Date() } });
+  await db.insert(websiteSections).values({ sectionKey, title: input.title ?? sectionKey, ...input }).onConflictDoUpdate({ target: websiteSections.sectionKey, set: { ...input, updatedAt: /* @__PURE__ */ new Date() } });
   return { sectionKey, ...input };
 }
 async function adminInsights() {
@@ -2213,7 +2464,26 @@ var systemRouter = router({
 
 // server/supabaseAuth.ts
 import { TRPCError as TRPCError3 } from "@trpc/server";
-var ADMIN_EMAIL = (process.env.EBYSPLACE_ADMIN_EMAIL ?? "info@ebysplace.com").trim().toLowerCase();
+function normalizeEmailCandidate(value) {
+  const email = value?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]?.trim().toLowerCase();
+  return email || null;
+}
+function getConfiguredAdminEmails() {
+  const configured = [
+    normalizeEmailCandidate(process.env.EBYSPLACE_ADMIN_EMAIL),
+    normalizeEmailCandidate(process.env.EBYSPLACE_OWNER_EMAIL),
+    normalizeEmailCandidate(process.env.OWNER_EMAIL),
+    normalizeEmailCandidate(process.env.SMTP_FROM),
+    "info@ebysplace.com"
+  ].filter((email) => Boolean(email));
+  return Array.from(new Set(configured));
+}
+var ADMIN_EMAILS = getConfiguredAdminEmails();
+var PRIMARY_ADMIN_EMAIL = ADMIN_EMAILS[0] ?? "info@ebysplace.com";
+function isConfiguredAdminEmail(email) {
+  const normalized = normalizeEmailCandidate(email);
+  return Boolean(normalized && ADMIN_EMAILS.includes(normalized));
+}
 function toTrpcError(error, fallbackMessage) {
   if (error instanceof TRPCError3) return error;
   const message = error instanceof Error && error.message ? error.message : fallbackMessage;
@@ -2300,8 +2570,8 @@ async function supabaseAuthFetch(path2, init = {}) {
 async function signInAdminWithPassword(email, password) {
   const normalizedEmail = email.trim().toLowerCase();
   try {
-    if (normalizedEmail !== ADMIN_EMAIL) {
-      console.error("[Auth] Rejected admin sign-in for non-admin email", { email: normalizedEmail });
+    if (!isConfiguredAdminEmail(normalizedEmail)) {
+      console.error("[Auth] Rejected admin sign-in for non-admin email", { email: normalizedEmail, configuredAdminEmails: ADMIN_EMAILS });
       throw new TRPCError3({ code: "UNAUTHORIZED", message: "Only the configured Eby\u2019s Place administrator can sign in." });
     }
     const session = await supabaseAuthFetch("/token?grant_type=password", {
@@ -2342,8 +2612,8 @@ async function requestAdminPasswordReset(email, origin) {
     success: true,
     message: "If this email is the configured Eby\u2019s Place administrator, a Supabase password reset link has been sent."
   };
-  if (normalizedEmail !== ADMIN_EMAIL) {
-    console.warn("[Auth] Ignored password reset request for non-admin email", { email: normalizedEmail });
+  if (!isConfiguredAdminEmail(normalizedEmail)) {
+    console.warn("[Auth] Ignored password reset request for non-admin email", { email: normalizedEmail, configuredAdminEmails: ADMIN_EMAILS });
     return genericResponse;
   }
   try {
@@ -2368,8 +2638,8 @@ async function updateAdminPasswordWithRecoveryToken(accessToken, password) {
       headers: { Authorization: "Bearer " + token }
     });
     const normalizedEmail = user.email?.trim().toLowerCase();
-    if (normalizedEmail !== ADMIN_EMAIL) {
-      console.error("[Auth] Rejected password update for non-admin recovery token", { email: normalizedEmail });
+    if (!isConfiguredAdminEmail(normalizedEmail)) {
+      console.error("[Auth] Rejected password update for non-admin recovery token", { email: normalizedEmail, configuredAdminEmails: ADMIN_EMAILS });
       throw new TRPCError3({ code: "UNAUTHORIZED", message: "This reset link is not for the configured Eby\u2019s Place administrator." });
     }
     const updated = await supabaseAuthFetch("/user", {
@@ -2379,8 +2649,8 @@ async function updateAdminPasswordWithRecoveryToken(accessToken, password) {
     });
     await upsertUser({
       openId: updated.id || user.id,
-      email: ADMIN_EMAIL,
-      name: getDisplayName(updated.id ? updated : user, ADMIN_EMAIL),
+      email: PRIMARY_ADMIN_EMAIL,
+      name: getDisplayName(updated.id ? updated : user, PRIMARY_ADMIN_EMAIL),
       loginMethod: "supabase_password",
       role: "admin",
       lastSignedIn: /* @__PURE__ */ new Date()
@@ -2405,7 +2675,7 @@ async function authenticateSupabaseRequest(req) {
       return null;
     }
     const normalizedEmail = user.email.trim().toLowerCase();
-    const role = normalizedEmail === ADMIN_EMAIL ? "admin" : "user";
+    const role = isConfiguredAdminEmail(normalizedEmail) ? "admin" : "user";
     const localUser = {
       openId: user.id,
       email: normalizedEmail,
@@ -2490,20 +2760,25 @@ function getLiveStripeSecretKey() {
 }
 function getLiveStripePublishableKey() {
   const candidates = [
+    normalizeStripeKey2(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
     normalizeStripeKey2(process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY),
     normalizeStripeKey2(process.env.VITE_STRIPE_PUBLISHABLE_KEY)
   ];
   return candidates.find((key) => key.startsWith("pk_live_")) || candidates.find(Boolean) || "";
 }
+var CUSTOMER_PAYMENT_UNAVAILABLE_MESSAGE = "Payment is currently unavailable. Please contact us to complete your booking.";
+function paymentUnavailableError() {
+  return new TRPCError4({ code: "PRECONDITION_FAILED", message: CUSTOMER_PAYMENT_UNAVAILABLE_MESSAGE });
+}
 function getStripe() {
   const key = getLiveStripeSecretKey();
   if (!key) {
     console.warn("[Payments] Live payment checkout attempted without a configured secret key. Configure EBYSPLACE_LIVE_STRIPE_SECRET_KEY in deployment settings.");
-    throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Payment is currently unavailable. Please contact us to complete your booking." });
+    throw paymentUnavailableError();
   }
   if (!key.startsWith("sk_live_")) {
     console.warn("[Payments] Live payment checkout attempted without a live secret key. Configure EBYSPLACE_LIVE_STRIPE_SECRET_KEY in deployment settings.");
-    throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Payment is currently unavailable. Please contact us to complete your booking." });
+    throw paymentUnavailableError();
   }
   return new Stripe2(key);
 }
@@ -2677,19 +2952,25 @@ var appRouter = router({
         addOns: input.addOns,
         bookingProducts: input.bookingProducts
       });
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        customer_email: input.clientEmail,
-        client_reference_id: input.bookingId.toString(),
-        payment_intent_data: { receipt_email: input.clientEmail, description: `Eby\u2019s Place booking deposit for ${input.serviceName}`, statement_descriptor_suffix: "EBYSPLACE" },
-        custom_text: { submit: { message: "You are paying Eby\u2019s Place securely. Your booking deposit confirmation and receipt will use the email entered for checkout." } },
-        line_items: lineItems,
-        allow_promotion_codes: true,
-        success_url: `${origin}/booking/success?booking=${input.bookingId}`,
-        cancel_url: `${origin}/booking?payment=cancelled&booking=${input.bookingId}`,
-        metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) }
-      });
-      if (!session.url) throw new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: "Payment is currently unavailable. Please contact us to complete your booking." });
+      let session;
+      try {
+        session = await stripe.checkout.sessions.create({
+          mode: "payment",
+          customer_email: input.clientEmail,
+          client_reference_id: input.bookingId.toString(),
+          payment_intent_data: { receipt_email: input.clientEmail, description: `Eby\u2019s Place booking deposit for ${input.serviceName}`, statement_descriptor_suffix: "EBYSPLACE" },
+          custom_text: { submit: { message: "You are paying Eby\u2019s Place securely. Your booking deposit confirmation and receipt will use the email entered for checkout." } },
+          line_items: lineItems,
+          allow_promotion_codes: true,
+          success_url: `${origin}/booking/success?booking=${input.bookingId}`,
+          cancel_url: `${origin}/booking?payment=cancelled&booking=${input.bookingId}`,
+          metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) }
+        });
+      } catch (error) {
+        console.error("[Payments] Booking checkout session creation failed", error);
+        throw paymentUnavailableError();
+      }
+      if (!session.url) throw paymentUnavailableError();
       await updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),
@@ -2701,39 +2982,45 @@ var appRouter = router({
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
       const orderId = order.id.toString();
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        customer_email: input.customerEmail,
-        client_reference_id: orderId,
-        payment_intent_data: { receipt_email: input.customerEmail, description: "Eby\u2019s Place shop order", statement_descriptor_suffix: "EBYSPLACE" },
-        custom_text: { submit: { message: "You are paying Eby\u2019s Place securely. Your shop order confirmation and receipt will use the email entered for checkout." } },
-        line_items: order.items.map((item) => ({
-          price_data: {
-            currency: "gbp",
-            unit_amount: Math.round(Number(item.unitPrice) * 100),
-            product_data: {
-              name: item.variantName ? `${item.productName} \u2014 ${item.variantName}` : item.productName,
-              description: "Eby\u2019s Place shop product"
-            }
-          },
-          quantity: item.quantity
-        })),
-        allow_promotion_codes: true,
-        success_url: `${origin}/shop?payment=success&order=${orderId}`,
-        cancel_url: `${origin}/shop?payment=cancelled&order=${orderId}`,
-        metadata: {
-          order_id: orderId,
-          order_type: "shop_products",
+      let session;
+      try {
+        session = await stripe.checkout.sessions.create({
+          mode: "payment",
           customer_email: input.customerEmail,
-          customer_name: input.customerName
-        }
-      });
-      if (!session.url) throw new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout link. Please try again." });
+          client_reference_id: orderId,
+          payment_intent_data: { receipt_email: input.customerEmail, description: "Eby\u2019s Place shop order", statement_descriptor_suffix: "EBYSPLACE" },
+          custom_text: { submit: { message: "You are paying Eby\u2019s Place securely. Your shop order confirmation and receipt will use the email entered for checkout." } },
+          line_items: order.items.map((item) => ({
+            price_data: {
+              currency: "gbp",
+              unit_amount: Math.round(Number(item.unitPrice) * 100),
+              product_data: {
+                name: item.variantName ? `${item.productName} \u2014 ${item.variantName}` : item.productName,
+                description: "Eby\u2019s Place shop product"
+              }
+            },
+            quantity: item.quantity
+          })),
+          allow_promotion_codes: true,
+          success_url: `${origin}/shop?payment=success&order=${orderId}`,
+          cancel_url: `${origin}/shop?payment=cancelled&order=${orderId}`,
+          metadata: {
+            order_id: orderId,
+            order_type: "shop_products",
+            customer_email: input.customerEmail,
+            customer_name: input.customerName
+          }
+        });
+      } catch (error) {
+        console.error("[Payments] Shop checkout session creation failed", error);
+        throw paymentUnavailableError();
+      }
+      if (!session.url) throw paymentUnavailableError();
       await updateOrderCheckout(order.id, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
       await notifyOwnerSafely(
         "New Eby\u2019s Place shop order checkout started",
         [
-          `A customer started Stripe checkout for a shop order.`,
+          `A customer started secure checkout for a shop order.`,
           `Order ID: ${order.id}`,
           `Customer: ${input.customerName}`,
           `Email: ${input.customerEmail}`,
@@ -2743,9 +3030,9 @@ var appRouter = router({
       );
       await sendCustomerSmsSafely({
         to: input.customerPhone,
-        body: `Eby\u2019s Place has prepared your secure checkout for order #${order.id}. Please complete Stripe payment in the browser tab to confirm your order.`
+        body: `Eby\u2019s Place has prepared your secure checkout for order #${order.id}. Please complete secure payment in the browser tab to confirm your order.`
       });
-      return { orderId: order.id, checkoutUrl: session.url, status: "pending_payment", message: "Your secure Eby\u2019s Place checkout is ready.", customerNotification: "Your Eby\u2019s Place order checkout is ready. Please complete Stripe payment to confirm the order." };
+      return { orderId: order.id, checkoutUrl: session.url, status: "pending_payment", message: "Your secure Eby\u2019s Place checkout is ready.", customerNotification: "Your Eby\u2019s Place order checkout is ready. Please complete secure payment to confirm the order." };
     }),
     uploadTryOnPhoto: publicProcedure.input(z2.object({ dataUrl: z2.string().min(50), fileName: z2.string().default("try-on-photo.jpg") })).mutation(async ({ input }) => {
       const { mimeType, buffer } = decodeDataUrl(input.dataUrl);
@@ -2832,13 +3119,14 @@ var appRouter = router({
       const { variants, ...product } = input;
       return createProduct(product, variants);
     }),
-    updateProduct: adminProcedure.input(z2.object({ id: z2.number(), name: z2.string().min(2).optional(), slug: z2.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), seoTitle: z2.string().min(8).max(255).optional(), seoDescription: z2.string().min(30).max(320).optional(), category: productCategory.optional(), description: z2.string().min(10).optional(), price: z2.string().regex(/^\d+(\.\d{2})?$/).optional(), imageUrl: z2.string().min(5).optional(), badge: z2.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z2.number().int().min(0).optional(), isFeatured: z2.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+    updateProduct: adminProcedure.input(z2.object({ id: z2.number().int().positive(), name: z2.string().min(2).optional(), slug: z2.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), seoTitle: z2.string().min(8).max(255).optional(), seoDescription: z2.string().min(30).max(320).optional(), category: productCategory.optional(), description: z2.string().min(10).optional(), price: z2.string().regex(/^\d+(\.\d{2})?$/).optional(), imageUrl: z2.string().min(5).optional(), badge: z2.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z2.number().int().min(0).optional(), isFeatured: z2.enum(["true", "false"]).optional() })).mutation(({ input }) => {
       const { id, ...changes } = input;
       return updateProduct(id, changes);
     }),
-    updateProductStock: adminProcedure.input(z2.object({ id: z2.number(), stockQuantity: z2.number().int().min(0), stockStatus: productStockStatus })).mutation(({ input }) => updateProductStock(input.id, input.stockQuantity, input.stockStatus)),
-    updateProductVariants: adminProcedure.input(z2.object({ productId: z2.number(), variants: z2.array(z2.object({ name: z2.string().min(1), colourHex: z2.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), stockQuantity: z2.number().int().min(0).default(0) })) })).mutation(({ input }) => replaceProductVariants(input.productId, input.variants)),
-    uploadProductImage: adminProcedure.input(z2.object({ productId: z2.number().optional(), productName: z2.string().min(2), dataUrl: z2.string().min(50), fileName: z2.string().default("product-image.png") })).mutation(async ({ input }) => {
+    updateProductStock: adminProcedure.input(z2.object({ id: z2.number().int().positive(), stockQuantity: z2.number().int().min(0), stockStatus: productStockStatus })).mutation(({ input }) => updateProductStock(input.id, input.stockQuantity, input.stockStatus)),
+    updateProductVariants: adminProcedure.input(z2.object({ productId: z2.number().int().positive(), variants: z2.array(z2.object({ name: z2.string().min(1), colourHex: z2.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), stockQuantity: z2.number().int().min(0).default(0) })) })).mutation(({ input }) => replaceProductVariants(input.productId, input.variants)),
+    deleteProduct: adminProcedure.input(z2.object({ id: z2.number().int().positive() })).mutation(({ input }) => deleteProduct(input.id)),
+    uploadProductImage: adminProcedure.input(z2.object({ productId: z2.number().int().positive().optional(), productName: z2.string().min(2), dataUrl: z2.string().min(50), fileName: z2.string().default("product-image.png") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.productName}-${input.fileName}`, folder: "products" });
       if (input.productId) await updateProduct(input.productId, { imageUrl: uploaded.url });
       return uploaded;
