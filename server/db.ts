@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import mysql, { type Pool } from "mysql2/promise";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import {
   analyticsEvents,
   bookings,
@@ -23,26 +23,23 @@ import { ENV } from "./_core/env";
 let _pool: Pool | null = null;
 let _db: any | null = null;
 
-function getDbUnchecked(pool: Pool) {
-  return drizzle(pool as any);
-}
 let _seeded = false;
 let _unsupportedDatabaseUrlWarned = false;
 let _missingDatabaseUrlWarned = false;
 let _databaseConnectionFailed = false;
 let _lastDatabaseUrlFingerprint: string | null = null;
 
-function isMysqlConnectionString(connectionString: string) {
+function isPostgresConnectionString(connectionString: string) {
   try {
     const parsed = new URL(connectionString);
-    return ["mysql:", "mysql2:", "mariadb:"].includes(parsed.protocol);
+    return ["postgresql:", "postgres:"].includes(parsed.protocol);
   } catch {
     return false;
   }
 }
 
 function requiresSsl(connectionString: string) {
-  return /ssl-mode=require|sslmode=require|tidbcloud|planetscale|mysql.database.azure.com/i.test(connectionString);
+  return /sslmode=require|ssl=true|supabase\.co/i.test(connectionString);
 }
 
 function getDatabaseUrl() {
@@ -75,18 +72,18 @@ export async function getDb() {
   if (_lastDatabaseUrlFingerprint !== fingerprint) {
     _lastDatabaseUrlFingerprint = fingerprint;
     _databaseConnectionFailed = false;
-    console.error("[Database] DATABASE_URL detected for MySQL initialisation", {
+    console.error("[Database] DATABASE_URL detected for PostgreSQL initialisation", {
       fingerprint,
-      isMysql: isMysqlConnectionString(connectionString),
+      isPostgres: isPostgresConnectionString(connectionString),
       requiresSsl: requiresSsl(connectionString),
       nodeEnv: process.env.NODE_ENV,
       vercelEnv: process.env.VERCEL_ENV,
     });
   }
 
-  if (!isMysqlConnectionString(connectionString)) {
+  if (!isPostgresConnectionString(connectionString)) {
     if (!_unsupportedDatabaseUrlWarned) {
-      console.error("[Database] Ignoring non-MySQL DATABASE_URL. The app expects a MySQL/TiDB connection string and will use safe seed-data fallbacks until one is configured.", { fingerprint });
+      console.error("[Database] Ignoring non-PostgreSQL DATABASE_URL. The app expects a postgresql:// connection string (e.g. from Supabase) and will use safe seed-data fallbacks until one is configured.", { fingerprint });
       _unsupportedDatabaseUrlWarned = true;
     }
     return null;
@@ -94,20 +91,19 @@ export async function getDb() {
   if (_databaseConnectionFailed) return null;
   if (!_db) {
     try {
-      _pool = mysql.createPool({
-        uri: connectionString,
-        connectionLimit: 3,
-        maxIdle: 3,
-        idleTimeout: 10_000,
-        connectTimeout: 10_000,
+      _pool = new Pool({
+        connectionString,
+        max: 3,
+        idleTimeoutMillis: 10_000,
+        connectionTimeoutMillis: 10_000,
         ssl: requiresSsl(connectionString) ? { rejectUnauthorized: false } : undefined,
       });
-      await _pool.query("select 1");
-      _db = getDbUnchecked(_pool);
-      console.error("[Database] MySQL connection initialised", { fingerprint });
+      await _pool.query("SELECT 1");
+      _db = drizzle(_pool);
+      console.error("[Database] PostgreSQL connection initialised", { fingerprint });
     } catch (error) {
-      console.error("[Database] Failed to initialise MySQL connection; falling back to seed data for public reads.", { fingerprint, error });
-      await _pool?.end().catch((closeError) => console.error("[Database] Failed to close broken MySQL pool", closeError));
+      console.error("[Database] Failed to initialise PostgreSQL connection; falling back to seed data for public reads.", { fingerprint, error });
+      await _pool?.end().catch((closeError) => console.error("[Database] Failed to close broken PostgreSQL pool", closeError));
       _pool = null;
       _db = null;
       _databaseConnectionFailed = true;
@@ -409,7 +405,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   await db
     .insert(users)
     .values(values)
-    .onDuplicateKeyUpdate({ set: { ...updateSet, updatedAt: new Date() } });
+    .onConflictDoUpdate({ target: users.openId, set: { ...updateSet, updatedAt: new Date() } });
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -1022,7 +1018,7 @@ export async function listApprovedReviews() {
 export async function submitReview(input: { customerName: string; rating: number; reviewText: string }) {
   const db = await getDb();
   if (!db) return { id: Date.now(), status: "pending" as const };
-  const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).$returningId();
+  const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).returning({ id: reviews.id });
   return { id: inserted[0]?.id ?? 0, status: "pending" as const };
 }
 
@@ -1059,7 +1055,7 @@ async function setWebsiteJsonSection(sectionKey: string, value: unknown) {
     sectionKey,
     title: sectionKey,
     body,
-  }).onDuplicateKeyUpdate({ set: { body, updatedAt: sql`CURRENT_TIMESTAMP` } });
+  }).onConflictDoUpdate({ target: websiteSections.sectionKey, set: { body, updatedAt: sql`CURRENT_TIMESTAMP` } });
   return { success: true };
 }
 
@@ -1116,7 +1112,7 @@ export async function getBookingById(id: number) {
 export async function subscribeNewsletter(email: string, productAlerts = false) {
   const db = await getDb();
   if (!db) return { success: true };
-  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onDuplicateKeyUpdate({ set: { productAlerts: productAlerts ? "true" : "false", createdAt: sql`CURRENT_TIMESTAMP` } });
+  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onConflictDoUpdate({ target: newsletterSubscribers.email, set: { productAlerts: productAlerts ? "true" : "false" } });
   return { success: true };
 }
 
@@ -1138,59 +1134,52 @@ export async function listGallery(category?: string) {
   }
 }
 
-async function tableColumnExists(tableName: string, columnName: string) {
-  if (!_pool) return false;
-  const [rows] = await _pool.query(
-    "SELECT COUNT(*) AS count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
-    [tableName, columnName],
-  );
-  return Number((rows as Array<{ count: number }>)[0]?.count ?? 0) > 0;
-}
-
-async function addColumnIfMissing(tableName: string, columnName: string, definition: string) {
+async function addPgColumnIfMissing(tableName: string, columnName: string, definition: string) {
   if (!_pool) return;
-  if (!(await tableColumnExists(tableName, columnName))) {
-    await _pool.query(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`);
+  try {
+    await _pool.query(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "${columnName}" ${definition}`);
+  } catch (err) {
+    console.warn(`[Database] Could not add column ${tableName}.${columnName}`, err);
   }
 }
 
-async function makeColumnNullableIfPresent(tableName: string, columnName: string, definition: string) {
+async function makePgColumnNullable(tableName: string, columnName: string) {
   if (!_pool) return;
-  if (await tableColumnExists(tableName, columnName)) {
-    await _pool.query(`ALTER TABLE \`${tableName}\` MODIFY COLUMN \`${columnName}\` ${definition}`);
+  try {
+    await _pool.query(`ALTER TABLE "${tableName}" ALTER COLUMN "${columnName}" DROP NOT NULL`);
+  } catch (err) {
+    console.warn(`[Database] Could not make column ${tableName}.${columnName} nullable`, err);
   }
 }
 
 async function ensureBookingLocationColumns() {
-  const db = await getDb();
-  if (!db || !_pool) return;
-  await addColumnIfMissing("bookings", "serviceLocation", "enum('studio','home_service') NOT NULL DEFAULT 'studio'");
-  await addColumnIfMissing("bookings", "addressLine2", "varchar(255) NULL");
-  await addColumnIfMissing("bookings", "county", "varchar(120) NULL");
-  await addColumnIfMissing("bookings", "deliveryNote", "text NULL");
-  await addColumnIfMissing("bookings", "homeServiceSurcharge", "decimal(10,2) NOT NULL DEFAULT '0.00'");
-  await makeColumnNullableIfPresent("bookings", "addressLine1", "varchar(255) NULL");
-  await makeColumnNullableIfPresent("bookings", "city", "varchar(120) NULL");
-  await makeColumnNullableIfPresent("bookings", "postcode", "varchar(40) NULL");
+  if (!_pool) return;
+  await addPgColumnIfMissing("bookings", "serviceLocation", "TEXT NOT NULL DEFAULT 'studio'");
+  await addPgColumnIfMissing("bookings", "addressLine2", "VARCHAR(255)");
+  await addPgColumnIfMissing("bookings", "county", "VARCHAR(120)");
+  await addPgColumnIfMissing("bookings", "deliveryNote", "TEXT");
+  await addPgColumnIfMissing("bookings", "homeServiceSurcharge", "NUMERIC(10,2) NOT NULL DEFAULT 0.00");
+  await makePgColumnNullable("bookings", "addressLine1");
+  await makePgColumnNullable("bookings", "city");
+  await makePgColumnNullable("bookings", "postcode");
 }
 
 async function ensureOrderLocationColumns() {
-  const db = await getDb();
-  if (!db || !_pool) return;
-  await addColumnIfMissing("orders", "serviceLocation", "enum('studio','home_service') NOT NULL DEFAULT 'studio'");
-  await addColumnIfMissing("orders", "addressLine2", "varchar(255) NULL");
-  await addColumnIfMissing("orders", "county", "varchar(120) NULL");
-  await addColumnIfMissing("orders", "deliveryNote", "text NULL");
-  await makeColumnNullableIfPresent("orders", "addressLine1", "varchar(255) NULL");
-  await makeColumnNullableIfPresent("orders", "city", "varchar(120) NULL");
-  await makeColumnNullableIfPresent("orders", "postcode", "varchar(40) NULL");
+  if (!_pool) return;
+  await addPgColumnIfMissing("orders", "serviceLocation", "TEXT NOT NULL DEFAULT 'studio'");
+  await addPgColumnIfMissing("orders", "addressLine2", "VARCHAR(255)");
+  await addPgColumnIfMissing("orders", "county", "VARCHAR(120)");
+  await addPgColumnIfMissing("orders", "deliveryNote", "TEXT");
+  await makePgColumnNullable("orders", "addressLine1");
+  await makePgColumnNullable("orders", "city");
+  await makePgColumnNullable("orders", "postcode");
 }
 
 export async function createBooking(input: typeof bookings.$inferInsert) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
   await ensureBookingLocationColumns();
-  const inserted = await db.insert(bookings).values(input).$returningId();
+  const inserted = await db.insert(bookings).values(input).returning({ id: bookings.id });
   return { id: inserted[0]?.id ?? 0 };
 }
 
@@ -1221,12 +1210,12 @@ export async function createOrderWithItems(input: { customerName: string; custom
   await ensureOrderLocationColumns();
 
   const supabaseProductRows = await listSupabaseProducts();
-  const [mysqlProductRows, mysqlVariantRows] = supabaseProductRows ? [[], []] : await Promise.all([
+  const [dbProductRows, dbVariantRows] = supabaseProductRows ? [[], []] : await Promise.all([
     db.select().from(products),
     db.select().from(productVariants),
   ]);
-  const productRows = supabaseProductRows ?? mysqlProductRows;
-  const variantRows = supabaseProductRows ? supabaseProductRows.flatMap((product) => product.variants ?? []) : mysqlVariantRows;
+  const productRows = supabaseProductRows ?? dbProductRows;
+  const variantRows = supabaseProductRows ? supabaseProductRows.flatMap((product) => product.variants ?? []) : dbVariantRows;
   const validatedItems = input.items.map((item) => {
     const product = productRows.find((row) => row.id === item.productId);
     if (!product) throw new Error(`Product ${item.productId} is no longer available.`);
@@ -1258,7 +1247,7 @@ export async function createOrderWithItems(input: { customerName: string; custom
     postcode: input.postcode?.trim() || null,
     deliveryNote: input.deliveryNote?.trim() || null,
     status: "draft",
-  }).$returningId();
+  }).returning({ id: orders.id });
   const orderId = inserted[0]?.id ?? 0;
   if (orderId && validatedItems.length) await db.insert(orderItems).values(validatedItems.map((item) => ({ ...item, orderId })));
   return { id: orderId, items: validatedItems };
@@ -1326,29 +1315,30 @@ export async function getOrderItemsByOrderId(orderId: number) {
 }
 
 async function ensureEmailNotificationLogTable() {
-  await getDb();
   if (!_pool) return;
-  await _pool.query(`CREATE TABLE IF NOT EXISTS \`emailNotificationLogs\` (
-    \`id\` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    \`entityType\` enum('booking','order') NOT NULL,
-    \`entityId\` int NOT NULL,
-    \`audience\` enum('owner','customer') NOT NULL,
-    \`recipientEmail\` varchar(320) NOT NULL,
-    \`subject\` varchar(255) NOT NULL,
-    \`bodyPreview\` text NULL,
-    \`status\` enum('pending','sent','failed','retried') NOT NULL DEFAULT 'pending',
-    \`provider\` varchar(80) NOT NULL DEFAULT 'zoho_smtp',
-    \`smtpHost\` varchar(255) NULL,
-    \`messageId\` varchar(255) NULL,
-    \`errorMessage\` text NULL,
-    \`attempts\` int NOT NULL DEFAULT 0,
-    \`lastAttemptAtMs\` bigint NULL,
-    \`sentAtMs\` bigint NULL,
-    \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX \`emailNotificationLogs_entity_idx\` (\`entityType\`, \`entityId\`),
-    INDEX \`emailNotificationLogs_status_idx\` (\`status\`)
-  )`);
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "emailNotificationLogs" (
+      "id" SERIAL PRIMARY KEY,
+      "entityType" TEXT NOT NULL,
+      "entityId" INTEGER NOT NULL,
+      "audience" TEXT NOT NULL,
+      "recipientEmail" VARCHAR(320) NOT NULL,
+      "subject" VARCHAR(255) NOT NULL,
+      "bodyPreview" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'pending',
+      "provider" VARCHAR(80) NOT NULL DEFAULT 'zoho_smtp',
+      "smtpHost" VARCHAR(255),
+      "messageId" VARCHAR(255),
+      "errorMessage" TEXT,
+      "attempts" INTEGER NOT NULL DEFAULT 0,
+      "lastAttemptAtMs" BIGINT,
+      "sentAtMs" BIGINT,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure emailNotificationLogs table", err);
+  }
 }
 
 export async function createEmailNotificationLog(input: {
@@ -1379,7 +1369,7 @@ export async function createEmailNotificationLog(input: {
     errorMessage: input.errorMessage ?? null,
     attempts: 0,
     lastAttemptAtMs: Date.now(),
-  }).$returningId();
+  }).returning({ id: emailNotificationLogs.id });
   return { id: inserted[0]?.id ?? 0 };
 }
 
@@ -1430,7 +1420,7 @@ export async function recordAnalytics(eventName: string, pagePath: string, metad
 export async function createTryOnGeneration(input: { styleName: string; originalImageUrl: string; generatedImageUrl?: string; status?: "pending" | "completed" | "failed"; errorMessage?: string }) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
-  const inserted = await db.insert(tryOnGenerations).values({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, generatedImageUrl: input.generatedImageUrl, status: input.status ?? "pending", errorMessage: input.errorMessage }).$returningId();
+  const inserted = await db.insert(tryOnGenerations).values({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, generatedImageUrl: input.generatedImageUrl, status: input.status ?? "pending", errorMessage: input.errorMessage }).returning({ id: tryOnGenerations.id });
   return { id: inserted[0]?.id ?? 0 };
 }
 
@@ -1445,8 +1435,8 @@ export async function adminSummary() {
   const supabaseProducts = await listSupabaseProducts();
   const db = await getDb();
   if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0 };
-  const [bookingRows, orderRows, reviewRows, mysqlProductRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
-  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, products: supabaseProducts?.length ?? mysqlProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
+  const [bookingRows, orderRows, reviewRows, dbProductRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
+  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, products: supabaseProducts?.length ?? dbProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
 }
 
 export async function adminLists() {
@@ -1457,8 +1447,8 @@ export async function adminLists() {
   const fallbackProducts = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
   if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   await ensureEmailNotificationLogTable();
-  const [bookingRows, orderRows, reviewRows, mysqlProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
-  const productsWithVariants = supabaseProducts ?? mysqlProductRows.map((product) => ({
+  const [bookingRows, orderRows, reviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
+  const productsWithVariants = supabaseProducts ?? dbProductRows.map((product) => ({
     ...product,
     id: Number(product.id),
     image_url: product.imageUrl,
@@ -1508,7 +1498,7 @@ export async function createProduct(input: typeof products.$inferInsert, variant
   if (supabaseProduct?.id) return supabaseProduct;
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const inserted = await db.insert(products).values(input).$returningId();
+  const inserted = await db.insert(products).values(input).returning({ id: products.id });
   const productId = inserted[0]?.id;
   if (!productId) throw new Error("Product could not be saved with a database id.");
   if (variants.length) await db.insert(productVariants).values(variants.map((variant) => ({ ...variant, productId })));
@@ -1557,14 +1547,14 @@ export async function updateProductStock(id: number, stockQuantity: number, stoc
 export async function addGalleryImage(input: typeof galleryImages.$inferInsert) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const result = await db.insert(galleryImages).values(input).$returningId();
+  const result = await db.insert(galleryImages).values(input).returning({ id: galleryImages.id });
   return { id: result[0]?.id, ...input };
 }
 
 export async function updateWebsiteSection(sectionKey: string, input: Partial<typeof websiteSections.$inferInsert>) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  await db.insert(websiteSections).values({ sectionKey, title: input.title ?? sectionKey, ...input }).onDuplicateKeyUpdate({ set: { ...input, updatedAt: new Date() } });
+  await db.insert(websiteSections).values({ sectionKey, title: input.title ?? sectionKey, ...input }).onConflictDoUpdate({ target: websiteSections.sectionKey, set: { ...input, updatedAt: new Date() } });
   return { sectionKey, ...input };
 }
 
