@@ -87,6 +87,7 @@ function getLiveStripeSecretKey() {
 
 function getLiveStripePublishableKey() {
   const candidates = [
+    normalizeStripeKey(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
     normalizeStripeKey(process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY),
     normalizeStripeKey(process.env.VITE_STRIPE_PUBLISHABLE_KEY),
   ];

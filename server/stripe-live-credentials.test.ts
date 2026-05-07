@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { describe, expect, it } from "vitest";
 
 const liveSecret = process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY?.trim();
-const livePublishable = process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY?.trim();
+const livePublishable = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY)?.trim();
 const liveWebhookSecret = process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET?.trim();
 
 describe("Eby’s Place live Stripe credentials", () => {
