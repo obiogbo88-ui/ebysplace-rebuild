@@ -1336,6 +1336,8 @@ async function ensureEmailNotificationLogTable() {
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
       "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
     )`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "emailNotificationLogs_entity_idx" ON "emailNotificationLogs" ("entityType", "entityId")`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "emailNotificationLogs_status_idx" ON "emailNotificationLogs" ("status")`);
   } catch (err) {
     console.warn("[Database] Could not ensure emailNotificationLogs table", err);
   }
@@ -1390,6 +1392,7 @@ export async function updateEmailNotificationLog(id: number, input: {
     errorMessage: input.errorMessage ?? null,
     sentAtMs: input.sentAtMs ?? null,
     lastAttemptAtMs: Date.now(),
+    updatedAt: new Date(),
     attempts: sql`${emailNotificationLogs.attempts} + 1`,
   }).where(eq(emailNotificationLogs.id, id));
   return { id, ...input };
