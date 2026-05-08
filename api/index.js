@@ -14,6 +14,18 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+// server/_core/envSecrets.ts
+var INVISIBLE_OR_COPY_WHITESPACE = /[\s\u200B-\u200D\uFEFF]+/g;
+function trimEnvValue(value) {
+  return (value ?? "").trim().replace(/^[\'\"]|[\'\"]$/g, "").trim();
+}
+function normalizeSecretKey(value) {
+  return trimEnvValue(value).replace(INVISIBLE_OR_COPY_WHITESPACE, "");
+}
+function normalizeEnvUrl(value) {
+  return normalizeSecretKey(value).replace(/\/+$/, "");
+}
+
 // drizzle/schema.ts
 import {
   bigint,
@@ -248,7 +260,7 @@ function requiresSsl(connectionString) {
   return /sslmode=require|ssl=true|supabase\.co/i.test(connectionString);
 }
 function getDatabaseUrl() {
-  return process.env.DATABASE_URL?.trim() || "";
+  return trimEnvValue(process.env.DATABASE_URL);
 }
 function databaseUrlFingerprint(connectionString) {
   try {
@@ -314,8 +326,8 @@ async function getDb() {
 }
 function getSupabaseRestConfig() {
   const rawUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const url = rawUrl?.replace(/\/$/, "");
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = normalizeEnvUrl(rawUrl);
+  const serviceRoleKey = normalizeSecretKey(process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (!url || !serviceRoleKey) return null;
   return { url, serviceRoleKey };
 }
@@ -1770,10 +1782,10 @@ function normaliseSender(value, channel = "sms") {
   return null;
 }
 async function sendTwilioMessage(input) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const smsFrom = process.env.TWILIO_SMS_FROM;
-  const whatsappFrom = process.env.TWILIO_WHATSAPP_FROM;
+  const accountSid = normalizeSecretKey(process.env.TWILIO_ACCOUNT_SID);
+  const authToken = normalizeSecretKey(process.env.TWILIO_AUTH_TOKEN);
+  const smsFrom = trimEnvValue(process.env.TWILIO_SMS_FROM);
+  const whatsappFrom = trimEnvValue(process.env.TWILIO_WHATSAPP_FROM);
   const to = normalisePhone(input.to);
   const channel = input.channel || "sms";
   const from = normaliseSender(channel === "whatsapp" ? whatsappFrom : smsFrom, channel);
@@ -1845,8 +1857,8 @@ function isValidEmail(value) {
 }
 async function sendCustomerEmailSafely(input) {
   try {
-    const apiKey = process.env.SENDGRID_API_KEY;
-    const from = process.env.SENDGRID_FROM_EMAIL || process.env.CUSTOMER_EMAIL_FROM;
+    const apiKey = normalizeSecretKey(process.env.SENDGRID_API_KEY);
+    const from = trimEnvValue(process.env.SENDGRID_FROM_EMAIL) || trimEnvValue(process.env.CUSTOMER_EMAIL_FROM);
     if (!apiKey || !from || !isValidEmail(input.to)) {
       return { sent: false, reason: "email_provider_not_configured_or_invalid_address" };
     }
@@ -1858,7 +1870,7 @@ async function sendCustomerEmailSafely(input) {
       },
       body: JSON.stringify({
         personalizations: [{ to: [{ email: input.to.trim() }] }],
-        from: { email: from },
+        from: { email: from.trim() },
         subject: input.subject,
         content: [{ type: "text/plain", value: input.body.slice(0, 12e3) }]
       })
@@ -2199,18 +2211,15 @@ async function resendEmailNotificationLog(logId) {
 
 // server/stripeWebhook.ts
 var STUDIO_CONFIRMATION_ADDRESS2 = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
-function normalizeStripeKey(value) {
-  return value?.trim().replace(/^['\"]|['\"]$/g, "") || "";
-}
 function getStripeWebhookConfig() {
   const secretKey = [
-    normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
-    normalizeStripeKey(process.env.STRIPE_SECRET_KEY)
+    normalizeSecretKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeSecretKey(process.env.STRIPE_SECRET_KEY)
   ].find((key) => key.startsWith("sk_live_")) || [
-    normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
-    normalizeStripeKey(process.env.STRIPE_SECRET_KEY)
+    normalizeSecretKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeSecretKey(process.env.STRIPE_SECRET_KEY)
   ].find(Boolean);
-  const webhookSecret = normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET) || normalizeStripeKey(process.env.STRIPE_WEBHOOK_SECRET);
+  const webhookSecret = normalizeSecretKey(process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET) || normalizeSecretKey(process.env.STRIPE_WEBHOOK_SECRET);
   if (!secretKey || !webhookSecret) return null;
   return { stripe: new Stripe(secretKey), webhookSecret };
 }
@@ -2380,10 +2389,10 @@ import Stripe2 from "stripe";
 import { z as z2 } from "zod";
 
 // server/storage.ts
-var SUPABASE_URL = (process.env.SUPABASE_URL || "https://jcyoipbiplzrocrrhwkp.supabase.co").replace(/\/+$/, "");
-var SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "ebysplace-media";
+var SUPABASE_URL = normalizeEnvUrl(process.env.SUPABASE_URL) || "https://jcyoipbiplzrocrrhwkp.supabase.co";
+var SUPABASE_BUCKET = trimEnvValue(process.env.SUPABASE_STORAGE_BUCKET) || "ebysplace-media";
 function getSupabaseConfig() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = normalizeSecretKey(process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (!serviceRoleKey) {
     throw new Error("Storage is unavailable: configure SUPABASE_SERVICE_ROLE_KEY in Vercel and redeploy.");
   }
@@ -2485,16 +2494,16 @@ async function fetchImageAsFile(image, index) {
   return new File([bytes], `source-${index}.${ext}`, { type: contentType });
 }
 async function generateImage(options) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = normalizeSecretKey(process.env.OPENAI_API_KEY);
   if (!apiKey) {
     throw new Error("AI Try-On is not configured for this deployment. Add OPENAI_API_KEY in Vercel, then redeploy.");
   }
   const originals = options.originalImages || [];
   const endpoint = originals.length > 0 ? "https://api.openai.com/v1/images/edits" : "https://api.openai.com/v1/images/generations";
   const form = new FormData();
-  form.set("model", process.env.OPENAI_IMAGE_MODEL || "gpt-image-1");
+  form.set("model", trimEnvValue(process.env.OPENAI_IMAGE_MODEL) || "gpt-image-1");
   form.set("prompt", options.prompt);
-  form.set("size", process.env.OPENAI_IMAGE_SIZE || "1024x1024");
+  form.set("size", trimEnvValue(process.env.OPENAI_IMAGE_SIZE) || "1024x1024");
   if (originals.length > 0) {
     const files = await Promise.all(originals.map((image2, index) => fetchImageAsFile(image2, index)));
     for (const file of files) form.append("image", file);
@@ -2612,8 +2621,8 @@ function toTrpcError(error, fallbackMessage) {
   return new TRPCError3({ code: "INTERNAL_SERVER_ERROR", message });
 }
 function getSupabaseAuthConfig() {
-  const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = normalizeEnvUrl(process.env.SUPABASE_URL);
+  const serviceRoleKey = normalizeSecretKey(process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (!url || !serviceRoleKey) {
     console.error("[Auth] Supabase Auth configuration missing", {
       hasSupabaseUrl: Boolean(url),
@@ -2870,21 +2879,18 @@ var orderInput = z2.object({
     unitPrice: z2.string().regex(/^\d+(\.\d{2})?$/)
   })).min(1)
 });
-function normalizeStripeKey2(value) {
-  return value?.trim().replace(/^['\"]|['\"]$/g, "") || "";
-}
 function getLiveStripeSecretKey() {
   const candidates = [
-    normalizeStripeKey2(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
-    normalizeStripeKey2(process.env.STRIPE_SECRET_KEY)
+    normalizeSecretKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeSecretKey(process.env.STRIPE_SECRET_KEY)
   ];
   return candidates.find((key) => key.startsWith("sk_live_")) || candidates.find(Boolean) || "";
 }
 function getLiveStripePublishableKey() {
   const candidates = [
-    normalizeStripeKey2(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
-    normalizeStripeKey2(process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY),
-    normalizeStripeKey2(process.env.VITE_STRIPE_PUBLISHABLE_KEY)
+    normalizeSecretKey(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
+    normalizeSecretKey(process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY),
+    normalizeSecretKey(process.env.VITE_STRIPE_PUBLISHABLE_KEY)
   ];
   return candidates.find((key) => key.startsWith("pk_live_")) || candidates.find(Boolean) || "";
 }
@@ -3430,6 +3436,12 @@ var app = express3();
 registerStripeWebhook(app);
 app.use(express3.json({ limit: "50mb" }));
 app.use(express3.urlencoded({ limit: "50mb", extended: true }));
+app.use("/api/trpc", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
 app.use(
   "/api/trpc",
   createExpressMiddleware({

@@ -581,7 +581,7 @@ export default function Home() {
                   <div className="relative mx-auto h-32 w-32 overflow-hidden rounded-full border border-[#d8bd74]/75 bg-[#efe0c7] p-2 shadow-[0_18px_48px_rgba(74,48,20,.2)] sm:h-36 sm:w-36 lg:h-48 lg:w-48">
                     <img
                       className="h-full w-full rounded-full object-cover object-[center_18%]"
-                      src={ABOUT_PORTRAIT_FALLBACK_SRC || aboutSection.portraitImageUrl || aboutSection.imageUrl}
+                      src={aboutSection.portraitImageUrl || aboutSection.imageUrl || ABOUT_PORTRAIT_FALLBACK_SRC}
                       alt="Eby’s Place story portrait"
                       loading="lazy"
                       decoding="async"

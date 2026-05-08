@@ -158,6 +158,15 @@ export default function Admin() {
     utils.admin.summary.invalidate();
     utils.admin.insights.invalidate();
     utils.admin.listEmailNotificationLogs.invalidate();
+    utils.public.services.invalidate();
+    utils.public.featuredServices.invalidate();
+    utils.public.products.invalidate();
+    utils.public.availability.invalidate();
+    utils.public.instagramSettings.invalidate();
+    utils.public.websiteSections.invalidate();
+    utils.public.reviews.invalidate();
+    utils.public.gallery.invalidate();
+    utils.public.paymentMode.invalidate();
   };
   const scrollAdminFeedback = (sectionId: string) => {
     setOpenPanels((current) => new Set(current).add(sectionId));
