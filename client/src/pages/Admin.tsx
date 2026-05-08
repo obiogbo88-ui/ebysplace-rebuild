@@ -605,7 +605,7 @@ export default function Admin() {
                 <textarea placeholder="SEO meta description" value={newProduct.seoDescription} onChange={(event) => setNewProduct({ ...newProduct, seoDescription: event.target.value })} />
                 <p className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-white/70"><UploadCloud className="mr-2 inline h-4 w-4 text-primary" />To upload a product image, <b className="text-primary">save the product first</b>, then use the &quot;Update product image&quot; button on the saved product below. You can also paste an image URL directly into the field below.</p>
                 <input placeholder="Product image URL (optional — paste URL or upload after saving)" value={newProduct.imageUrl} onChange={(event) => setNewProduct({ ...newProduct, imageUrl: event.target.value })} />
-                <textarea placeholder={"Available colours in stock, one per line: Colour name|#hexcode|stock|image_url"} value={newProduct.colourChoices} onChange={(event) => setNewProduct({ ...newProduct, colourChoices: event.target.value })} />
+                <textarea placeholder={"Available colours in stock, one per line: Colour name|#hexcode|stock|imageUrl"} value={newProduct.colourChoices} onChange={(event) => setNewProduct({ ...newProduct, colourChoices: event.target.value })} />
                 {newProduct.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={newProduct.imageUrl} alt="New product preview" loading="lazy" decoding="async" /></div>}
                 <button className="btn-gold" disabled={createProduct.isPending}>{createProduct.isPending ? "Saving product…" : "Save product to shop"}</button>
               </form>
@@ -632,7 +632,7 @@ export default function Admin() {
                     <div className="rounded-2xl border border-primary/20 bg-black/20 p-3 text-sm text-white/70">
                       <b className="block text-primary">Shop colour previews</b>
                       <span className="mt-1 block text-white/55">These are the colour options customers click on the shop page to update the product preview before checkout.</span>
-                      <label className="mt-3 grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Available colours in stock<textarea defaultValue={formatColourChoices(product.variants)} id={`product-colours-${product.id}`} rows={4} placeholder="Colour name|#hexcode|stock|image_url" /></label>
+                      <label className="mt-3 grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Available colours in stock<textarea defaultValue={formatColourChoices(product.variants)} id={`product-colours-${product.id}`} rows={4} placeholder="Colour name|#hexcode|stock|imageUrl" /></label>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {(product.variants?.length ? product.variants : [{ name: "Default", colourHex: "#c8a95a" }]).map((variant: any) => (
                           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2" key={`${product.id}-${variant.id || variant.name}`}>
