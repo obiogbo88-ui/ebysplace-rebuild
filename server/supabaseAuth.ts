@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { TRPCError } from "@trpc/server";
 import type { Request } from "express";
-import { normalizeEnvUrl, normalizeSecretKey } from "./_core/envSecrets";
+import nodemailer from "nodemailer";
+import { normalizeEnvUrl, normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
 import { upsertUser } from "./db";
 
 function normalizeEmailCandidate(value: string | undefined) {
@@ -42,6 +43,60 @@ type SupabaseTokenResponse = {
   refresh_token?: string;
   user: SupabaseAuthUser;
 };
+
+type SupabaseGeneratedLinkResponse = {
+  action_link?: string;
+  email_otp?: string;
+  hashed_token?: string;
+  redirect_to?: string;
+  verification_type?: string;
+};
+
+function getSmtpConfig() {
+  const host = trimEnvValue(process.env.SMTP_HOST) || "smtp.zoho.eu";
+  const port = Number(trimEnvValue(process.env.SMTP_PORT) || "465");
+  const user = trimEnvValue(process.env.SMTP_USER) || "info@ebysplace.com";
+  const pass = normalizeSecretKey(process.env.SMTP_PASS);
+  const from = trimEnvValue(process.env.SMTP_FROM) || user;
+  return { host, port, user, pass, from, secure: port === 465 };
+}
+
+function assertPasswordResetSmtpReady() {
+  const config = getSmtpConfig();
+  const missing = [
+    !config.host && "SMTP_HOST",
+    !config.port && "SMTP_PORT",
+    !config.user && "SMTP_USER",
+    !config.pass && "SMTP_PASS",
+    !config.from && "SMTP_FROM",
+  ].filter(Boolean);
+  if (missing.length) throw new Error(`Missing SMTP configuration for password reset fallback: ${missing.join(", ")}`);
+  return config;
+}
+
+async function sendAdminPasswordResetEmail(email: string, resetLink: string) {
+  const config = assertPasswordResetSmtpReady();
+  const transporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    requireTLS: !config.secure,
+    auth: { user: config.user, pass: config.pass },
+  });
+
+  await transporter.sendMail({
+    from: config.from,
+    to: email,
+    subject: "Reset your Eby’s Place admin password",
+    text: [
+      "Hello,",
+      "A password reset was requested for the Eby’s Place admin dashboard.",
+      "Open the secure reset link below to choose a new password:",
+      resetLink,
+      "If you did not request this, you can ignore this email.",
+    ].join("\n\n"),
+  });
+}
 
 function toTrpcError(error: unknown, fallbackMessage: string) {
   if (error instanceof TRPCError) return error;
@@ -187,7 +242,7 @@ export async function requestAdminPasswordReset(email: string, origin: string) {
   const normalizedEmail = email.trim().toLowerCase();
   const genericResponse = {
     success: true as const,
-    message: "If this email is the configured Eby’s Place administrator, a Supabase password reset link has been sent.",
+    message: "If this email is the configured Eby’s Place administrator, a password reset link has been sent.",
   };
 
   if (!isConfiguredAdminEmail(normalizedEmail)) {
@@ -195,15 +250,47 @@ export async function requestAdminPasswordReset(email: string, origin: string) {
     return genericResponse;
   }
 
+  const redirectTo = getSafeResetRedirect(origin);
+
   try {
-    const redirectTo = getSafeResetRedirect(origin);
     await supabaseAuthFetch<Record<string, unknown>>("/recover?redirect_to=" + encodeURIComponent(redirectTo), {
       method: "POST",
       body: JSON.stringify({ email: normalizedEmail }),
     });
     return genericResponse;
-  } catch (error) {
-    const safeError = toTrpcError(error, "Unable to send the Supabase password reset email.");
+  } catch (recoverError) {
+    const recoverTrpcError = toTrpcError(recoverError, "Unable to send the Supabase password reset email.");
+    console.warn("[Auth] Supabase recovery email failed; attempting SMTP fallback", {
+      email: normalizedEmail,
+      code: recoverTrpcError.code,
+      message: recoverTrpcError.message,
+    });
+  }
+
+  try {
+    const generated = await supabaseAuthFetch<SupabaseGeneratedLinkResponse>("/admin/generate_link", {
+      method: "POST",
+      body: JSON.stringify({
+        type: "recovery",
+        email: normalizedEmail,
+        options: { redirect_to: redirectTo },
+      }),
+    });
+
+    if (!generated.action_link) {
+      console.error("[Auth] Supabase generated a password reset response without an action link", {
+        email: normalizedEmail,
+        hasHashedToken: Boolean(generated.hashed_token),
+        verificationType: generated.verification_type,
+      });
+      throw new TRPCError({ code: "BAD_GATEWAY", message: "Supabase did not return a password reset link." });
+    }
+
+    await sendAdminPasswordResetEmail(normalizedEmail, generated.action_link);
+    console.info("[Auth] Sent admin password reset email using SMTP fallback", { email: normalizedEmail });
+    return genericResponse;
+  } catch (fallbackError) {
+    const safeError = toTrpcError(fallbackError, "Unable to send the password reset email.");
     console.error("[Auth] Password reset request failed", { email: normalizedEmail, code: safeError.code, message: safeError.message });
     throw safeError;
   }

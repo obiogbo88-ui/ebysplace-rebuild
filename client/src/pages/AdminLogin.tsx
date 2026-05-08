@@ -153,7 +153,7 @@ export default function AdminLogin() {
                   />
                   {resetRequested ? (
                     <p className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs leading-5 text-[#5f5142]">
-                      Check the Supabase admin inbox for a password reset link, then return here to sign in with the new password.
+                      Check the configured admin inbox for a password reset link, then return here to sign in with the new password.
                     </p>
                   ) : null}
                 </div>
