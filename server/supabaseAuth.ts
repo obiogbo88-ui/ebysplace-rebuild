@@ -136,13 +136,61 @@ function getDisplayName(user: SupabaseAuthUser, fallbackEmail: string) {
   return typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : fallbackEmail.split("@")[0];
 }
 
+function getPreferredProductionOrigin() {
+  const candidates = [
+    process.env.EBYSPLACE_PUBLIC_URL,
+    process.env.PUBLIC_SITE_URL,
+    process.env.SITE_URL,
+    process.env.APP_URL,
+    process.env.VITE_APP_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+    "https://www.ebysplace.com",
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = new URL(trimEnvValue(candidate));
+      if ((parsed.protocol === "https:" || parsed.protocol === "http:") && parsed.hostname !== "localhost" && parsed.hostname !== "127.0.0.1") {
+        return parsed.origin;
+      }
+    } catch {
+      // Ignore invalid URL candidates and continue to the next configured origin.
+    }
+  }
+
+  return "https://www.ebysplace.com";
+}
+
 function getSafeResetRedirect(origin: string) {
   try {
     const parsed = new URL(origin);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("Unsupported protocol");
-    return parsed.origin + "/admin/reset-password";
+    const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    const shouldUseProductionOrigin = isLocalhost && (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production");
+    const safeOrigin = shouldUseProductionOrigin ? getPreferredProductionOrigin() : parsed.origin;
+    return safeOrigin + "/admin/reset-password";
   } catch {
-    return "http://localhost:3000/admin/reset-password";
+    return (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production" ? getPreferredProductionOrigin() : "http://localhost:3000") + "/admin/reset-password";
+  }
+}
+
+function withResetRedirect(actionLink: string, redirectTo: string) {
+  try {
+    const parsed = new URL(actionLink);
+    parsed.searchParams.set("redirect_to", redirectTo);
+    return parsed.toString();
+  } catch {
+    return actionLink;
+  }
+}
+
+function hasPasswordResetSmtpConfig() {
+  try {
+    assertPasswordResetSmtpReady();
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -252,22 +300,7 @@ export async function requestAdminPasswordReset(email: string, origin: string) {
 
   const redirectTo = getSafeResetRedirect(origin);
 
-  try {
-    await supabaseAuthFetch<Record<string, unknown>>("/recover?redirect_to=" + encodeURIComponent(redirectTo), {
-      method: "POST",
-      body: JSON.stringify({ email: normalizedEmail }),
-    });
-    return genericResponse;
-  } catch (recoverError) {
-    const recoverTrpcError = toTrpcError(recoverError, "Unable to send the Supabase password reset email.");
-    console.warn("[Auth] Supabase recovery email failed; attempting SMTP fallback", {
-      email: normalizedEmail,
-      code: recoverTrpcError.code,
-      message: recoverTrpcError.message,
-    });
-  }
-
-  try {
+  const sendGeneratedLinkThroughSmtp = async (reason: "preferred" | "fallback") => {
     const generated = await supabaseAuthFetch<SupabaseGeneratedLinkResponse>("/admin/generate_link", {
       method: "POST",
       body: JSON.stringify({
@@ -286,8 +319,38 @@ export async function requestAdminPasswordReset(email: string, origin: string) {
       throw new TRPCError({ code: "BAD_GATEWAY", message: "Supabase did not return a password reset link." });
     }
 
-    await sendAdminPasswordResetEmail(normalizedEmail, generated.action_link);
-    console.info("[Auth] Sent admin password reset email using SMTP fallback", { email: normalizedEmail });
+    await sendAdminPasswordResetEmail(normalizedEmail, withResetRedirect(generated.action_link, redirectTo));
+    console.info("[Auth] Sent admin password reset email using app SMTP", { email: normalizedEmail, reason, redirectTo });
+  };
+
+  if (hasPasswordResetSmtpConfig()) {
+    try {
+      await sendGeneratedLinkThroughSmtp("preferred");
+      return genericResponse;
+    } catch (smtpError) {
+      const safeError = toTrpcError(smtpError, "Unable to send the password reset email.");
+      console.error("[Auth] App SMTP password reset failed", { email: normalizedEmail, code: safeError.code, message: safeError.message });
+      throw safeError;
+    }
+  }
+
+  try {
+    await supabaseAuthFetch<Record<string, unknown>>("/recover?redirect_to=" + encodeURIComponent(redirectTo), {
+      method: "POST",
+      body: JSON.stringify({ email: normalizedEmail }),
+    });
+    return genericResponse;
+  } catch (recoverError) {
+    const recoverTrpcError = toTrpcError(recoverError, "Unable to send the Supabase password reset email.");
+    console.warn("[Auth] Supabase recovery email failed; attempting SMTP fallback", {
+      email: normalizedEmail,
+      code: recoverTrpcError.code,
+      message: recoverTrpcError.message,
+    });
+  }
+
+  try {
+    await sendGeneratedLinkThroughSmtp("fallback");
     return genericResponse;
   } catch (fallbackError) {
     const safeError = toTrpcError(fallbackError, "Unable to send the password reset email.");

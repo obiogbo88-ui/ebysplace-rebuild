@@ -53,7 +53,7 @@ describe("admin password reset", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("falls back to generated Supabase recovery links sent through SMTP when Supabase mail delivery fails", async () => {
+  it("uses generated Supabase recovery links sent through SMTP when SMTP is configured", async () => {
     process.env.SMTP_HOST = "smtp.example.com";
     process.env.SMTP_PORT = "465";
     process.env.SMTP_USER = "mailer@example.com";
@@ -68,18 +68,13 @@ describe("admin password reset", () => {
     }));
 
     const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
-      if (String(url).endsWith("/auth/v1/recover?redirect_to=https%3A%2F%2Febysplace.vercel.app%2Fadmin%2Freset-password")) {
-        return new Response(JSON.stringify({ msg: "Error sending recovery email" }), { status: 500 });
-      }
-      if (String(url).endsWith("/auth/v1/admin/generate_link")) {
-        expect(JSON.parse(String(init?.body))).toEqual({
-          type: "recovery",
-          email: "admin@example.com",
-          options: { redirect_to: "https://ebysplace.vercel.app/admin/reset-password" },
-        });
-        return new Response(JSON.stringify({ action_link: "https://project.supabase.co/auth/v1/verify?token=abc&type=recovery" }), { status: 200 });
-      }
-      return new Response("{}", { status: 404 });
+      expect(String(url)).toBe("https://project.supabase.co/auth/v1/admin/generate_link");
+      expect(JSON.parse(String(init?.body))).toEqual({
+        type: "recovery",
+        email: "admin@example.com",
+        options: { redirect_to: "https://ebysplace.vercel.app/admin/reset-password" },
+      });
+      return new Response(JSON.stringify({ action_link: "https://project.supabase.co/auth/v1/verify?token=abc&type=recovery" }), { status: 200 });
     }) as unknown as typeof fetch;
     vi.stubGlobal("fetch", fetchMock);
 
@@ -88,11 +83,48 @@ describe("admin password reset", () => {
     const result = await requestAdminPasswordReset("ADMIN@example.com", "https://ebysplace.vercel.app/account");
 
     expect(result.success).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(sendMailMock).toHaveBeenCalledWith(expect.objectContaining({
       to: "admin@example.com",
       subject: "Reset your Eby’s Place admin password",
-      text: expect.stringContaining("https://project.supabase.co/auth/v1/verify?token=abc&type=recovery"),
+      text: expect.stringContaining("https://project.supabase.co/auth/v1/verify?token=abc&type=recovery&redirect_to=https%3A%2F%2Febysplace.vercel.app%2Fadmin%2Freset-password"),
     }));
+  });
+
+  it("does not send localhost reset redirects in production when the incoming origin is local", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.VERCEL_ENV = "production";
+    process.env.EBYSPLACE_PUBLIC_URL = "https://www.ebysplace.com";
+    process.env.SMTP_HOST = "smtp.example.com";
+    process.env.SMTP_PORT = "465";
+    process.env.SMTP_USER = "mailer@example.com";
+    process.env.SMTP_PASS = "smtp-password";
+    process.env.SMTP_FROM = "Eby's Place <mailer@example.com>";
+
+    const sendMailMock = vi.fn(async () => ({ messageId: "smtp-message-id" }));
+    vi.doMock("nodemailer", () => ({
+      default: {
+        createTransport: vi.fn(() => ({ sendMail: sendMailMock })),
+      },
+    }));
+
+    const fetchMock = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+      expect(JSON.parse(String(init?.body))).toEqual({
+        type: "recovery",
+        email: "admin@example.com",
+        options: { redirect_to: "https://www.ebysplace.com/admin/reset-password" },
+      });
+      return new Response(JSON.stringify({ action_link: "https://project.supabase.co/auth/v1/verify?token=abc&type=recovery&redirect_to=http%3A%2F%2Flocalhost%3A3000" }), { status: 200 });
+    }) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { requestAdminPasswordReset } = await loadPasswordResetHelper();
+
+    await requestAdminPasswordReset("ADMIN@example.com", "http://localhost:3000/admin/login");
+
+    expect(sendMailMock).toHaveBeenCalledWith(expect.objectContaining({
+      text: expect.stringContaining("redirect_to=https%3A%2F%2Fwww.ebysplace.com%2Fadmin%2Freset-password"),
+    }));
+    expect(String(sendMailMock.mock.calls[0][0].text)).not.toContain("localhost");
   });
 });

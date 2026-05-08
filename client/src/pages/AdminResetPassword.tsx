@@ -54,7 +54,7 @@ export default function AdminResetPassword() {
             </div>
             <CardTitle className="font-serif text-3xl">Reset admin password</CardTitle>
             <CardDescription className="text-[#5f5142]">
-              Enter a new password for the configured Eby’s Place Supabase admin account.
+              Enter a new password for the configured Eby’s Place admin account.
             </CardDescription>
           </CardHeader>
           <CardContent>
