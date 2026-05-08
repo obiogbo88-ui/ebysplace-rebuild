@@ -3436,6 +3436,12 @@ var app = express3();
 registerStripeWebhook(app);
 app.use(express3.json({ limit: "50mb" }));
 app.use(express3.urlencoded({ limit: "50mb", extended: true }));
+app.use("/api/trpc", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
 app.use(
   "/api/trpc",
   createExpressMiddleware({
