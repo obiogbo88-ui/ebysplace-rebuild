@@ -557,6 +557,11 @@ describe("Eby’s Place platform business rules", () => {
     expect(generateImageMock).toHaveBeenCalledWith(expect.objectContaining({
       originalImages: [{ url: "https://signed-storage.example.test/try-on/uploads/test-customer-photo.jpg", mimeType: "image/jpeg" }],
     }));
+    const generateImageCall = generateImageMock.mock.calls[0]?.[0];
+    expect(generateImageCall?.prompt).toContain("Use the uploaded image as the base image and apply only the selected braid style");
+    expect(generateImageCall?.prompt).toContain("preserve the exact face from the uploaded image with zero changes");
+    expect(generateImageCall?.prompt).toContain("Allowed change only: replace or restyle hair");
+    expect(generateImageCall?.prompt).toContain("preserve the original face exactly and adjust only the hair");
     createSpy.mockRestore();
     updateSpy.mockRestore();
   });
