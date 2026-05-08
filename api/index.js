@@ -29,7 +29,6 @@ import {
 } from "drizzle-orm/pg-core";
 var userRoleEnum = pgEnum("user_role_enum", ["user", "admin"]);
 var trueFalseEnum = pgEnum("true_false_enum", ["true", "false"]);
-var serviceCategoryEnum = pgEnum("service_category_enum", ["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
 var bookingStatusEnum = pgEnum("booking_status_enum", ["pending", "confirmed", "completed", "cancelled"]);
 var bookingLocationTypeEnum = pgEnum("booking_location_type_enum", ["studio", "home_service"]);
 var depositStatusEnum = pgEnum("deposit_status_enum", ["unpaid", "checkout_started", "paid", "failed", "refunded"]);
@@ -74,7 +73,7 @@ var services = pgTable("services", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 180 }).notNull(),
   slug: varchar("slug", { length: 220 }).notNull().unique(),
-  category: serviceCategoryEnum("category").notNull(),
+  category: varchar("category", { length: 120 }).notNull(),
   description: text("description").notNull(),
   duration: varchar("duration", { length: 80 }).notNull(),
   priceFrom: numeric("priceFrom", { precision: 10, scale: 2 }).notNull(),
@@ -159,6 +158,7 @@ var orderItems = pgTable("orderItems", {
   productId: integer("productId").notNull(),
   variantId: integer("variantId"),
   productName: varchar("productName", { length: 180 }).notNull(),
+  imageUrl: varchar("imageUrl", { length: 800 }),
   variantName: varchar("variantName", { length: 120 }),
   quantity: integer("quantity").default(1).notNull(),
   unitPrice: numeric("unitPrice", { precision: 10, scale: 2 }).notNull()
@@ -231,6 +231,7 @@ var tryOnGenerations = pgTable("tryOnGenerations", {
 var _pool = null;
 var _db = null;
 var _seeded = false;
+var _seedingPromise = null;
 var _unsupportedDatabaseUrlWarned = false;
 var _missingDatabaseUrlWarned = false;
 var _databaseConnectionFailed = false;
@@ -981,10 +982,14 @@ var seedReviews = [
 ];
 async function ensureSeedReviews(db) {
   if (!db) return;
-  for (const review of seedReviews) {
-    const existing = await db.select({ id: reviews.id }).from(reviews).where(and(eq(reviews.customerName, review.customerName), eq(reviews.reviewText, review.reviewText))).limit(1);
-    if (existing.length === 0) await db.insert(reviews).values(review);
-  }
+  await db.insert(reviews).values(seedReviews).onConflictDoUpdate({
+    target: [reviews.customerName, reviews.reviewText, reviews.source],
+    set: {
+      rating: sql`excluded."rating"`,
+      status: sql`excluded."status"`,
+      updatedAt: sql`CURRENT_TIMESTAMP`
+    }
+  });
 }
 var seedGallery = [
   { title: "Knotless Braids", category: "Braids", imageUrl: imageBySlug["knotless-braids"], altText: "HD model wearing Knotless Braids by Eby\u2019s Place", sortOrder: 1 },
@@ -1006,23 +1011,44 @@ function isPositivePrice(value) {
 function isUsableImageUrl(value) {
   return typeof value === "string" && /^https?:\/\//.test(value);
 }
+async function runSeedStep(label, action) {
+  try {
+    await action();
+  } catch (error) {
+    console.warn(`[Database] Seed step skipped for ${label}`, error);
+  }
+}
 async function ensureSeedProducts(db) {
   if (!db) return;
-  for (const product of seedProducts) {
-    const existing = await db.select({ id: products.id }).from(products).where(eq(products.slug, product.slug)).limit(1);
-    if (existing.length === 0) await db.insert(products).values(product);
-  }
+  await db.insert(products).values(seedProducts).onConflictDoUpdate({
+    target: products.slug,
+    set: {
+      name: sql`excluded."name"`,
+      category: sql`excluded."category"`,
+      description: sql`excluded."description"`,
+      price: sql`excluded."price"`,
+      imageUrl: sql`excluded."imageUrl"`,
+      badge: sql`excluded."badge"`,
+      seoTitle: sql`excluded."seoTitle"`,
+      seoDescription: sql`excluded."seoDescription"`,
+      stockStatus: sql`excluded."stockStatus"`,
+      stockQuantity: sql`excluded."stockQuantity"`,
+      isFeatured: sql`excluded."isFeatured"`,
+      updatedAt: sql`CURRENT_TIMESTAMP`
+    }
+  });
 }
 async function ensureSeedGallery(db) {
   if (!db) return;
-  for (const item of seedGallery) {
-    const existing = await db.select({ id: galleryImages.id }).from(galleryImages).where(eq(galleryImages.title, item.title)).limit(1);
-    if (existing.length === 0) {
-      await db.insert(galleryImages).values(item);
-    } else {
-      await db.update(galleryImages).set({ ...item, isPublished: "true" }).where(eq(galleryImages.id, existing[0].id));
+  await db.insert(galleryImages).values(seedGallery.map((item) => ({ ...item, isPublished: "true" }))).onConflictDoUpdate({
+    target: [galleryImages.title, galleryImages.category],
+    set: {
+      imageUrl: sql`excluded."imageUrl"`,
+      altText: sql`excluded."altText"`,
+      sortOrder: sql`excluded."sortOrder"`,
+      isPublished: sql`excluded."isPublished"`
     }
-  }
+  });
 }
 var seedWebsiteSections = [
   {
@@ -1042,22 +1068,84 @@ var seedWebsiteSections = [
 async function seedIfNeeded() {
   const db = await getDb();
   if (!db || _seeded) return;
-  _seeded = true;
-  for (const service of seedServices) {
-    const existing = await db.select({ id: services.id }).from(services).where(eq(services.slug, service.slug)).limit(1);
-    if (existing.length === 0) await db.insert(services).values(service);
-  }
-  await ensureSeedProducts(db);
-  const productRows = await db.select().from(products);
-  const variantRows = await db.select().from(productVariants);
-  const scarf = productRows.find((product) => product.slug === "satin-edge-scarf");
-  const hair = productRows.find((product) => product.slug === "premium-braiding-hair");
-  if (scarf && !variantRows.some((variant) => variant.productId === scarf.id)) await db.insert(productVariants).values([{ productId: scarf.id, name: "Black", colourHex: "#111111", stockQuantity: 18 }, { productId: scarf.id, name: "Gold", colourHex: "#c8a95a", stockQuantity: 16 }]);
-  if (hair && !variantRows.some((variant) => variant.productId === hair.id)) await db.insert(productVariants).values([{ productId: hair.id, name: "1B Natural Black", colourHex: "#1b1715", stockQuantity: 42 }, { productId: hair.id, name: "30 Auburn", colourHex: "#8a4b2a", stockQuantity: 28 }, { productId: hair.id, name: "613 Blonde", colourHex: "#d6b779", stockQuantity: 24 }]);
-  await ensureSeedReviews(db);
-  const existingSections = await db.select().from(websiteSections).where(eq(websiteSections.sectionKey, "about_us")).limit(1);
-  if (existingSections.length === 0) await db.insert(websiteSections).values(seedWebsiteSections);
-  await ensureSeedGallery(db);
+  if (_seedingPromise) return _seedingPromise;
+  _seedingPromise = (async () => {
+    await runSeedStep("services", async () => {
+      await db.insert(services).values(seedServices).onConflictDoUpdate({
+        target: services.slug,
+        set: {
+          name: sql`excluded."name"`,
+          category: sql`excluded."category"`,
+          description: sql`excluded."description"`,
+          duration: sql`excluded."duration"`,
+          priceFrom: sql`excluded."priceFrom"`,
+          badge: sql`excluded."badge"`,
+          imageUrl: sql`excluded."imageUrl"`,
+          isBookable: sql`excluded."isBookable"`,
+          isFeatured: sql`excluded."isFeatured"`,
+          sortOrder: sql`excluded."sortOrder"`,
+          updatedAt: sql`CURRENT_TIMESTAMP`
+        }
+      });
+    });
+    await runSeedStep("products", () => ensureSeedProducts(db));
+    const productRows = await db.select().from(products);
+    const scarf = productRows.find((product) => product.slug === "satin-edge-scarf");
+    const hair = productRows.find((product) => product.slug === "premium-braiding-hair");
+    if (scarf) {
+      await runSeedStep("scarf variants", async () => {
+        await db.insert(productVariants).values([
+          { productId: scarf.id, name: "Black", colourHex: "#111111", stockQuantity: 18 },
+          { productId: scarf.id, name: "Gold", colourHex: "#c8a95a", stockQuantity: 16 }
+        ]).onConflictDoUpdate({
+          target: [productVariants.productId, productVariants.name],
+          set: {
+            colourHex: sql`excluded."colourHex"`,
+            stockQuantity: sql`excluded."stockQuantity"`
+          }
+        });
+      });
+    }
+    if (hair) {
+      await runSeedStep("hair variants", async () => {
+        await db.insert(productVariants).values([
+          { productId: hair.id, name: "1B Natural Black", colourHex: "#1b1715", stockQuantity: 42 },
+          { productId: hair.id, name: "30 Auburn", colourHex: "#8a4b2a", stockQuantity: 28 },
+          { productId: hair.id, name: "613 Blonde", colourHex: "#d6b779", stockQuantity: 24 }
+        ]).onConflictDoUpdate({
+          target: [productVariants.productId, productVariants.name],
+          set: {
+            colourHex: sql`excluded."colourHex"`,
+            stockQuantity: sql`excluded."stockQuantity"`
+          }
+        });
+      });
+    }
+    await runSeedStep("reviews", () => ensureSeedReviews(db));
+    await runSeedStep("website sections", async () => {
+      await db.insert(websiteSections).values(seedWebsiteSections).onConflictDoUpdate({
+        target: websiteSections.sectionKey,
+        set: {
+          title: sql`excluded."title"`,
+          eyebrow: sql`excluded."eyebrow"`,
+          body: sql`excluded."body"`,
+          ctaLabel: sql`excluded."ctaLabel"`,
+          ctaHref: sql`excluded."ctaHref"`,
+          imageUrl: sql`excluded."imageUrl"`,
+          portraitImageUrl: sql`excluded."portraitImageUrl"`,
+          portraitDescription: sql`excluded."portraitDescription"`,
+          sortOrder: sql`excluded."sortOrder"`,
+          isPublished: sql`excluded."isPublished"`,
+          updatedAt: sql`CURRENT_TIMESTAMP`
+        }
+      });
+    });
+    await runSeedStep("gallery", () => ensureSeedGallery(db));
+    _seeded = true;
+  })().finally(() => {
+    _seedingPromise = null;
+  });
+  await _seedingPromise;
 }
 function mergeWithSeedServices(rows, category) {
   const scopedRows = category ? rows.filter((row) => row.category === category) : rows;
@@ -1289,6 +1377,10 @@ async function ensureOrderLocationColumns() {
   await makePgColumnNullable("orders", "city");
   await makePgColumnNullable("orders", "postcode");
 }
+async function ensureOrderItemSnapshotColumns() {
+  if (!_pool) return;
+  await addPgColumnIfMissing("orderItems", "imageUrl", "VARCHAR(800)");
+}
 async function createBooking(input) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
@@ -1314,10 +1406,10 @@ async function getBookingByCheckoutSession(stripeCheckoutSessionId) {
   return rows[0] ?? null;
 }
 async function createOrderWithItems(input) {
-  await seedIfNeeded();
   const db = await getDb();
   if (!db) return { id: Date.now(), items: input.items };
   await ensureOrderLocationColumns();
+  await ensureOrderItemSnapshotColumns();
   const supabaseProductRows = await listSupabaseProducts();
   const [dbProductRows, dbVariantRows] = supabaseProductRows ? [[], []] : await Promise.all([
     db.select().from(products),
@@ -1338,6 +1430,7 @@ async function createOrderWithItems(input) {
       productId: product.id,
       variantId: variant?.id,
       productName: product.name,
+      imageUrl: product.imageUrl || null,
       variantName: variant?.name,
       quantity,
       unitPrice: Number(product.price).toFixed(2)
@@ -2312,6 +2405,16 @@ function encodeObjectKey(key) {
 function publicUrlForKey(key) {
   return `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(SUPABASE_BUCKET)}/${encodeObjectKey(key)}`;
 }
+function storageKeyFromPublicUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const prefix = `/storage/v1/object/public/${encodeURIComponent(SUPABASE_BUCKET)}/`;
+    if (parsed.origin !== SUPABASE_URL || !parsed.pathname.startsWith(prefix)) return null;
+    return `supabase:${decodeURIComponent(parsed.pathname.slice(prefix.length))}`;
+  } catch {
+    return null;
+  }
+}
 function toUploadBody(data, contentType) {
   if (typeof data === "string") return new Blob([data], { type: contentType });
   return new Blob([data], { type: contentType });
@@ -2342,6 +2445,25 @@ async function storageGet(relKey) {
 }
 async function storageGetSignedUrl(relKey) {
   return (await storageGet(relKey)).url;
+}
+async function storageRemove(relKeyOrUrl) {
+  const { supabaseUrl, serviceRoleKey, bucket } = getSupabaseConfig();
+  const key = relKeyOrUrl.startsWith("http") ? storageKeyFromPublicUrl(relKeyOrUrl) : relKeyOrUrl;
+  if (!key) return { deleted: false };
+  const normalizedKey = normalizeKey(key);
+  const deleteUrl = `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${encodeObjectKey(normalizedKey)}`;
+  const response = await fetch(deleteUrl, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey
+    }
+  });
+  if (!response.ok && response.status !== 404) {
+    const msg = await response.text().catch(() => response.statusText);
+    throw new Error(`Supabase storage delete failed (${response.status}): ${msg}`);
+  }
+  return { deleted: response.ok || response.status === 404, key: `supabase:${normalizedKey}` };
 }
 
 // server/_core/imageGeneration.ts
@@ -2782,6 +2904,28 @@ function getStripe() {
   }
   return new Stripe2(key);
 }
+function stripeConfigurationLogMessage(error) {
+  const code = typeof error?.code === "string" ? error.code : "";
+  const statusCode = typeof error?.statusCode === "number" ? error.statusCode : 0;
+  if (code === "api_key_expired") {
+    return "Stripe secret key has expired. Replace STRIPE_SECRET_KEY / EBYSPLACE_LIVE_STRIPE_SECRET_KEY in Vercel.";
+  }
+  if (code === "api_key_invalid" || statusCode === 401) {
+    return "Stripe secret key is invalid. Verify STRIPE_SECRET_KEY / EBYSPLACE_LIVE_STRIPE_SECRET_KEY in Vercel.";
+  }
+  if (code === "secret_key_required" || /api key/i.test(String(error?.message || ""))) {
+    return "Stripe secret key is missing. Configure STRIPE_SECRET_KEY / EBYSPLACE_LIVE_STRIPE_SECRET_KEY in Vercel.";
+  }
+  return "";
+}
+function logStripeCheckoutFailure(context, error) {
+  const configurationMessage = stripeConfigurationLogMessage(error);
+  if (configurationMessage) {
+    console.error(`[Payments] ${context}: ${configurationMessage}`, error);
+    return;
+  }
+  console.error(`[Payments] ${context}`, error);
+}
 function getLivePaymentMode() {
   return { stripeMode: "live", publishableKeyConfigured: Boolean(getLiveStripePublishableKey().startsWith("pk_live_")) };
 }
@@ -2837,17 +2981,35 @@ function decodeDataUrl(dataUrl) {
   if (!match) throw new TRPCError4({ code: "BAD_REQUEST", message: "Upload must be a base64 data URL." });
   return { mimeType: match[1], buffer: Buffer.from(match[2], "base64") };
 }
+var ALLOWED_ADMIN_IMAGE_EXTENSIONS = /* @__PURE__ */ new Set(["jpg", "jpeg", "png", "webp", "heic", "heif"]);
+var ALLOWED_ADMIN_IMAGE_MIME_TYPES = /* @__PURE__ */ new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"]);
+function extensionFromFileName(fileName) {
+  const lastDot = fileName.lastIndexOf(".");
+  if (lastDot < 0) return "";
+  return fileName.slice(lastDot + 1).toLowerCase();
+}
 async function uploadDataUrlAsset(input) {
   const { mimeType, buffer } = decodeDataUrl(input.dataUrl);
-  if (!mimeType.startsWith("image/")) {
-    throw new TRPCError4({ code: "BAD_REQUEST", message: "Only image uploads are supported for admin media." });
+  const extension = extensionFromFileName(input.fileName);
+  const normalizedMimeType = mimeType.toLowerCase();
+  if (!ALLOWED_ADMIN_IMAGE_EXTENSIONS.has(extension) || !ALLOWED_ADMIN_IMAGE_MIME_TYPES.has(normalizedMimeType)) {
+    throw new TRPCError4({ code: "BAD_REQUEST", message: "Allowed image formats: jpg, jpeg, png, webp, heic, heif." });
+  }
+  if (extension === "heic" || extension === "heif" || normalizedMimeType === "image/heic" || normalizedMimeType === "image/heif") {
+    throw new TRPCError4({ code: "BAD_REQUEST", message: "HEIC/HEIF files must be converted to JPG or WebP before upload." });
   }
   if (buffer.byteLength > 7 * 1024 * 1024) {
     throw new TRPCError4({ code: "PAYLOAD_TOO_LARGE", message: "Please upload an image smaller than 7MB." });
   }
-  const extension = mimeType.includes("jpeg") ? "jpg" : mimeType.split("/")[1] || "png";
+  let normalizedExtension = "png";
+  if (mimeType.includes("jpeg")) normalizedExtension = "jpg";
+  else if (mimeType.includes("webp")) normalizedExtension = "webp";
+  else {
+    const mimeExtension = mimeType.split("/")[1];
+    if (mimeExtension) normalizedExtension = mimeExtension;
+  }
   const baseName = input.fileName.replace(/\.[^.]+$/, "").replace(/[^a-z0-9.-]/gi, "-").toLowerCase() || "upload";
-  const uploaded = await storagePut(`${input.folder}/${Date.now()}-${baseName}.${extension}`, buffer, mimeType);
+  const uploaded = await storagePut(`${input.folder}/${Date.now()}-${baseName}.${normalizedExtension}`, buffer, mimeType);
   return { url: uploaded.url, key: uploaded.key, mimeType };
 }
 var appRouter = router({
@@ -2967,7 +3129,7 @@ var appRouter = router({
           metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) }
         });
       } catch (error) {
-        console.error("[Payments] Booking checkout session creation failed", error);
+        logStripeCheckoutFailure("Booking checkout session creation failed", error);
         throw paymentUnavailableError();
       }
       if (!session.url) throw paymentUnavailableError();
@@ -3012,7 +3174,7 @@ var appRouter = router({
           }
         });
       } catch (error) {
-        console.error("[Payments] Shop checkout session creation failed", error);
+        logStripeCheckoutFailure("Shop checkout session creation failed", error);
         throw paymentUnavailableError();
       }
       if (!session.url) throw paymentUnavailableError();
@@ -3131,17 +3293,32 @@ var appRouter = router({
       if (input.productId) await updateProduct(input.productId, { imageUrl: uploaded.url });
       return uploaded;
     }),
+    clearProductImage: adminProcedure.input(z2.object({ productId: z2.number().int().positive(), imageUrl: z2.string().min(5).optional() })).mutation(async ({ input }) => {
+      if (input.imageUrl) await storageRemove(input.imageUrl);
+      await updateProduct(input.productId, { imageUrl: null });
+      return { success: true };
+    }),
     insights: adminProcedure.query(() => adminInsights()),
     uploadServiceImage: adminProcedure.input(z2.object({ serviceId: z2.number(), serviceName: z2.string().min(2), dataUrl: z2.string().min(50), fileName: z2.string().default("service-image.png") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.serviceName}-${input.fileName}`, folder: "services" });
       await updateService(input.serviceId, { imageUrl: uploaded.url });
       return uploaded;
     }),
+    clearServiceImage: adminProcedure.input(z2.object({ serviceId: z2.number(), imageUrl: z2.string().min(5).optional() })).mutation(async ({ input }) => {
+      if (input.imageUrl) await storageRemove(input.imageUrl);
+      await updateService(input.serviceId, { imageUrl: null });
+      return { success: true };
+    }),
     uploadGalleryImage: adminProcedure.input(z2.object({ dataUrl: z2.string().min(50), fileName: z2.string().default("gallery-image.png") })).mutation(async ({ input }) => uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: input.fileName, folder: "gallery" })),
     uploadWebsiteSectionImage: adminProcedure.input(z2.object({ sectionKey: z2.string().min(2), dataUrl: z2.string().min(50), fileName: z2.string().default("section-image.png"), imageRole: z2.enum(["main", "portrait"]).default("main") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.sectionKey}-${input.imageRole}-${input.fileName}`, folder: "website-sections" });
       await updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url } : { imageUrl: uploaded.url });
       return uploaded;
+    }),
+    clearWebsiteSectionImage: adminProcedure.input(z2.object({ sectionKey: z2.string().min(2), imageRole: z2.enum(["main", "portrait"]).default("main"), imageUrl: z2.string().min(5).optional() })).mutation(async ({ input }) => {
+      if (input.imageUrl) await storageRemove(input.imageUrl);
+      await updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: null } : { imageUrl: null });
+      return { success: true };
     }),
     addGalleryImage: adminProcedure.input(z2.object({ title: z2.string().min(2), category: galleryCategory, imageUrl: z2.string().min(5), altText: z2.string().min(5), isPublished: z2.enum(["true", "false"]).default("true"), sortOrder: z2.number().int().default(0) })).mutation(({ input }) => addGalleryImage(input)),
     updateWebsiteSection: adminProcedure.input(z2.object({ sectionKey: z2.string().min(2), title: z2.string().min(2).optional(), eyebrow: z2.string().optional(), body: z2.string().optional(), ctaLabel: z2.string().optional(), ctaHref: z2.string().optional(), imageUrl: z2.string().optional(), portraitImageUrl: z2.string().optional(), portraitDescription: z2.string().optional(), isPublished: z2.enum(["true", "false"]).optional() })).mutation(({ input }) => {

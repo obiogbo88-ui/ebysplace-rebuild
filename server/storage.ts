@@ -31,6 +31,17 @@ function publicUrlForKey(key: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(SUPABASE_BUCKET)}/${encodeObjectKey(key)}`;
 }
 
+export function storageKeyFromPublicUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const prefix = `/storage/v1/object/public/${encodeURIComponent(SUPABASE_BUCKET)}/`;
+    if (parsed.origin !== SUPABASE_URL || !parsed.pathname.startsWith(prefix)) return null;
+    return `supabase:${decodeURIComponent(parsed.pathname.slice(prefix.length))}`;
+  } catch {
+    return null;
+  }
+}
+
 function toUploadBody(data: Buffer | Uint8Array | string, contentType: string) {
   if (typeof data === "string") return new Blob([data], { type: contentType });
   return new Blob([data as any], { type: contentType });
@@ -71,4 +82,24 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
 
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
   return (await storageGet(relKey)).url;
+}
+
+export async function storageRemove(relKeyOrUrl: string) {
+  const { supabaseUrl, serviceRoleKey, bucket } = getSupabaseConfig();
+  const key = relKeyOrUrl.startsWith("http") ? storageKeyFromPublicUrl(relKeyOrUrl) : relKeyOrUrl;
+  if (!key) return { deleted: false };
+  const normalizedKey = normalizeKey(key);
+  const deleteUrl = `${supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${encodeObjectKey(normalizedKey)}`;
+  const response = await fetch(deleteUrl, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey,
+    },
+  });
+  if (!response.ok && response.status !== 404) {
+    const msg = await response.text().catch(() => response.statusText);
+    throw new Error(`Supabase storage delete failed (${response.status}): ${msg}`);
+  }
+  return { deleted: response.ok || response.status === 404, key: `supabase:${normalizedKey}` };
 }

@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import type { Request } from "express";
 import Stripe from "stripe";
 import { z } from "zod";
-import { storageGetSignedUrl, storagePut } from "./storage";
+import { storageGetSignedUrl, storagePut, storageRemove } from "./storage";
 import { generateImage } from "./_core/imageGeneration";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
@@ -111,6 +111,30 @@ function getStripe() {
     throw paymentUnavailableError();
   }
   return new Stripe(key);
+}
+
+function stripeConfigurationLogMessage(error: unknown) {
+  const code = typeof (error as any)?.code === "string" ? (error as any).code : "";
+  const statusCode = typeof (error as any)?.statusCode === "number" ? (error as any).statusCode : 0;
+  if (code === "api_key_expired") {
+    return "Stripe secret key has expired. Replace STRIPE_SECRET_KEY / EBYSPLACE_LIVE_STRIPE_SECRET_KEY in Vercel.";
+  }
+  if (code === "api_key_invalid" || statusCode === 401) {
+    return "Stripe secret key is invalid. Verify STRIPE_SECRET_KEY / EBYSPLACE_LIVE_STRIPE_SECRET_KEY in Vercel.";
+  }
+  if (code === "secret_key_required" || /api key/i.test(String((error as any)?.message || ""))) {
+    return "Stripe secret key is missing. Configure STRIPE_SECRET_KEY / EBYSPLACE_LIVE_STRIPE_SECRET_KEY in Vercel.";
+  }
+  return "";
+}
+
+function logStripeCheckoutFailure(context: string, error: unknown) {
+  const configurationMessage = stripeConfigurationLogMessage(error);
+  if (configurationMessage) {
+    console.error(`[Payments] ${context}: ${configurationMessage}`, error);
+    return;
+  }
+  console.error(`[Payments] ${context}`, error);
 }
 
 function getLivePaymentMode() {
@@ -342,7 +366,7 @@ export const appRouter = router({
         metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) },
         });
       } catch (error) {
-        console.error("[Payments] Booking checkout session creation failed", error);
+        logStripeCheckoutFailure("Booking checkout session creation failed", error);
         throw paymentUnavailableError();
       }
       if (!session.url) throw paymentUnavailableError();
@@ -387,7 +411,7 @@ export const appRouter = router({
         },
         });
       } catch (error) {
-        console.error("[Payments] Shop checkout session creation failed", error);
+        logStripeCheckoutFailure("Shop checkout session creation failed", error);
         throw paymentUnavailableError();
       }
       if (!session.url) throw paymentUnavailableError();
@@ -509,17 +533,32 @@ export const appRouter = router({
       if (input.productId) await db.updateProduct(input.productId, { imageUrl: uploaded.url });
       return uploaded;
     }),
+    clearProductImage: adminProcedure.input(z.object({ productId: z.number().int().positive(), imageUrl: z.string().min(5).optional() })).mutation(async ({ input }) => {
+      if (input.imageUrl) await storageRemove(input.imageUrl);
+      await db.updateProduct(input.productId, { imageUrl: null });
+      return { success: true };
+    }),
     insights: adminProcedure.query(() => db.adminInsights()),
     uploadServiceImage: adminProcedure.input(z.object({ serviceId: z.number(), serviceName: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("service-image.png") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.serviceName}-${input.fileName}`, folder: "services" });
       await db.updateService(input.serviceId, { imageUrl: uploaded.url });
       return uploaded;
     }),
+    clearServiceImage: adminProcedure.input(z.object({ serviceId: z.number(), imageUrl: z.string().min(5).optional() })).mutation(async ({ input }) => {
+      if (input.imageUrl) await storageRemove(input.imageUrl);
+      await db.updateService(input.serviceId, { imageUrl: null });
+      return { success: true };
+    }),
     uploadGalleryImage: adminProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("gallery-image.png") })).mutation(async ({ input }) => uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: input.fileName, folder: "gallery" })),
     uploadWebsiteSectionImage: adminProcedure.input(z.object({ sectionKey: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("section-image.png"), imageRole: z.enum(["main", "portrait"]).default("main") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.sectionKey}-${input.imageRole}-${input.fileName}`, folder: "website-sections" });
       await db.updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url } : { imageUrl: uploaded.url });
       return uploaded;
+    }),
+    clearWebsiteSectionImage: adminProcedure.input(z.object({ sectionKey: z.string().min(2), imageRole: z.enum(["main", "portrait"]).default("main"), imageUrl: z.string().min(5).optional() })).mutation(async ({ input }) => {
+      if (input.imageUrl) await storageRemove(input.imageUrl);
+      await db.updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: null } : { imageUrl: null });
+      return { success: true };
     }),
     addGalleryImage: adminProcedure.input(z.object({ title: z.string().min(2), category: galleryCategory, imageUrl: z.string().min(5), altText: z.string().min(5), isPublished: z.enum(["true", "false"]).default("true"), sortOrder: z.number().int().default(0) })).mutation(({ input }) => db.addGalleryImage(input)),
     updateWebsiteSection: adminProcedure.input(z.object({ sectionKey: z.string().min(2), title: z.string().min(2).optional(), eyebrow: z.string().optional(), body: z.string().optional(), ctaLabel: z.string().optional(), ctaHref: z.string().optional(), imageUrl: z.string().optional(), portraitImageUrl: z.string().optional(), portraitDescription: z.string().optional(), isPublished: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {

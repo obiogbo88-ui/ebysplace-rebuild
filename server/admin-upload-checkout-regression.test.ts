@@ -22,8 +22,25 @@ describe("admin upload permissions and checkout failure safeguards", () => {
     expect(source).toContain("throw paymentUnavailableError()");
     expect(source).toContain("Booking checkout session creation failed");
     expect(source).toContain("Shop checkout session creation failed");
+    expect(source).toContain("process.env.STRIPE_SECRET_KEY");
+    expect(source).toContain("process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY");
+    expect(source).toContain("process.env.VITE_STRIPE_PUBLISHABLE_KEY");
+    expect(source).toContain("process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY");
+    expect(source).toContain("api_key_expired");
     expect(source).not.toContain("Stripe did not return a checkout link. Please try again.");
     expect(source).not.toContain("Live Stripe payments require a live Stripe secret key");
+  });
+
+  it("keeps Stripe webhook secret reads on the server and never in the client bundle", () => {
+    const routerSource = readSource("server/routers.ts");
+    const webhookSource = readSource("server/stripeWebhook.ts");
+    const adminSource = readSource("client/src/pages/Admin.tsx");
+
+    expect(webhookSource).toContain("process.env.STRIPE_WEBHOOK_SECRET");
+    expect(webhookSource).toContain("process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET");
+    expect(adminSource).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(adminSource).not.toContain("STRIPE_WEBHOOK_SECRET");
+    expect(routerSource).toContain("storageRemove");
   });
 
   it("does not expose payment-provider names in customer checkout notifications", () => {

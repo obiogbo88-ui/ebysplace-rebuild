@@ -61,8 +61,8 @@ describe("live production repair safeguards", () => {
 
     expect(dbSource).toContain("Braid Care Starter Kit");
     expect(dbSource).toContain("const seedGallery = [");
-    expect(dbSource).toContain("await ensureSeedProducts(db)");
-    expect(dbSource).toContain("await ensureSeedGallery(db)");
+    expect(dbSource).toContain('await runSeedStep("products", () => ensureSeedProducts(db))');
+    expect(dbSource).toContain('await runSeedStep("gallery", () => ensureSeedGallery(db))');
     expect(dbSource).toContain("productRows.filter((product) => isPositivePrice(product.price))");
     expect(dbSource).toContain("safeRows.length >= 8");
   });
@@ -79,6 +79,7 @@ describe("live production repair safeguards", () => {
   it("uses a PostgreSQL-compatible adapter for production tRPC database access", () => {
     const dbSource = readProjectFile("server/db.ts");
     const schemaSource = readProjectFile("drizzle/schema.ts");
+    const supabaseSchemaSource = readProjectFile("supabase-schema.sql");
     const packageSource = readProjectFile("package.json");
     const drizzleConfigSource = readProjectFile("drizzle.config.ts");
 
@@ -99,6 +100,11 @@ describe("live production repair safeguards", () => {
     expect(dbSource).not.toContain("onDuplicateKeyUpdate");
     expect(schemaSource).toContain('from "drizzle-orm/pg-core"');
     expect(schemaSource).toContain('pgTable("users"');
+    expect(schemaSource).toContain('category: varchar("category", { length: 120 }).notNull()');
+    expect(schemaSource).toContain('productName: varchar("productName", { length: 180 }).notNull(),\n  imageUrl: varchar("imageUrl", { length: 800 }),');
+    expect(schemaSource).not.toContain('serviceCategoryEnum("category")');
+    expect(supabaseSchemaSource).toContain('"category" VARCHAR(120) NOT NULL');
+    expect(supabaseSchemaSource).toContain('"imageUrl" VARCHAR(800)');
     expect(schemaSource).not.toContain("mysqlTable");
     expect(packageSource).toContain('"pg"');
     expect(drizzleConfigSource).toContain('dialect: "postgresql"');

@@ -13,7 +13,6 @@ import {
 
 export const userRoleEnum = pgEnum("user_role_enum", ["user", "admin"]);
 export const trueFalseEnum = pgEnum("true_false_enum", ["true", "false"]);
-export const serviceCategoryEnum = pgEnum("service_category_enum", ["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
 export const bookingStatusEnum = pgEnum("booking_status_enum", ["pending", "confirmed", "completed", "cancelled"]);
 export const bookingLocationTypeEnum = pgEnum("booking_location_type_enum", ["studio", "home_service"]);
 export const depositStatusEnum = pgEnum("deposit_status_enum", ["unpaid", "checkout_started", "paid", "failed", "refunded"]);
@@ -65,7 +64,7 @@ export const services = pgTable("services", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 180 }).notNull(),
   slug: varchar("slug", { length: 220 }).notNull().unique(),
-  category: serviceCategoryEnum("category").notNull(),
+  category: varchar("category", { length: 120 }).notNull(),
   description: text("description").notNull(),
   duration: varchar("duration", { length: 80 }).notNull(),
   priceFrom: numeric("priceFrom", { precision: 10, scale: 2 }).notNull(),
@@ -155,6 +154,7 @@ export const orderItems = pgTable("orderItems", {
   productId: integer("productId").notNull(),
   variantId: integer("variantId"),
   productName: varchar("productName", { length: 180 }).notNull(),
+  imageUrl: varchar("imageUrl", { length: 800 }),
   variantName: varchar("variantName", { length: 120 }),
   quantity: integer("quantity").default(1).notNull(),
   unitPrice: numeric("unitPrice", { precision: 10, scale: 2 }).notNull(),
