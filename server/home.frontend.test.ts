@@ -275,7 +275,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     );
     expect(reviewSeedBlock).toContain('source: "google"');
     expect(dbSource).toContain("async function ensureSeedReviews");
-    expect(dbSource).toContain("await ensureSeedReviews(db);");
+    expect(dbSource).toContain('await runSeedStep("reviews", () => ensureSeedReviews(db));');
     expect(reviewSeedBlock).not.toContain("Thank you love for this beautiful review.");
     expect(reviewSeedBlock).not.toContain("Thank you so much, and we hope to see you again.");
     expect(reviewSeedBlock).not.toContain("You are always welcome to visit again");

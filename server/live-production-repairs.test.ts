@@ -61,8 +61,8 @@ describe("live production repair safeguards", () => {
 
     expect(dbSource).toContain("Braid Care Starter Kit");
     expect(dbSource).toContain("const seedGallery = [");
-    expect(dbSource).toContain("await ensureSeedProducts(db)");
-    expect(dbSource).toContain("await ensureSeedGallery(db)");
+    expect(dbSource).toContain('await runSeedStep("products", () => ensureSeedProducts(db))');
+    expect(dbSource).toContain('await runSeedStep("gallery", () => ensureSeedGallery(db))');
     expect(dbSource).toContain("productRows.filter((product) => isPositivePrice(product.price))");
     expect(dbSource).toContain("safeRows.length >= 8");
   });
