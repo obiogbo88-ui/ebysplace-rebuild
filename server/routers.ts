@@ -568,6 +568,10 @@ export const appRouter = router({
       return { success: true };
     }),
     addGalleryImage: adminProcedure.input(z.object({ title: z.string().min(2), category: galleryCategory, imageUrl: z.string().min(5), altText: z.string().min(5), isPublished: z.enum(["true", "false"]).default("true"), sortOrder: z.number().int().default(0) })).mutation(({ input }) => db.addGalleryImage(input)),
+    deleteGalleryImage: adminProcedure.input(z.object({ id: z.number().int().positive(), imageUrl: z.string().min(5).optional() })).mutation(async ({ input }) => {
+      if (input.imageUrl) await storageRemove(input.imageUrl);
+      return db.deleteGalleryImage(input.id);
+    }),
     updateWebsiteSection: adminProcedure.input(z.object({ sectionKey: z.string().min(2), title: z.string().min(2).optional(), eyebrow: z.string().optional(), body: z.string().optional(), ctaLabel: z.string().optional(), ctaHref: z.string().optional(), imageUrl: z.string().optional(), portraitImageUrl: z.string().optional(), portraitDescription: z.string().optional(), isPublished: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
       const { sectionKey, ...changes } = input;
       return db.updateWebsiteSection(sectionKey, changes);
