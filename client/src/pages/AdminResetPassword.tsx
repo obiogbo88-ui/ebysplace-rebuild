@@ -8,16 +8,20 @@ import { FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
-function getRecoveryToken() {
-  if (typeof window === "undefined") return "";
+function getHashState() {
+  if (typeof window === "undefined") return { accessToken: "", errorCode: "", errorDescription: "" };
   const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const queryParams = new URLSearchParams(window.location.search);
-  return hashParams.get("access_token") || queryParams.get("access_token") || "";
+  return {
+    accessToken: hashParams.get("access_token") || queryParams.get("access_token") || "",
+    errorCode: hashParams.get("error_code") || queryParams.get("error_code") || "",
+    errorDescription: hashParams.get("error_description") || queryParams.get("error_description") || "",
+  };
 }
 
 export default function AdminResetPassword() {
   const [, setLocation] = useLocation();
-  const recoveryToken = useMemo(getRecoveryToken, []);
+  const { accessToken: recoveryToken, errorCode, errorDescription } = useMemo(getHashState, []);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -33,6 +37,10 @@ export default function AdminResetPassword() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (errorCode) {
+      toast.error("This reset link cannot be used. Please request a new reset email.");
+      return;
+    }
     if (!recoveryToken) {
       toast.error("This reset link is missing its recovery token. Please request a new reset email.");
       return;
@@ -58,7 +66,17 @@ export default function AdminResetPassword() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!recoveryToken ? (
+            {errorCode === "otp_expired" ? (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                Your password reset link has expired. Please return to the admin login page and request a new reset email.
+              </div>
+            ) : errorCode ? (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                {errorDescription
+                  ? errorDescription
+                  : "The reset link is invalid or cannot be used. Please request a new password reset email from the admin login page."}
+              </div>
+            ) : !recoveryToken ? (
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                 This reset link is missing its recovery token. Please request a new password reset email from the admin login page.
               </div>
@@ -90,7 +108,7 @@ export default function AdminResetPassword() {
                   required
                 />
               </div>
-              <Button type="submit" className="h-12 w-full shadow-lg" disabled={updatePassword.isPending || !recoveryToken}>
+              <Button type="submit" className="h-12 w-full shadow-lg" disabled={updatePassword.isPending || !recoveryToken || Boolean(errorCode)}>
                 {updatePassword.isPending ? "Updating password..." : "Update password"}
               </Button>
             </form>
