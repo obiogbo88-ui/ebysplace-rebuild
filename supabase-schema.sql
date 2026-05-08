@@ -105,6 +105,7 @@ CREATE TABLE "productVariants" (
   "productId" INTEGER NOT NULL REFERENCES "products"("id") ON DELETE CASCADE,
   "name" VARCHAR(120) NOT NULL,
   "colourHex" VARCHAR(20),
+  "imageUrl" VARCHAR(800),
   "stockQuantity" INTEGER NOT NULL DEFAULT 0,
   "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
 );

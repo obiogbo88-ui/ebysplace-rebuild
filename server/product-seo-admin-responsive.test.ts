@@ -201,7 +201,8 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(adminSource).not.toContain("Add or replace website section image");
     expect(adminSource).not.toContain("Content & analytics");
     expect(shopSource).toContain("PRODUCT_IMAGE_FALLBACK_SRC");
-    expect(shopSource).toContain("{product.imageUrl ? (");
+    expect(shopSource).toContain("const activeImageUrl = selectedVariant.imageUrl || product.imageUrl");
+    expect(shopSource).toContain("{activeImageUrl ? (");
     expect(shopSource).toContain("No product image");
     expect(shopSource).not.toContain("src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}");
     expect(homeSource).not.toContain("src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}");
