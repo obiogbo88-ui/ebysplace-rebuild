@@ -175,6 +175,9 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(dbSource).toContain("export async function adminInsights");
     expect(adminSource).toContain("Add more shop products");
     expect(adminSource).toContain("Upload product image");
+    expect(adminSource).toContain("syncProductImageInput(Number(variables.productId), uploaded.url)");
+    expect(adminSource).toContain("syncProductImageInput(Number(variables.productId), \"\")");
+    expect(adminSource).toContain("key={`product-image-${product.id}-${product.imageUrl || \"empty\"}`}");
     expect(routerSource).toContain("updateProductVariants");
     expect(dbSource).toContain("replaceProductVariants");
     expect(adminSource).toContain("Available colours in stock");

@@ -219,8 +219,13 @@ export default function Admin() {
     onError: (error: any) => toast.error(error.message),
   });
   const updateService = trpc.admin.updateService.useMutation(opts);
+  const syncProductImageInput = (productId: number, imageUrl: string) => {
+    const imageInput = document.getElementById(`product-image-${productId}`) as HTMLInputElement | null;
+    if (imageInput) imageInput.value = imageUrl;
+  };
   const uploadProductImage = trpc.admin.uploadProductImage.useMutation({
-    onSuccess: () => {
+    onSuccess: (uploaded, variables) => {
+      if (variables.productId) syncProductImageInput(Number(variables.productId), uploaded.url);
       refresh();
       scrollAdminFeedback("products");
       toast.success("Product image uploaded and saved");
@@ -228,7 +233,8 @@ export default function Admin() {
     onError: (error: any) => toast.error(error.message),
   });
   const clearProductImage = trpc.admin.clearProductImage.useMutation({
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
+      syncProductImageInput(Number(variables.productId), "");
       refresh();
       scrollAdminFeedback("products");
       toast.success("Product image removed");
@@ -619,7 +625,7 @@ export default function Admin() {
                       <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Badge<input defaultValue={product.badge || ""} id={`product-badge-${product.id}`} /></label>
                     </div>
                     <div className="rounded-2xl bg-white/[0.04] p-3 text-sm text-white/70"><b className="text-primary">SEO preview:</b> {product.seoTitle || `${product.name} | Eby’s Place`}<span className="block text-white/55">{product.seoDescription || product.description}</span></div>
-                    <details className="rounded-2xl border border-primary/20 bg-black/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-primary">Update product image</summary><div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto]"><input id={`product-image-${product.id}`} defaultValue={product.imageUrl || ""} placeholder="Supabase Storage public image URL" /><label className="btn-dark cursor-pointer py-2"><UploadCloud className="mr-2 h-4 w-4" /> Upload product image<input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])} /></label><button className="btn-dark py-2" type="button" disabled={!product.imageUrl || clearProductImage.isPending} onClick={() => clearProductImage.mutate({ productId: Number(product.id), imageUrl: product.imageUrl || undefined })}><Trash2 className="mr-2 h-4 w-4" /> Remove image</button></div>{product.imageUrl && <div className="mt-3 media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" /></div>}</details>
+                    <details className="rounded-2xl border border-primary/20 bg-black/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-primary">Update product image</summary><div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto]"><input key={`product-image-${product.id}-${product.imageUrl || "empty"}`} id={`product-image-${product.id}`} defaultValue={product.imageUrl || ""} placeholder="Supabase Storage public image URL" /><label className="btn-dark cursor-pointer py-2"><UploadCloud className="mr-2 h-4 w-4" /> Upload product image<input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])} /></label><button className="btn-dark py-2" type="button" disabled={!product.imageUrl || clearProductImage.isPending} onClick={() => clearProductImage.mutate({ productId: Number(product.id), imageUrl: product.imageUrl || undefined })}><Trash2 className="mr-2 h-4 w-4" /> Remove image</button></div>{product.imageUrl && <div className="mt-3 media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" /></div>}</details>
                     <div className="rounded-2xl border border-primary/20 bg-black/20 p-3 text-sm text-white/70">
                       <b className="block text-primary">Shop colour previews</b>
                       <span className="mt-1 block text-white/55">These are the colour options customers click on the shop page to update the product preview before checkout.</span>
@@ -635,7 +641,7 @@ export default function Admin() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
-                      <button className="btn-gold flex-1 py-2" onClick={() => { if (!product.id) { toast.error("This product has no database ID. Please reload the page and try again."); return; } const price = readAdminPrice(`product-price-${product.id}`, "Shop price"); if (!price) return; updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, price, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, imageUrl: (document.getElementById(`product-image-${product.id}`) as HTMLInputElement).value || undefined, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value }); updateProductVariants.mutate({ productId: product.id, variants: parseColourChoices((document.getElementById(`product-colours-${product.id}`) as HTMLTextAreaElement).value) }); }}>Save product price, SEO & colours</button>
+                      <button className="btn-gold flex-1 py-2" onClick={() => { if (!product.id) { toast.error("This product has no database ID. Please reload the page and try again."); return; } const price = readAdminPrice(`product-price-${product.id}`, "Shop price"); if (!price) return; updateProduct.mutate({ id: product.id, name: (document.getElementById(`product-name-${product.id}`) as HTMLInputElement).value, price, slug: (document.getElementById(`product-slug-${product.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), seoTitle: (document.getElementById(`product-seo-title-${product.id}`) as HTMLInputElement).value, seoDescription: (document.getElementById(`product-seo-description-${product.id}`) as HTMLTextAreaElement).value, description: (document.getElementById(`product-description-${product.id}`) as HTMLTextAreaElement).value, imageUrl: (document.getElementById(`product-image-${product.id}`) as HTMLInputElement).value.trim() || undefined, badge: (document.getElementById(`product-badge-${product.id}`) as HTMLInputElement).value }); updateProductVariants.mutate({ productId: product.id, variants: parseColourChoices((document.getElementById(`product-colours-${product.id}`) as HTMLTextAreaElement).value) }); }}>Save product price, SEO & colours</button>
                       <button type="button" className="btn-dark border-red-400/40 py-2 text-red-100 hover:border-red-300 hover:text-red-50" disabled={deleteProduct.isPending} onClick={() => { if (!product.id) { toast.error("This product has no database ID. Please reload the page and try again."); return; } if (window.confirm(`Delete ${product.name} from the Supabase products table?`)) deleteProduct.mutate({ id: Number(product.id) }); }}><Trash2 className="mr-2 h-4 w-4" />Delete product</button>
                     </div>
                   </div>
