@@ -9,6 +9,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
+const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
+
 function getReturnTarget() {
   if (typeof window === "undefined") return "/admin";
   const params = new URLSearchParams(window.location.search);
@@ -22,15 +24,21 @@ export default function AdminLogin() {
   const [email, setEmail] = useState("info@ebysplace.com");
   const [password, setPassword] = useState("");
   const [resetRequested, setResetRequested] = useState(false);
+  const [resetCooldownSeconds, setResetCooldownSeconds] = useState(0);
   const returnTo = useMemo(getReturnTarget, []);
 
   const requestReset = trpc.auth.requestPasswordReset.useMutation({
     onSuccess: (result) => {
       setResetRequested(true);
+      setResetCooldownSeconds(PASSWORD_RESET_COOLDOWN_SECONDS);
       toast.success(result.message);
     },
     onError: (error) => {
-      toast.error(error.message || "Unable to send the password reset email.");
+      const message = error.message || "Unable to send the password reset email.";
+      if (message.toLowerCase().includes("rate limit")) {
+        setResetCooldownSeconds(PASSWORD_RESET_COOLDOWN_SECONDS);
+      }
+      toast.error(message);
     },
   });
 
@@ -53,12 +61,24 @@ export default function AdminLogin() {
     }
   }, [returnTo, setLocation]);
 
+  useEffect(() => {
+    if (resetCooldownSeconds <= 0) return;
+    const timer = window.setTimeout(() => {
+      setResetCooldownSeconds((seconds) => (seconds > 0 ? seconds - 1 : 0));
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [resetCooldownSeconds]);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     login.mutate({ email, password });
   };
 
   const handleResetRequest = () => {
+    if (resetCooldownSeconds > 0) {
+      toast.error(`Please wait ${resetCooldownSeconds} seconds before requesting another reset email.`);
+      return;
+    }
     if (!email.trim()) {
       toast.error("Enter the admin email address first.");
       return;
@@ -112,10 +132,14 @@ export default function AdminLogin() {
                       type="button"
                       variant="link"
                       className="h-auto p-0 text-sm text-primary"
-                      disabled={requestReset.isPending}
+                      disabled={requestReset.isPending || resetCooldownSeconds > 0}
                       onClick={handleResetRequest}
                     >
-                      {requestReset.isPending ? "Sending..." : "Forgot password?"}
+                      {requestReset.isPending
+                        ? "Sending..."
+                        : resetCooldownSeconds > 0
+                          ? `Retry in ${resetCooldownSeconds}s`
+                          : "Forgot password?"}
                     </Button>
                   </div>
                   <Input

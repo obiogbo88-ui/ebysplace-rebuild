@@ -1646,6 +1646,13 @@ export async function addGalleryImage(input: typeof galleryImages.$inferInsert) 
   return { id: result[0]?.id, ...input };
 }
 
+export async function deleteGalleryImage(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.delete(galleryImages).where(eq(galleryImages.id, id));
+  return { id };
+}
+
 export async function updateWebsiteSection(sectionKey: string, input: Partial<typeof websiteSections.$inferInsert>) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
