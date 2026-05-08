@@ -194,6 +194,12 @@ function hasPasswordResetSmtpConfig() {
   }
 }
 
+function supabaseErrorCode(httpStatus: number): TRPCError["code"] {
+  if (httpStatus === 401 || httpStatus === 400) return "UNAUTHORIZED";
+  if (httpStatus >= 500) return "BAD_GATEWAY";
+  return "BAD_REQUEST";
+}
+
 async function supabaseAuthFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const { url, serviceRoleKey } = getSupabaseAuthConfig();
   let response: Response;
@@ -236,7 +242,7 @@ async function supabaseAuthFetch<T>(path: string, init: RequestInit = {}): Promi
   if (!response.ok) {
     const message = typeof json?.msg === "string" ? json.msg : typeof json?.message === "string" ? json.message : "Supabase Auth request failed.";
     console.error("[Auth] Supabase Auth request failed", { path, method: init.method ?? "GET", status: response.status, message });
-    throw new TRPCError({ code: response.status === 401 || response.status === 400 ? "UNAUTHORIZED" : "BAD_REQUEST", message });
+    throw new TRPCError({ code: supabaseErrorCode(response.status), message });
   }
 
   return json as T;
@@ -342,6 +348,19 @@ export async function requestAdminPasswordReset(email: string, origin: string) {
     return genericResponse;
   } catch (recoverError) {
     const recoverTrpcError = toTrpcError(recoverError, "Unable to send the Supabase password reset email.");
+    if (!hasPasswordResetSmtpConfig()) {
+      console.error("[Auth] Password reset failed: Supabase email delivery unavailable and SMTP is not configured", {
+        email: normalizedEmail,
+        code: recoverTrpcError.code,
+        supabaseMessage: recoverTrpcError.message,
+      });
+      throw new TRPCError({
+        code: "BAD_GATEWAY",
+        message:
+          "Unable to send a password reset email. Supabase email delivery is unavailable. " +
+          "Configure SMTP credentials (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS) in the deployment environment.",
+      });
+    }
     console.warn("[Auth] Supabase recovery email failed; attempting SMTP fallback", {
       email: normalizedEmail,
       code: recoverTrpcError.code,

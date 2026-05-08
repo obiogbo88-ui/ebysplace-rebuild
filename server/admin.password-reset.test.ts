@@ -127,4 +127,19 @@ describe("admin password reset", () => {
     }));
     expect(String(sendMailMock.mock.calls[0][0].text)).not.toContain("localhost");
   });
+
+  it("throws a helpful SMTP-hint error when Supabase recovery email fails and SMTP is not configured", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ message: "Error sending recovery email" }), { status: 500 }),
+    ) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+    const { requestAdminPasswordReset } = await loadPasswordResetHelper();
+
+    await expect(requestAdminPasswordReset("admin@example.com", "https://ebysplace.vercel.app")).rejects.toMatchObject({
+      message: expect.stringContaining("SMTP"),
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [calledUrl] = vi.mocked(fetchMock).mock.calls[0];
+    expect(String(calledUrl)).toContain("/recover");
+  });
 });
