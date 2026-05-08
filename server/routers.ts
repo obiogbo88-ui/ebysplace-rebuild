@@ -541,7 +541,9 @@ export const appRouter = router({
       return uploaded;
     }),
     clearProductImage: adminProcedure.input(z.object({ productId: z.number().int().positive(), imageUrl: z.string().min(5).optional() })).mutation(async ({ input }) => {
-      if (input.imageUrl) await storageRemove(input.imageUrl);
+      // Product image removal is a catalogue-level action: detach the image from the
+      // product record without deleting the underlying Supabase Storage object. This
+      // preserves uploaded assets for reuse while making the product display as image-less.
       await db.updateProduct(input.productId, { imageUrl: null });
       return { success: true };
     }),

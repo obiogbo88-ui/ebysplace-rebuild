@@ -468,17 +468,23 @@ export default function Home() {
                   aria-label={`View ${product.name} and all Eby’s Place shop products`}
                 >
                   <div className="relative min-h-[210px] overflow-hidden rounded-t-[1.75rem] border-b border-primary/20 bg-[#130c07]">
-                    <img
-                      src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}
-                      alt={product.name}
-                      className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      sizes={PRODUCT_THUMBNAIL_SIZES}
-                      loading="lazy"
-                      decoding="async"
-                      onError={(event) => {
-                        if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
-                      }}
-                    />
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        sizes={PRODUCT_THUMBNAIL_SIZES}
+                        loading="lazy"
+                        decoding="async"
+                        onError={(event) => {
+                          if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
+                        }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
+                        No product image
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,.02),rgba(0,0,0,.58))]" />
                     <span className="pill absolute left-4 top-4 bg-black/60 text-xs text-primary">{product.badge || "Featured"}</span>
                   </div>

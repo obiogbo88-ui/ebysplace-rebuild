@@ -165,6 +165,7 @@ describe("product SEO administration and responsive page safeguards", () => {
     const routerSource = readSource("server/routers.ts");
     const dbSource = readSource("server/db.ts");
     const shopSource = readSource("client/src/pages/Shop.tsx");
+    const homeSource = readSource("client/src/pages/Home.tsx");
     const appSource = readSource("client/src/App.tsx");
 
     expect(routerSource).toContain("createProduct: adminProcedure");
@@ -197,10 +198,25 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(adminSource).not.toContain("Add or replace website section image");
     expect(adminSource).not.toContain("Content & analytics");
     expect(shopSource).toContain("PRODUCT_IMAGE_FALLBACK_SRC");
-    expect(shopSource).toContain("src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}");
+    expect(shopSource).toContain("{product.imageUrl ? (");
+    expect(shopSource).toContain("No product image");
+    expect(shopSource).not.toContain("src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}");
+    expect(homeSource).not.toContain("src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}");
     expect(shopSource).toContain("onError={(event) =>");
     expect(appSource).toContain('afterRouteScroll(`${location}${window.location.hash || ""}`, 40)');
     expect(appSource).toContain('import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";');
+  });
+
+  it("clears product image references without deleting stored product image assets", () => {
+    const routerSource = readSource("server/routers.ts");
+    const clearProductImageStart = routerSource.indexOf("clearProductImage: adminProcedure");
+    const uploadServiceImageStart = routerSource.indexOf("uploadServiceImage: adminProcedure");
+    const clearProductImageSource = routerSource.slice(clearProductImageStart, uploadServiceImageStart);
+
+    expect(clearProductImageStart).toBeGreaterThan(-1);
+    expect(clearProductImageSource).toContain("await db.updateProduct(input.productId, { imageUrl: null });");
+    expect(clearProductImageSource).not.toContain("storageRemove");
+    expect(clearProductImageSource).toContain("without deleting the underlying Supabase Storage object");
   });
 
   it("keeps admin dashboard exit paths, clean overview actions, and protected overview data scoped to admin", () => {

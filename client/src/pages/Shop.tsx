@@ -93,17 +93,23 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
           background: `radial-gradient(circle at 30% 20%, ${selectedColour} 0%, ${selectedColour}dd 24%, rgba(255,255,255,.08) 25%, rgba(14,9,6,.96) 62%), linear-gradient(135deg, ${selectedColour}55, rgba(200,169,90,.18))`,
         }}
       >
-        <img
-          src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}
-          alt={product.name}
-          className="absolute inset-0 h-full w-full object-cover"
-          sizes={PRODUCT_THUMBNAIL_SIZES}
-          loading="lazy"
-          decoding="async"
-          onError={(event) => {
-            if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
-          }}
-        />
+        {product.imageUrl ? (
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            className="absolute inset-0 h-full w-full object-cover"
+            sizes={PRODUCT_THUMBNAIL_SIZES}
+            loading="lazy"
+            decoding="async"
+            onError={(event) => {
+              if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
+            }}
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm font-semibold uppercase tracking-[0.2em] text-primary/80">
+            No product image
+          </div>
+        )}
         <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,.18),transparent_38%,rgba(0,0,0,.45))]" />
         <div className="absolute left-5 top-5 flex flex-wrap gap-2">
           <span className="pill bg-black/55 text-xs text-primary">{product.badge || "Eby’s Pick"}</span>
