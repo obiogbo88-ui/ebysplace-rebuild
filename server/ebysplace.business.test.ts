@@ -270,6 +270,24 @@ describe("Eby’s Place platform business rules", () => {
     expect(vi.mocked(Stripe)).toHaveBeenCalledWith(["sk", "live", "platform", "fallback"].join("_"));
   });
 
+  it("removes accidental internal whitespace from copied live Stripe secret keys", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_platform_managed_key";
+    process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY = ` ${["sk", "live", "project"].join("_")} \n override\twithout\rspaces `;
+    stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_live_whitespace", url: "https://checkout.stripe.com/live-whitespace", payment_intent: "pi_live_whitespace" });
+    const caller = appRouter.createCaller(publicContext());
+
+    const result = await caller.public.createDepositCheckout({
+      bookingId: 44,
+      serviceName: "Knotless Braids",
+      clientName: "Eby Test",
+      clientEmail: "eby@example.com",
+    });
+
+    expect(result.checkoutUrl).toBe("https://checkout.stripe.com/live-whitespace");
+    expect(stripeCreateSessionMock).toHaveBeenCalledOnce();
+    expect(vi.mocked(Stripe)).toHaveBeenCalledWith(["sk", "live", "project"].join("_") + "overridewithoutspaces");
+  });
+
   it("creates Stripe Checkout sessions for shop product orders with Eby’s Place customer-facing copy", async () => {
 
     stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_shop_live_123", url: "https://checkout.stripe.com/shop", payment_intent: "pi_shop_live_123" });

@@ -74,7 +74,7 @@ const orderInput = z.object({
 });
 
 function normalizeStripeKey(value: string | undefined) {
-  return value?.trim().replace(/^['\"]|['\"]$/g, "") || "";
+  return value?.trim().replace(/^['\"]|['\"]$/g, "").replace(/\s+/g, "") || "";
 }
 
 function getLiveStripeSecretKey() {
