@@ -3226,7 +3226,19 @@ var appRouter = router({
     })).mutation(async ({ input }) => {
       const record = await createTryOnGeneration({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, status: "pending" });
       try {
-        const prompt = `Use the uploaded image as the base image and apply only the selected braid style: ${input.styleName}. Non-negotiable identity preservation rules: preserve the exact face from the uploaded image with zero changes and do not change the person\u2019s identity in any way. Do not modify facial structure, face shape, skin tone, eyes, eyebrows, nose, lips, ears, or expression. Do not apply beauty filters, face enhancement, smoothing, sharpening, slimming, age adjustment, or retouching to the face. The face must remain exactly the same as the original uploaded photo and must not look regenerated, reinterpreted, or artificially restyled. Allowed change only: replace or restyle hair into ${input.styleName} only. The braid style must look realistic, neat, properly installed, and naturally aligned to the scalp and head shape. Preserve from the original image: original pose, background, lighting, clothing, camera angle, framing, and overall composition. Output requirement: the final result must look like the exact same person with the exact same face, with only the hairstyle changed to ${input.styleName}. Priority rule: if there is any difficulty during editing, preserve the original face exactly and adjust only the hair.`;
+        const selectedStyle = input.styleName;
+        const prompt = [
+          `Use the uploaded image as the base image and apply only the selected braid style: ${selectedStyle}.`,
+          "Non-negotiable identity preservation rules: preserve the exact face from the uploaded image with zero changes and do not change the person\u2019s identity in any way.",
+          "Do not modify facial structure, face shape, skin tone, eyes, eyebrows, nose, lips, ears, or expression.",
+          "Do not apply beauty filters, face enhancement, smoothing, sharpening, slimming, age adjustment, or retouching to the face.",
+          "The face must remain exactly the same as the original uploaded photo and must not look regenerated, reinterpreted, or artificially restyled.",
+          `Allowed change only: replace or restyle hair into ${selectedStyle} only.`,
+          "The braid style must look realistic, neat, properly installed, and naturally aligned to the scalp and head shape.",
+          "Preserve from the original image: original pose, background, lighting, clothing, camera angle, framing, and overall composition.",
+          `Output requirement: the final result must look like the exact same person with the exact same face, with only the hairstyle changed to ${selectedStyle}.`,
+          "Priority rule: if there is any difficulty during editing, preserve the original face exactly and adjust only the hair."
+        ].join(" ");
         const storageKey = input.originalImageUrl.startsWith("/") ? input.originalImageKey ?? decodeURIComponent(input.originalImageUrl.replace("/", "")) : null;
         const editableImageUrl = storageKey ? await storageGetSignedUrl(storageKey) : input.originalImageUrl;
         const mimeType = input.mimeType?.startsWith("image/") ? input.mimeType : "image/jpeg";
