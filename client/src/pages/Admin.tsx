@@ -34,6 +34,14 @@ type AdminListData = {
   emailNotifications?: any[];
 };
 
+type AdminGalleryItem = {
+  id?: number | string;
+  title: string;
+  category: string;
+  imageUrl: string;
+  altText?: string;
+};
+
 function Stat({ label, value, icon: Icon }: { label: string; value: number | string; icon: any }) {
   return (
     <div className="lux-card bg-card">
@@ -292,6 +300,7 @@ export default function Admin() {
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["activity-monitoring"]));
   const data = (lists.data || {}) as AdminListData;
+  const galleryItems = (data.gallery || []) as AdminGalleryItem[];
   const emailNotificationRows = emailLogs.data || data.emailNotifications || [];
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
   const togglePanel = (panelId: string) => setOpenPanels((current) => {
@@ -721,8 +730,8 @@ export default function Admin() {
             </details>
             <b className="mt-4 block text-primary">{data.gallery?.length || 0} images</b>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {(data.gallery || []).map((item: any) => (
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-3" key={item.id || `${item.title}-${item.imageUrl}`}>
+              {galleryItems.map((item, index) => (
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-3" key={String(item.id ?? `gallery-${index}`)}>
                   <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]">
                     <img src={item.imageUrl} alt={item.altText || item.title} loading="lazy" decoding="async" />
                   </div>
@@ -736,12 +745,13 @@ export default function Admin() {
                       className="btn-dark border-red-400/40 py-2 text-red-100 hover:border-red-300 hover:text-red-50"
                       disabled={!item.id || deleteGalleryImage.isPending}
                       onClick={() => {
-                        if (!item.id) {
+                        const galleryId = typeof item.id === "number" ? item.id : Number(item.id);
+                        if (!Number.isInteger(galleryId) || galleryId <= 0) {
                           toast.error("This gallery image cannot be deleted because it has no database ID.");
                           return;
                         }
                         if (window.confirm(`Delete "${item.title}" from the gallery?`)) {
-                          deleteGalleryImage.mutate({ id: Number(item.id), imageUrl: item.imageUrl || undefined });
+                          deleteGalleryImage.mutate({ id: galleryId, imageUrl: item.imageUrl || undefined });
                         }
                       }}
                     >
