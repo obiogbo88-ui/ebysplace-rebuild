@@ -30,13 +30,15 @@ export default function AdminLogin() {
   const requestReset = trpc.auth.requestPasswordReset.useMutation({
     onSuccess: (result) => {
       setResetRequested(true);
+      setResetCooldownSeconds(PASSWORD_RESET_COOLDOWN_SECONDS);
       toast.success(result.message);
     },
     onError: (error) => {
-      toast.error(error.message || "Unable to send the password reset email.");
-    },
-    onSettled: () => {
-      setResetCooldownSeconds(PASSWORD_RESET_COOLDOWN_SECONDS);
+      const message = error.message || "Unable to send the password reset email.";
+      if (message.toLowerCase().includes("rate limit")) {
+        setResetCooldownSeconds(PASSWORD_RESET_COOLDOWN_SECONDS);
+      }
+      toast.error(message);
     },
   });
 
@@ -61,10 +63,10 @@ export default function AdminLogin() {
 
   useEffect(() => {
     if (resetCooldownSeconds <= 0) return;
-    const timer = window.setInterval(() => {
+    const timer = window.setTimeout(() => {
       setResetCooldownSeconds((seconds) => (seconds > 0 ? seconds - 1 : 0));
     }, 1000);
-    return () => window.clearInterval(timer);
+    return () => window.clearTimeout(timer);
   }, [resetCooldownSeconds]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -74,7 +76,7 @@ export default function AdminLogin() {
 
   const handleResetRequest = () => {
     if (resetCooldownSeconds > 0) {
-      toast.error(`Please wait ${resetCooldownSeconds}s before requesting another reset email.`);
+      toast.error(`Please wait ${resetCooldownSeconds} seconds before requesting another reset email.`);
       return;
     }
     if (!email.trim()) {
