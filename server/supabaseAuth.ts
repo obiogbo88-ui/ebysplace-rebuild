@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { TRPCError } from "@trpc/server";
 import type { Request } from "express";
+import { normalizeEnvUrl, normalizeSecretKey } from "./_core/envSecrets";
 import { upsertUser } from "./db";
 
 function normalizeEmailCandidate(value: string | undefined) {
@@ -49,8 +50,8 @@ function toTrpcError(error: unknown, fallbackMessage: string) {
 }
 
 function getSupabaseAuthConfig() {
-  const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = normalizeEnvUrl(process.env.SUPABASE_URL);
+  const serviceRoleKey = normalizeSecretKey(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   if (!url || !serviceRoleKey) {
     console.error("[Auth] Supabase Auth configuration missing", {

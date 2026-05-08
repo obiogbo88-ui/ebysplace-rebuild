@@ -33,6 +33,21 @@ describe("customer SMS notifications", () => {
     expect(String(request?.body)).toContain("Body=Booking+confirmed");
   });
 
+  it("removes accidental whitespace from copied Twilio account credentials", async () => {
+    process.env.TWILIO_ACCOUNT_SID = " AC123 \n 456\t789 ";
+    process.env.TWILIO_AUTH_TOKEN = " token \n with\tspaces ";
+    process.env.TWILIO_SMS_FROM = "+15551234567";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as Response);
+
+    const result = await sendCustomerSms({ to: "+447700900123", body: "Booking confirmed" });
+
+    expect(result).toEqual({ sent: true });
+    const [, request] = fetchMock.mock.calls[0] ?? [];
+    expect(request?.headers).toMatchObject({
+      Authorization: `Basic ${Buffer.from("AC123456789:tokenwithspaces").toString("base64")}`,
+    });
+  });
+
   it("keeps business flows non-blocking when Twilio throws", async () => {
     process.env.TWILIO_ACCOUNT_SID = "AC123";
     process.env.TWILIO_AUTH_TOKEN = "secret";

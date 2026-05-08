@@ -1,4 +1,5 @@
 import { ENV } from "./env";
+import { trimEnvValue } from "./envSecrets";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 
@@ -277,7 +278,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: process.env.OPENAI_TEXT_MODEL || "gpt-4o-mini",
+    model: trimEnvValue(process.env.OPENAI_TEXT_MODEL) || "gpt-4o-mini",
     messages: messages.map(normalizeMessage),
   };
 

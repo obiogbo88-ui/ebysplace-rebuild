@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { normalizeEnvUrl, normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
 import {
   analyticsEvents,
   bookings,
@@ -44,7 +45,7 @@ function requiresSsl(connectionString: string) {
 }
 
 function getDatabaseUrl() {
-  return process.env.DATABASE_URL?.trim() || "";
+  return trimEnvValue(process.env.DATABASE_URL);
 }
 
 function databaseUrlFingerprint(connectionString: string) {
@@ -121,8 +122,8 @@ type SupabaseColumnStyle = "camel" | "snake";
 
 function getSupabaseRestConfig() {
   const rawUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const url = rawUrl?.replace(/\/$/, "");
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = normalizeEnvUrl(rawUrl);
+  const serviceRoleKey = normalizeSecretKey(process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (!url || !serviceRoleKey) return null;
   return { url, serviceRoleKey };
 }

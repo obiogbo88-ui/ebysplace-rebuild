@@ -1,4 +1,5 @@
 import { storagePut } from "server/storage";
+import { normalizeSecretKey, trimEnvValue } from "./envSecrets";
 
 export type GenerateImageOptions = {
   prompt: string;
@@ -37,7 +38,7 @@ async function fetchImageAsFile(
 }
 
 export async function generateImage(options: GenerateImageOptions): Promise<GenerateImageResponse> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = normalizeSecretKey(process.env.OPENAI_API_KEY);
   if (!apiKey) {
     throw new Error("AI Try-On is not configured for this deployment. Add OPENAI_API_KEY in Vercel, then redeploy.");
   }
@@ -45,9 +46,9 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
   const originals = options.originalImages || [];
   const endpoint = originals.length > 0 ? "https://api.openai.com/v1/images/edits" : "https://api.openai.com/v1/images/generations";
   const form = new FormData();
-  form.set("model", process.env.OPENAI_IMAGE_MODEL || "gpt-image-1");
+  form.set("model", trimEnvValue(process.env.OPENAI_IMAGE_MODEL) || "gpt-image-1");
   form.set("prompt", options.prompt);
-  form.set("size", process.env.OPENAI_IMAGE_SIZE || "1024x1024");
+  form.set("size", trimEnvValue(process.env.OPENAI_IMAGE_SIZE) || "1024x1024");
 
   if (originals.length > 0) {
     const files = await Promise.all(originals.map((image, index) => fetchImageAsFile(image, index)));

@@ -1,3 +1,5 @@
+import { normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
+
 type MessageInput = {
   to?: string | null;
   body: string;
@@ -23,10 +25,10 @@ function normaliseSender(value?: string | null, channel: "sms" | "whatsapp" = "s
 }
 
 async function sendTwilioMessage(input: MessageInput) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const smsFrom = process.env.TWILIO_SMS_FROM;
-  const whatsappFrom = process.env.TWILIO_WHATSAPP_FROM;
+  const accountSid = normalizeSecretKey(process.env.TWILIO_ACCOUNT_SID);
+  const authToken = normalizeSecretKey(process.env.TWILIO_AUTH_TOKEN);
+  const smsFrom = trimEnvValue(process.env.TWILIO_SMS_FROM);
+  const whatsappFrom = trimEnvValue(process.env.TWILIO_WHATSAPP_FROM);
   const to = normalisePhone(input.to);
   const channel = input.channel || "sms";
   const from = normaliseSender(channel === "whatsapp" ? whatsappFrom : smsFrom, channel);
@@ -119,8 +121,8 @@ function isValidEmail(value?: string | null) {
  */
 export async function sendCustomerEmailSafely(input: EmailInput) {
   try {
-    const apiKey = process.env.SENDGRID_API_KEY;
-    const from = process.env.SENDGRID_FROM_EMAIL || process.env.CUSTOMER_EMAIL_FROM;
+    const apiKey = normalizeSecretKey(process.env.SENDGRID_API_KEY);
+    const from = trimEnvValue(process.env.SENDGRID_FROM_EMAIL) || trimEnvValue(process.env.CUSTOMER_EMAIL_FROM);
     if (!apiKey || !from || !isValidEmail(input.to)) {
       return { sent: false, reason: "email_provider_not_configured_or_invalid_address" } as const;
     }
@@ -132,7 +134,7 @@ export async function sendCustomerEmailSafely(input: EmailInput) {
       },
       body: JSON.stringify({
         personalizations: [{ to: [{ email: input.to!.trim() }] }],
-        from: { email: from },
+        from: { email: from.trim() },
         subject: input.subject,
         content: [{ type: "text/plain", value: input.body.slice(0, 12000) }],
       }),

@@ -1,3 +1,5 @@
+import { normalizeEnvUrl, normalizeSecretKey } from "./envSecrets";
+
 export type DataApiCallOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   query?: Record<string, unknown>;
@@ -6,7 +8,7 @@ export type DataApiCallOptions = {
 };
 
 export async function callDataApi<T = unknown>(endpoint: string, options: DataApiCallOptions = {}): Promise<T> {
-  const base = process.env.EXTERNAL_DATA_API_BASE_URL?.replace(/\/$/, "") || "";
+  const base = normalizeEnvUrl(process.env.EXTERNAL_DATA_API_BASE_URL);
   const url = /^https?:\/\//i.test(endpoint)
     ? new URL(endpoint)
     : new URL(`${base}/${endpoint.replace(/^\//, "")}`);
@@ -19,7 +21,7 @@ export async function callDataApi<T = unknown>(endpoint: string, options: DataAp
     method: options.method || (options.body ? "POST" : "GET"),
     headers: {
       ...(options.body ? { "content-type": "application/json" } : {}),
-      ...(process.env.EXTERNAL_DATA_API_KEY ? { authorization: `Bearer ${process.env.EXTERNAL_DATA_API_KEY}` } : {}),
+      ...(normalizeSecretKey(process.env.EXTERNAL_DATA_API_KEY) ? { authorization: `Bearer ${normalizeSecretKey(process.env.EXTERNAL_DATA_API_KEY)}` } : {}),
       ...(options.headers || {}),
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),

@@ -86,7 +86,11 @@ declare global {
   }
 }
 
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.GOOGLE_MAPS_API_KEY || "";
+function normalizePublicKey(value: string | undefined) {
+  return (value || "").trim().replace(/^[\'\"]|[\'\"]$/g, "").replace(/[\s\u200B-\u200D\uFEFF]+/g, "");
+}
+
+const API_KEY = normalizePublicKey(import.meta.env.VITE_GOOGLE_MAPS_API_KEY) || normalizePublicKey(import.meta.env.GOOGLE_MAPS_API_KEY);
 
 function loadMapScript() {
   return new Promise(resolve => {

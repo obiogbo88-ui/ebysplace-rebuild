@@ -6,6 +6,7 @@ import { z } from "zod";
 import { storageGetSignedUrl, storagePut, storageRemove } from "./storage";
 import { generateImage } from "./_core/imageGeneration";
 import { systemRouter } from "./_core/systemRouter";
+import { normalizeSecretKey } from "./_core/envSecrets";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely } from "./customerNotifications";
@@ -73,23 +74,20 @@ const orderInput = z.object({
   })).min(1),
 });
 
-function normalizeStripeKey(value: string | undefined) {
-  return value?.trim().replace(/^['\"]|['\"]$/g, "").replace(/\s+/g, "") || "";
-}
 
 function getLiveStripeSecretKey() {
   const candidates = [
-    normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
-    normalizeStripeKey(process.env.STRIPE_SECRET_KEY),
+    normalizeSecretKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeSecretKey(process.env.STRIPE_SECRET_KEY),
   ];
   return candidates.find((key) => key.startsWith("sk_live_")) || candidates.find(Boolean) || "";
 }
 
 function getLiveStripePublishableKey() {
   const candidates = [
-    normalizeStripeKey(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
-    normalizeStripeKey(process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY),
-    normalizeStripeKey(process.env.VITE_STRIPE_PUBLISHABLE_KEY),
+    normalizeSecretKey(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
+    normalizeSecretKey(process.env.VITE_EBYSPLACE_LIVE_STRIPE_PUBLISHABLE_KEY),
+    normalizeSecretKey(process.env.VITE_STRIPE_PUBLISHABLE_KEY),
   ];
   return candidates.find((key) => key.startsWith("pk_live_")) || candidates.find(Boolean) || "";
 }

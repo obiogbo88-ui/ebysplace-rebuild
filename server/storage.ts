@@ -1,10 +1,11 @@
 // Supabase Storage helpers for Eby’s Place production media.
+import { normalizeEnvUrl, normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || "https://jcyoipbiplzrocrrhwkp.supabase.co").replace(/\/+$/, "");
-const SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "ebysplace-media";
+const SUPABASE_URL = normalizeEnvUrl(process.env.SUPABASE_URL) || "https://jcyoipbiplzrocrrhwkp.supabase.co";
+const SUPABASE_BUCKET = trimEnvValue(process.env.SUPABASE_STORAGE_BUCKET) || "ebysplace-media";
 
 function getSupabaseConfig() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = normalizeSecretKey(process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (!serviceRoleKey) {
     throw new Error("Storage is unavailable: configure SUPABASE_SERVICE_ROLE_KEY in Vercel and redeploy.");
   }

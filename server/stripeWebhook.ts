@@ -5,22 +5,20 @@ import * as db from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendCustomerEmailSafely, sendShopOrderPaidEmailSafely, sendCustomerSmsSafely, sendCustomerWhatsAppSafely, sendOwnerSmsAndWhatsAppSafely } from "./customerNotifications";
 import { sendBookingPaymentEmailsSafely, sendOrderPaymentEmailsSafely } from "./smtpEmailNotifications";
+import { normalizeSecretKey } from "./_core/envSecrets";
 
 const STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
 
-function normalizeStripeKey(value: string | undefined) {
-  return value?.trim().replace(/^['\"]|['\"]$/g, "") || "";
-}
 
 function getStripeWebhookConfig() {
   const secretKey = [
-    normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
-    normalizeStripeKey(process.env.STRIPE_SECRET_KEY),
+    normalizeSecretKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeSecretKey(process.env.STRIPE_SECRET_KEY),
   ].find((key) => key.startsWith("sk_live_")) || [
-    normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
-    normalizeStripeKey(process.env.STRIPE_SECRET_KEY),
+    normalizeSecretKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
+    normalizeSecretKey(process.env.STRIPE_SECRET_KEY),
   ].find(Boolean);
-  const webhookSecret = normalizeStripeKey(process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET) || normalizeStripeKey(process.env.STRIPE_WEBHOOK_SECRET);
+  const webhookSecret = normalizeSecretKey(process.env.EBYSPLACE_LIVE_STRIPE_WEBHOOK_SECRET) || normalizeSecretKey(process.env.STRIPE_WEBHOOK_SECRET);
   if (!secretKey || !webhookSecret) return null;
   return { stripe: new Stripe(secretKey), webhookSecret };
 }
