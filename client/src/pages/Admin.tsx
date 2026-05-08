@@ -210,6 +210,14 @@ export default function Admin() {
     },
     onError: (error: any) => toast.error(error.message),
   });
+  const clearProductImage = trpc.admin.clearProductImage.useMutation({
+    onSuccess: () => {
+      refresh();
+      scrollAdminFeedback("products");
+      toast.success("Product image removed");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
   const uploadServiceImage = trpc.admin.uploadServiceImage.useMutation({
     onSuccess: () => {
       refresh();
@@ -218,11 +226,27 @@ export default function Admin() {
     },
     onError: (error: any) => toast.error(error.message),
   });
+  const clearServiceImage = trpc.admin.clearServiceImage.useMutation({
+    onSuccess: () => {
+      refresh();
+      scrollAdminFeedback("services");
+      toast.success("Service image removed");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
   const uploadGalleryImage = trpc.admin.uploadGalleryImage.useMutation({
     onSuccess: (uploaded) => {
       setGallery((current) => ({ ...current, imageUrl: uploaded.url }));
       scrollAdminFeedback("gallery");
       toast.success("Gallery image uploaded. Add a title and save it to the gallery.");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
+  const clearWebsiteSectionImage = trpc.admin.clearWebsiteSectionImage.useMutation({
+    onSuccess: () => {
+      refresh();
+      scrollAdminFeedback("content");
+      toast.success("Website section image removed");
     },
     onError: (error: any) => toast.error(error.message),
   });
@@ -569,7 +593,7 @@ export default function Admin() {
                       <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Badge<input defaultValue={product.badge || ""} id={`product-badge-${product.id}`} /></label>
                     </div>
                     <div className="rounded-2xl bg-white/[0.04] p-3 text-sm text-white/70"><b className="text-primary">SEO preview:</b> {product.seoTitle || `${product.name} | Eby’s Place`}<span className="block text-white/55">{product.seoDescription || product.description}</span></div>
-                    <details className="rounded-2xl border border-primary/20 bg-black/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-primary">Update product image</summary><div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]"><input id={`product-image-${product.id}`} defaultValue={product.imageUrl || ""} placeholder="Product image URL" /><label className="btn-dark cursor-pointer py-2"><UploadCloud className="mr-2 h-4 w-4" /> Upload product image<input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])} /></label></div>{product.imageUrl && <div className="mt-3 media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" /></div>}</details>
+                    <details className="rounded-2xl border border-primary/20 bg-black/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-primary">Update product image</summary><div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto]"><input id={`product-image-${product.id}`} defaultValue={product.imageUrl || ""} placeholder="Supabase Storage public image URL" /><label className="btn-dark cursor-pointer py-2"><UploadCloud className="mr-2 h-4 w-4" /> Upload product image<input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])} /></label><button className="btn-dark py-2" type="button" disabled={!product.imageUrl || clearProductImage.isPending} onClick={() => clearProductImage.mutate({ productId: Number(product.id), imageUrl: product.imageUrl || undefined })}><Trash2 className="mr-2 h-4 w-4" /> Remove image</button></div>{product.imageUrl && <div className="mt-3 media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" /></div>}</details>
                     <div className="rounded-2xl border border-primary/20 bg-black/20 p-3 text-sm text-white/70">
                       <b className="block text-primary">Shop colour previews</b>
                       <span className="mt-1 block text-white/55">These are the colour options customers click on the shop page to update the product preview before checkout.</span>
@@ -617,12 +641,13 @@ export default function Admin() {
                       </div>
                       <details className="mt-3 rounded-2xl border border-primary/20 bg-black/20 p-3">
                         <summary className="cursor-pointer text-sm font-semibold text-primary">Add or replace service image</summary>
-                        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
-                          <input id={`service-image-${service.id}`} defaultValue={service.imageUrl || ""} placeholder="Service image URL" />
+                        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto]">
+                          <input id={`service-image-${service.id}`} defaultValue={service.imageUrl || ""} placeholder="Supabase Storage public image URL" />
                           <label className="btn-dark cursor-pointer py-2">
                             <UploadCloud className="mr-2 h-4 w-4" /> {uploadingServiceId === service.id ? "Uploading…" : "Upload image"}
                             <input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} disabled={uploadingServiceId === service.id} onChange={(event) => handleServiceImageUpload(service, event.target.files?.[0])} />
                           </label>
+                          <button className="btn-dark py-2" type="button" disabled={!service.imageUrl || clearServiceImage.isPending} onClick={() => clearServiceImage.mutate({ serviceId: service.id, imageUrl: service.imageUrl || undefined })}><Trash2 className="mr-2 h-4 w-4" /> Remove image</button>
                         </div>
                       </details>
                     </div>
@@ -645,7 +670,10 @@ export default function Admin() {
                       {about.portraitImageUrl || about.imageUrl ? <img className="h-full w-full rounded-full object-cover object-[center_18%]" src={about.portraitImageUrl || about.imageUrl} alt="About Us round preview" /> : <div className="flex h-full w-full items-center justify-center rounded-full text-center text-xs text-white/40">No round image</div>}
                     </div>
                     <div className="grid gap-3">
-                      <label className="btn-dark cursor-pointer justify-start"><UploadCloud className="mr-2 h-4 w-4" /> {uploadWebsiteSectionImage.isPending ? "Uploading About Us round image…" : "Upload About Us round image"}<input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} disabled={uploadWebsiteSectionImage.isPending} onChange={(event) => handleAboutPortraitUpload(event.target.files?.[0])} /></label>
+                      <div className="flex flex-wrap gap-2">
+                        <label className="btn-dark cursor-pointer justify-start"><UploadCloud className="mr-2 h-4 w-4" /> {uploadWebsiteSectionImage.isPending ? "Uploading About Us round image…" : "Upload About Us round image"}<input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} disabled={uploadWebsiteSectionImage.isPending} onChange={(event) => handleAboutPortraitUpload(event.target.files?.[0])} /></label>
+                        <button className="btn-dark" type="button" disabled={!(about.portraitImageUrl || about.imageUrl) || clearWebsiteSectionImage.isPending} onClick={() => clearWebsiteSectionImage.mutate({ sectionKey: "about_us", imageRole: "portrait", imageUrl: about.portraitImageUrl || about.imageUrl || undefined })}><Trash2 className="mr-2 h-4 w-4" /> Remove round image</button>
+                      </div>
                       <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Round image URL<input id="about-portrait-image" defaultValue={about.portraitImageUrl || about.imageUrl || ""} placeholder="Supabase Storage public image URL" /></label>
                       <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Description beneath round image<textarea id="about-portrait-description" defaultValue={about.portraitDescription || "Eberechi Ogbo | Founder & Service Lead"} rows={3} /></label>
                     </div>
@@ -668,7 +696,7 @@ export default function Admin() {
                 <UploadCloud className="mr-2 h-4 w-4" /> {uploadGalleryImage.isPending ? "Uploading image…" : "Upload gallery image"}
                 <input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} disabled={uploadGalleryImage.isPending} onChange={(event) => handleGalleryImageUpload(event.target.files?.[0])} />
               </label>
-              <input required placeholder="S3 image URL" value={gallery.imageUrl} onChange={(event) => setGallery({ ...gallery, imageUrl: event.target.value })} />
+              <input required placeholder="Supabase Storage public image URL" value={gallery.imageUrl} onChange={(event) => setGallery({ ...gallery, imageUrl: event.target.value })} />
               {gallery.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={gallery.imageUrl} alt="Gallery preview" /></div>}
               <input required placeholder="Alt text" value={gallery.altText} onChange={(event) => setGallery({ ...gallery, altText: event.target.value })} />
               <button className="btn-gold" disabled={addGallery.isPending}>{addGallery.isPending ? "Saving…" : "Add image"}</button>

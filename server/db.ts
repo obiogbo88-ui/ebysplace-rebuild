@@ -862,6 +862,14 @@ function isUsableImageUrl(value: unknown) {
   return typeof value === "string" && /^https?:\/\//.test(value);
 }
 
+async function runSeedStep(label: string, action: () => Promise<void>) {
+  try {
+    await action();
+  } catch (error) {
+    console.warn(`[Database] Seed step skipped for ${label}`, error);
+  }
+}
+
 async function ensureSeedProducts(db: Awaited<ReturnType<typeof getDb>>) {
   if (!db) return;
   await db.insert(products).values(seedProducts).onConflictDoUpdate({
@@ -917,69 +925,77 @@ async function seedIfNeeded() {
   if (!db || _seeded) return;
   if (_seedingPromise) return _seedingPromise;
   _seedingPromise = (async () => {
-    await db.insert(services).values(seedServices).onConflictDoUpdate({
-      target: services.slug,
-      set: {
-        name: sql`excluded."name"`,
-        category: sql`excluded."category"`,
-        description: sql`excluded."description"`,
-        duration: sql`excluded."duration"`,
-        priceFrom: sql`excluded."priceFrom"`,
-        badge: sql`excluded."badge"`,
-        imageUrl: sql`excluded."imageUrl"`,
-        isBookable: sql`excluded."isBookable"`,
-        isFeatured: sql`excluded."isFeatured"`,
-        sortOrder: sql`excluded."sortOrder"`,
-        updatedAt: sql`CURRENT_TIMESTAMP`,
-      },
+    await runSeedStep("services", async () => {
+      await db.insert(services).values(seedServices).onConflictDoUpdate({
+        target: services.slug,
+        set: {
+          name: sql`excluded."name"`,
+          category: sql`excluded."category"`,
+          description: sql`excluded."description"`,
+          duration: sql`excluded."duration"`,
+          priceFrom: sql`excluded."priceFrom"`,
+          badge: sql`excluded."badge"`,
+          imageUrl: sql`excluded."imageUrl"`,
+          isBookable: sql`excluded."isBookable"`,
+          isFeatured: sql`excluded."isFeatured"`,
+          sortOrder: sql`excluded."sortOrder"`,
+          updatedAt: sql`CURRENT_TIMESTAMP`,
+        },
+      });
     });
-    await ensureSeedProducts(db);
+    await runSeedStep("products", () => ensureSeedProducts(db));
     const productRows = await db.select().from(products);
     const scarf = productRows.find((product) => product.slug === "satin-edge-scarf");
     const hair = productRows.find((product) => product.slug === "premium-braiding-hair");
     if (scarf) {
-      await db.insert(productVariants).values([
-        { productId: scarf.id, name: "Black", colourHex: "#111111", stockQuantity: 18 },
-        { productId: scarf.id, name: "Gold", colourHex: "#c8a95a", stockQuantity: 16 },
-      ]).onConflictDoUpdate({
-        target: [productVariants.productId, productVariants.name],
-        set: {
-          colourHex: sql`excluded."colourHex"`,
-          stockQuantity: sql`excluded."stockQuantity"`,
-        },
+      await runSeedStep("scarf variants", async () => {
+        await db.insert(productVariants).values([
+          { productId: scarf.id, name: "Black", colourHex: "#111111", stockQuantity: 18 },
+          { productId: scarf.id, name: "Gold", colourHex: "#c8a95a", stockQuantity: 16 },
+        ]).onConflictDoUpdate({
+          target: [productVariants.productId, productVariants.name],
+          set: {
+            colourHex: sql`excluded."colourHex"`,
+            stockQuantity: sql`excluded."stockQuantity"`,
+          },
+        });
       });
     }
     if (hair) {
-      await db.insert(productVariants).values([
-        { productId: hair.id, name: "1B Natural Black", colourHex: "#1b1715", stockQuantity: 42 },
-        { productId: hair.id, name: "30 Auburn", colourHex: "#8a4b2a", stockQuantity: 28 },
-        { productId: hair.id, name: "613 Blonde", colourHex: "#d6b779", stockQuantity: 24 },
-      ]).onConflictDoUpdate({
-        target: [productVariants.productId, productVariants.name],
-        set: {
-          colourHex: sql`excluded."colourHex"`,
-          stockQuantity: sql`excluded."stockQuantity"`,
-        },
+      await runSeedStep("hair variants", async () => {
+        await db.insert(productVariants).values([
+          { productId: hair.id, name: "1B Natural Black", colourHex: "#1b1715", stockQuantity: 42 },
+          { productId: hair.id, name: "30 Auburn", colourHex: "#8a4b2a", stockQuantity: 28 },
+          { productId: hair.id, name: "613 Blonde", colourHex: "#d6b779", stockQuantity: 24 },
+        ]).onConflictDoUpdate({
+          target: [productVariants.productId, productVariants.name],
+          set: {
+            colourHex: sql`excluded."colourHex"`,
+            stockQuantity: sql`excluded."stockQuantity"`,
+          },
+        });
       });
     }
-    await ensureSeedReviews(db);
-    await db.insert(websiteSections).values(seedWebsiteSections).onConflictDoUpdate({
-      target: websiteSections.sectionKey,
-      set: {
-        title: sql`excluded."title"`,
-        eyebrow: sql`excluded."eyebrow"`,
-        body: sql`excluded."body"`,
-        ctaLabel: sql`excluded."ctaLabel"`,
-        ctaHref: sql`excluded."ctaHref"`,
-        imageUrl: sql`excluded."imageUrl"`,
-        portraitImageUrl: sql`excluded."portraitImageUrl"`,
-        portraitDescription: sql`excluded."portraitDescription"`,
-        sortOrder: sql`excluded."sortOrder"`,
-        isPublished: sql`excluded."isPublished"`,
-        updatedAt: sql`CURRENT_TIMESTAMP`,
-      },
+    await runSeedStep("reviews", () => ensureSeedReviews(db));
+    await runSeedStep("website sections", async () => {
+      await db.insert(websiteSections).values(seedWebsiteSections).onConflictDoUpdate({
+        target: websiteSections.sectionKey,
+        set: {
+          title: sql`excluded."title"`,
+          eyebrow: sql`excluded."eyebrow"`,
+          body: sql`excluded."body"`,
+          ctaLabel: sql`excluded."ctaLabel"`,
+          ctaHref: sql`excluded."ctaHref"`,
+          imageUrl: sql`excluded."imageUrl"`,
+          portraitImageUrl: sql`excluded."portraitImageUrl"`,
+          portraitDescription: sql`excluded."portraitDescription"`,
+          sortOrder: sql`excluded."sortOrder"`,
+          isPublished: sql`excluded."isPublished"`,
+          updatedAt: sql`CURRENT_TIMESTAMP`,
+        },
+      });
     });
-    await ensureSeedGallery(db);
+    await runSeedStep("gallery", () => ensureSeedGallery(db));
     _seeded = true;
   })().finally(() => {
     _seedingPromise = null;
@@ -1244,6 +1260,11 @@ async function ensureOrderLocationColumns() {
   await makePgColumnNullable("orders", "postcode");
 }
 
+async function ensureOrderItemSnapshotColumns() {
+  if (!_pool) return;
+  await addPgColumnIfMissing("orderItems", "imageUrl", "VARCHAR(800)");
+}
+
 export async function createBooking(input: typeof bookings.$inferInsert) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
@@ -1276,6 +1297,7 @@ export async function createOrderWithItems(input: { customerName: string; custom
   const db = await getDb();
   if (!db) return { id: Date.now(), items: input.items };
   await ensureOrderLocationColumns();
+  await ensureOrderItemSnapshotColumns();
 
   const supabaseProductRows = await listSupabaseProducts();
   const [dbProductRows, dbVariantRows] = supabaseProductRows ? [[], []] : await Promise.all([
@@ -1297,6 +1319,7 @@ export async function createOrderWithItems(input: { customerName: string; custom
       productId: product.id,
       variantId: variant?.id,
       productName: product.name,
+      imageUrl: product.imageUrl || null,
       variantName: variant?.name,
       quantity,
       unitPrice: Number(product.price).toFixed(2),

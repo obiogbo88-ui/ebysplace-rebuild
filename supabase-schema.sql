@@ -4,9 +4,6 @@
 
 CREATE TYPE "user_role_enum" AS ENUM ('user', 'admin');
 CREATE TYPE "true_false_enum" AS ENUM ('true', 'false');
-CREATE TYPE "service_category_enum" AS ENUM ('Braids', 'Twists', 'Locs', 'Kids Styles', 'Men Styles', 'Add-ons');
--- Migration note: if adding Men Styles to an existing database, run:
--- ALTER TYPE "service_category_enum" ADD VALUE 'Men Styles' BEFORE 'Add-ons';
 CREATE TYPE "booking_status_enum" AS ENUM ('pending', 'confirmed', 'completed', 'cancelled');
 CREATE TYPE "deposit_status_enum" AS ENUM ('unpaid', 'checkout_started', 'paid', 'failed', 'refunded');
 CREATE TYPE "product_category_enum" AS ENUM ('Accessories', 'Aftercare', 'Hair Attachments');
@@ -50,7 +47,7 @@ CREATE TABLE "services" (
   "id" SERIAL PRIMARY KEY,
   "name" VARCHAR(180) NOT NULL,
   "slug" VARCHAR(220) NOT NULL UNIQUE,
-  "category" "service_category_enum" NOT NULL,
+  "category" VARCHAR(120) NOT NULL,
   "description" TEXT NOT NULL,
   "duration" VARCHAR(80) NOT NULL,
   "priceFrom" NUMERIC(10, 2) NOT NULL,
@@ -135,6 +132,7 @@ CREATE TABLE "orderItems" (
   "productId" INTEGER NOT NULL REFERENCES "products"("id") ON DELETE RESTRICT,
   "variantId" INTEGER REFERENCES "productVariants"("id") ON DELETE SET NULL,
   "productName" VARCHAR(180) NOT NULL,
+  "imageUrl" VARCHAR(800),
   "variantName" VARCHAR(120),
   "quantity" INTEGER NOT NULL DEFAULT 1,
   "unitPrice" NUMERIC(10, 2) NOT NULL
