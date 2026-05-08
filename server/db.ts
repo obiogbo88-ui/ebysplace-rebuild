@@ -116,7 +116,7 @@ export async function getDb() {
 
 type SupabaseProductRow = Record<string, any>;
 
-type ProductVariantInput = { name: string; colourHex?: string; stockQuantity: number };
+type ProductVariantInput = { name: string; colourHex?: string; imageUrl?: string; stockQuantity: number };
 
 type SupabaseColumnStyle = "camel" | "snake";
 
@@ -195,6 +195,7 @@ function normalizeSupabaseProduct(row: SupabaseProductRow, variants: SupabasePro
       productId: Number(variant.productId ?? variant.product_id ?? id),
       name: String(variant.name ?? variant.colour ?? "Default"),
       colourHex: variant.colourHex ?? variant.colour_hex ?? variant.colour ?? "#c8a95a",
+      imageUrl: variant.imageUrl ?? variant.image_url ?? null,
       stockQuantity: Number.isFinite(variantStock) ? variantStock : 0,
       stock: Number.isFinite(variantStock) ? variantStock : 0,
     };
@@ -273,9 +274,9 @@ function supabaseProductPayload(input: Partial<typeof products.$inferInsert>, st
 
 function supabaseVariantPayload(variant: ProductVariantInput & { productId: number }, tableName: string) {
   if (tableName === "product_variants") {
-    return cleanUndefinedValues({ product_id: variant.productId, name: variant.name, colour_hex: variant.colourHex, stock: variant.stockQuantity });
+    return cleanUndefinedValues({ product_id: variant.productId, name: variant.name, colour_hex: variant.colourHex, image_url: variant.imageUrl, stock: variant.stockQuantity });
   }
-  return cleanUndefinedValues({ productId: variant.productId, name: variant.name, colourHex: variant.colourHex, stockQuantity: variant.stockQuantity });
+  return cleanUndefinedValues({ productId: variant.productId, name: variant.name, colourHex: variant.colourHex, imageUrl: variant.imageUrl, stockQuantity: variant.stockQuantity });
 }
 
 async function listSupabaseProducts() {

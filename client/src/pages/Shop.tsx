@@ -17,6 +17,7 @@ type ProductVariant = {
   id?: number;
   name: string;
   colourHex?: string | null;
+  imageUrl?: string | null;
   stockQuantity?: number;
 };
 
@@ -80,6 +81,7 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
   const selectedVariant = variants.find((variant) => String(variant.id ?? variant.name) === selectedVariantKey) ?? variants[0] ?? fallbackVariant;
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const selectedColour = selectedVariant.colourHex || "#c8a95a";
+  const activeImageUrl = selectedVariant.imageUrl || product.imageUrl;
   const outOfStock = product.stockStatus === "out_of_stock" || selectedVariant.stockQuantity === 0;
   const collapsedDescription = previewDescription(product.description);
   const canToggleDescription = product.description.trim() !== collapsedDescription;
@@ -93,9 +95,9 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
           background: `radial-gradient(circle at 30% 20%, ${selectedColour} 0%, ${selectedColour}dd 24%, rgba(255,255,255,.08) 25%, rgba(14,9,6,.96) 62%), linear-gradient(135deg, ${selectedColour}55, rgba(200,169,90,.18))`,
         }}
       >
-        {product.imageUrl ? (
+        {activeImageUrl ? (
           <img
-            src={product.imageUrl}
+            src={activeImageUrl}
             alt={product.name}
             className="absolute inset-0 h-full w-full object-cover"
             sizes={PRODUCT_THUMBNAIL_SIZES}

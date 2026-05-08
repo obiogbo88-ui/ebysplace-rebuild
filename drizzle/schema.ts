@@ -125,6 +125,7 @@ export const productVariants = pgTable("productVariants", {
   productId: integer("productId").notNull(),
   name: varchar("name", { length: 120 }).notNull(),
   colourHex: varchar("colourHex", { length: 20 }),
+  imageUrl: varchar("imageUrl", { length: 800 }),
   stockQuantity: integer("stockQuantity").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
