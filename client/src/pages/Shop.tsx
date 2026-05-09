@@ -30,6 +30,9 @@ type ShopProduct = {
   stockStatus?: string;
   stockQuantity?: number;
   imageUrl?: string | null;
+  slug?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   variants?: ProductVariant[];
 };
 
@@ -60,6 +63,10 @@ function productMatchesSearch(product: ShopProduct, query: string) {
   return searchableText.includes(query.toLowerCase());
 }
 
+function productPublicPath(product: ShopProduct) {
+  return product.slug ? `/shop/${product.slug}` : `/shop?search=${encodeURIComponent(product.name)}`;
+}
+
 function normalizeProductId(product: ShopProduct) {
   const rawId = product.id ?? (product as ShopProduct & { productId?: number | string }).productId;
   const productId = Number(rawId);
@@ -75,7 +82,7 @@ function normalizeCartForCheckout(cart: CartItem[]) {
   }));
 }
 
-function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product: ShopProduct, variant?: ProductVariant) => void }) {
+function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduct; onAdd: (product: ShopProduct, variant?: ProductVariant) => void; isDetail?: boolean }) {
   const variants = product.variants?.length ? product.variants : [fallbackVariant];
   const [selectedVariantKey, setSelectedVariantKey] = useState(String(variants[0]?.id ?? variants[0]?.name ?? "Default"));
   const selectedVariant = variants.find((variant) => String(variant.id ?? variant.name) === selectedVariantKey) ?? variants[0] ?? fallbackVariant;
@@ -85,7 +92,8 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
   const outOfStock = product.stockStatus === "out_of_stock" || selectedVariant.stockQuantity === 0;
   const collapsedDescription = previewDescription(product.description);
   const canToggleDescription = product.description.trim() !== collapsedDescription;
-  const visibleDescription = isDescriptionExpanded ? product.description : collapsedDescription;
+  const visibleDescription = isDetail || isDescriptionExpanded ? product.description : collapsedDescription;
+  const shareUrl = typeof window === "undefined" ? productPublicPath(product) : `${window.location.origin}${productPublicPath(product)}`;
 
   return (
     <article className="lux-card group min-w-0 overflow-hidden p-0">
@@ -124,13 +132,14 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <h2 className="serif break-words text-3xl font-bold text-white">{product.name}</h2>
+            <button type="button" className="mt-2 text-left text-sm font-semibold text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => navigateWithSmoothScroll(productPublicPath(product))}>{isDetail ? "Product URL" : "View product page"}</button>
           </div>
           <b className="shrink-0 text-2xl text-primary">£{product.price}</b>
         </div>
 
         <div className="mt-4 rounded-2xl bg-white/[0.04] p-4 text-white/72">
           <p className="text-sm leading-6">{visibleDescription}</p>
-          {canToggleDescription ? (
+          {canToggleDescription && !isDetail ? (
             <button
               type="button"
               className="mt-3 text-sm font-semibold text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -170,14 +179,23 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
           </div>
         </div>
 
-        <button
-          type="button"
-          disabled={outOfStock}
-          className="btn-gold mt-5 w-full disabled:cursor-not-allowed disabled:opacity-50"
-          onClick={() => onAdd(product, selectedVariant)}
-        >
-          {outOfStock ? "Currently unavailable" : `Add ${readableColourLabel(selectedVariant)} to bag`}
-        </button>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            disabled={outOfStock}
+            className="btn-gold w-full disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => onAdd(product, selectedVariant)}
+          >
+            {outOfStock ? "Currently unavailable" : `Add ${readableColourLabel(selectedVariant)} to bag`}
+          </button>
+          <button
+            type="button"
+            className="btn-dark w-full py-3 text-sm"
+            onClick={() => { navigator.clipboard?.writeText(shareUrl); toast.success("Product URL copied"); }}
+          >
+            Copy product URL
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -189,14 +207,20 @@ export default function Shop() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [delivery, setDelivery] = useState({ customerName: "", customerEmail: "", customerPhone: "", addressLine1: "", addressLine2: "", city: "", county: "", postcode: "", deliveryNote: "" });
   const total = useMemo(() => cart.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0), [cart]);
+  const productSlug = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const match = window.location.pathname.match(/^\/shop\/([^/?#]+)/);
+    return match ? decodeURIComponent(match[1]) : "";
+  }, []);
   const searchQuery = useMemo(() => {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("search")?.trim() || "";
   }, []);
   const products = useMemo(() => (data ?? []) as ShopProduct[], [data]);
+  const selectedProduct = useMemo(() => productSlug ? products.find((product) => product.slug === productSlug) : undefined, [products, productSlug]);
   const visibleProducts = useMemo(
-    () => searchQuery ? products.filter((product) => productMatchesSearch(product, searchQuery)) : products,
-    [products, searchQuery]
+    () => selectedProduct ? [selectedProduct] : searchQuery ? products.filter((product) => productMatchesSearch(product, searchQuery)) : products,
+    [products, searchQuery, selectedProduct]
   );
   const checkoutReturn = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -254,13 +278,21 @@ export default function Shop() {
         <div className="grid gap-6 lg:grid-cols-[1fr_.7fr] lg:items-end">
           <div>
             <p className="pill w-fit">Shop</p>
-            <h1 className="serif mt-4 text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">Premium braid care and accessories.</h1>
-            <p className="mt-4 max-w-3xl text-white/75">Choose scalp-friendly braid-care essentials, click available colours to preview each finish, then leave your delivery details at checkout.</p>
+            <h1 className="serif mt-4 text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">{selectedProduct ? selectedProduct.name : "Premium braid care and accessories."}</h1>
+            <p className="mt-4 max-w-3xl text-white/75">{selectedProduct ? (selectedProduct.seoDescription || selectedProduct.description) : "Choose scalp-friendly braid-care essentials, click available colours to preview each finish, then leave your delivery details at checkout."}</p>
           </div>
 
         </div>
 
-        {searchQuery ? (
+        {selectedProduct ? (
+          <div className="mt-8 rounded-3xl border border-primary/30 bg-black/25 p-5 text-white" role="status" aria-live="polite">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/85">Product page</p>
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="break-words text-lg font-semibold">Direct URL: <span className="text-primary">/shop/{selectedProduct.slug}</span></p>
+              <button type="button" className="btn-dark w-fit bg-white/90 px-4 py-2 text-sm" onClick={() => navigateWithSmoothScroll("/shop")}>View all products</button>
+            </div>
+          </div>
+        ) : searchQuery ? (
           <div className="mt-8 rounded-3xl border border-primary/30 bg-black/25 p-5 text-white" role="status" aria-live="polite">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/85">Product search</p>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -286,7 +318,7 @@ export default function Shop() {
         <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid gap-6 md:grid-cols-2">
             {visibleProducts.length ? (
-              visibleProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={add} />)
+              visibleProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={add} isDetail={product.slug === productSlug} />)
             ) : (
               <div className="lux-card md:col-span-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">No products found</p>

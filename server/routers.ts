@@ -561,7 +561,7 @@ export const appRouter = router({
     uploadGalleryImage: adminProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("gallery-image.png") })).mutation(async ({ input }) => uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: input.fileName, folder: "gallery" })),
     uploadWebsiteSectionImage: adminProcedure.input(z.object({ sectionKey: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("section-image.png"), imageRole: z.enum(["main", "portrait"]).default("main") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.sectionKey}-${input.imageRole}-${input.fileName}`, folder: "website-sections" });
-      await db.updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url } : { imageUrl: uploaded.url });
+      await db.updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url, imageUrl: uploaded.url } : { imageUrl: uploaded.url });
       return uploaded;
     }),
     clearWebsiteSectionImage: adminProcedure.input(z.object({ sectionKey: z.string().min(2), imageRole: z.enum(["main", "portrait"]).default("main"), imageUrl: z.string().min(5).optional() })).mutation(async ({ input }) => {

@@ -75,6 +75,15 @@ async function upsertRows<T extends AnyRecord>(table: string, rows: T[], conflic
   });
 }
 
+async function insertRowsIgnoreDuplicates<T extends AnyRecord>(table: string, rows: T[], conflictTarget: string) {
+  if (rows.length === 0) return [];
+  return requestJson<T[]>(endpoint(table, `?on_conflict=${encodeURIComponent(conflictTarget)}`), {
+    method: "POST",
+    headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
+    body: JSON.stringify(rows),
+  });
+}
+
 async function fetchRows<T extends AnyRecord>(table: string, select = "*") {
   return requestJson<T[]>(endpoint(table, `?select=${encodeURIComponent(select)}`), { method: "GET" });
 }
@@ -195,9 +204,9 @@ async function main() {
   await checkStorageBucket();
 
   const serviceRows = seedServices.map((service) => ({ ...service, isBookable: "true" }));
-  const insertedServices = await upsertRows("services", serviceRows, "slug");
+  const insertedServices = await insertRowsIgnoreDuplicates("services", serviceRows, "slug");
   const insertedProducts = await upsertRows("products", seedProducts, "slug");
-  const insertedSections = await upsertRows("websiteSections", seedWebsiteSections, "sectionKey");
+  const insertedSections = await insertRowsIgnoreDuplicates("websiteSections", seedWebsiteSections, "sectionKey");
   const productVariantsCount = await ensureProductVariants();
   const reviewsCount = await ensureReviews();
   const galleryCount = await ensureGallery();

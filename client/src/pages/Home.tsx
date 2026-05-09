@@ -463,9 +463,9 @@ export default function Home() {
                 <button
                   type="button"
                   className="lux-card group block w-full min-w-0 overflow-hidden p-0 text-left transition hover:-translate-y-1 hover:border-primary/55 hover:shadow-[0_22px_55px_rgba(189,140,52,.24)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  onClick={() => navigateWithSmoothScroll(`/shop?search=${encodeURIComponent(product.name)}`, setLocation)}
+                  onClick={() => navigateWithSmoothScroll(product.slug ? `/shop/${product.slug}` : `/shop?search=${encodeURIComponent(product.name)}`, setLocation)}
                   key={product.id ?? product.slug}
-                  aria-label={`View ${product.name} and all Eby’s Place shop products`}
+                  aria-label={`View ${product.name} product page`}
                 >
                   <div className="relative min-h-[210px] overflow-hidden rounded-t-[1.75rem] border-b border-primary/20 bg-[#130c07]">
                     {product.imageUrl ? (
@@ -492,7 +492,7 @@ export default function Home() {
                     <h3 className="serif text-2xl font-bold text-[#2a1a0b] transition group-hover:text-primary">{product.name}</h3>
                     <div className="mt-4 flex items-center justify-between gap-3">
                       <b className="text-2xl text-primary">£{product.price}</b>
-                      <span className="text-sm font-bold text-[#4a3014]">View shop</span>
+                      <span className="text-sm font-bold text-[#4a3014]">View product</span>
                     </div>
                   </div>
                 </button>

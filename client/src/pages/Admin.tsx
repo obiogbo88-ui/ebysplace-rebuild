@@ -241,8 +241,13 @@ export default function Admin() {
     },
     onError: (error: any) => toast.error(error.message),
   });
+  const syncServiceImageInput = (serviceId: number, imageUrl: string) => {
+    const imageInput = document.getElementById(`service-image-${serviceId}`) as HTMLInputElement | null;
+    if (imageInput) imageInput.value = imageUrl;
+  };
   const uploadServiceImage = trpc.admin.uploadServiceImage.useMutation({
-    onSuccess: () => {
+    onSuccess: (uploaded, variables) => {
+      syncServiceImageInput(Number(variables.serviceId), uploaded.url);
       refresh();
       scrollAdminFeedback("services");
       toast.success("Service image uploaded and saved");
@@ -250,7 +255,8 @@ export default function Admin() {
     onError: (error: any) => toast.error(error.message),
   });
   const clearServiceImage = trpc.admin.clearServiceImage.useMutation({
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
+      syncServiceImageInput(Number(variables.serviceId), "");
       refresh();
       scrollAdminFeedback("services");
       toast.success("Service image removed");
@@ -274,7 +280,9 @@ export default function Admin() {
     onError: (error: any) => toast.error(error.message),
   });
   const uploadWebsiteSectionImage = trpc.admin.uploadWebsiteSectionImage.useMutation({
-    onSuccess: () => {
+    onSuccess: (uploaded) => {
+      const imageInput = document.getElementById("about-portrait-image") as HTMLInputElement | null;
+      if (imageInput) imageInput.value = uploaded.url;
       refresh();
       scrollAdminFeedback("content");
       toast.success("About Us round image uploaded and saved");
@@ -623,6 +631,14 @@ export default function Admin() {
                     <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Product name<input defaultValue={product.name} id={`product-name-${product.id}`} /></label>
                     <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Shop price (£)<input type="number" min="0" step="0.01" defaultValue={product.price} id={`product-price-${product.id}`} /></label>
                     <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">SEO slug<input defaultValue={product.slug} id={`product-slug-${product.id}`} placeholder="premium-braiding-hair" /></label>
+                    <div className="rounded-2xl border border-primary/20 bg-black/20 p-3 text-sm text-white/70">
+                      <b className="block text-primary">Public product URL</b>
+                      <span className="mt-1 block break-all text-white/60">{typeof window !== "undefined" ? `${window.location.origin}/shop/${product.slug}` : `/shop/${product.slug}`}</span>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button className="btn-dark py-2 text-xs" type="button" onClick={() => { const url = `${window.location.origin}/shop/${product.slug}`; navigator.clipboard?.writeText(url); toast.success("Product URL copied"); }}>Copy URL</button>
+                        <button className="btn-dark py-2 text-xs" type="button" onClick={() => window.open(`/shop/${product.slug}`, "_blank", "noopener,noreferrer")}>Open product page</button>
+                      </div>
+                    </div>
                     <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">SEO page title<input defaultValue={product.seoTitle || `${product.name} | Eby’s Place`} id={`product-seo-title-${product.id}`} /></label>
                     <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">SEO meta description<textarea defaultValue={product.seoDescription || product.description} id={`product-seo-description-${product.id}`} rows={3} /></label>
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -674,7 +690,7 @@ export default function Admin() {
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Service price (£)<input type="number" min="0" step="0.01" defaultValue={service.priceFrom} id={`price-${service.id}`} /></label>
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Duration<input defaultValue={service.duration} id={`duration-${service.id}`} /></label>
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Availability<select defaultValue={service.isBookable || "true"} id={`availability-${service.id}`}><option value="true">Available for booking</option><option value="false">Unavailable for booking</option></select></label>
-                        <button className="btn-dark py-2" onClick={() => { const priceFrom = readAdminPrice(`price-${service.id}`, "Service price"); if (!priceFrom) return; updateService.mutate({ id: service.id, priceFrom, duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value, isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as "true" | "false" }); }}>Save service availability</button>
+                        <button className="btn-dark py-2" onClick={() => { const priceFrom = readAdminPrice(`price-${service.id}`, "Service price"); if (!priceFrom) return; updateService.mutate({ id: service.id, priceFrom, duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value, imageUrl: (document.getElementById(`service-image-${service.id}`) as HTMLInputElement)?.value.trim() || undefined, isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as "true" | "false" }); }}>Save service price, image & availability</button>
                       </div>
                       <details className="mt-3 rounded-2xl border border-primary/20 bg-black/20 p-3">
                         <summary className="cursor-pointer text-sm font-semibold text-primary">Add or replace service image</summary>

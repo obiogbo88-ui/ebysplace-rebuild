@@ -928,21 +928,8 @@ async function seedIfNeeded() {
   if (_seedingPromise) return _seedingPromise;
   _seedingPromise = (async () => {
     await runSeedStep("services", async () => {
-      await db.insert(services).values(seedServices).onConflictDoUpdate({
+      await db.insert(services).values(seedServices).onConflictDoNothing({
         target: services.slug,
-        set: {
-          name: sql`excluded."name"`,
-          category: sql`excluded."category"`,
-          description: sql`excluded."description"`,
-          duration: sql`excluded."duration"`,
-          priceFrom: sql`excluded."priceFrom"`,
-          badge: sql`excluded."badge"`,
-          imageUrl: sql`excluded."imageUrl"`,
-          isBookable: sql`excluded."isBookable"`,
-          isFeatured: sql`excluded."isFeatured"`,
-          sortOrder: sql`excluded."sortOrder"`,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        },
       });
     });
     await runSeedStep("products", () => ensureSeedProducts(db));
@@ -980,21 +967,8 @@ async function seedIfNeeded() {
     }
     await runSeedStep("reviews", () => ensureSeedReviews(db));
     await runSeedStep("website sections", async () => {
-      await db.insert(websiteSections).values(seedWebsiteSections).onConflictDoUpdate({
+      await db.insert(websiteSections).values(seedWebsiteSections).onConflictDoNothing({
         target: websiteSections.sectionKey,
-        set: {
-          title: sql`excluded."title"`,
-          eyebrow: sql`excluded."eyebrow"`,
-          body: sql`excluded."body"`,
-          ctaLabel: sql`excluded."ctaLabel"`,
-          ctaHref: sql`excluded."ctaHref"`,
-          imageUrl: sql`excluded."imageUrl"`,
-          portraitImageUrl: sql`excluded."portraitImageUrl"`,
-          portraitDescription: sql`excluded."portraitDescription"`,
-          sortOrder: sql`excluded."sortOrder"`,
-          isPublished: sql`excluded."isPublished"`,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        },
       });
     });
     await runSeedStep("gallery", () => ensureSeedGallery(db));

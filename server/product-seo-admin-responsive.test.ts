@@ -37,9 +37,10 @@ describe("product SEO administration and responsive page safeguards", () => {
     const shopSource = readSource("client/src/pages/Shop.tsx");
     const homeSource = readSource("client/src/pages/Home.tsx");
 
-    expect(shopSource).not.toContain("product.seoTitle");
-    expect(shopSource).not.toContain("product.seoDescription");
-    expect(shopSource).not.toContain("product.slug");
+    expect(shopSource).toContain("function productPublicPath(product: ShopProduct)");
+    expect(shopSource).toContain("/shop/${product.slug}");
+    expect(shopSource).toContain("Copy product URL");
+    expect(shopSource).toContain("selectedProduct ? selectedProduct.name");
     expect(shopSource).not.toContain("SEO title");
     expect(shopSource).toContain("function previewDescription(description: string)");
     expect(shopSource).toContain("trimmed.match(/^[^.!?]+[.!?]/)");
@@ -124,9 +125,11 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(dbSource).toContain("export async function updateWebsiteSection");
     expect(dbSource).toContain("export async function updateBookingStatus");
     expect(dbSource).toContain("export async function updateOrderStatus");
-    expect(dbSource).toContain("await db.insert(services).values(seedServices).onConflictDoUpdate({");
+    expect(dbSource).toContain("await db.insert(services).values(seedServices).onConflictDoNothing({");
     expect(dbSource).toContain("await db.insert(products).values(seedProducts).onConflictDoUpdate({");
     expect(adminSource).toContain("updateService.mutate");
+    expect(adminSource).toContain("Public product URL");
+    expect(adminSource).toContain("Save service price, image & availability");
     expect(adminSource).toContain("updateWebsiteSection.mutate");
     expect(adminSource).toContain("addGallery.mutate");
     expect(bookingSource).toContain("trpc.public.services.useQuery");
