@@ -211,19 +211,23 @@ export default function Admin() {
   const createProduct = trpc.admin.createProduct.useMutation({
     onSuccess: async (createdProduct) => {
       const pending = newProductFileRef.current;
-      newProductFileRef.current = null;
-      setNewProductPreviewUrl("");
       refresh();
       setNewProduct({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
       if (pending && createdProduct?.id) {
         try {
           await uploadProductImage.mutateAsync({ productId: Number(createdProduct.id), productName: createdProduct.name || "product", dataUrl: pending.dataUrl, fileName: pending.file.name });
+          toast.success("Shop product uploaded with image");
         } catch {
-          toast.error("Product saved but image upload failed. Use 'Update product image' on the saved product.");
+          toast.error("Product saved but image upload failed. Use the 'Update product image' button on the saved product below to retry.");
         }
+        newProductFileRef.current = null;
+        setNewProductPreviewUrl("");
+      } else {
+        newProductFileRef.current = null;
+        setNewProductPreviewUrl("");
+        toast.success("Shop product uploaded");
       }
       scrollAdminFeedback("products");
-      toast.success("Shop product uploaded");
     },
     onError: (error: any) => toast.error(error.message),
   });
