@@ -322,7 +322,7 @@ export default function Admin() {
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [deletingGalleryId, setDeletingGalleryId] = useState<number | null>(null);
-  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["activity-monitoring", "reviews", "products", "services", "gallery"]));
+  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["reviews", "products", "services", "gallery"]));
   const data = (lists.data || {}) as AdminListData;
   const galleryItems = (data.gallery || []) as AdminGalleryItem[];
   const reviewRows = (data.reviews || []) as AdminReviewItem[];
