@@ -293,17 +293,19 @@ export default function Admin() {
   });
   const deleteGalleryImage = trpc.admin.deleteGalleryImage.useMutation({
     onSuccess: () => {
+      setDeletingGalleryId(null);
       refresh();
       scrollAdminFeedback("gallery");
       toast.success("Gallery image removed");
     },
-    onError: (error: any) => toast.error(error.message),
+    onError: (error: any) => { setDeletingGalleryId(null); toast.error(error.message); },
   });
   const [availabilitySlot, setAvailabilitySlot] = useState({ date: "", time: "", reason: "Unavailable" });
   const [instagramSettings, setInstagramSettings] = useState({ handle: "@ebysplace", feedUrl: "https://www.instagram.com/ebysplace/", enabled: true, note: "Latest Eby’s Place Instagram posts appear here once the production feed is connected." });
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
+  const [deletingGalleryId, setDeletingGalleryId] = useState<number | null>(null);
   const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["activity-monitoring"]));
   const data = (lists.data || {}) as AdminListData;
   const galleryItems = (data.gallery || []) as AdminGalleryItem[];
@@ -672,7 +674,7 @@ export default function Admin() {
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Service price (£)<input type="number" min="0" step="0.01" defaultValue={service.priceFrom} id={`price-${service.id}`} /></label>
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Duration<input defaultValue={service.duration} id={`duration-${service.id}`} /></label>
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Availability<select defaultValue={service.isBookable || "true"} id={`availability-${service.id}`}><option value="true">Available for booking</option><option value="false">Unavailable for booking</option></select></label>
-                        <button className="btn-dark py-2" onClick={() => { const priceFrom = readAdminPrice(`price-${service.id}`, "Service price"); if (!priceFrom) return; updateService.mutate({ id: service.id, priceFrom, duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value, imageUrl: (document.getElementById(`service-image-${service.id}`) as HTMLInputElement).value, isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as "true" | "false" }); }}>Save service availability</button>
+                        <button className="btn-dark py-2" onClick={() => { const priceFrom = readAdminPrice(`price-${service.id}`, "Service price"); if (!priceFrom) return; updateService.mutate({ id: service.id, priceFrom, duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value, isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as "true" | "false" }); }}>Save service availability</button>
                       </div>
                       <details className="mt-3 rounded-2xl border border-primary/20 bg-black/20 p-3">
                         <summary className="cursor-pointer text-sm font-semibold text-primary">Add or replace service image</summary>
@@ -739,7 +741,10 @@ export default function Admin() {
             </details>
             <b className="mt-4 block text-primary">{data.gallery?.length || 0} images</b>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {galleryItems.map((item, index) => (
+              {galleryItems.map((item, index) => {
+                const galleryId = typeof item.id === "number" ? item.id : Number(item.id);
+                const isDeleting = deletingGalleryId === galleryId;
+                return (
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-3" key={String(item.id ?? `gallery-${index}`)}>
                   <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]">
                     <img src={item.imageUrl} alt={item.altText || item.title} loading="lazy" decoding="async" />
@@ -752,23 +757,24 @@ export default function Admin() {
                     <button
                       type="button"
                       className="btn-dark border-red-400/40 py-2 text-red-100 hover:border-red-300 hover:text-red-50"
-                      disabled={!item.id || deleteGalleryImage.isPending}
+                      disabled={!item.id || isDeleting}
                       onClick={() => {
-                        const galleryId = typeof item.id === "number" ? item.id : Number(item.id);
                         if (!Number.isInteger(galleryId) || galleryId <= 0) {
                           toast.error("This gallery image cannot be deleted because it has no database ID.");
                           return;
                         }
                         if (window.confirm(`Delete "${item.title}" from the gallery?`)) {
+                          setDeletingGalleryId(galleryId);
                           deleteGalleryImage.mutate({ id: galleryId, imageUrl: item.imageUrl || undefined });
                         }
                       }}
                     >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                      <Trash2 className="mr-2 h-4 w-4" /> {isDeleting ? "Deleting…" : "Delete"}
                     </button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </AdminPanel>
 
