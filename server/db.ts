@@ -1422,6 +1422,10 @@ async function ensureProductVariantsTable() {
       "stockQuantity" INTEGER NOT NULL DEFAULT 0,
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
     )`);
+    await addPgColumnIfMissing("productVariants", "colourHex", "VARCHAR(20)");
+    await addPgColumnIfMissing("productVariants", "imageUrl", "VARCHAR(800)");
+    await addPgColumnIfMissing("productVariants", "stockQuantity", "INTEGER NOT NULL DEFAULT 0");
+    await addPgColumnIfMissing("productVariants", "createdAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
   } catch (err) {
     console.warn("[Database] Could not ensure productVariants table", err);
   }

@@ -129,4 +129,12 @@ describe("live production repair safeguards", () => {
     expect(seedSource).not.toContain(["/", "man", "us", "-storage/"].join(""));
     expect(packageSource).toContain('"seed:supabase": "tsx scripts/seed-supabase-content.ts"');
   });
+
+  it("repairs legacy product variant schemas before protected admin queries read review moderation data", () => {
+    const dbSource = readProjectFile("server/db.ts");
+
+    expect(dbSource).toContain('await ensureProductVariantsTable();');
+    expect(dbSource).toContain('await addPgColumnIfMissing("productVariants", "imageUrl", "VARCHAR(800)")');
+    expect(dbSource).toContain('await addPgColumnIfMissing("productVariants", "createdAt", "TIMESTAMP NOT NULL DEFAULT NOW()")');
+  });
 });
