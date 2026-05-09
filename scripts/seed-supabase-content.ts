@@ -204,9 +204,9 @@ async function main() {
   await checkStorageBucket();
 
   const serviceRows = seedServices.map((service) => ({ ...service, isBookable: "true" }));
-  const insertedServices = await insertRowsIgnoreDuplicates("services", serviceRows, "slug");
+  const insertedServices = await upsertRows("services", serviceRows, "slug");
   const insertedProducts = await upsertRows("products", seedProducts, "slug");
-  const insertedSections = await insertRowsIgnoreDuplicates("websiteSections", seedWebsiteSections, "sectionKey");
+  const insertedSections = await upsertRows("websiteSections", seedWebsiteSections, "sectionKey");
   const productVariantsCount = await ensureProductVariants();
   const reviewsCount = await ensureReviews();
   const galleryCount = await ensureGallery();
