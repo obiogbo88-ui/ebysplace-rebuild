@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { trpc } from "@/lib/trpc";
@@ -209,11 +209,25 @@ export default function Admin() {
   const updateStock = trpc.admin.updateProductStock.useMutation(opts);
   const updateProductVariants = trpc.admin.updateProductVariants.useMutation(opts);
   const createProduct = trpc.admin.createProduct.useMutation({
-    onSuccess: () => {
+    onSuccess: async (createdProduct) => {
+      const pending = newProductFileRef.current;
       refresh();
       setNewProduct({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
+      if (pending && createdProduct?.id) {
+        try {
+          await uploadProductImage.mutateAsync({ productId: Number(createdProduct.id), productName: createdProduct.name || "product", dataUrl: pending.dataUrl, fileName: pending.file.name });
+          toast.success("Shop product uploaded with image");
+        } catch {
+          toast.error("Product saved but image upload failed. Use the 'Update product image' button on the saved product below to retry.");
+        }
+        newProductFileRef.current = null;
+        setNewProductPreviewUrl("");
+      } else {
+        newProductFileRef.current = null;
+        setNewProductPreviewUrl("");
+        toast.success("Shop product uploaded");
+      }
       scrollAdminFeedback("products");
-      toast.success("Shop product uploaded");
     },
     onError: (error: any) => toast.error(error.message),
   });
@@ -322,7 +336,9 @@ export default function Admin() {
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [deletingGalleryId, setDeletingGalleryId] = useState<number | null>(null);
-  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["reviews", "products", "services", "gallery"]));
+  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set());
+  const newProductFileRef = useRef<{ file: File; dataUrl: string } | null>(null);
+  const [newProductPreviewUrl, setNewProductPreviewUrl] = useState<string>("");
   const data = (lists.data || {}) as AdminListData;
   const galleryItems = (data.gallery || []) as AdminGalleryItem[];
   const reviewRows = (data.reviews || []) as AdminReviewItem[];
@@ -418,6 +434,19 @@ export default function Admin() {
       await uploadWebsiteSectionImage.mutateAsync({ sectionKey: "about_us", imageRole: "portrait", dataUrl, fileName: normalizedFile.name });
     } catch (error: any) {
       toast.error(error.message || "About Us round image upload failed");
+    }
+  }
+
+
+  async function handleNewProductFileSelect(file?: File) {
+    if (!file) return;
+    try {
+      const normalizedFile = await normalizeAdminUploadFile(file);
+      const dataUrl = await fileToDataUrl(normalizedFile);
+      newProductFileRef.current = { file: normalizedFile, dataUrl };
+      setNewProductPreviewUrl(dataUrl);
+    } catch (error: any) {
+      toast.error(error.message || "Image could not be loaded");
     }
   }
 
@@ -625,10 +654,13 @@ export default function Admin() {
                 <div className="grid gap-3 sm:grid-cols-2"><input placeholder="Badge" value={newProduct.badge} onChange={(event) => setNewProduct({ ...newProduct, badge: event.target.value })} /><input type="number" min="0" placeholder="Stock quantity" value={newProduct.stockQuantity} onChange={(event) => setNewProduct({ ...newProduct, stockQuantity: Number(event.target.value) })} /></div>
                 <input placeholder="SEO title" value={newProduct.seoTitle} onChange={(event) => setNewProduct({ ...newProduct, seoTitle: event.target.value })} />
                 <textarea placeholder="SEO meta description" value={newProduct.seoDescription} onChange={(event) => setNewProduct({ ...newProduct, seoDescription: event.target.value })} />
-                <p className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-white/70"><UploadCloud className="mr-2 inline h-4 w-4 text-primary" />To upload a product image, <b className="text-primary">save the product first</b>, then use the &quot;Update product image&quot; button on the saved product below. You can also paste an image URL directly into the field below.</p>
-                <input placeholder="Product image URL (optional — paste URL or upload after saving)" value={newProduct.imageUrl} onChange={(event) => setNewProduct({ ...newProduct, imageUrl: event.target.value })} />
+                <p className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-white/70"><UploadCloud className="mr-2 inline h-4 w-4 text-primary" />Pick an image now and it will be uploaded automatically after the product is saved.</p>
+                <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                  <input placeholder="Product image URL (optional — paste URL or upload below)" value={newProduct.imageUrl} onChange={(event) => setNewProduct({ ...newProduct, imageUrl: event.target.value })} />
+                  <label className="btn-dark cursor-pointer py-2"><UploadCloud className="mr-2 h-4 w-4" /> Upload product image<input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} onChange={(event) => handleNewProductFileSelect(event.target.files?.[0])} /></label>
+                </div>
+                {(newProductPreviewUrl || newProduct.imageUrl) && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={newProductPreviewUrl || newProduct.imageUrl} alt="New product preview" loading="lazy" decoding="async" /></div>}
                 <textarea placeholder={"Available colours in stock, one per line: Colour name|#hexcode|stock|imageUrl"} value={newProduct.colourChoices} onChange={(event) => setNewProduct({ ...newProduct, colourChoices: event.target.value })} />
-                {newProduct.imageUrl && <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={newProduct.imageUrl} alt="New product preview" loading="lazy" decoding="async" /></div>}
                 <button className="btn-gold" disabled={createProduct.isPending}>{createProduct.isPending ? "Saving product…" : "Save product to shop"}</button>
               </form>
             </details>
