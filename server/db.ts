@@ -74,7 +74,7 @@ export async function getDb() {
   if (_lastDatabaseUrlFingerprint !== fingerprint) {
     _lastDatabaseUrlFingerprint = fingerprint;
     _databaseConnectionFailed = false;
-    console.error("[Database] DATABASE_URL detected for PostgreSQL initialisation", {
+    console.log("[Database] DATABASE_URL detected for PostgreSQL initialisation", {
       fingerprint,
       isPostgres: isPostgresConnectionString(connectionString),
       requiresSsl: requiresSsl(connectionString),
@@ -1410,6 +1410,23 @@ async function ensureEmailNotificationLogTable() {
   }
 }
 
+async function ensureProductVariantsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "productVariants" (
+      "id" SERIAL PRIMARY KEY,
+      "productId" INTEGER NOT NULL,
+      "name" VARCHAR(120) NOT NULL,
+      "colourHex" VARCHAR(20),
+      "imageUrl" VARCHAR(800),
+      "stockQuantity" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure productVariants table", err);
+  }
+}
+
 export async function createEmailNotificationLog(input: {
   entityType: "booking" | "order";
   entityId: number;
@@ -1517,6 +1534,7 @@ export async function adminLists() {
   const fallbackProducts = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
   if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   await ensureEmailNotificationLogTable();
+  await ensureProductVariantsTable();
   const [bookingRows, orderRows, reviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
   const productsWithVariants = supabaseProducts ?? dbProductRows.map((product) => ({
     ...product,
