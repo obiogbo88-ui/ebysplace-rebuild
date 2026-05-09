@@ -935,10 +935,7 @@ async function seedIfNeeded() {
           category: sql`excluded."category"`,
           description: sql`excluded."description"`,
           duration: sql`excluded."duration"`,
-          priceFrom: sql`excluded."priceFrom"`,
           badge: sql`excluded."badge"`,
-          imageUrl: sql`excluded."imageUrl"`,
-          isBookable: sql`excluded."isBookable"`,
           isFeatured: sql`excluded."isFeatured"`,
           sortOrder: sql`excluded."sortOrder"`,
           updatedAt: sql`CURRENT_TIMESTAMP`,
@@ -980,22 +977,7 @@ async function seedIfNeeded() {
     }
     await runSeedStep("reviews", () => ensureSeedReviews(db));
     await runSeedStep("website sections", async () => {
-      await db.insert(websiteSections).values(seedWebsiteSections).onConflictDoUpdate({
-        target: websiteSections.sectionKey,
-        set: {
-          title: sql`excluded."title"`,
-          eyebrow: sql`excluded."eyebrow"`,
-          body: sql`excluded."body"`,
-          ctaLabel: sql`excluded."ctaLabel"`,
-          ctaHref: sql`excluded."ctaHref"`,
-          imageUrl: sql`excluded."imageUrl"`,
-          portraitImageUrl: sql`excluded."portraitImageUrl"`,
-          portraitDescription: sql`excluded."portraitDescription"`,
-          sortOrder: sql`excluded."sortOrder"`,
-          isPublished: sql`excluded."isPublished"`,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        },
-      });
+      await db.insert(websiteSections).values(seedWebsiteSections).onConflictDoNothing();
     });
     await runSeedStep("gallery", () => ensureSeedGallery(db));
     _seeded = true;

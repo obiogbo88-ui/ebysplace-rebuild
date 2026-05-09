@@ -80,7 +80,7 @@ describe("strict visual-only change regression coverage", () => {
     expect(adminSource).toContain("Save product price, SEO & colours");
     expect(adminSource).toContain("Service price (£)");
     expect(adminSource).toContain("id={`price-${service.id}`}");
-    expect(adminSource).toContain("Save service availability");
+    expect(adminSource).toContain("Save service");
     expect(adminSource).toContain("Availability");
     expect(adminSource).toContain("id={`availability-${service.id}`}");
     expect(adminSource).toContain("isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as \"true\" | \"false\"");

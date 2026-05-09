@@ -10,6 +10,7 @@ const Home = lazy(() => import("./pages/Home"));
 const Services = lazy(() => import("./pages/Services"));
 const Booking = lazy(() => import("./pages/Booking"));
 const Shop = lazy(() => import("./pages/Shop"));
+const ShopProduct = lazy(() => import("./pages/ShopProduct"));
 const TryOn = lazy(() => import("./pages/TryOn"));
 const Braiders = lazy(() => import("./pages/Braiders"));
 const Gallery = lazy(() => import("./pages/Gallery"));
@@ -86,6 +87,7 @@ function Router() {
         <Route path="/booking" component={Booking} />
         <Route path="/booking/success" component={BookingSuccess} />
         <Route path="/shop" component={Shop} />
+        <Route path="/shop/:slug" component={ShopProduct} />
         <Route path="/ai-try-on" component={TryOn} />
         <Route path="/braiders-near-me" component={Braiders} />
         <Route path="/gallery" component={Gallery} />

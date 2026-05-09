@@ -1,4 +1,5 @@
 import { type FormEvent, useMemo, useState } from "react";
+import { Link } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
@@ -30,6 +31,7 @@ type ShopProduct = {
   stockStatus?: string;
   stockQuantity?: number;
   imageUrl?: string | null;
+  slug?: string;
   variants?: ProductVariant[];
 };
 
@@ -123,7 +125,13 @@ function ProductCard({ product, onAdd }: { product: ShopProduct; onAdd: (product
       <div className="p-5 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h2 className="serif break-words text-3xl font-bold text-white">{product.name}</h2>
+            {product.slug ? (
+              <Link href={`/shop/${product.slug}`} className="hover:underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                <h2 className="serif break-words text-3xl font-bold text-white">{product.name}</h2>
+              </Link>
+            ) : (
+              <h2 className="serif break-words text-3xl font-bold text-white">{product.name}</h2>
+            )}
           </div>
           <b className="shrink-0 text-2xl text-primary">£{product.price}</b>
         </div>
