@@ -343,6 +343,7 @@ export default function Admin() {
   const galleryItems = (data.gallery || []) as AdminGalleryItem[];
   const reviewRows = (data.reviews || []) as AdminReviewItem[];
   const pendingReviewRows = reviewRows.filter((review) => review.status === "pending");
+  const moderatedReviewRows = reviewRows.filter((review) => review.status !== "pending");
   const emailNotificationRows = emailLogs.data || data.emailNotifications || [];
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
   const togglePanel = (panelId: string) => setOpenPanels((current) => {
@@ -652,11 +653,11 @@ export default function Admin() {
                   </div>
                 </>
               )}
-              {reviewRows.filter((r) => r.status !== "pending").length > 0 && (
+              {moderatedReviewRows.length > 0 && (
                 <details className="mt-6">
-                  <summary className="cursor-pointer text-sm text-white/55 hover:text-white/80">Show all moderated reviews ({reviewRows.filter((r) => r.status !== "pending").length})</summary>
+                  <summary className="cursor-pointer text-sm text-white/55 hover:text-white/80">Show all moderated reviews ({moderatedReviewRows.length})</summary>
                   <div className="mt-3 grid gap-4 md:grid-cols-2">
-                    {reviewRows.filter((r) => r.status !== "pending").map((review) => (
+                    {moderatedReviewRows.map((review) => (
                       <div className="rounded-2xl border border-white/10 p-4" key={review.id}>
                         <div className="text-primary">{"★".repeat(review.rating)}</div>
                         <p className="mt-2 text-white/70">{review.reviewText}</p>
