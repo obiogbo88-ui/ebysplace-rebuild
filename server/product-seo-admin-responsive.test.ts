@@ -40,6 +40,8 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(shopSource).not.toContain("product.seoTitle");
     expect(shopSource).not.toContain("product.seoDescription");
     expect(shopSource).not.toContain("SEO title");
+    expect(shopSource).toContain("product.slug");
+    expect(shopSource).toContain(`href={\`/shop/\${product.slug}\`}`);
     expect(shopSource).toContain("function previewDescription(description: string)");
     expect(shopSource).toContain("trimmed.match(/^[^.!?]+[.!?]/)");
     expect(shopSource).toContain("Read full details");
