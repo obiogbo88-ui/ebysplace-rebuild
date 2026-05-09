@@ -1532,6 +1532,10 @@ async function ensureProductVariantsTable() {
       "stockQuantity" INTEGER NOT NULL DEFAULT 0,
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
     )`);
+    await _pool.query(`ALTER TABLE "productVariants" ADD COLUMN IF NOT EXISTS "colourHex" VARCHAR(20)`);
+    await _pool.query(`ALTER TABLE "productVariants" ADD COLUMN IF NOT EXISTS "imageUrl" VARCHAR(800)`);
+    await _pool.query(`ALTER TABLE "productVariants" ADD COLUMN IF NOT EXISTS "stockQuantity" INTEGER NOT NULL DEFAULT 0`);
+    await _pool.query(`ALTER TABLE "productVariants" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()`);
   } catch (err) {
     console.warn("[Database] Could not ensure productVariants table", err);
   }
@@ -1619,7 +1623,11 @@ async function adminLists() {
   if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   await ensureEmailNotificationLogTable();
   await ensureProductVariantsTable();
-  const [bookingRows, orderRows, reviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
+  const [bookingRows, orderRows, reviewRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
+  const [dbProductRows, variantRows] = supabaseProducts ? [[], []] : await Promise.all([
+    db.select().from(products).orderBy(desc(products.createdAt)),
+    db.select().from(productVariants)
+  ]);
   const productsWithVariants = supabaseProducts ?? dbProductRows.map((product) => ({
     ...product,
     id: Number(product.id),
