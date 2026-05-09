@@ -2,6 +2,24 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { lazy, Suspense, useEffect } from "react";
 import { Route, Switch, useLocation } from "wouter";
+
+// Supabase redirects the recovery token to the project's configured Site URL (e.g. the
+// root path) when the redirect_to URL is not in its allowlist.  This component catches
+// that: if the page was loaded with a #type=recovery hash on any route other than the
+// dedicated reset-password page, it immediately replaces the URL so that the
+// AdminResetPassword component can read the token from the hash and proceed.
+function RecoveryTokenRedirector() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (!hash) return;
+    const params = new URLSearchParams(hash.replace(/^#/, ""));
+    if (params.get("type") !== "recovery" || !params.get("access_token")) return;
+    if (window.location.pathname === "/admin/reset-password") return;
+    window.location.replace("/admin/reset-password" + hash);
+  }, []);
+  return null;
+}
 import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -112,6 +130,7 @@ function App() {
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
+          <RecoveryTokenRedirector />
           <ScrollToTop />
           <Router />
           <FloatingWhatsAppButton />
