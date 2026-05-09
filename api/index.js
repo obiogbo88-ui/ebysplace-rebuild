@@ -143,6 +143,7 @@ var productVariants = pgTable("productVariants", {
   productId: integer("productId").notNull(),
   name: varchar("name", { length: 120 }).notNull(),
   colourHex: varchar("colourHex", { length: 20 }),
+  imageUrl: varchar("imageUrl", { length: 800 }),
   stockQuantity: integer("stockQuantity").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
@@ -286,7 +287,7 @@ async function getDb() {
   if (_lastDatabaseUrlFingerprint !== fingerprint) {
     _lastDatabaseUrlFingerprint = fingerprint;
     _databaseConnectionFailed = false;
-    console.error("[Database] DATABASE_URL detected for PostgreSQL initialisation", {
+    console.log("[Database] DATABASE_URL detected for PostgreSQL initialisation", {
       fingerprint,
       isPostgres: isPostgresConnectionString(connectionString),
       requiresSsl: requiresSsl(connectionString),
@@ -392,6 +393,7 @@ function normalizeSupabaseProduct(row, variants = []) {
       productId: Number(variant.productId ?? variant.product_id ?? id),
       name: String(variant.name ?? variant.colour ?? "Default"),
       colourHex: variant.colourHex ?? variant.colour_hex ?? variant.colour ?? "#c8a95a",
+      imageUrl: variant.imageUrl ?? variant.image_url ?? null,
       stockQuantity: Number.isFinite(variantStock) ? variantStock : 0,
       stock: Number.isFinite(variantStock) ? variantStock : 0
     };
@@ -466,9 +468,9 @@ function supabaseProductPayload(input, style) {
 }
 function supabaseVariantPayload(variant, tableName) {
   if (tableName === "product_variants") {
-    return cleanUndefinedValues({ product_id: variant.productId, name: variant.name, colour_hex: variant.colourHex, stock: variant.stockQuantity });
+    return cleanUndefinedValues({ product_id: variant.productId, name: variant.name, colour_hex: variant.colourHex, image_url: variant.imageUrl, stock: variant.stockQuantity });
   }
-  return cleanUndefinedValues({ productId: variant.productId, name: variant.name, colourHex: variant.colourHex, stockQuantity: variant.stockQuantity });
+  return cleanUndefinedValues({ productId: variant.productId, name: variant.name, colourHex: variant.colourHex, imageUrl: variant.imageUrl, stockQuantity: variant.stockQuantity });
 }
 async function listSupabaseProducts() {
   const style = await getSupabaseProductColumnStyle();
@@ -1083,21 +1085,8 @@ async function seedIfNeeded() {
   if (_seedingPromise) return _seedingPromise;
   _seedingPromise = (async () => {
     await runSeedStep("services", async () => {
-      await db.insert(services).values(seedServices).onConflictDoUpdate({
-        target: services.slug,
-        set: {
-          name: sql`excluded."name"`,
-          category: sql`excluded."category"`,
-          description: sql`excluded."description"`,
-          duration: sql`excluded."duration"`,
-          priceFrom: sql`excluded."priceFrom"`,
-          badge: sql`excluded."badge"`,
-          imageUrl: sql`excluded."imageUrl"`,
-          isBookable: sql`excluded."isBookable"`,
-          isFeatured: sql`excluded."isFeatured"`,
-          sortOrder: sql`excluded."sortOrder"`,
-          updatedAt: sql`CURRENT_TIMESTAMP`
-        }
+      await db.insert(services).values(seedServices).onConflictDoNothing({
+        target: services.slug
       });
     });
     await runSeedStep("products", () => ensureSeedProducts(db));
@@ -1135,21 +1124,8 @@ async function seedIfNeeded() {
     }
     await runSeedStep("reviews", () => ensureSeedReviews(db));
     await runSeedStep("website sections", async () => {
-      await db.insert(websiteSections).values(seedWebsiteSections).onConflictDoUpdate({
-        target: websiteSections.sectionKey,
-        set: {
-          title: sql`excluded."title"`,
-          eyebrow: sql`excluded."eyebrow"`,
-          body: sql`excluded."body"`,
-          ctaLabel: sql`excluded."ctaLabel"`,
-          ctaHref: sql`excluded."ctaHref"`,
-          imageUrl: sql`excluded."imageUrl"`,
-          portraitImageUrl: sql`excluded."portraitImageUrl"`,
-          portraitDescription: sql`excluded."portraitDescription"`,
-          sortOrder: sql`excluded."sortOrder"`,
-          isPublished: sql`excluded."isPublished"`,
-          updatedAt: sql`CURRENT_TIMESTAMP`
-        }
+      await db.insert(websiteSections).values(seedWebsiteSections).onConflictDoNothing({
+        target: websiteSections.sectionKey
       });
     });
     await runSeedStep("gallery", () => ensureSeedGallery(db));
@@ -1544,6 +1520,26 @@ async function ensureEmailNotificationLogTable() {
     console.warn("[Database] Could not ensure emailNotificationLogs table", err);
   }
 }
+async function ensureProductVariantsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "productVariants" (
+      "id" SERIAL PRIMARY KEY,
+      "productId" INTEGER NOT NULL,
+      "name" VARCHAR(120) NOT NULL,
+      "colourHex" VARCHAR(20),
+      "imageUrl" VARCHAR(800),
+      "stockQuantity" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+    await addPgColumnIfMissing("productVariants", "colourHex", "VARCHAR(20)");
+    await addPgColumnIfMissing("productVariants", "imageUrl", "VARCHAR(800)");
+    await addPgColumnIfMissing("productVariants", "stockQuantity", "INTEGER NOT NULL DEFAULT 0");
+    await addPgColumnIfMissing("productVariants", "createdAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
+  } catch (err) {
+    console.warn("[Database] Could not ensure productVariants table", err);
+  }
+}
 async function createEmailNotificationLog(input) {
   const db = await getDb();
   if (!db) return { id: Date.now(), ...input, status: input.status ?? "pending" };
@@ -1626,6 +1622,7 @@ async function adminLists() {
   const fallbackProducts = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
   if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   await ensureEmailNotificationLogTable();
+  await ensureProductVariantsTable();
   const [bookingRows, orderRows, reviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
   const productsWithVariants = supabaseProducts ?? dbProductRows.map((product) => ({
     ...product,
@@ -1718,6 +1715,12 @@ async function addGalleryImage(input) {
   if (!db) throw new Error("Database unavailable");
   const result = await db.insert(galleryImages).values(input).returning({ id: galleryImages.id });
   return { id: result[0]?.id, ...input };
+}
+async function deleteGalleryImage(id) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.delete(galleryImages).where(eq(galleryImages.id, id));
+  return { id };
 }
 async function updateWebsiteSection(sectionKey, input) {
   const db = await getDb();
@@ -2595,6 +2598,7 @@ var systemRouter = router({
 
 // server/supabaseAuth.ts
 import { TRPCError as TRPCError3 } from "@trpc/server";
+import nodemailer2 from "nodemailer";
 function normalizeEmailCandidate(value) {
   const email = value?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]?.trim().toLowerCase();
   return email || null;
@@ -2614,6 +2618,48 @@ var PRIMARY_ADMIN_EMAIL = ADMIN_EMAILS[0] ?? "info@ebysplace.com";
 function isConfiguredAdminEmail(email) {
   const normalized = normalizeEmailCandidate(email);
   return Boolean(normalized && ADMIN_EMAILS.includes(normalized));
+}
+function getSmtpConfig2() {
+  const host = trimEnvValue(process.env.SMTP_HOST) || "smtp.zoho.eu";
+  const port = Number(trimEnvValue(process.env.SMTP_PORT) || "465");
+  const user = trimEnvValue(process.env.SMTP_USER) || "info@ebysplace.com";
+  const pass = normalizeSecretKey(process.env.SMTP_PASS);
+  const from = trimEnvValue(process.env.SMTP_FROM) || user;
+  return { host, port, user, pass, from, secure: port === 465 };
+}
+function assertPasswordResetSmtpReady() {
+  const config = getSmtpConfig2();
+  const missing = [
+    !config.host && "SMTP_HOST",
+    !config.port && "SMTP_PORT",
+    !config.user && "SMTP_USER",
+    !config.pass && "SMTP_PASS",
+    !config.from && "SMTP_FROM"
+  ].filter(Boolean);
+  if (missing.length) throw new Error(`Missing SMTP configuration for password reset fallback: ${missing.join(", ")}`);
+  return config;
+}
+async function sendAdminPasswordResetEmail(email, resetLink) {
+  const config = assertPasswordResetSmtpReady();
+  const transporter = nodemailer2.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    requireTLS: !config.secure,
+    auth: { user: config.user, pass: config.pass }
+  });
+  await transporter.sendMail({
+    from: config.from,
+    to: email,
+    subject: "Reset your Eby\u2019s Place admin password",
+    text: [
+      "Hello,",
+      "A password reset was requested for the Eby\u2019s Place admin dashboard.",
+      "Open the secure reset link below to choose a new password:",
+      resetLink,
+      "If you did not request this, you can ignore this email."
+    ].join("\n\n")
+  });
 }
 function toTrpcError(error, fallbackMessage) {
   if (error instanceof TRPCError3) return error;
@@ -2647,14 +2693,61 @@ function getDisplayName(user, fallbackEmail) {
   const metadataName = user.user_metadata?.name;
   return typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : fallbackEmail.split("@")[0];
 }
+function getPreferredProductionOrigin() {
+  const candidates = [
+    process.env.EBYSPLACE_PUBLIC_URL,
+    process.env.PUBLIC_SITE_URL,
+    process.env.SITE_URL,
+    process.env.APP_URL,
+    process.env.VITE_APP_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : void 0,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : void 0,
+    "https://www.ebysplace.com"
+  ];
+  for (const candidate of candidates) {
+    try {
+      const parsed = new URL(trimEnvValue(candidate));
+      if ((parsed.protocol === "https:" || parsed.protocol === "http:") && parsed.hostname !== "localhost" && parsed.hostname !== "127.0.0.1") {
+        return parsed.origin;
+      }
+    } catch {
+    }
+  }
+  return "https://www.ebysplace.com";
+}
 function getSafeResetRedirect(origin) {
   try {
     const parsed = new URL(origin);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("Unsupported protocol");
-    return parsed.origin + "/admin/reset-password";
+    const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    const shouldUseProductionOrigin = isLocalhost && (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production");
+    const safeOrigin = shouldUseProductionOrigin ? getPreferredProductionOrigin() : parsed.origin;
+    return safeOrigin + "/admin/reset-password";
   } catch {
-    return "http://localhost:3000/admin/reset-password";
+    return (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production" ? getPreferredProductionOrigin() : "http://localhost:3000") + "/admin/reset-password";
   }
+}
+function withResetRedirect(actionLink, redirectTo) {
+  try {
+    const parsed = new URL(actionLink);
+    parsed.searchParams.set("redirect_to", redirectTo);
+    return parsed.toString();
+  } catch {
+    return actionLink;
+  }
+}
+function hasPasswordResetSmtpConfig() {
+  try {
+    assertPasswordResetSmtpReady();
+    return true;
+  } catch {
+    return false;
+  }
+}
+function supabaseErrorCode(httpStatus) {
+  if (httpStatus === 401 || httpStatus === 400) return "UNAUTHORIZED";
+  if (httpStatus >= 500) return "BAD_GATEWAY";
+  return "BAD_REQUEST";
 }
 async function supabaseAuthFetch(path2, init = {}) {
   const { url, serviceRoleKey } = getSupabaseAuthConfig();
@@ -2694,7 +2787,7 @@ async function supabaseAuthFetch(path2, init = {}) {
   if (!response.ok) {
     const message = typeof json2?.msg === "string" ? json2.msg : typeof json2?.message === "string" ? json2.message : "Supabase Auth request failed.";
     console.error("[Auth] Supabase Auth request failed", { path: path2, method: init.method ?? "GET", status: response.status, message });
-    throw new TRPCError3({ code: response.status === 401 || response.status === 400 ? "UNAUTHORIZED" : "BAD_REQUEST", message });
+    throw new TRPCError3({ code: supabaseErrorCode(response.status), message });
   }
   return json2;
 }
@@ -2741,21 +2834,73 @@ async function requestAdminPasswordReset(email, origin) {
   const normalizedEmail = email.trim().toLowerCase();
   const genericResponse = {
     success: true,
-    message: "If this email is the configured Eby\u2019s Place administrator, a Supabase password reset link has been sent."
+    message: "If this email is the configured Eby\u2019s Place administrator, a password reset link has been sent."
   };
   if (!isConfiguredAdminEmail(normalizedEmail)) {
     console.warn("[Auth] Ignored password reset request for non-admin email", { email: normalizedEmail, configuredAdminEmails: ADMIN_EMAILS });
     return genericResponse;
   }
+  const redirectTo = getSafeResetRedirect(origin);
+  const sendGeneratedLinkThroughSmtp = async (reason) => {
+    const generated = await supabaseAuthFetch("/admin/generate_link", {
+      method: "POST",
+      body: JSON.stringify({
+        type: "recovery",
+        email: normalizedEmail,
+        options: { redirect_to: redirectTo }
+      })
+    });
+    if (!generated.action_link) {
+      console.error("[Auth] Supabase generated a password reset response without an action link", {
+        email: normalizedEmail,
+        hasHashedToken: Boolean(generated.hashed_token),
+        verificationType: generated.verification_type
+      });
+      throw new TRPCError3({ code: "BAD_GATEWAY", message: "Supabase did not return a password reset link." });
+    }
+    await sendAdminPasswordResetEmail(normalizedEmail, withResetRedirect(generated.action_link, redirectTo));
+    console.info("[Auth] Sent admin password reset email using app SMTP", { email: normalizedEmail, reason, redirectTo });
+  };
+  if (hasPasswordResetSmtpConfig()) {
+    try {
+      await sendGeneratedLinkThroughSmtp("preferred");
+      return genericResponse;
+    } catch (smtpError) {
+      const safeError = toTrpcError(smtpError, "Unable to send the password reset email.");
+      console.error("[Auth] App SMTP password reset failed", { email: normalizedEmail, code: safeError.code, message: safeError.message });
+      throw safeError;
+    }
+  }
   try {
-    const redirectTo = getSafeResetRedirect(origin);
     await supabaseAuthFetch("/recover?redirect_to=" + encodeURIComponent(redirectTo), {
       method: "POST",
       body: JSON.stringify({ email: normalizedEmail })
     });
     return genericResponse;
-  } catch (error) {
-    const safeError = toTrpcError(error, "Unable to send the Supabase password reset email.");
+  } catch (recoverError) {
+    const recoverTrpcError = toTrpcError(recoverError, "Unable to send the Supabase password reset email.");
+    if (!hasPasswordResetSmtpConfig()) {
+      console.error("[Auth] Password reset failed: Supabase email delivery unavailable and SMTP is not configured", {
+        email: normalizedEmail,
+        code: recoverTrpcError.code,
+        supabaseMessage: recoverTrpcError.message
+      });
+      throw new TRPCError3({
+        code: "BAD_GATEWAY",
+        message: "Unable to send a password reset email. Supabase email delivery is unavailable. Configure SMTP credentials (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS) in the deployment environment."
+      });
+    }
+    console.warn("[Auth] Supabase recovery email failed; attempting SMTP fallback", {
+      email: normalizedEmail,
+      code: recoverTrpcError.code,
+      message: recoverTrpcError.message
+    });
+  }
+  try {
+    await sendGeneratedLinkThroughSmtp("fallback");
+    return genericResponse;
+  } catch (fallbackError) {
+    const safeError = toTrpcError(fallbackError, "Unable to send the password reset email.");
     console.error("[Auth] Password reset request failed", { email: normalizedEmail, code: safeError.code, message: safeError.message });
     throw safeError;
   }
@@ -3292,7 +3437,7 @@ var appRouter = router({
       const { id, ...changes } = input;
       return updateService(id, changes);
     }),
-    createProduct: adminProcedure.input(z2.object({ name: z2.string().min(2), slug: z2.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/), seoTitle: z2.string().min(8).max(255).optional(), seoDescription: z2.string().min(30).max(320).optional(), category: productCategory, description: z2.string().min(10), price: z2.string().regex(/^\d+(\.\d{2})?$/), imageUrl: z2.string().min(5).optional(), badge: z2.string().optional(), stockStatus: productStockStatus.default("in_stock"), stockQuantity: z2.number().int().min(0).default(0), isFeatured: z2.enum(["true", "false"]).default("false"), variants: z2.array(z2.object({ name: z2.string().min(1), colourHex: z2.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), stockQuantity: z2.number().int().min(0).default(0) })).default([]) })).mutation(({ input }) => {
+    createProduct: adminProcedure.input(z2.object({ name: z2.string().min(2), slug: z2.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/), seoTitle: z2.string().min(8).max(255).optional(), seoDescription: z2.string().min(30).max(320).optional(), category: productCategory, description: z2.string().min(10), price: z2.string().regex(/^\d+(\.\d{2})?$/), imageUrl: z2.string().min(5).optional(), badge: z2.string().optional(), stockStatus: productStockStatus.default("in_stock"), stockQuantity: z2.number().int().min(0).default(0), isFeatured: z2.enum(["true", "false"]).default("false"), variants: z2.array(z2.object({ name: z2.string().min(1), colourHex: z2.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), imageUrl: z2.string().min(5).optional(), stockQuantity: z2.number().int().min(0).default(0) })).default([]) })).mutation(({ input }) => {
       const { variants, ...product } = input;
       return createProduct(product, variants);
     }),
@@ -3301,7 +3446,7 @@ var appRouter = router({
       return updateProduct(id, changes);
     }),
     updateProductStock: adminProcedure.input(z2.object({ id: z2.number().int().positive(), stockQuantity: z2.number().int().min(0), stockStatus: productStockStatus })).mutation(({ input }) => updateProductStock(input.id, input.stockQuantity, input.stockStatus)),
-    updateProductVariants: adminProcedure.input(z2.object({ productId: z2.number().int().positive(), variants: z2.array(z2.object({ name: z2.string().min(1), colourHex: z2.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), stockQuantity: z2.number().int().min(0).default(0) })) })).mutation(({ input }) => replaceProductVariants(input.productId, input.variants)),
+    updateProductVariants: adminProcedure.input(z2.object({ productId: z2.number().int().positive(), variants: z2.array(z2.object({ name: z2.string().min(1), colourHex: z2.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), imageUrl: z2.string().min(5).optional(), stockQuantity: z2.number().int().min(0).default(0) })) })).mutation(({ input }) => replaceProductVariants(input.productId, input.variants)),
     deleteProduct: adminProcedure.input(z2.object({ id: z2.number().int().positive() })).mutation(({ input }) => deleteProduct(input.id)),
     uploadProductImage: adminProcedure.input(z2.object({ productId: z2.number().int().positive().optional(), productName: z2.string().min(2), dataUrl: z2.string().min(50), fileName: z2.string().default("product-image.png") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.productName}-${input.fileName}`, folder: "products" });
@@ -3309,7 +3454,6 @@ var appRouter = router({
       return uploaded;
     }),
     clearProductImage: adminProcedure.input(z2.object({ productId: z2.number().int().positive(), imageUrl: z2.string().min(5).optional() })).mutation(async ({ input }) => {
-      if (input.imageUrl) await storageRemove(input.imageUrl);
       await updateProduct(input.productId, { imageUrl: null });
       return { success: true };
     }),
@@ -3327,7 +3471,7 @@ var appRouter = router({
     uploadGalleryImage: adminProcedure.input(z2.object({ dataUrl: z2.string().min(50), fileName: z2.string().default("gallery-image.png") })).mutation(async ({ input }) => uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: input.fileName, folder: "gallery" })),
     uploadWebsiteSectionImage: adminProcedure.input(z2.object({ sectionKey: z2.string().min(2), dataUrl: z2.string().min(50), fileName: z2.string().default("section-image.png"), imageRole: z2.enum(["main", "portrait"]).default("main") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.sectionKey}-${input.imageRole}-${input.fileName}`, folder: "website-sections" });
-      await updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url } : { imageUrl: uploaded.url });
+      await updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url, imageUrl: uploaded.url } : { imageUrl: uploaded.url });
       return uploaded;
     }),
     clearWebsiteSectionImage: adminProcedure.input(z2.object({ sectionKey: z2.string().min(2), imageRole: z2.enum(["main", "portrait"]).default("main"), imageUrl: z2.string().min(5).optional() })).mutation(async ({ input }) => {
@@ -3336,6 +3480,10 @@ var appRouter = router({
       return { success: true };
     }),
     addGalleryImage: adminProcedure.input(z2.object({ title: z2.string().min(2), category: galleryCategory, imageUrl: z2.string().min(5), altText: z2.string().min(5), isPublished: z2.enum(["true", "false"]).default("true"), sortOrder: z2.number().int().default(0) })).mutation(({ input }) => addGalleryImage(input)),
+    deleteGalleryImage: adminProcedure.input(z2.object({ id: z2.number().int().positive(), imageUrl: z2.string().min(5).optional() })).mutation(async ({ input }) => {
+      if (input.imageUrl) await storageRemove(input.imageUrl);
+      return deleteGalleryImage(input.id);
+    }),
     updateWebsiteSection: adminProcedure.input(z2.object({ sectionKey: z2.string().min(2), title: z2.string().min(2).optional(), eyebrow: z2.string().optional(), body: z2.string().optional(), ctaLabel: z2.string().optional(), ctaHref: z2.string().optional(), imageUrl: z2.string().optional(), portraitImageUrl: z2.string().optional(), portraitDescription: z2.string().optional(), isPublished: z2.enum(["true", "false"]).optional() })).mutation(({ input }) => {
       const { sectionKey, ...changes } = input;
       return updateWebsiteSection(sectionKey, changes);
