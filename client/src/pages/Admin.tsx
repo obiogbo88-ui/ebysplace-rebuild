@@ -42,6 +42,14 @@ type AdminGalleryItem = {
   altText?: string;
 };
 
+type AdminReviewItem = {
+  id: number;
+  rating: number;
+  reviewText: string;
+  customerName: string;
+  status: "pending" | "approved" | "rejected";
+};
+
 function Stat({ label, value, icon: Icon }: { label: string; value: number | string; icon: any }) {
   return (
     <div className="lux-card bg-card">
@@ -317,8 +325,8 @@ export default function Admin() {
   const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["activity-monitoring", "reviews", "products", "services", "gallery"]));
   const data = (lists.data || {}) as AdminListData;
   const galleryItems = (data.gallery || []) as AdminGalleryItem[];
-  const reviewRows = (data.reviews || []) as any[];
-  const pendingReviewRows = reviewRows.filter((review: any) => review.status === "pending");
+  const reviewRows = (data.reviews || []) as AdminReviewItem[];
+  const pendingReviewRows = reviewRows.filter((review) => review.status === "pending");
   const emailNotificationRows = emailLogs.data || data.emailNotifications || [];
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
   const togglePanel = (panelId: string) => setOpenPanels((current) => {
@@ -592,7 +600,7 @@ export default function Admin() {
           <p className="text-sm text-white/65">Pending reviews ready for moderation: <b className="text-primary">{pendingReviewRows.length}</b></p>
           {!reviewRows.length ? <p className="mt-4 text-sm text-white/55">No customer reviews available yet. New review submissions will appear here with approve and reject buttons.</p> : null}
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {reviewRows.map((review: any) => (
+            {reviewRows.map((review) => (
               <div className="rounded-2xl border border-white/10 p-4" key={review.id}>
                 <div className="text-primary">{"★".repeat(review.rating)}</div>
                 <p className="mt-2 text-white/70">{review.reviewText}</p>
