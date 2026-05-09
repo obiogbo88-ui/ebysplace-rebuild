@@ -225,7 +225,7 @@ export default function Admin() {
   };
   const uploadProductImage = trpc.admin.uploadProductImage.useMutation({
     onSuccess: (uploaded, variables) => {
-      if (variables.productId) syncProductImageInput(Number(variables.productId), uploaded.url);
+      if (variables && variables.productId) syncProductImageInput(Number(variables.productId), uploaded.url);
       refresh();
       scrollAdminFeedback("products");
       toast.success("Product image uploaded and saved");
@@ -234,7 +234,7 @@ export default function Admin() {
   });
   const clearProductImage = trpc.admin.clearProductImage.useMutation({
     onSuccess: (_result, variables) => {
-      syncProductImageInput(Number(variables.productId), "");
+      if (variables) syncProductImageInput(Number(variables.productId), "");
       refresh();
       scrollAdminFeedback("products");
       toast.success("Product image removed");
@@ -247,7 +247,7 @@ export default function Admin() {
   };
   const uploadServiceImage = trpc.admin.uploadServiceImage.useMutation({
     onSuccess: (uploaded, variables) => {
-      syncServiceImageInput(Number(variables.serviceId), uploaded.url);
+      if (variables) syncServiceImageInput(Number(variables.serviceId), uploaded.url);
       refresh();
       scrollAdminFeedback("services");
       toast.success("Service image uploaded and saved");
@@ -256,7 +256,7 @@ export default function Admin() {
   });
   const clearServiceImage = trpc.admin.clearServiceImage.useMutation({
     onSuccess: (_result, variables) => {
-      syncServiceImageInput(Number(variables.serviceId), "");
+      if (variables) syncServiceImageInput(Number(variables.serviceId), "");
       refresh();
       scrollAdminFeedback("services");
       toast.success("Service image removed");
@@ -691,6 +691,9 @@ export default function Admin() {
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Duration<input defaultValue={service.duration} id={`duration-${service.id}`} /></label>
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Availability<select defaultValue={service.isBookable || "true"} id={`availability-${service.id}`}><option value="true">Available for booking</option><option value="false">Unavailable for booking</option></select></label>
                         <button className="btn-dark py-2" onClick={() => { const priceFrom = readAdminPrice(`price-${service.id}`, "Service price"); if (!priceFrom) return; updateService.mutate({ id: service.id, priceFrom, duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value, imageUrl: (document.getElementById(`service-image-${service.id}`) as HTMLInputElement)?.value.trim() || undefined, isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as "true" | "false" }); }}>Save service price, image & availability</button>
+                      </div>
+                      <div className="mt-2 flex">
+                        <button type="button" className="btn-dark py-2 text-sm" onClick={() => updateService.mutate({ id: service.id, isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as "true" | "false" })}>Save service availability</button>
                       </div>
                       <details className="mt-3 rounded-2xl border border-primary/20 bg-black/20 p-3">
                         <summary className="cursor-pointer text-sm font-semibold text-primary">Add or replace service image</summary>
