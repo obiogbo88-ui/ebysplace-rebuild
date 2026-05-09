@@ -741,7 +741,10 @@ export default function Admin() {
             </details>
             <b className="mt-4 block text-primary">{data.gallery?.length || 0} images</b>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {galleryItems.map((item, index) => (
+              {galleryItems.map((item, index) => {
+                const galleryId = typeof item.id === "number" ? item.id : Number(item.id);
+                const isDeleting = deletingGalleryId === galleryId;
+                return (
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-3" key={String(item.id ?? `gallery-${index}`)}>
                   <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]">
                     <img src={item.imageUrl} alt={item.altText || item.title} loading="lazy" decoding="async" />
@@ -754,9 +757,8 @@ export default function Admin() {
                     <button
                       type="button"
                       className="btn-dark border-red-400/40 py-2 text-red-100 hover:border-red-300 hover:text-red-50"
-                      disabled={!item.id || deletingGalleryId === (typeof item.id === "number" ? item.id : Number(item.id))}
+                      disabled={!item.id || isDeleting}
                       onClick={() => {
-                        const galleryId = typeof item.id === "number" ? item.id : Number(item.id);
                         if (!Number.isInteger(galleryId) || galleryId <= 0) {
                           toast.error("This gallery image cannot be deleted because it has no database ID.");
                           return;
@@ -767,11 +769,12 @@ export default function Admin() {
                         }
                       }}
                     >
-                      <Trash2 className="mr-2 h-4 w-4" /> {deletingGalleryId === (typeof item.id === "number" ? item.id : Number(item.id)) ? "Deleting…" : "Delete"}
+                      <Trash2 className="mr-2 h-4 w-4" /> {isDeleting ? "Deleting…" : "Delete"}
                     </button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </AdminPanel>
 
