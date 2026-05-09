@@ -626,22 +626,53 @@ export default function Admin() {
           </AdminPanel>
 
           <AdminPanel id="reviews" eyebrow="Trust & reputation" title="Reviews moderator" description="Approve or reject customer reviews from a focused moderation panel without crowding the daily overview." icon={MessageSquare} open={isPanelOpen("reviews")} onToggle={() => togglePanel("reviews")}>
-          <p className="text-sm text-white/65">Pending reviews ready for moderation: <b className="text-primary">{pendingReviewRows.length}</b></p>
-          {!reviewRows.length ? <p className="mt-4 text-sm text-white/55">No customer reviews available yet. New review submissions will appear here with approve and reject buttons.</p> : null}
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {reviewRows.map((review) => (
-              <div className="rounded-2xl border border-white/10 p-4" key={review.id}>
-                <div className="text-primary">{"★".repeat(review.rating)}</div>
-                <p className="mt-2 text-white/70">{review.reviewText}</p>
-                <b className="mt-3 block">{review.customerName}</b>
-                <p className="text-xs text-white/45">Status: {review.status}</p>
-                <div className="mt-4 flex gap-2">
-                  <button className="btn-gold py-2" onClick={() => moderate.mutate({ id: review.id, status: "approved" })}>Approve</button>
-                  <button className="btn-dark py-2" onClick={() => moderate.mutate({ id: review.id, status: "rejected" })}>Reject</button>
-                </div>
-              </div>
-            ))}
-          </div>
+          {lists.isLoading && <p className="mt-4 text-sm text-white/55">Loading reviews…</p>}
+          {lists.error && <p className="mt-4 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">Could not load reviews: {lists.error.message}</p>}
+          {!lists.isLoading && !lists.error && (
+            <>
+              <p className="text-sm text-white/65">Pending reviews ready for moderation: <b className="text-primary">{pendingReviewRows.length}</b></p>
+              {!pendingReviewRows.length ? (
+                <p className="mt-4 text-sm text-white/55">{reviewRows.length ? "All reviews have already been moderated. New website submissions will appear here with approve and reject buttons." : "No customer reviews yet. New website submissions will appear here with approve and reject buttons."}</p>
+              ) : (
+                <>
+                  <h3 className="mt-5 font-semibold text-primary">Needs moderation</h3>
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    {pendingReviewRows.map((review) => (
+                      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4" key={review.id}>
+                        <div className="text-primary">{"★".repeat(review.rating)}</div>
+                        <p className="mt-2 text-white/70">{review.reviewText}</p>
+                        <b className="mt-3 block">{review.customerName}</b>
+                        <p className="text-xs text-white/45">Status: pending</p>
+                        <div className="mt-4 flex gap-2">
+                          <button className="btn-gold py-2" disabled={moderate.isPending} onClick={() => moderate.mutate({ id: review.id, status: "approved" })}>Approve</button>
+                          <button className="btn-dark py-2" disabled={moderate.isPending} onClick={() => moderate.mutate({ id: review.id, status: "rejected" })}>Reject</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {reviewRows.filter((r) => r.status !== "pending").length > 0 && (
+                <details className="mt-6">
+                  <summary className="cursor-pointer text-sm text-white/55 hover:text-white/80">Show all moderated reviews ({reviewRows.filter((r) => r.status !== "pending").length})</summary>
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    {reviewRows.filter((r) => r.status !== "pending").map((review) => (
+                      <div className="rounded-2xl border border-white/10 p-4" key={review.id}>
+                        <div className="text-primary">{"★".repeat(review.rating)}</div>
+                        <p className="mt-2 text-white/70">{review.reviewText}</p>
+                        <b className="mt-3 block">{review.customerName}</b>
+                        <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${review.status === "approved" ? "bg-emerald-900/40 text-emerald-300" : "bg-red-900/40 text-red-300"}`}>{review.status}</span>
+                        <div className="mt-3 flex gap-2">
+                          <button className="btn-gold py-1 text-xs" disabled={moderate.isPending} onClick={() => moderate.mutate({ id: review.id, status: "approved" })}>Approve</button>
+                          <button className="btn-dark py-1 text-xs" disabled={moderate.isPending} onClick={() => moderate.mutate({ id: review.id, status: "rejected" })}>Reject</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </>
+          )}
           </AdminPanel>
 
           <AdminPanel id="products" eyebrow="Shop catalogue" title="Products, prices, stock & SEO" description="Open product names, prices, search-friendly slugs, SEO titles, colour choices, and stock controls when catalogue maintenance is needed." icon={Package} open={isPanelOpen("products")} onToggle={() => togglePanel("products")}>
