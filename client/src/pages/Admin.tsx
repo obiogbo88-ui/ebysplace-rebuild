@@ -42,6 +42,14 @@ type AdminGalleryItem = {
   altText?: string;
 };
 
+type AdminReviewItem = {
+  id: number;
+  rating: number;
+  reviewText: string;
+  customerName: string;
+  status: "pending" | "approved" | "rejected";
+};
+
 function Stat({ label, value, icon: Icon }: { label: string; value: number | string; icon: any }) {
   return (
     <div className="lux-card bg-card">
@@ -314,9 +322,11 @@ export default function Admin() {
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [deletingGalleryId, setDeletingGalleryId] = useState<number | null>(null);
-  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["activity-monitoring"]));
+  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["reviews", "products", "services", "gallery"]));
   const data = (lists.data || {}) as AdminListData;
   const galleryItems = (data.gallery || []) as AdminGalleryItem[];
+  const reviewRows = (data.reviews || []) as AdminReviewItem[];
+  const pendingReviewRows = reviewRows.filter((review) => review.status === "pending");
   const emailNotificationRows = emailLogs.data || data.emailNotifications || [];
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
   const togglePanel = (panelId: string) => setOpenPanels((current) => {
@@ -587,8 +597,10 @@ export default function Admin() {
           </AdminPanel>
 
           <AdminPanel id="reviews" eyebrow="Trust & reputation" title="Reviews moderator" description="Approve or reject customer reviews from a focused moderation panel without crowding the daily overview." icon={MessageSquare} open={isPanelOpen("reviews")} onToggle={() => togglePanel("reviews")}>
+          <p className="text-sm text-white/65">Pending reviews ready for moderation: <b className="text-primary">{pendingReviewRows.length}</b></p>
+          {!reviewRows.length ? <p className="mt-4 text-sm text-white/55">No customer reviews available yet. New review submissions will appear here with approve and reject buttons.</p> : null}
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {(data.reviews || []).map((review: any) => (
+            {reviewRows.map((review) => (
               <div className="rounded-2xl border border-white/10 p-4" key={review.id}>
                 <div className="text-primary">{"★".repeat(review.rating)}</div>
                 <p className="mt-2 text-white/70">{review.reviewText}</p>
@@ -604,7 +616,7 @@ export default function Admin() {
           </AdminPanel>
 
           <AdminPanel id="products" eyebrow="Shop catalogue" title="Products, prices, stock & SEO" description="Open product names, prices, search-friendly slugs, SEO titles, colour choices, and stock controls when catalogue maintenance is needed." icon={Package} open={isPanelOpen("products")} onToggle={() => togglePanel("products")}>
-            <details className="mt-5 rounded-2xl border border-primary/20 bg-black/20 p-4">
+            <details open className="mt-5 rounded-2xl border border-primary/20 bg-black/20 p-4">
               <summary className="cursor-pointer font-semibold text-primary">Add more shop products</summary>
               <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); const price = Number(newProduct.price); if (!Number.isFinite(price) || price < 0) { toast.error("Product price must be valid."); return; } createProduct.mutate({ name: newProduct.name, slug: (newProduct.slug || newProduct.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), category: newProduct.category as any, description: newProduct.description, price: price.toFixed(2), imageUrl: newProduct.imageUrl || undefined, badge: newProduct.badge || undefined, stockQuantity: Number(newProduct.stockQuantity) || 0, seoTitle: newProduct.seoTitle || `${newProduct.name} | Eby’s Place`, seoDescription: newProduct.seoDescription || newProduct.description, stockStatus: "in_stock", isFeatured: "false", variants: parseColourChoices(newProduct.colourChoices) }); }}>
                 <div className="grid gap-3 sm:grid-cols-2"><input required placeholder="Product name" value={newProduct.name} onChange={(event) => setNewProduct({ ...newProduct, name: event.target.value })} /><input placeholder="SEO slug" value={newProduct.slug} onChange={(event) => setNewProduct({ ...newProduct, slug: event.target.value })} /></div>
@@ -646,7 +658,7 @@ export default function Admin() {
                       <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Badge<input defaultValue={product.badge || ""} id={`product-badge-${product.id}`} /></label>
                     </div>
                     <div className="rounded-2xl bg-white/[0.04] p-3 text-sm text-white/70"><b className="text-primary">SEO preview:</b> {product.seoTitle || `${product.name} | Eby’s Place`}<span className="block text-white/55">{product.seoDescription || product.description}</span></div>
-                    <details className="rounded-2xl border border-primary/20 bg-black/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-primary">Update product image</summary><div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto]"><input key={`product-image-${product.id}-${product.imageUrl || "empty"}`} id={`product-image-${product.id}`} defaultValue={product.imageUrl || ""} placeholder="Supabase Storage public image URL" /><label className="btn-dark cursor-pointer py-2"><UploadCloud className="mr-2 h-4 w-4" /> Upload product image<input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])} /></label><button className="btn-dark py-2" type="button" disabled={!product.imageUrl || clearProductImage.isPending} onClick={() => clearProductImage.mutate({ productId: Number(product.id), imageUrl: product.imageUrl || undefined })}><Trash2 className="mr-2 h-4 w-4" /> Remove image</button></div>{product.imageUrl && <div className="mt-3 media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" /></div>}</details>
+                    <details open className="rounded-2xl border border-primary/20 bg-black/20 p-3"><summary className="cursor-pointer text-sm font-semibold text-primary">Update product image</summary><div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto]"><input key={`product-image-${product.id}-${product.imageUrl || "empty"}`} id={`product-image-${product.id}`} defaultValue={product.imageUrl || ""} placeholder="Supabase Storage public image URL" /><label className="btn-dark cursor-pointer py-2"><UploadCloud className="mr-2 h-4 w-4" /> Upload product image<input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])} /></label><button className="btn-dark py-2" type="button" disabled={!product.imageUrl || clearProductImage.isPending} onClick={() => clearProductImage.mutate({ productId: Number(product.id), imageUrl: product.imageUrl || undefined })}><Trash2 className="mr-2 h-4 w-4" /> Remove image</button></div>{product.imageUrl && <div className="mt-3 media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]"><img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" /></div>}</details>
                     <div className="rounded-2xl border border-primary/20 bg-black/20 p-3 text-sm text-white/70">
                       <b className="block text-primary">Shop colour previews</b>
                       <span className="mt-1 block text-white/55">These are the colour options customers click on the shop page to update the product preview before checkout.</span>
@@ -695,7 +707,7 @@ export default function Admin() {
                       <div className="mt-2 flex">
                         <button type="button" className="btn-dark py-2 text-sm" onClick={() => updateService.mutate({ id: service.id, isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as "true" | "false" })}>Save service availability</button>
                       </div>
-                      <details className="mt-3 rounded-2xl border border-primary/20 bg-black/20 p-3">
+                      <details open className="mt-3 rounded-2xl border border-primary/20 bg-black/20 p-3">
                         <summary className="cursor-pointer text-sm font-semibold text-primary">Add or replace service image</summary>
                         <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto]">
                           <input id={`service-image-${service.id}`} defaultValue={service.imageUrl || ""} placeholder="Supabase Storage public image URL" />
@@ -741,7 +753,7 @@ export default function Admin() {
           </AdminPanel>
 
           <AdminPanel id="gallery" eyebrow="Portfolio" title="Gallery uploader" description="Open the gallery uploader when adding fresh braid, twist, loc, kids-style, or behind-the-chair images." icon={Images} open={isPanelOpen("gallery")} onToggle={() => togglePanel("gallery")}>
-            <details className="mt-4 rounded-2xl border border-primary/20 bg-black/20 p-4">
+            <details open className="mt-4 rounded-2xl border border-primary/20 bg-black/20 p-4">
               <summary className="cursor-pointer font-semibold text-primary">Add more gallery images</summary>
             <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); addGallery.mutate({ ...gallery, category: gallery.category as any }); }}>
               <input required placeholder="Image title" value={gallery.title} onChange={(event) => setGallery({ ...gallery, title: event.target.value })} />
