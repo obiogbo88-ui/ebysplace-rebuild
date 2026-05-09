@@ -90,6 +90,10 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("Admin Dashboard");
     expect(appSource).toContain('<Route path="/admin" component={Admin} />');
     expect(appSource).toContain('<Route path="/admin/login" component={AdminLogin} />');
+    expect(appSource).toContain('<Route path="/booking/" component={Booking} />');
+    expect(appSource).toContain('<Route path="/book" component={Booking} />');
+    expect(appSource).toContain('<Route path="/book-now" component={Booking} />');
+    expect(appSource).toContain('<Route path="/bookings" component={Booking} />');
   });
 
   it("adds public search forms and routes navigation searches to filtered shop results", () => {
