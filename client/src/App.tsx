@@ -26,24 +26,56 @@ const TermsPolicy = lazy(() => import("./pages/Policies").then((module) => ({ de
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const sharedLinkPathAliases: Record<string, string> = {
+  "/home": "/",
+  "/index": "/",
+  "/index.html": "/",
   "/service": "/services",
+  "/pricing": "/services",
+  "/prices": "/services",
+  "/price-list": "/services",
+  "/book": "/booking",
+  "/book-now": "/booking",
+  "/bookings": "/booking",
+  "/appointment": "/booking",
+  "/appointments": "/booking",
+  "/reserve": "/booking",
+  "/reservation": "/booking",
   "/products": "/shop",
-  "/review": "/reviews",
+  "/product": "/shop",
+  "/store": "/shop",
+  "/ai": "/ai-try-on",
+  "/try-on": "/ai-try-on",
+  "/aitryon": "/ai-try-on",
+  "/ai-tryon": "/ai-try-on",
+  "/virtual-try-on": "/ai-try-on",
+  "/braider": "/braiders-near-me",
   "/braiders": "/braiders-near-me",
+  "/braider-near-me": "/braiders-near-me",
+  "/find-braiders": "/braiders-near-me",
+  "/find-a-braider": "/braiders-near-me",
+  "/portfolio": "/gallery",
+  "/photos": "/gallery",
+  "/pictures": "/gallery",
+  "/review": "/reviews",
+  "/testimonial": "/reviews",
+  "/testimonials": "/reviews",
+  "/privacy": "/policies/privacy",
   "/privacy-policy": "/policies/privacy",
+  "/shopping": "/policies/shopping",
   "/shopping-policy": "/policies/shopping",
+  "/returns": "/policies/returns",
+  "/return-policy": "/policies/returns",
   "/returns-policy": "/policies/returns",
   "/terms": "/policies/terms",
   "/terms-of-use": "/policies/terms",
+  "/terms-and-conditions": "/policies/terms",
 };
 
 const canonicalStaticPaths = new Set([
   "/",
   "/services",
   "/booking",
-  "/book",
-  "/book-now",
-  "/bookings",
+
   "/booking/success",
   "/shop",
   "/ai-try-on",
@@ -63,13 +95,24 @@ const canonicalStaticPaths = new Set([
 
 function normalizeSharedLinkPath(pathname: string) {
   const withoutTrailingSlash = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  const lowerCasePath = withoutTrailingSlash.toLowerCase();
+  const decodedPath = (() => {
+    try {
+      return decodeURIComponent(withoutTrailingSlash);
+    } catch {
+      return withoutTrailingSlash;
+    }
+  })();
+  const cleanedSharedPath = decodedPath
+    .trim()
+    .replace(/[\s.!,;:]+$/g, "")
+    .replace(/\/+$/g, "") || "/";
+  const lowerCasePath = cleanedSharedPath.toLowerCase();
 
   if (sharedLinkPathAliases[lowerCasePath]) return sharedLinkPathAliases[lowerCasePath];
   if (canonicalStaticPaths.has(lowerCasePath)) return lowerCasePath;
   if (lowerCasePath.startsWith("/shop/")) return lowerCasePath;
 
-  return withoutTrailingSlash;
+  return cleanedSharedPath;
 }
 
 function RouteLoading() {
