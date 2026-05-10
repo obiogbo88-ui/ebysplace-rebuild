@@ -162,28 +162,30 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
       </div>
       {isImageViewerOpen && activeImageUrl ? (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-label={`Full picture of ${product.name} in ${selectedColourLabel}`}
           onClick={() => setIsImageViewerOpen(false)}
         >
-          <div className="relative max-h-full w-full max-w-5xl" onClick={(event) => event.stopPropagation()}>
+          <div className="relative flex max-h-[94vh] w-full max-w-[min(92vw,760px)] items-center justify-center" onClick={(event) => event.stopPropagation()}>
             <button
               type="button"
-              className="absolute right-3 top-3 z-10 rounded-full border border-white/20 bg-black/70 px-4 py-2 text-sm font-semibold text-white transition hover:border-primary hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="absolute right-4 top-4 z-10 rounded-full border border-neutral-900/20 bg-white/90 px-4 py-2 text-sm font-semibold text-neutral-950 shadow-lg transition hover:border-primary hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               onClick={() => setIsImageViewerOpen(false)}
             >
               Close
             </button>
-            <img
-              src={activeImageUrl}
-              alt={`${product.name} in ${selectedColourLabel}`}
-              className="max-h-[88vh] w-full rounded-3xl border border-primary/25 object-contain shadow-2xl"
-              onError={(event) => {
-                if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
-              }}
-            />
+            <div className="flex h-[min(88vh,860px)] w-full items-center justify-center overflow-hidden rounded-[2rem] border-2 border-neutral-950 bg-white p-4 shadow-2xl sm:rounded-[2.75rem] sm:p-8">
+              <img
+                src={activeImageUrl}
+                alt={`${product.name} in ${selectedColourLabel}`}
+                className="h-full w-full object-contain"
+                onError={(event) => {
+                  if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
+                }}
+              />
+            </div>
           </div>
         </div>
       ) : null}

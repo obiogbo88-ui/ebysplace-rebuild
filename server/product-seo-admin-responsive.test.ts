@@ -211,6 +211,9 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(shopSource).toContain("const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);");
     expect(shopSource).toContain("Open full picture of ${product.name} in ${selectedColourLabel}");
     expect(shopSource).toContain("role=\"dialog\"");
+    expect(shopSource).toContain("bg-white p-4 shadow-2xl");
+    expect(shopSource).toContain("border-2 border-neutral-950");
+    expect(shopSource).toContain("className=\"h-full w-full object-contain\"");
     expect(shopSource).not.toContain("Previewing {selectedColourLabel}");
     expect(shopSource).not.toContain("Colour tint preview");
     expect(shopSource).toContain("{activeImageUrl ? (");
