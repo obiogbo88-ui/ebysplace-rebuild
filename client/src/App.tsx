@@ -79,6 +79,8 @@ const sharedLinkPathAliases: Record<string, string> = {
   "/terms-and-conditions": "/policies/terms",
 };
 
+const invisibleSharedLinkCharacters = /[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF\uFFF0-\uFFF8]+/g;
+
 const canonicalStaticPaths = new Set([
   "/",
   "/services",
@@ -111,6 +113,7 @@ function normalizeSharedLinkPath(pathname: string) {
     }
   })();
   const cleanedSharedPath = decodedPath
+    .replace(invisibleSharedLinkCharacters, "")
     .trim()
     .replace(/[\s.!,;:]+$/g, "")
     .replace(/\/+$/g, "") || "/";

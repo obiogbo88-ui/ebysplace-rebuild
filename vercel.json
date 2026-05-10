@@ -20,6 +20,16 @@
       "permanent": true
     },
     {
+      "source": "/booking%E2%81%A0",
+      "destination": "/booking",
+      "permanent": true
+    },
+    {
+      "source": "/booking⁠",
+      "destination": "/booking",
+      "permanent": true
+    },
+    {
       "source": "/booking/",
       "destination": "/booking",
       "permanent": true

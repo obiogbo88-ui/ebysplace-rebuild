@@ -332,6 +332,9 @@ function getSupabaseRestConfig() {
   if (!url || !serviceRoleKey) return null;
   return { url, serviceRoleKey };
 }
+function isSupabaseConfigured() {
+  return !!getSupabaseRestConfig();
+}
 function cleanUndefinedValues(input) {
   return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== void 0));
 }
@@ -1089,38 +1092,40 @@ async function seedIfNeeded() {
         target: services.slug
       });
     });
-    await runSeedStep("products", () => ensureSeedProducts(db));
-    const productRows = await db.select().from(products);
-    const scarf = productRows.find((product) => product.slug === "satin-edge-scarf");
-    const hair = productRows.find((product) => product.slug === "premium-braiding-hair");
-    if (scarf) {
-      await runSeedStep("scarf variants", async () => {
-        await db.insert(productVariants).values([
-          { productId: scarf.id, name: "Black", colourHex: "#111111", stockQuantity: 18 },
-          { productId: scarf.id, name: "Gold", colourHex: "#c8a95a", stockQuantity: 16 }
-        ]).onConflictDoUpdate({
-          target: [productVariants.productId, productVariants.name],
-          set: {
-            colourHex: sql`excluded."colourHex"`,
-            stockQuantity: sql`excluded."stockQuantity"`
-          }
+    if (!isSupabaseConfigured()) {
+      await runSeedStep("products", () => ensureSeedProducts(db));
+      const productRows = await db.select().from(products);
+      const scarf = productRows.find((product) => product.slug === "satin-edge-scarf");
+      const hair = productRows.find((product) => product.slug === "premium-braiding-hair");
+      if (scarf) {
+        await runSeedStep("scarf variants", async () => {
+          await db.insert(productVariants).values([
+            { productId: scarf.id, name: "Black", colourHex: "#111111", stockQuantity: 18 },
+            { productId: scarf.id, name: "Gold", colourHex: "#c8a95a", stockQuantity: 16 }
+          ]).onConflictDoUpdate({
+            target: [productVariants.productId, productVariants.name],
+            set: {
+              colourHex: sql`excluded."colourHex"`,
+              stockQuantity: sql`excluded."stockQuantity"`
+            }
+          });
         });
-      });
-    }
-    if (hair) {
-      await runSeedStep("hair variants", async () => {
-        await db.insert(productVariants).values([
-          { productId: hair.id, name: "1B Natural Black", colourHex: "#1b1715", stockQuantity: 42 },
-          { productId: hair.id, name: "30 Auburn", colourHex: "#8a4b2a", stockQuantity: 28 },
-          { productId: hair.id, name: "613 Blonde", colourHex: "#d6b779", stockQuantity: 24 }
-        ]).onConflictDoUpdate({
-          target: [productVariants.productId, productVariants.name],
-          set: {
-            colourHex: sql`excluded."colourHex"`,
-            stockQuantity: sql`excluded."stockQuantity"`
-          }
+      }
+      if (hair) {
+        await runSeedStep("hair variants", async () => {
+          await db.insert(productVariants).values([
+            { productId: hair.id, name: "1B Natural Black", colourHex: "#1b1715", stockQuantity: 42 },
+            { productId: hair.id, name: "30 Auburn", colourHex: "#8a4b2a", stockQuantity: 28 },
+            { productId: hair.id, name: "613 Blonde", colourHex: "#d6b779", stockQuantity: 24 }
+          ]).onConflictDoUpdate({
+            target: [productVariants.productId, productVariants.name],
+            set: {
+              colourHex: sql`excluded."colourHex"`,
+              stockQuantity: sql`excluded."stockQuantity"`
+            }
+          });
         });
-      });
+      }
     }
     await runSeedStep("reviews", () => ensureSeedReviews(db));
     await runSeedStep("website sections", async () => {
@@ -1186,7 +1191,8 @@ async function listWebsiteSections() {
   }
 }
 async function listProducts() {
-  const fallback = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
+  const supabaseConfigured = isSupabaseConfigured();
+  const fallback = supabaseConfigured ? [] : seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
   try {
     const supabaseProducts = await listSupabaseProducts();
     if (supabaseProducts) return supabaseProducts;
@@ -1688,11 +1694,20 @@ async function replaceProductVariants(productId, variants) {
 async function deleteProduct(id) {
   if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
   const supabaseResult = await deleteSupabaseProduct(id);
-  if (supabaseResult) return supabaseResult;
   const db = await getDb();
+  if (db) {
+    const drizzleCleanup = async () => {
+      await db.delete(productVariants).where(eq(productVariants.productId, id));
+      await db.delete(products).where(eq(products.id, id));
+    };
+    if (supabaseResult) {
+      await drizzleCleanup().catch((error) => console.warn("[Database] Drizzle cleanup after Supabase delete failed", error));
+    } else {
+      await drizzleCleanup();
+    }
+  }
+  if (supabaseResult) return supabaseResult;
   if (!db) throw new Error("Database unavailable");
-  await db.delete(productVariants).where(eq(productVariants.productId, id));
-  await db.delete(products).where(eq(products.id, id));
   return { id, deleted: true };
 }
 async function updateOrderStatus(id, status) {
@@ -1778,27 +1793,80 @@ function normalisePhone(value) {
 }
 function normaliseSender(value, channel = "sms") {
   if (!value) return null;
-  const trimmed = value.trim();
-  if (channel === "whatsapp") return /^whatsapp:\+[1-9]\d{7,14}$/.test(trimmed) ? trimmed : null;
+  const trimmed = trimEnvValue(value);
+  if (channel === "whatsapp") {
+    if (/^whatsapp:\+[1-9]\d{7,14}$/.test(trimmed)) return trimmed;
+    if (/^\+[1-9]\d{7,14}$/.test(trimmed)) return `whatsapp:${trimmed}`;
+    return null;
+  }
   if (/^\+[1-9]\d{7,14}$/.test(trimmed)) return trimmed;
   if (/^[A-Za-z0-9 ]{1,11}$/.test(trimmed)) return trimmed;
   return null;
 }
-async function sendTwilioMessage(input) {
+function getTwilioConfig(channel = "sms") {
   const accountSid = normalizeSecretKey(process.env.TWILIO_ACCOUNT_SID);
   const authToken = normalizeSecretKey(process.env.TWILIO_AUTH_TOKEN);
-  const smsFrom = trimEnvValue(process.env.TWILIO_SMS_FROM);
-  const whatsappFrom = trimEnvValue(process.env.TWILIO_WHATSAPP_FROM);
-  const to = normalisePhone(input.to);
+  const rawFrom = channel === "whatsapp" ? process.env.TWILIO_WHATSAPP_FROM : process.env.TWILIO_SMS_FROM;
+  const from = normaliseSender(rawFrom, channel);
+  return {
+    accountSid,
+    authToken,
+    from,
+    hasAccountSid: Boolean(accountSid),
+    hasAuthToken: Boolean(authToken),
+    hasRawSender: Boolean(trimEnvValue(rawFrom)),
+    hasValidSender: Boolean(from)
+  };
+}
+function getTwilioRequestTimeoutMs() {
+  const parsed = Number(process.env.TWILIO_REQUEST_TIMEOUT_MS);
+  return Number.isFinite(parsed) && parsed >= 1500 ? Math.min(parsed, 15e3) : 8e3;
+}
+function getNotificationDiagnostics() {
+  const sms = getTwilioConfig("sms");
+  const whatsapp = getTwilioConfig("whatsapp");
+  const ownerPhone = normalisePhone(process.env.EBYSPLACE_OWNER_PHONE_E164 || process.env.OWNER_PHONE_E164 || process.env.TWILIO_OWNER_PHONE);
+  return {
+    twilio: {
+      sms: {
+        configured: sms.hasAccountSid && sms.hasAuthToken && sms.hasValidSender,
+        hasAccountSid: sms.hasAccountSid,
+        hasAuthToken: sms.hasAuthToken,
+        hasSender: sms.hasRawSender,
+        hasValidSender: sms.hasValidSender
+      },
+      whatsapp: {
+        configured: whatsapp.hasAccountSid && whatsapp.hasAuthToken && whatsapp.hasValidSender,
+        hasAccountSid: whatsapp.hasAccountSid,
+        hasAuthToken: whatsapp.hasAuthToken,
+        hasSender: whatsapp.hasRawSender,
+        hasValidSender: whatsapp.hasValidSender,
+        expectedSenderFormat: "whatsapp:+14155238886 or an approved whatsapp:+E164 Twilio sender"
+      },
+      ownerPhoneConfigured: Boolean(ownerPhone),
+      requestTimeoutMs: getTwilioRequestTimeoutMs()
+    }
+  };
+}
+async function sendTwilioMessage(input) {
   const channel = input.channel || "sms";
-  const from = normaliseSender(channel === "whatsapp" ? whatsappFrom : smsFrom, channel);
+  const config = getTwilioConfig(channel);
+  const { accountSid, authToken, from } = config;
+  const to = normalisePhone(input.to);
   if (!accountSid || !authToken || !from || !to) {
+    console.warn(`[TwilioNotification] ${channel} skipped`, {
+      hasAccountSid: config.hasAccountSid,
+      hasAuthToken: config.hasAuthToken,
+      hasSender: config.hasRawSender,
+      hasValidSender: config.hasValidSender,
+      hasValidRecipient: Boolean(to)
+    });
     return { sent: false, reason: `${channel}_not_configured_or_invalid_number` };
   }
   const formattedTo = channel === "whatsapp" ? `whatsapp:${to}` : to;
   const params = new URLSearchParams({ To: formattedTo, From: from, Body: input.body.slice(0, 1500) });
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 1500);
+  const timeout = setTimeout(() => controller.abort(), getTwilioRequestTimeoutMs());
   let response;
   try {
     response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
@@ -2333,6 +2401,10 @@ ${itemsSummary}`,
           ].join("\n\n");
           await Promise.allSettled([
             sendCustomerSmsSafely({
+              to: order?.customerPhone,
+              body: `Eby's Place has received payment for order #${orderReference2}. We will prepare your items and keep you updated.`
+            }),
+            sendCustomerWhatsAppSafely({
               to: order?.customerPhone,
               body: `Eby's Place has received payment for order #${orderReference2}. We will prepare your items and keep you updated.`
             }),
@@ -3412,6 +3484,7 @@ var appRouter = router({
     summary: adminProcedure.query(() => adminSummary()),
     lists: adminProcedure.query(() => adminLists()),
     listEmailNotificationLogs: adminProcedure.query(() => listEmailNotificationLogs()),
+    notificationDiagnostics: adminProcedure.query(() => getNotificationDiagnostics()),
     moderateReview: adminProcedure.input(z2.object({ id: z2.number(), status: reviewStatus })).mutation(({ input }) => moderateReview(input.id, input.status)),
     updateBookingStatus: adminProcedure.input(z2.object({ id: z2.number(), status: bookingStatus })).mutation(({ input }) => updateBookingStatus(input.id, input.status)),
     updateOrderStatus: adminProcedure.input(z2.object({ id: z2.number(), status: orderStatus })).mutation(({ input }) => updateOrderStatus(input.id, input.status)),
