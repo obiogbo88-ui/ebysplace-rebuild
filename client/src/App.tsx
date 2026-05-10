@@ -25,8 +25,41 @@ const ReturnsPolicy = lazy(() => import("./pages/Policies").then((module) => ({ 
 const TermsPolicy = lazy(() => import("./pages/Policies").then((module) => ({ default: () => <module.PolicyPage type="terms" /> })));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
+const sharedLinkPathAliases: Record<string, string> = {
+  "/service": "/services",
+  "/products": "/shop",
+  "/review": "/reviews",
+  "/braiders": "/braiders-near-me",
+  "/privacy-policy": "/policies/privacy",
+  "/shopping-policy": "/policies/shopping",
+  "/returns-policy": "/policies/returns",
+  "/terms": "/policies/terms",
+  "/terms-of-use": "/policies/terms",
+};
+
+function normalizeSharedLinkPath(pathname: string) {
+  const withoutTrailingSlash = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  return sharedLinkPathAliases[withoutTrailingSlash.toLowerCase()] ?? withoutTrailingSlash;
+}
+
 function RouteLoading() {
   return <div className="min-h-screen bg-background" aria-label="Loading Eby’s Place" />;
+}
+
+function SharedLinkPathNormalizer() {
+  const [location, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const { pathname, search, hash } = window.location;
+    const normalizedPath = normalizeSharedLinkPath(pathname || "/");
+    if (normalizedPath === pathname) return;
+
+    setLocation(`${normalizedPath}${search}${hash}`, { replace: true });
+  }, [location, setLocation]);
+
+  return null;
 }
 
 function ScrollToTop() {
@@ -116,6 +149,7 @@ function App() {
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
+          <SharedLinkPathNormalizer />
           <ScrollToTop />
           <Router />
           <FloatingWhatsAppButton />
