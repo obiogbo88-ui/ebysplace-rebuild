@@ -204,7 +204,11 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(adminSource).not.toContain("Add or replace website section image");
     expect(adminSource).not.toContain("Content & analytics");
     expect(shopSource).toContain("PRODUCT_IMAGE_FALLBACK_SRC");
-    expect(shopSource).toContain("const activeImageUrl = selectedVariant.imageUrl || product.imageUrl");
+    expect(shopSource).toContain("const selectedVariantImageUrl = selectedVariant.imageUrl?.trim() || \"\"");
+    expect(shopSource).toContain("const activeImageUrl = selectedVariantImageUrl || product.imageUrl");
+    expect(shopSource).toContain("const activeImageKey = `${product.id}-${selectedVariantKey}-${activeImageUrl || \"colour-preview\"}`;");
+    expect(shopSource).toContain("mixBlendMode: hasVariantSpecificImage ? \"soft-light\" : \"color\"");
+    expect(shopSource).toContain("Previewing {selectedColourLabel}");
     expect(shopSource).toContain("{activeImageUrl ? (");
     expect(shopSource).toContain("No product image");
     expect(shopSource).not.toContain("src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}");

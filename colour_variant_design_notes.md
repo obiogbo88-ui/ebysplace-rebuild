@@ -1,0 +1,3 @@
+# Shop colour-switching design
+
+The product data model already supports variant colour names, hex values, stock quantities, and optional variant-specific `imageUrl` values. The shop should therefore use a **variant image first** when a selected colour has its own image, then fall back to the main product image. To satisfy the requirement that every colour click visibly changes the product even before separate colour photos are uploaded, the product card should also apply a colour overlay/tint and matching background based on the selected variant’s hex value. This creates immediate visual feedback for all products while preserving higher-quality exact colour photos whenever the admin provides them through the existing `Colour name|#hexcode|stock|imageUrl` field.

@@ -89,7 +89,11 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
   const selectedVariant = variants.find((variant) => String(variant.id ?? variant.name) === selectedVariantKey) ?? variants[0] ?? fallbackVariant;
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const selectedColour = selectedVariant.colourHex || "#c8a95a";
-  const activeImageUrl = selectedVariant.imageUrl || product.imageUrl;
+  const selectedColourLabel = readableColourLabel(selectedVariant);
+  const selectedVariantImageUrl = selectedVariant.imageUrl?.trim() || "";
+  const activeImageUrl = selectedVariantImageUrl || product.imageUrl;
+  const activeImageKey = `${product.id}-${selectedVariantKey}-${activeImageUrl || "colour-preview"}`;
+  const hasVariantSpecificImage = Boolean(selectedVariantImageUrl);
   const outOfStock = product.stockStatus === "out_of_stock" || selectedVariant.stockQuantity === 0;
   const collapsedDescription = previewDescription(product.description);
   const canToggleDescription = product.description.trim() !== collapsedDescription;
@@ -106,9 +110,10 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
       >
         {activeImageUrl ? (
           <img
+            key={activeImageKey}
             src={activeImageUrl}
-            alt={product.name}
-            className="absolute inset-0 h-full w-full object-cover"
+            alt={`${product.name} in ${selectedColourLabel}`}
+            className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
             sizes={PRODUCT_THUMBNAIL_SIZES}
             loading="lazy"
             decoding="async"
@@ -121,10 +126,23 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
             No product image
           </div>
         )}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 transition-opacity duration-300"
+          style={{
+            background: `linear-gradient(135deg, ${selectedColour} 0%, ${selectedColour}cc 38%, transparent 72%)`,
+            mixBlendMode: hasVariantSpecificImage ? "soft-light" : "color",
+            opacity: hasVariantSpecificImage ? 0.22 : 0.58,
+          }}
+        />
         <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,.18),transparent_38%,rgba(0,0,0,.45))]" />
         <div className="absolute left-5 top-5 flex flex-wrap gap-2">
           <span className="pill bg-black/55 text-xs text-primary">{product.badge || "Eby’s Pick"}</span>
           <span className="pill bg-black/55 text-xs text-primary">{product.stockStatus?.replace("_", " ") || "available"}</span>
+        </div>
+        <div className="absolute bottom-5 left-5 right-5 flex flex-wrap items-center justify-between gap-2">
+          <span className="pill bg-black/65 text-xs text-primary">Previewing {selectedColourLabel}</span>
+          {!hasVariantSpecificImage && activeImageUrl ? <span className="rounded-full border border-white/10 bg-black/55 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/70">Colour tint preview</span> : null}
         </div>
 
       </div>
@@ -155,7 +173,7 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
         <div className="mt-5 rounded-3xl border border-primary/20 bg-black/20 p-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-semibold text-white">Available colours</p>
-            <p className="text-xs text-white/60">Current: <span className="text-primary">{readableColourLabel(selectedVariant)}</span></p>
+            <p className="text-xs text-white/60">Current: <span className="text-primary">{selectedColourLabel}</span></p>
           </div>
           <div className="mt-3 flex flex-wrap gap-3" role="radiogroup" aria-label={`${product.name} colours`}>
             {variants.map((variant) => {
@@ -168,7 +186,8 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  aria-label={`Preview ${variant.name}`}
+                  aria-label={`Preview ${variant.name} colour on ${product.name}`}
+                  title={`Preview ${variant.name} on ${product.name}`}
                   onClick={() => setSelectedVariantKey(key)}
                   className={`flex min-h-12 items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition ${active ? "border-primary bg-primary/15 text-primary shadow-[0_0_0_4px_rgba(200,169,90,.12)]" : "border-white/15 bg-white/[0.03] text-white/72 hover:border-primary/60 hover:text-white"}`}
                 >
@@ -187,7 +206,7 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
             className="btn-gold w-full disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => onAdd(product, selectedVariant)}
           >
-            {outOfStock ? "Currently unavailable" : `Add ${readableColourLabel(selectedVariant)} to bag`}
+            {outOfStock ? "Currently unavailable" : `Add ${selectedColourLabel} to bag`}
           </button>
           <button
             type="button"
