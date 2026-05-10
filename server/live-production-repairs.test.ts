@@ -156,4 +156,16 @@ describe("live production repair safeguards", () => {
     expect(appSource).toContain('<Route path="/book-now" component={Booking} />');
     expect(appSource).toContain('<Route path="/bookings" component={Booking} />');
   });
+
+  it("normalizes legacy and alias paths synchronously at module level so wouter never renders NotFound on first paint", () => {
+    const appSource = readProjectFile("client/src/App.tsx");
+
+    // The module-level block must run window.history.replaceState synchronously
+    // before React/wouter initialises, eliminating the first-render NotFound flash
+    // that occurred when SharedLinkPathNormalizer only ran inside useEffect.
+    expect(appSource).toContain("window.history.replaceState");
+    expect(appSource).toContain("normalizeSharedLinkPath(pathname)");
+    // Must be placed outside any React component (i.e. at module scope)
+    expect(appSource).toMatch(/if \(typeof window !== "undefined"\) \{[\s\S]*?window\.history\.replaceState/);
+  });
 });

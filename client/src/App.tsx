@@ -42,6 +42,17 @@ function normalizeSharedLinkPath(pathname: string) {
   return sharedLinkPathAliases[withoutTrailingSlash.toLowerCase()] ?? withoutTrailingSlash;
 }
 
+// Normalize the URL path synchronously before wouter initializes, so the
+// Router never sees a legacy alias or trailing-slash path on its first render
+// and therefore never flashes the NotFound (404) component.
+if (typeof window !== "undefined") {
+  const { pathname, search, hash } = window.location;
+  const normalized = normalizeSharedLinkPath(pathname);
+  if (normalized !== pathname) {
+    window.history.replaceState({}, "", `${normalized}${search}${hash}`);
+  }
+}
+
 function RouteLoading() {
   return <div className="min-h-screen bg-background" aria-label="Loading Eby’s Place" />;
 }
