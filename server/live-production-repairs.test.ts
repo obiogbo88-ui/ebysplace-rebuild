@@ -137,4 +137,23 @@ describe("live production repair safeguards", () => {
     expect(dbSource).toContain('await addPgColumnIfMissing("productVariants", "imageUrl", "VARCHAR(800)")');
     expect(dbSource).toContain('await addPgColumnIfMissing("productVariants", "createdAt", "TIMESTAMP NOT NULL DEFAULT NOW()")');
   });
+
+  it("ensures /booking and other direct URLs work via SPA catch-all rewrite in vercel.json and registered routes in App.tsx", () => {
+    const vercelConfig = readProjectFile("vercel.json");
+    const appSource = readProjectFile("client/src/App.tsx");
+
+    // vercel.json must serve index.html for any unknown path so direct URL visits
+    // (e.g. whatsapp links to /booking) are handled by the React router instead of
+    // returning a Vercel 404
+    expect(vercelConfig).toContain('"source": "/:path*"');
+    expect(vercelConfig).toContain('"destination": "/index.html"');
+
+    // primary /booking route must be registered (covers direct visits and shared links)
+    expect(appSource).toContain('<Route path="/booking" component={Booking} />');
+    // alias routes so every common variant of the booking URL also resolves
+    expect(appSource).toContain('<Route path="/booking/" component={Booking} />');
+    expect(appSource).toContain('<Route path="/book" component={Booking} />');
+    expect(appSource).toContain('<Route path="/book-now" component={Booking} />');
+    expect(appSource).toContain('<Route path="/bookings" component={Booking} />');
+  });
 });
