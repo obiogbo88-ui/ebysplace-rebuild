@@ -332,6 +332,9 @@ function getSupabaseRestConfig() {
   if (!url || !serviceRoleKey) return null;
   return { url, serviceRoleKey };
 }
+function isSupabaseConfigured() {
+  return !!getSupabaseRestConfig();
+}
 function cleanUndefinedValues(input) {
   return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== void 0));
 }
@@ -1089,38 +1092,40 @@ async function seedIfNeeded() {
         target: services.slug
       });
     });
-    await runSeedStep("products", () => ensureSeedProducts(db));
-    const productRows = await db.select().from(products);
-    const scarf = productRows.find((product) => product.slug === "satin-edge-scarf");
-    const hair = productRows.find((product) => product.slug === "premium-braiding-hair");
-    if (scarf) {
-      await runSeedStep("scarf variants", async () => {
-        await db.insert(productVariants).values([
-          { productId: scarf.id, name: "Black", colourHex: "#111111", stockQuantity: 18 },
-          { productId: scarf.id, name: "Gold", colourHex: "#c8a95a", stockQuantity: 16 }
-        ]).onConflictDoUpdate({
-          target: [productVariants.productId, productVariants.name],
-          set: {
-            colourHex: sql`excluded."colourHex"`,
-            stockQuantity: sql`excluded."stockQuantity"`
-          }
+    if (!isSupabaseConfigured()) {
+      await runSeedStep("products", () => ensureSeedProducts(db));
+      const productRows = await db.select().from(products);
+      const scarf = productRows.find((product) => product.slug === "satin-edge-scarf");
+      const hair = productRows.find((product) => product.slug === "premium-braiding-hair");
+      if (scarf) {
+        await runSeedStep("scarf variants", async () => {
+          await db.insert(productVariants).values([
+            { productId: scarf.id, name: "Black", colourHex: "#111111", stockQuantity: 18 },
+            { productId: scarf.id, name: "Gold", colourHex: "#c8a95a", stockQuantity: 16 }
+          ]).onConflictDoUpdate({
+            target: [productVariants.productId, productVariants.name],
+            set: {
+              colourHex: sql`excluded."colourHex"`,
+              stockQuantity: sql`excluded."stockQuantity"`
+            }
+          });
         });
-      });
-    }
-    if (hair) {
-      await runSeedStep("hair variants", async () => {
-        await db.insert(productVariants).values([
-          { productId: hair.id, name: "1B Natural Black", colourHex: "#1b1715", stockQuantity: 42 },
-          { productId: hair.id, name: "30 Auburn", colourHex: "#8a4b2a", stockQuantity: 28 },
-          { productId: hair.id, name: "613 Blonde", colourHex: "#d6b779", stockQuantity: 24 }
-        ]).onConflictDoUpdate({
-          target: [productVariants.productId, productVariants.name],
-          set: {
-            colourHex: sql`excluded."colourHex"`,
-            stockQuantity: sql`excluded."stockQuantity"`
-          }
+      }
+      if (hair) {
+        await runSeedStep("hair variants", async () => {
+          await db.insert(productVariants).values([
+            { productId: hair.id, name: "1B Natural Black", colourHex: "#1b1715", stockQuantity: 42 },
+            { productId: hair.id, name: "30 Auburn", colourHex: "#8a4b2a", stockQuantity: 28 },
+            { productId: hair.id, name: "613 Blonde", colourHex: "#d6b779", stockQuantity: 24 }
+          ]).onConflictDoUpdate({
+            target: [productVariants.productId, productVariants.name],
+            set: {
+              colourHex: sql`excluded."colourHex"`,
+              stockQuantity: sql`excluded."stockQuantity"`
+            }
+          });
         });
-      });
+      }
     }
     await runSeedStep("reviews", () => ensureSeedReviews(db));
     await runSeedStep("website sections", async () => {
@@ -1186,7 +1191,8 @@ async function listWebsiteSections() {
   }
 }
 async function listProducts() {
-  const fallback = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
+  const supabaseConfigured = isSupabaseConfigured();
+  const fallback = supabaseConfigured ? [] : seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
   try {
     const supabaseProducts = await listSupabaseProducts();
     if (supabaseProducts) return supabaseProducts;
@@ -1688,11 +1694,20 @@ async function replaceProductVariants(productId, variants) {
 async function deleteProduct(id) {
   if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
   const supabaseResult = await deleteSupabaseProduct(id);
-  if (supabaseResult) return supabaseResult;
   const db = await getDb();
+  if (db) {
+    const drizzleCleanup = async () => {
+      await db.delete(productVariants).where(eq(productVariants.productId, id));
+      await db.delete(products).where(eq(products.id, id));
+    };
+    if (supabaseResult) {
+      await drizzleCleanup().catch((error) => console.warn("[Database] Drizzle cleanup after Supabase delete failed", error));
+    } else {
+      await drizzleCleanup();
+    }
+  }
+  if (supabaseResult) return supabaseResult;
   if (!db) throw new Error("Database unavailable");
-  await db.delete(productVariants).where(eq(productVariants.productId, id));
-  await db.delete(products).where(eq(products.id, id));
   return { id, deleted: true };
 }
 async function updateOrderStatus(id, status) {
