@@ -208,7 +208,11 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(shopSource).toContain("const activeImageUrl = selectedVariantImageUrl || product.imageUrl");
     expect(shopSource).toContain("const activeImageKey = `${product.id}-${selectedVariantKey}-${activeImageUrl || \"colour-preview\"}`;");
     expect(shopSource).toContain("mixBlendMode: hasVariantSpecificImage ? \"soft-light\" : \"color\"");
-    expect(shopSource).toContain("Previewing {selectedColourLabel}");
+    expect(shopSource).toContain("const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);");
+    expect(shopSource).toContain("Open full picture of ${product.name} in ${selectedColourLabel}");
+    expect(shopSource).toContain("role=\"dialog\"");
+    expect(shopSource).not.toContain("Previewing {selectedColourLabel}");
+    expect(shopSource).not.toContain("Colour tint preview");
     expect(shopSource).toContain("{activeImageUrl ? (");
     expect(shopSource).toContain("No product image");
     expect(shopSource).not.toContain("src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}");

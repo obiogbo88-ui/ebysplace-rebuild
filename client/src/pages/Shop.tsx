@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { canonicalUrl } from "@/lib/canonicalUrl";
@@ -88,6 +88,7 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
   const [selectedVariantKey, setSelectedVariantKey] = useState(String(variants[0]?.id ?? variants[0]?.name ?? "Default"));
   const selectedVariant = variants.find((variant) => String(variant.id ?? variant.name) === selectedVariantKey) ?? variants[0] ?? fallbackVariant;
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const selectedColour = selectedVariant.colourHex || "#c8a95a";
   const selectedColourLabel = readableColourLabel(selectedVariant);
   const selectedVariantImageUrl = selectedVariant.imageUrl?.trim() || "";
@@ -100,6 +101,17 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
   const visibleDescription = isDetail || isDescriptionExpanded ? product.description : collapsedDescription;
   const shareUrl = canonicalUrl(productPublicPath(product));
 
+  useEffect(() => {
+    if (!isImageViewerOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsImageViewerOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isImageViewerOpen]);
+
   return (
     <article className="lux-card group min-w-0 overflow-hidden p-0">
       <div
@@ -109,18 +121,25 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
         }}
       >
         {activeImageUrl ? (
-          <img
-            key={activeImageKey}
-            src={activeImageUrl}
-            alt={`${product.name} in ${selectedColourLabel}`}
-            className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-            sizes={PRODUCT_THUMBNAIL_SIZES}
-            loading="lazy"
-            decoding="async"
-            onError={(event) => {
-              if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
-            }}
-          />
+          <button
+            type="button"
+            className="absolute inset-0 cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+            aria-label={`Open full picture of ${product.name} in ${selectedColourLabel}`}
+            onClick={() => setIsImageViewerOpen(true)}
+          >
+            <img
+              key={activeImageKey}
+              src={activeImageUrl}
+              alt={`${product.name} in ${selectedColourLabel}`}
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+              sizes={PRODUCT_THUMBNAIL_SIZES}
+              loading="lazy"
+              decoding="async"
+              onError={(event) => {
+                if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
+              }}
+            />
+          </button>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm font-semibold uppercase tracking-[0.2em] text-primary/80">
             No product image
@@ -140,12 +159,35 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
           <span className="pill bg-black/55 text-xs text-primary">{product.badge || "Eby’s Pick"}</span>
           <span className="pill bg-black/55 text-xs text-primary">{product.stockStatus?.replace("_", " ") || "available"}</span>
         </div>
-        <div className="absolute bottom-5 left-5 right-5 flex flex-wrap items-center justify-between gap-2">
-          <span className="pill bg-black/65 text-xs text-primary">Previewing {selectedColourLabel}</span>
-          {!hasVariantSpecificImage && activeImageUrl ? <span className="rounded-full border border-white/10 bg-black/55 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/70">Colour tint preview</span> : null}
-        </div>
-
       </div>
+      {isImageViewerOpen && activeImageUrl ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Full picture of ${product.name} in ${selectedColourLabel}`}
+          onClick={() => setIsImageViewerOpen(false)}
+        >
+          <div className="relative max-h-full w-full max-w-5xl" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="absolute right-3 top-3 z-10 rounded-full border border-white/20 bg-black/70 px-4 py-2 text-sm font-semibold text-white transition hover:border-primary hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              onClick={() => setIsImageViewerOpen(false)}
+            >
+              Close
+            </button>
+            <img
+              src={activeImageUrl}
+              alt={`${product.name} in ${selectedColourLabel}`}
+              className="max-h-[88vh] w-full rounded-3xl border border-primary/25 object-contain shadow-2xl"
+              onError={(event) => {
+                if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
 
       <div className="p-5 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
