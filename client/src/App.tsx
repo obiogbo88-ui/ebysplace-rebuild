@@ -52,10 +52,11 @@ function SharedLinkPathNormalizer() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const normalizedPath = normalizeSharedLinkPath(window.location.pathname);
-    if (normalizedPath === window.location.pathname) return;
+    const [pathname, suffix = ""] = location.split(/(?=[?#])/);
+    const normalizedPath = normalizeSharedLinkPath(pathname || "/");
+    if (normalizedPath === pathname) return;
 
-    setLocation(`${normalizedPath}${window.location.search}${window.location.hash}`, { replace: true });
+    setLocation(`${normalizedPath}${suffix}`, { replace: true });
   }, [location, setLocation]);
 
   return null;
