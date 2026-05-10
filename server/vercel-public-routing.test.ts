@@ -15,10 +15,40 @@ describe("Vercel public frontend routing", () => {
     expect(packageJson.scripts.build).toBe("tsc -p server/tsconfig.json && cd client && pnpm run build");
     expect(packageJson.scripts["build:vercel"]).toBe("pnpm run build && pnpm run build:api");
     expect(vercelConfig.functions["api/index.js"].includeFiles).toBe("public/**");
+    expect(vercelConfig.redirects).toEqual([
+      {
+        source: "/booking/",
+        destination: "/booking",
+        permanent: true,
+      },
+      {
+        source: "/book",
+        destination: "/booking",
+        permanent: true,
+      },
+      {
+        source: "/book-now",
+        destination: "/booking",
+        permanent: true,
+      },
+      {
+        source: "/bookings",
+        destination: "/booking",
+        permanent: true,
+      },
+    ]);
     expect(vercelConfig.rewrites).toEqual([
       {
         source: "/api/:path*",
         destination: "/api/index",
+      },
+      {
+        source: "/booking",
+        destination: "/index.html",
+      },
+      {
+        source: "/booking/:path*",
+        destination: "/index.html",
       },
       {
         source: "/:path*",
