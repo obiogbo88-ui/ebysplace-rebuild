@@ -40,6 +40,26 @@
       "permanent": true
     },
     {
+      "source": "/booking-my-account",
+      "destination": "/booking",
+      "permanent": true
+    },
+    {
+      "source": "/my-account",
+      "destination": "/booking",
+      "permanent": true
+    },
+    {
+      "source": "/ts_footer_block/footer-6",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/ts_footer_block/footer-6/",
+      "destination": "/",
+      "permanent": true
+    },
+    {
       "source": "/ts_footer_block",
       "destination": "/",
       "permanent": true

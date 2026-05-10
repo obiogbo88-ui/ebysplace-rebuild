@@ -28,6 +28,7 @@ const navLinks = [
   { href: "/ai-try-on", label: "AI Try-On" },
   { href: "/braiders-near-me", label: "Braiders Near Me" },
   { href: "/gallery", label: "Gallery" },
+  { href: "/reviews", label: "Reviews" },
 ];
 
 const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking" && item.href !== "/shop");
