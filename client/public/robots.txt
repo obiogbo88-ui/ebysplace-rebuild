@@ -1,3 +1,8 @@
 User-agent: *
 Allow: /
-Sitemap: /sitemap.xml
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+Disallow: /404
+
+Sitemap: https://www.ebysplace.com/sitemap.xml
