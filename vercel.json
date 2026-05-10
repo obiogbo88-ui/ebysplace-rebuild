@@ -55,6 +55,11 @@
       "permanent": true
     },
     {
+      "source": "/product/beads-accessories",
+      "destination": "/services",
+      "permanent": true
+    },
+    {
       "source": "/product/:slug*",
       "destination": "/shop/:slug*",
       "permanent": true

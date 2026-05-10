@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { lazy, Suspense, useEffect } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
+import { canonicalUrl } from "@/lib/canonicalUrl";
 import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -125,7 +126,7 @@ function normalizeSharedLinkPath(pathname: string) {
 
   if (lowerCasePath.startsWith("/product/")) {
     const legacyProductSlug = lowerCasePath.replace(/^\/product\/+/, "");
-    if (legacyProductSlug.startsWith("starter-locs")) return "/services";
+    if (legacyProductSlug.startsWith("starter-locs") || legacyProductSlug.startsWith("beads-accessories")) return "/services";
     if (legacyProductSlug) return `/shop/${legacyProductSlug}`;
     return "/shop";
   }
@@ -137,6 +138,112 @@ function normalizeSharedLinkPath(pathname: string) {
   if (lowerCasePath.startsWith("/shop/")) return lowerCasePath;
 
   return cleanedSharedPath;
+}
+
+const defaultSeo = {
+  title: "Eby’s Place | Luxury Pain-Free Braiding in Somerset, UK",
+  description: "Eby’s Place offers luxury pain-free braiding in Somerset, UK: zero pain, zero trauma, just perfection, with bookings, £20 deposits, braid care products, reviews, gallery inspiration, AI hairstyle try-on, and Braiders Near Me SaaS matching.",
+};
+
+const seoByPath: Record<string, { title: string; description: string }> = {
+  "/": defaultSeo,
+  "/services": {
+    title: "Luxury Pain-Free Braiding Services | Eby’s Place",
+    description: "Explore Eby’s Place braiding services, including knotless braids, box braids, goddess braids, locs, twists, kids styles, men’s styles, beads, accessories, and gentle add-ons.",
+  },
+  "/booking": {
+    title: "Book Appointment | Eby’s Place",
+    description: "Book your Eby’s Place appointment online with a secure £20 deposit for luxury, scalp-conscious, pain-free braiding in Somerset, UK.",
+  },
+  "/shop": {
+    title: "Braid Care Products & Accessories | Eby’s Place Shop",
+    description: "Shop Eby’s Place braid care products, satin protection, scalp comfort oil, premium braiding hair, and aftercare essentials for protective styles.",
+  },
+  "/ai-try-on": {
+    title: "AI Hairstyle Try-On | Eby’s Place",
+    description: "Preview braid styles before booking with the Eby’s Place AI hairstyle try-on experience for protective styles and luxury braiding inspiration.",
+  },
+  "/braiders-near-me": {
+    title: "Braiders Near Me | Eby’s Place",
+    description: "Find trusted braiders and discover the Eby’s Place Braiders Near Me matching experience for luxury protective styling support.",
+  },
+  "/gallery": {
+    title: "Braids Gallery | Eby’s Place",
+    description: "View Eby’s Place braid inspiration, protective style examples, knotless braids, locs, twists, kids styles, and luxury scalp-conscious finishes.",
+  },
+  "/reviews": {
+    title: "Client Reviews | Eby’s Place",
+    description: "Read and leave reviews for Eby’s Place luxury pain-free braiding, scalp-conscious protective styling, and customer care.",
+  },
+  "/policies": {
+    title: "Policies | Eby’s Place",
+    description: "Read Eby’s Place booking, shopping, returns, privacy, and terms policies before your appointment or shop purchase.",
+  },
+  "/policies/privacy": {
+    title: "Privacy Policy | Eby’s Place",
+    description: "Learn how Eby’s Place handles privacy, customer information, booking details, and website data.",
+  },
+  "/policies/shopping": {
+    title: "Shopping Policy | Eby’s Place",
+    description: "Review Eby’s Place shopping information for braid care products, accessories, and checkout support.",
+  },
+  "/policies/returns": {
+    title: "Returns Policy | Eby’s Place",
+    description: "Review the Eby’s Place returns policy for shop purchases, braid care products, and accessories.",
+  },
+  "/policies/terms": {
+    title: "Terms and Conditions | Eby’s Place",
+    description: "Read the Eby’s Place website, booking, and shop terms and conditions.",
+  },
+};
+
+function upsertMeta(selector: string, attr: "name" | "property", key: string, content: string) {
+  let element = document.head.querySelector<HTMLMetaElement>(selector);
+  if (!element) {
+    element = document.createElement("meta");
+    element.setAttribute(attr, key);
+    document.head.appendChild(element);
+  }
+  element.setAttribute("content", content);
+}
+
+function upsertCanonicalLink(href: string) {
+  let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!link) {
+    link = document.createElement("link");
+    link.setAttribute("rel", "canonical");
+    document.head.appendChild(link);
+  }
+  link.setAttribute("href", href);
+}
+
+function DynamicSeoMetadata() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const pathname = location.split(/[?#]/)[0] || "/";
+    const canonicalPath = pathname.startsWith("/shop/") ? pathname : normalizeSharedLinkPath(pathname);
+    const seo = pathname.startsWith("/shop/")
+      ? {
+          title: "Product Details | Eby’s Place Shop",
+          description: "View Eby’s Place braid care products, accessories, and aftercare essentials for protective styles.",
+        }
+      : seoByPath[canonicalPath] || defaultSeo;
+    const canonicalHref = canonicalUrl(canonicalPath);
+
+    document.title = seo.title;
+    upsertCanonicalLink(canonicalHref);
+    upsertMeta('meta[name="description"]', "name", "description", seo.description);
+    upsertMeta('meta[name="robots"]', "name", "robots", canonicalPath.startsWith("/admin") || canonicalPath === "/404" ? "noindex, nofollow" : "index, follow, max-image-preview:large");
+    upsertMeta('meta[property="og:title"]', "property", "og:title", seo.title);
+    upsertMeta('meta[property="og:description"]', "property", "og:description", seo.description);
+    upsertMeta('meta[property="og:url"]', "property", "og:url", canonicalHref);
+    upsertMeta('meta[name="twitter:title"]', "name", "twitter:title", seo.title);
+    upsertMeta('meta[name="twitter:description"]', "name", "twitter:description", seo.description);
+  }, [location]);
+
+  return null;
 }
 
 function RouteLoading() {
@@ -256,6 +363,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <SharedLinkPathNormalizer />
+          <DynamicSeoMetadata />
           <ScrollToTop />
           <Router />
           <FloatingWhatsAppButton />
