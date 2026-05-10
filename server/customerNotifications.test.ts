@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sendCustomerSms, sendCustomerSmsSafely } from "./customerNotifications";
+import { getNotificationDiagnostics, sendCustomerSms, sendCustomerSmsSafely, sendCustomerWhatsApp } from "./customerNotifications";
 
 const originalEnv = { ...process.env };
 
@@ -46,6 +46,38 @@ describe("customer SMS notifications", () => {
     expect(request?.headers).toMatchObject({
       Authorization: `Basic ${Buffer.from("AC123456789:tokenwithspaces").toString("base64")}`,
     });
+  });
+
+  it("accepts either full WhatsApp sender format or a bare E.164 WhatsApp sender", async () => {
+    process.env.TWILIO_ACCOUNT_SID = "AC123";
+    process.env.TWILIO_AUTH_TOKEN = "secret";
+    process.env.TWILIO_WHATSAPP_FROM = "+14155238886";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as Response);
+
+    const result = await sendCustomerWhatsApp({ to: "07700 900123", body: "Booking confirmed" });
+
+    expect(result).toEqual({ sent: true });
+    const [, request] = fetchMock.mock.calls[0] ?? [];
+    expect(String(request?.body)).toContain("To=whatsapp%3A%2B447700900123");
+    expect(String(request?.body)).toContain("From=whatsapp%3A%2B14155238886");
+  });
+
+  it("reports safe notification diagnostics without exposing credential values", () => {
+    process.env.TWILIO_ACCOUNT_SID = "AC123";
+    process.env.TWILIO_AUTH_TOKEN = "secret";
+    process.env.TWILIO_SMS_FROM = "+15551234567";
+    process.env.TWILIO_WHATSAPP_FROM = "bad-whatsapp-sender";
+    process.env.EBYSPLACE_OWNER_PHONE_E164 = "07700 900123";
+
+    const diagnostics = getNotificationDiagnostics();
+
+    expect(diagnostics.twilio.sms.configured).toBe(true);
+    expect(diagnostics.twilio.whatsapp.configured).toBe(false);
+    expect(diagnostics.twilio.whatsapp.hasSender).toBe(true);
+    expect(diagnostics.twilio.whatsapp.hasValidSender).toBe(false);
+    expect(diagnostics.twilio.ownerPhoneConfigured).toBe(true);
+    expect(JSON.stringify(diagnostics)).not.toContain("secret");
+    expect(JSON.stringify(diagnostics)).not.toContain("+15551234567");
   });
 
   it("keeps business flows non-blocking when Twilio throws", async () => {

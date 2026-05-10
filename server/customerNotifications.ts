@@ -17,29 +17,85 @@ function normalisePhone(value?: string | null) {
 
 function normaliseSender(value?: string | null, channel: "sms" | "whatsapp" = "sms") {
   if (!value) return null;
-  const trimmed = value.trim();
-  if (channel === "whatsapp") return /^whatsapp:\+[1-9]\d{7,14}$/.test(trimmed) ? trimmed : null;
+  const trimmed = trimEnvValue(value);
+  if (channel === "whatsapp") {
+    if (/^whatsapp:\+[1-9]\d{7,14}$/.test(trimmed)) return trimmed;
+    if (/^\+[1-9]\d{7,14}$/.test(trimmed)) return `whatsapp:${trimmed}`;
+    return null;
+  }
   if (/^\+[1-9]\d{7,14}$/.test(trimmed)) return trimmed;
   if (/^[A-Za-z0-9 ]{1,11}$/.test(trimmed)) return trimmed;
   return null;
 }
 
-async function sendTwilioMessage(input: MessageInput) {
+function getTwilioConfig(channel: "sms" | "whatsapp" = "sms") {
   const accountSid = normalizeSecretKey(process.env.TWILIO_ACCOUNT_SID);
   const authToken = normalizeSecretKey(process.env.TWILIO_AUTH_TOKEN);
-  const smsFrom = trimEnvValue(process.env.TWILIO_SMS_FROM);
-  const whatsappFrom = trimEnvValue(process.env.TWILIO_WHATSAPP_FROM);
-  const to = normalisePhone(input.to);
+  const rawFrom = channel === "whatsapp" ? process.env.TWILIO_WHATSAPP_FROM : process.env.TWILIO_SMS_FROM;
+  const from = normaliseSender(rawFrom, channel);
+  return {
+    accountSid,
+    authToken,
+    from,
+    hasAccountSid: Boolean(accountSid),
+    hasAuthToken: Boolean(authToken),
+    hasRawSender: Boolean(trimEnvValue(rawFrom)),
+    hasValidSender: Boolean(from),
+  };
+}
+
+function getTwilioRequestTimeoutMs() {
+  const parsed = Number(process.env.TWILIO_REQUEST_TIMEOUT_MS);
+  return Number.isFinite(parsed) && parsed >= 1500 ? Math.min(parsed, 15000) : 8000;
+}
+
+export function getNotificationDiagnostics() {
+  const sms = getTwilioConfig("sms");
+  const whatsapp = getTwilioConfig("whatsapp");
+  const ownerPhone = normalisePhone(process.env.EBYSPLACE_OWNER_PHONE_E164 || process.env.OWNER_PHONE_E164 || process.env.TWILIO_OWNER_PHONE);
+  return {
+    twilio: {
+      sms: {
+        configured: sms.hasAccountSid && sms.hasAuthToken && sms.hasValidSender,
+        hasAccountSid: sms.hasAccountSid,
+        hasAuthToken: sms.hasAuthToken,
+        hasSender: sms.hasRawSender,
+        hasValidSender: sms.hasValidSender,
+      },
+      whatsapp: {
+        configured: whatsapp.hasAccountSid && whatsapp.hasAuthToken && whatsapp.hasValidSender,
+        hasAccountSid: whatsapp.hasAccountSid,
+        hasAuthToken: whatsapp.hasAuthToken,
+        hasSender: whatsapp.hasRawSender,
+        hasValidSender: whatsapp.hasValidSender,
+        expectedSenderFormat: "whatsapp:+14155238886 or an approved whatsapp:+E164 Twilio sender",
+      },
+      ownerPhoneConfigured: Boolean(ownerPhone),
+      requestTimeoutMs: getTwilioRequestTimeoutMs(),
+    },
+  };
+}
+
+async function sendTwilioMessage(input: MessageInput) {
   const channel = input.channel || "sms";
-  const from = normaliseSender(channel === "whatsapp" ? whatsappFrom : smsFrom, channel);
+  const config = getTwilioConfig(channel);
+  const { accountSid, authToken, from } = config;
+  const to = normalisePhone(input.to);
   if (!accountSid || !authToken || !from || !to) {
+    console.warn(`[TwilioNotification] ${channel} skipped`, {
+      hasAccountSid: config.hasAccountSid,
+      hasAuthToken: config.hasAuthToken,
+      hasSender: config.hasRawSender,
+      hasValidSender: config.hasValidSender,
+      hasValidRecipient: Boolean(to),
+    });
     return { sent: false, reason: `${channel}_not_configured_or_invalid_number` } as const;
   }
 
   const formattedTo = channel === "whatsapp" ? `whatsapp:${to}` : to;
   const params = new URLSearchParams({ To: formattedTo, From: from, Body: input.body.slice(0, 1500) });
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 1500);
+  const timeout = setTimeout(() => controller.abort(), getTwilioRequestTimeoutMs());
   let response: Response;
   try {
     response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {

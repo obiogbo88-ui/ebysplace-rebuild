@@ -139,6 +139,10 @@ export function registerStripeWebhook(app: Application) {
               to: order?.customerPhone,
               body: `Eby's Place has received payment for order #${orderReference}. We will prepare your items and keep you updated.`,
             }),
+            sendCustomerWhatsAppSafely({
+              to: order?.customerPhone,
+              body: `Eby's Place has received payment for order #${orderReference}. We will prepare your items and keep you updated.`,
+            }),
             sendShopOrderPaidEmailSafely({
               to: order?.customerEmail ?? session.customer_email,
               customerName: order?.customerName ?? session.metadata?.customer_name,
