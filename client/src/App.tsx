@@ -29,6 +29,8 @@ const sharedLinkPathAliases: Record<string, string> = {
   "/home": "/",
   "/index": "/",
   "/index.html": "/",
+  "/ts_footer_block": "/",
+  "/footer-6": "/",
   "/service": "/services",
   "/pricing": "/services",
   "/prices": "/services",
@@ -36,13 +38,18 @@ const sharedLinkPathAliases: Record<string, string> = {
   "/book": "/booking",
   "/book-now": "/booking",
   "/bookings": "/booking",
+  "/booking.html": "/booking",
   "/appointment": "/booking",
   "/appointments": "/booking",
   "/reserve": "/booking",
   "/reservation": "/booking",
   "/products": "/shop",
   "/product": "/shop",
+  "/shop.html": "/shop",
+  "/products.html": "/shop",
   "/store": "/shop",
+  "/the-best-items": "/shop",
+  "/the-best-items-": "/shop",
   "/ai": "/ai-try-on",
   "/try-on": "/ai-try-on",
   "/aitryon": "/ai-try-on",
@@ -109,6 +116,23 @@ function normalizeSharedLinkPath(pathname: string) {
   const lowerCasePath = cleanedSharedPath.toLowerCase();
 
   if (sharedLinkPathAliases[lowerCasePath]) return sharedLinkPathAliases[lowerCasePath];
+
+  if (lowerCasePath.endsWith(".html")) {
+    const htmlStrippedPath = lowerCasePath.replace(/\.html$/i, "") || "/";
+    if (sharedLinkPathAliases[htmlStrippedPath]) return sharedLinkPathAliases[htmlStrippedPath];
+    if (canonicalStaticPaths.has(htmlStrippedPath)) return htmlStrippedPath;
+  }
+
+  if (lowerCasePath.startsWith("/product/")) {
+    const legacyProductSlug = lowerCasePath.replace(/^\/product\/+/, "");
+    if (legacyProductSlug.startsWith("starter-locs")) return "/services";
+    if (legacyProductSlug) return `/shop/${legacyProductSlug}`;
+    return "/shop";
+  }
+
+  if (lowerCasePath.startsWith("/product-category/") || lowerCasePath.startsWith("/category/")) return "/shop";
+  if (lowerCasePath.startsWith("/service/")) return "/services";
+
   if (canonicalStaticPaths.has(lowerCasePath)) return lowerCasePath;
   if (lowerCasePath.startsWith("/shop/")) return lowerCasePath;
 

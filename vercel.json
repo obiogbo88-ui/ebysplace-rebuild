@@ -25,6 +25,56 @@
       "permanent": true
     },
     {
+      "source": "/booking.html",
+      "destination": "/booking",
+      "permanent": true
+    },
+    {
+      "source": "/ts_footer_block",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/footer-6",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/the-best-items-",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/the-best-items",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/product/starter-locs",
+      "destination": "/services",
+      "permanent": true
+    },
+    {
+      "source": "/product/:slug*",
+      "destination": "/shop/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/product-category/:path*",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/category/:path*",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/service/:path*",
+      "destination": "/services",
+      "permanent": true
+    },
+    {
       "source": "/book",
       "destination": "/booking",
       "permanent": true
