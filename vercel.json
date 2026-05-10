@@ -7,10 +7,40 @@
       "includeFiles": "public/**"
     }
   },
+  "redirects": [
+    {
+      "source": "/booking/",
+      "destination": "/booking",
+      "permanent": true
+    },
+    {
+      "source": "/book",
+      "destination": "/booking",
+      "permanent": true
+    },
+    {
+      "source": "/book-now",
+      "destination": "/booking",
+      "permanent": true
+    },
+    {
+      "source": "/bookings",
+      "destination": "/booking",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",
       "destination": "/api/index"
+    },
+    {
+      "source": "/booking",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/booking/:path*",
+      "destination": "/index.html"
     },
     {
       "source": "/:path*",
