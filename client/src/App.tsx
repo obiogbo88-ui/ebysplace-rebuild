@@ -37,9 +37,39 @@ const sharedLinkPathAliases: Record<string, string> = {
   "/terms-of-use": "/policies/terms",
 };
 
+const canonicalStaticPaths = new Set([
+  "/",
+  "/services",
+  "/booking",
+  "/book",
+  "/book-now",
+  "/bookings",
+  "/booking/success",
+  "/shop",
+  "/ai-try-on",
+  "/braiders-near-me",
+  "/gallery",
+  "/reviews",
+  "/admin",
+  "/admin/login",
+  "/admin/reset-password",
+  "/policies",
+  "/policies/privacy",
+  "/policies/shopping",
+  "/policies/returns",
+  "/policies/terms",
+  "/404",
+]);
+
 function normalizeSharedLinkPath(pathname: string) {
   const withoutTrailingSlash = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  return sharedLinkPathAliases[withoutTrailingSlash.toLowerCase()] ?? withoutTrailingSlash;
+  const lowerCasePath = withoutTrailingSlash.toLowerCase();
+
+  if (sharedLinkPathAliases[lowerCasePath]) return sharedLinkPathAliases[lowerCasePath];
+  if (canonicalStaticPaths.has(lowerCasePath)) return lowerCasePath;
+  if (lowerCasePath.startsWith("/shop/")) return lowerCasePath;
+
+  return withoutTrailingSlash;
 }
 
 function RouteLoading() {

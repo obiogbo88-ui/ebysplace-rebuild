@@ -35,15 +35,7 @@
       "destination": "/api/index"
     },
     {
-      "source": "/booking",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/booking/:path*",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/:path*",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
