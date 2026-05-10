@@ -128,6 +128,10 @@ function getSupabaseRestConfig() {
   return { url, serviceRoleKey };
 }
 
+function isSupabaseConfigured() {
+  return !!getSupabaseRestConfig();
+}
+
 function cleanUndefinedValues<T extends Record<string, any>>(input: T) {
   return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)) as Partial<T>;
 }
@@ -935,7 +939,7 @@ async function seedIfNeeded() {
     // Only seed products into Drizzle when Supabase is not configured.
     // When Supabase is active it is the authoritative product store, so seeding
     // Drizzle would re-insert products that were intentionally deleted by an admin.
-    if (!getSupabaseRestConfig()) {
+    if (!isSupabaseConfigured()) {
       await runSeedStep("products", () => ensureSeedProducts(db));
       const productRows = await db.select().from(products);
       const scarf = productRows.find((product) => product.slug === "satin-edge-scarf");
@@ -1042,7 +1046,7 @@ export async function listProducts() {
   // When Supabase is configured it is the authoritative product store.  Using the
   // hardcoded seed list as a fallback would resurface products that an admin has
   // intentionally deleted from Supabase.
-  const supabaseConfigured = !!getSupabaseRestConfig();
+  const supabaseConfigured = isSupabaseConfigured();
   const fallback = supabaseConfigured
     ? []
     : seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
@@ -1624,8 +1628,17 @@ export async function deleteProduct(id: number) {
   const supabaseResult = await deleteSupabaseProduct(id);
   const db = await getDb();
   if (db) {
-    await db.delete(productVariants).where(eq(productVariants.productId, id));
-    await db.delete(products).where(eq(products.id, id));
+    const drizzleCleanup = async () => {
+      await db.delete(productVariants).where(eq(productVariants.productId, id));
+      await db.delete(products).where(eq(products.id, id));
+    };
+    if (supabaseResult) {
+      // Supabase is the authoritative store; Drizzle cleanup is best-effort so a
+      // transient DB error does not surface as a user-facing failure.
+      await drizzleCleanup().catch((error) => console.warn("[Database] Drizzle cleanup after Supabase delete failed", error));
+    } else {
+      await drizzleCleanup();
+    }
   }
   if (supabaseResult) return supabaseResult;
   if (!db) throw new Error("Database unavailable");
