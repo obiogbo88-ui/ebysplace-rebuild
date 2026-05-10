@@ -1,6 +1,7 @@
 import { type FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { canonicalUrl } from "@/lib/canonicalUrl";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { SiteFooter, SiteHeader } from "./Home";
 
@@ -93,7 +94,7 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
   const collapsedDescription = previewDescription(product.description);
   const canToggleDescription = product.description.trim() !== collapsedDescription;
   const visibleDescription = isDetail || isDescriptionExpanded ? product.description : collapsedDescription;
-  const shareUrl = typeof window === "undefined" ? productPublicPath(product) : `${window.location.origin}${productPublicPath(product)}`;
+  const shareUrl = canonicalUrl(productPublicPath(product));
 
   return (
     <article className="lux-card group min-w-0 overflow-hidden p-0">

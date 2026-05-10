@@ -9,6 +9,17 @@
   },
   "redirects": [
     {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "ebysplace.com"
+        }
+      ],
+      "destination": "https://www.ebysplace.com/$1",
+      "permanent": true
+    },
+    {
       "source": "/booking/",
       "destination": "/booking",
       "permanent": true
@@ -27,6 +38,17 @@
       "source": "/bookings",
       "destination": "/booking",
       "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
     }
   ],
   "rewrites": [

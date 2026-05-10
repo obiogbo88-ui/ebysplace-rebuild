@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getStoredAuthToken, setStoredAuthSession } from "@/const";
+import { CANONICAL_SITE_ORIGIN } from "@/lib/canonicalUrl";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, LockKeyhole, ShieldCheck } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -83,7 +84,7 @@ export default function AdminLogin() {
       toast.error("Enter the admin email address first.");
       return;
     }
-    requestReset.mutate({ email, origin: window.location.origin });
+    requestReset.mutate({ email, origin: CANONICAL_SITE_ORIGIN });
   };
 
   return (

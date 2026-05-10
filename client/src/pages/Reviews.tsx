@@ -1,4 +1,5 @@
 import { SiteFooter, SiteHeader } from "@/pages/Home";
+import { canonicalUrl } from "@/lib/canonicalUrl";
 import { trpc } from "@/lib/trpc";
 import { smoothScrollToTop } from "@/lib/smoothScroll";
 import { CheckCircle2, Copy, Facebook, MessageCircle, Star } from "lucide-react";
@@ -12,7 +13,7 @@ export default function Reviews() {
   const [reviewText, setReviewText] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [copied, setCopied] = useState(false);
-  const reviewUrl = typeof window !== "undefined" ? `${window.location.origin}/reviews` : "/reviews";
+  const reviewUrl = canonicalUrl("/reviews");
   const shareText = useMemo(() => "Leave a review for Eby's Place luxury pain-free braiding.", []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

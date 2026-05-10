@@ -1,5 +1,6 @@
 import { useState, useRef, type ReactNode } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { canonicalUrl } from "@/lib/canonicalUrl";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -709,9 +710,9 @@ export default function Admin() {
                     <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">SEO slug<input defaultValue={product.slug} id={`product-slug-${product.id}`} placeholder="premium-braiding-hair" /></label>
                     <div className="rounded-2xl border border-primary/20 bg-black/20 p-3 text-sm text-white/70">
                       <b className="block text-primary">Public product URL</b>
-                      <span className="mt-1 block break-all text-white/60">{typeof window !== "undefined" ? `${window.location.origin}/shop/${product.slug}` : `/shop/${product.slug}`}</span>
+                      <span className="mt-1 block break-all text-white/60">{canonicalUrl(`/shop/${product.slug}`)}</span>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <button className="btn-dark py-2 text-xs" type="button" onClick={() => { const url = `${window.location.origin}/shop/${product.slug}`; navigator.clipboard?.writeText(url); toast.success("Product URL copied"); }}>Copy URL</button>
+                        <button className="btn-dark py-2 text-xs" type="button" onClick={() => { const url = canonicalUrl(`/shop/${product.slug}`); navigator.clipboard?.writeText(url); toast.success("Product URL copied"); }}>Copy URL</button>
                         <button className="btn-dark py-2 text-xs" type="button" onClick={() => window.open(`/shop/${product.slug}`, "_blank", "noopener,noreferrer")}>Open product page</button>
                       </div>
                     </div>
