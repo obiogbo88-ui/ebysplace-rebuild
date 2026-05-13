@@ -9,104 +9,8 @@
   },
   "redirects": [
     {
-      "source": "/(.*)",
-      "has": [
-        {
-          "type": "host",
-          "value": "ebysplace.com"
-        }
-      ],
-      "destination": "https://www.ebysplace.com/$1",
-      "permanent": true
-    },
-    {
-      "source": "/booking%E2%81%A0",
-      "destination": "/booking",
-      "permanent": true
-    },
-    {
-      "source": "/booking⁠",
-      "destination": "/booking",
-      "permanent": true
-    },
-    {
       "source": "/booking/",
       "destination": "/booking",
-      "permanent": true
-    },
-    {
-      "source": "/booking.html",
-      "destination": "/booking",
-      "permanent": true
-    },
-    {
-      "source": "/booking-my-account",
-      "destination": "/booking",
-      "permanent": true
-    },
-    {
-      "source": "/my-account",
-      "destination": "/booking",
-      "permanent": true
-    },
-    {
-      "source": "/ts_footer_block/footer-6",
-      "destination": "/",
-      "permanent": true
-    },
-    {
-      "source": "/ts_footer_block/footer-6/",
-      "destination": "/",
-      "permanent": true
-    },
-    {
-      "source": "/ts_footer_block",
-      "destination": "/",
-      "permanent": true
-    },
-    {
-      "source": "/footer-6",
-      "destination": "/",
-      "permanent": true
-    },
-    {
-      "source": "/the-best-items-",
-      "destination": "/shop",
-      "permanent": true
-    },
-    {
-      "source": "/the-best-items",
-      "destination": "/shop",
-      "permanent": true
-    },
-    {
-      "source": "/product/starter-locs",
-      "destination": "/services",
-      "permanent": true
-    },
-    {
-      "source": "/product/beads-accessories",
-      "destination": "/services",
-      "permanent": true
-    },
-    {
-      "source": "/product/:slug*",
-      "destination": "/shop/:slug*",
-      "permanent": true
-    },
-    {
-      "source": "/product-category/:path*",
-      "destination": "/shop",
-      "permanent": true
-    },
-    {
-      "source": "/category/:path*",
-      "destination": "/shop",
-      "permanent": true
-    },
-    {
-      "source": "/service/:path*",
-      "destination": "/services",
       "permanent": true
     },
     {
@@ -142,7 +46,15 @@
       "destination": "/api/index"
     },
     {
-      "source": "/(.*)",
+      "source": "/booking",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/booking/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]

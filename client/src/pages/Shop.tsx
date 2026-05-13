@@ -250,7 +250,7 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
             className="btn-gold w-full disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => onAdd(product, selectedVariant)}
           >
-            {outOfStock ? "Currently unavailable" : `Add ${selectedColourLabel} to bag`}
+            {outOfStock ? "Currently unavailable" : `Add ${readableColourLabel(selectedVariant)} to bag`}
           </button>
           <button
             type="button"
