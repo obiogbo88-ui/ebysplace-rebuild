@@ -35,40 +35,68 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "HairSalon",
-        "name": "Eby’s Place",
-        "description": "Luxury pain-free braiding in Somerset, UK focused on zero tension, maximum longevity, total comfort, and scalp-conscious protective styling.",
-        "image": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-link-preview_6583844d-256f347d13.png",
-        "url": "https://www.ebysplace.com",
-        "priceRange": "££",
-        "areaServed": "United Kingdom",
-        "sameAs": ["https://www.ebysplace.com/"],
-        "makesOffer": [
-          { "@type": "Offer", "name": "Knotless Braids" },
-          { "@type": "Offer", "name": "Box Braids" },
-          { "@type": "Offer", "name": "Goddess Braids" },
-          { "@type": "Offer", "name": "Fulani Braids" },
-          { "@type": "Offer", "name": "Cornrows" },
-          { "@type": "Offer", "name": "Stitch Braids" },
-          { "@type": "Offer", "name": "Lemonade Braids" },
-          { "@type": "Offer", "name": "Boho Braids" },
-          { "@type": "Offer", "name": "Tribal Braids" },
-          { "@type": "Offer", "name": "Senegalese Twists" },
-          { "@type": "Offer", "name": "Passion Twists" },
-          { "@type": "Offer", "name": "Faux Locs" },
-          { "@type": "Offer", "name": "Butterfly Locs" },
-          { "@type": "Offer", "name": "Starter Locs" },
-          { "@type": "Offer", "name": "Kids Braiding Styles" }
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://www.ebysplace.com/#website",
+            "name": "Eby’s Place",
+            "url": "https://www.ebysplace.com/",
+            "inLanguage": "en-GB",
+            "publisher": { "@id": "https://www.ebysplace.com/#business" }
+          },
+          {
+            "@type": "HairSalon",
+            "@id": "https://www.ebysplace.com/#business",
+            "name": "Eby’s Place",
+            "description": "Luxury pain-free braiding in Somerset, UK focused on zero tension, maximum longevity, total comfort, and scalp-conscious protective styling.",
+            "image": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-link-preview_6583844d-256f347d13.png",
+            "url": "https://www.ebysplace.com/",
+            "priceRange": "££",
+            "areaServed": "United Kingdom",
+            "sameAs": ["https://www.ebysplace.com/"],
+            "makesOffer": [
+              { "@type": "Offer", "name": "Knotless Braids" },
+              { "@type": "Offer", "name": "Box Braids" },
+              { "@type": "Offer", "name": "Goddess Braids" },
+              { "@type": "Offer", "name": "Fulani Braids" },
+              { "@type": "Offer", "name": "Cornrows" },
+              { "@type": "Offer", "name": "Stitch Braids" },
+              { "@type": "Offer", "name": "Lemonade Braids" },
+              { "@type": "Offer", "name": "Boho Braids" },
+              { "@type": "Offer", "name": "Tribal Braids" },
+              { "@type": "Offer", "name": "Senegalese Twists" },
+              { "@type": "Offer", "name": "Passion Twists" },
+              { "@type": "Offer", "name": "Faux Locs" },
+              { "@type": "Offer", "name": "Butterfly Locs" },
+              { "@type": "Offer", "name": "Starter Locs" },
+              { "@type": "Offer", "name": "Kids Braiding Styles" }
+            ]
+          },
+          {
+            "@type": "ItemList",
+            "@id": "https://www.ebysplace.com/#sitelinks",
+            "name": "Eby’s Place main site links",
+            "itemListElement": [
+              { "@type": "SiteNavigationElement", "position": 1, "name": "Services", "url": "https://www.ebysplace.com/services" },
+              { "@type": "SiteNavigationElement", "position": 2, "name": "Book Appointment", "url": "https://www.ebysplace.com/booking" },
+              { "@type": "SiteNavigationElement", "position": 3, "name": "Shop", "url": "https://www.ebysplace.com/shop" },
+              { "@type": "SiteNavigationElement", "position": 4, "name": "AI Try-On", "url": "https://www.ebysplace.com/ai-try-on" },
+              { "@type": "SiteNavigationElement", "position": 5, "name": "Braiders Near Me", "url": "https://www.ebysplace.com/braiders-near-me" },
+              { "@type": "SiteNavigationElement", "position": 6, "name": "Gallery", "url": "https://www.ebysplace.com/gallery" },
+              { "@type": "SiteNavigationElement", "position": 7, "name": "Reviews", "url": "https://www.ebysplace.com/reviews" },
+              { "@type": "SiteNavigationElement", "position": 8, "name": "Policies", "url": "https://www.ebysplace.com/policies" }
+            ]
+          }
         ]
       }
     </script>
-    <script type="module" crossorigin src="/assets/index-BqydlXfw.js"></script>
+    <script type="module" crossorigin src="/assets/index-Clrhe73b.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/vendor-core-BbdIwjZu.js">
     <link rel="modulepreload" crossorigin href="/assets/vendor-data-Cs38gl_h.js">
     <link rel="modulepreload" crossorigin href="/assets/vendor-ui-Dc_FVRD7.js">
     <link rel="modulepreload" crossorigin href="/assets/heic2any-BR1ITUEK.js">
-    <link rel="modulepreload" crossorigin href="/assets/vendor-react-DMhSmNm-.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-Q9MYPhx4.css">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-Brmem4BZ.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-QYPIPJN0.css">
   </head>
   <body>
     <div id="root"></div>

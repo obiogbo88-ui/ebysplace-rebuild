@@ -2282,6 +2282,8 @@ async function resendEmailNotificationLog(logId) {
 
 // server/stripeWebhook.ts
 var STUDIO_CONFIRMATION_ADDRESS2 = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
+var EBYSPLACE_STRIPE_WEBHOOK_PATH = "/api/stripe/ebysplace-live-webhook";
+var LEGACY_STRIPE_WEBHOOK_PATH = "/api/stripe/webhook";
 function getStripeWebhookConfig() {
   const secretKey = [
     normalizeSecretKey(process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY),
@@ -2295,7 +2297,7 @@ function getStripeWebhookConfig() {
   return { stripe: new Stripe(secretKey), webhookSecret };
 }
 function registerStripeWebhook(app2) {
-  app2.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  app2.post([LEGACY_STRIPE_WEBHOOK_PATH, EBYSPLACE_STRIPE_WEBHOOK_PATH], express.raw({ type: "application/json" }), async (req, res) => {
     const config = getStripeWebhookConfig();
     if (!config) {
       res.status(503).json({ error: "Stripe webhook is not configured" });
