@@ -4,7 +4,7 @@ import express from "express";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import * as db from "./db";
-import { registerStripeWebhook } from "./stripeWebhook";
+import { EBYSPLACE_STRIPE_WEBHOOK_PATH, registerStripeWebhook } from "./stripeWebhook";
 import type { TrpcContext } from "./_core/context";
 
 const stripeCreateSessionMock = vi.hoisted(() => vi.fn());
@@ -578,6 +578,26 @@ describe("Eby’s Place platform business rules", () => {
         headers: { "content-type": "application/json", "stripe-signature": "test_signature" },
         body: JSON.stringify({ id: "evt_test_webhook" }),
       });
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({ verified: true });
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it("exposes the new Eby’s Place live Stripe webhook URL", async () => {
+    stripeConstructEventMock.mockReturnValueOnce({ id: "evt_test_ebysplace_live_webhook", type: "checkout.session.completed", data: { object: {} } });
+    const app = express();
+    registerStripeWebhook(app);
+    const server = app.listen(0);
+    try {
+      const port = (server.address() as AddressInfo).port;
+      const response = await fetch(`http://127.0.0.1:${port}${EBYSPLACE_STRIPE_WEBHOOK_PATH}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "stripe-signature": "test_signature" },
+        body: JSON.stringify({ id: "evt_test_ebysplace_live_webhook" }),
+      });
+      expect(EBYSPLACE_STRIPE_WEBHOOK_PATH).toBe("/api/stripe/ebysplace-live-webhook");
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({ verified: true });
     } finally {

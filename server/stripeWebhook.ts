@@ -9,6 +9,8 @@ import { normalizeSecretKey } from "./_core/envSecrets";
 
 const STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
 
+export const EBYSPLACE_STRIPE_WEBHOOK_PATH = "/api/stripe/ebysplace-live-webhook";
+const LEGACY_STRIPE_WEBHOOK_PATH = "/api/stripe/webhook";
 
 function getStripeWebhookConfig() {
   const secretKey = [
@@ -24,7 +26,7 @@ function getStripeWebhookConfig() {
 }
 
 export function registerStripeWebhook(app: Application) {
-  app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req: Request, res: Response) => {
+  app.post([LEGACY_STRIPE_WEBHOOK_PATH, EBYSPLACE_STRIPE_WEBHOOK_PATH], express.raw({ type: "application/json" }), async (req: Request, res: Response) => {
     const config = getStripeWebhookConfig();
     if (!config) {
       res.status(503).json({ error: "Stripe webhook is not configured" });
