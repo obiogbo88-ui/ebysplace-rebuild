@@ -350,11 +350,14 @@ describe("Eby’s Place landing page visual refinements", () => {
   });
 
   it("supports gallery upload, direct camera capture, and preview before AI Try-On submission", () => {
-    expect(tryOnSource).toContain("Upload from device");
+    expect(tryOnSource).toContain("Photo Gallery");
+    expect(tryOnSource).toContain("Choose an image from your phone photo library.");
     expect(tryOnSource).toContain("Take Photo");
     expect(tryOnSource).toContain('capture="user"');
+    expect(tryOnSource).toContain("Desktop File Upload");
+    expect(tryOnSource).toContain("Choose an image file from your computer.");
     expect(tryOnSource).toContain("On mobile, this opens your phone camera directly.");
-    expect(tryOnSource).toContain("Step 1: choose a photo source. Step 2: preview it below. Step 3: generate your hairstyle preview when you are happy with the image.");
+    expect(tryOnSource).toContain("Step 1: use phone camera, photo gallery, or desktop file upload. Step 2: preview it below. Step 3: generate your hairstyle preview when you are happy with the image.");
     expect(tryOnSource).toContain("Your selected portrait will appear here for preview before submission.");
   });
 
