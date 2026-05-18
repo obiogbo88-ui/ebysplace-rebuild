@@ -208,7 +208,11 @@ export function SiteFooter() {
           </div>
         </div>
         <div>
-          <h4 className="font-bold text-primary">Luxury Care Promise</h4>
+          <h4 className="font-bold text-primary">Contact</h4>
+          <p className="mt-3 text-sm font-semibold text-[#4f3720]">
+            <a className="underline decoration-[#b9933e]/70 underline-offset-4 hover:text-[#8a641e]" href="mailto:info@ebysplace.com">info@ebysplace.com</a>
+          </p>
+          <h4 className="mt-5 font-bold text-primary">Luxury Care Promise</h4>
           <p className="mt-3 text-sm font-medium text-[#4f3720]">
             Zero tension. Maximum longevity. Total comfort for clients who want
             beautiful braids without scalp trauma.
