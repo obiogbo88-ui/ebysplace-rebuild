@@ -1,7 +1,6 @@
 import { type FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { canonicalUrl } from "@/lib/canonicalUrl";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import ImagePreviewModal from "@/components/ImagePreviewModal";
 import { SiteFooter, SiteHeader } from "./Home";
@@ -151,7 +150,6 @@ function ProductCard({
   const collapsedDescription = previewDescription(product.description);
   const canToggleDescription = product.description.trim() !== collapsedDescription;
   const visibleDescription = isDetail || isDescriptionExpanded ? product.description : collapsedDescription;
-  const shareUrl = canonicalUrl(productPublicPath(product));
 
   return (
     <article className="lux-card group min-w-0 overflow-hidden p-0">
@@ -223,7 +221,7 @@ function ProductCard({
               <span className="font-semibold text-primary">{ratingStars(commerce.rating)}</span>{" "}
               <span className="font-semibold">{commerce.rating.toFixed(1)}</span> ({commerce.reviewCount} ratings)
             </p>
-            <button type="button" className="mt-2 text-left text-sm font-semibold text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => navigateWithSmoothScroll(productPublicPath(product))}>{isDetail ? "Product URL" : "View product page"}</button>
+            <button type="button" className="mt-2 text-left text-sm font-semibold text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => navigateWithSmoothScroll(productPublicPath(product))}>View product page</button>
           </div>
           <div className="shrink-0 text-right">
             {commerce.savingsLabel ? <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300">{commerce.savingsLabel}</p> : null}
@@ -280,7 +278,7 @@ function ProductCard({
           <p className="mt-1 text-xs text-white/70">{commerce.deliveryPromise}</p>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="mt-5 grid gap-3">
           <button
             type="button"
             disabled={outOfStock}
@@ -288,13 +286,6 @@ function ProductCard({
             onClick={() => onAdd(product, selectedVariant)}
           >
             {outOfStock ? "Currently unavailable" : `Add ${readableColourLabel(selectedVariant)} to bag`}
-          </button>
-          <button
-            type="button"
-            className="btn-dark w-full py-3 text-sm"
-            onClick={() => { navigator.clipboard?.writeText(shareUrl); toast.success("Product URL copied"); }}
-          >
-            Copy product URL
           </button>
         </div>
       </div>
@@ -469,7 +460,7 @@ export default function Shop() {
           <div className="mt-8 rounded-3xl border border-primary/30 bg-black/25 p-5 text-white" role="status" aria-live="polite">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/85">Product page</p>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="break-words text-lg font-semibold">Direct URL: <span className="text-primary">/shop/{selectedProduct.slug}</span></p>
+              <p className="break-words text-lg font-semibold">Viewing: <span className="text-primary">{selectedProduct.name}</span></p>
               <button type="button" className="btn-dark w-fit bg-white/90 px-4 py-2 text-sm" onClick={() => navigateWithSmoothScroll("/shop")}>View all products</button>
             </div>
           </div>

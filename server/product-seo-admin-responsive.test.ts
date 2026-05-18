@@ -39,7 +39,7 @@ describe("product SEO administration and responsive page safeguards", () => {
 
     expect(shopSource).toContain("function productPublicPath(product: ShopProduct)");
     expect(shopSource).toContain("/shop/${product.slug}");
-    expect(shopSource).toContain("Copy product URL");
+    expect(shopSource).toContain("View product page");
     expect(shopSource).toContain("selectedProduct ? selectedProduct.name");
     expect(shopSource).not.toContain("SEO title");
     expect(shopSource).toContain("function previewDescription(description: string)");
@@ -128,7 +128,7 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(dbSource).toContain("await db.insert(services).values(seedServices).onConflictDoNothing({");
     expect(dbSource).toContain("await db.insert(products).values(seedProducts).onConflictDoUpdate({");
     expect(adminSource).toContain("updateService.mutate");
-    expect(adminSource).toContain("Public product URL");
+    expect(adminSource).toContain("SEO slug");
     expect(adminSource).toContain("Save service price, image & availability");
     expect(adminSource).toContain("updateWebsiteSection.mutate");
     expect(adminSource).toContain("addGallery.mutate");
