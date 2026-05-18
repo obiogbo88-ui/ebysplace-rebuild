@@ -36,7 +36,7 @@ type UploadedPhoto = {
   dataUrl: string;
   fileName: string;
   sizeKb: number;
-  source: "upload" | "camera";
+  source: "camera" | "gallery" | "desktop";
 };
 
 type StoredPhoto = {
@@ -247,7 +247,7 @@ export default function TryOn() {
           See yourself in any braid style.
         </h1>
         <p className="mt-5 max-w-3xl text-[#5f5142]">
-          Upload a clear portrait photo, choose your style, and see an AI preview. The AI changes only the hair — your face, features, and clothing stay exactly as they are.
+          Upload a clear portrait photo, choose your style, and see an AI preview.
         </p>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
@@ -255,14 +255,14 @@ export default function TryOn() {
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#c8a552]/60 bg-white/70 p-6 text-center transition hover:border-[#9f7a25] hover:bg-[#fff7df]">
                 <UploadCloud className="h-10 w-10 text-[#9f7a25]" />
-                <span className="mt-3 font-semibold text-[#2f2418]">Upload from device</span>
-                <span className="mt-2 text-sm text-[#6e604f]">Choose from your gallery or saved files.</span>
+                <span className="mt-3 font-semibold text-[#2f2418]">Photo Gallery</span>
+                <span className="mt-2 text-sm text-[#6e604f]">Choose an image from your phone photo library.</span>
                 <input
                   className="sr-only"
                   type="file"
                   accept={TRY_ON_ACCEPT}
                   disabled={isBusy}
-                  onChange={(event) => void onPhotoInputChange(event, "upload")}
+                  onChange={(event) => void onPhotoInputChange(event, "gallery")}
                 />
               </label>
               <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#c8a552]/60 bg-white/70 p-6 text-center transition hover:border-[#9f7a25] hover:bg-[#fff7df]">
@@ -278,9 +278,21 @@ export default function TryOn() {
                   onChange={(event) => void onPhotoInputChange(event, "camera")}
                 />
               </label>
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#c8a552]/60 bg-white/70 p-6 text-center transition hover:border-[#9f7a25] hover:bg-[#fff7df] sm:col-span-2">
+                <UploadCloud className="h-10 w-10 text-[#9f7a25]" />
+                <span className="mt-3 font-semibold text-[#2f2418]">Desktop File Upload</span>
+                <span className="mt-2 text-sm text-[#6e604f]">Choose an image file from your computer.</span>
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept={TRY_ON_ACCEPT}
+                  disabled={isBusy}
+                  onChange={(event) => void onPhotoInputChange(event, "desktop")}
+                />
+              </label>
             </div>
             <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
-              Step 1: choose a photo source. Step 2: preview it below. Step 3: generate your hairstyle preview when you are happy with the image.
+              Step 1: use phone camera, photo gallery, or desktop file upload. Step 2: preview it below. Step 3: generate your hairstyle preview when you are happy with the image.
             </p>
 
             <label className="mt-6 block text-sm font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]" htmlFor="try-on-style">
@@ -305,7 +317,11 @@ export default function TryOn() {
 
             {photo && (
               <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
-                {photo.source === "camera" ? "Camera photo ready for preview." : "Uploaded photo ready for preview."} Prepared upload size: <strong className="text-[#2f2418]">{photo.sizeKb}KB</strong>. This helps the AI read the portrait and prevents large-photo upload timeouts.
+                {photo.source === "camera"
+                  ? "Camera photo ready for preview."
+                  : photo.source === "gallery"
+                    ? "Gallery photo ready for preview."
+                    : "Desktop upload ready for preview."} Prepared upload size: <strong className="text-[#2f2418]">{photo.sizeKb}KB</strong>. This helps the AI read the portrait and prevents large-photo upload timeouts.
               </p>
             )}
             {error && (
@@ -323,7 +339,7 @@ export default function TryOn() {
               <h2 className="serif text-3xl font-bold text-[#2f2418]">Original</h2>
               <div className="mt-4 flex aspect-[3/4] min-h-[24rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-2">
                 {photo ? (
-                  <img className="h-full w-full rounded-xl object-contain" src={photo.dataUrl} alt={photo.source === "camera" ? "Camera portrait preview before submission" : "Uploaded portrait preview before submission"} />
+                  <img className="h-full w-full rounded-xl object-contain" src={photo.dataUrl} alt={photo.source === "camera" ? "Camera portrait preview before submission" : photo.source === "gallery" ? "Gallery portrait preview before submission" : "Desktop upload portrait preview before submission"} />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
                     Your selected portrait will appear here for preview before submission.
