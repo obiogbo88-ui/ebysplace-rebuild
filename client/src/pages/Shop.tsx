@@ -206,8 +206,6 @@ function ProductCard({
         alt={`${product.name} in ${selectedColourLabel}`}
         dialogLabel={`Full picture of ${product.name} in ${selectedColourLabel}`}
         role="dialog"
-        frameClassName="flex max-h-[92vh] w-full items-center justify-center overflow-hidden rounded-[2rem] border-2 border-neutral-950 bg-white p-4 shadow-2xl sm:rounded-[2.75rem] sm:p-6"
-        imageClassName="h-full w-full object-contain"
         onClose={() => setIsImageViewerOpen(false)}
       />
 
