@@ -1,8 +1,9 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { canonicalUrl } from "@/lib/canonicalUrl";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
+import ImagePreviewModal from "@/components/ImagePreviewModal";
 import { SiteFooter, SiteHeader } from "./Home";
 
 type CartItem = {
@@ -101,17 +102,6 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
   const visibleDescription = isDetail || isDescriptionExpanded ? product.description : collapsedDescription;
   const shareUrl = canonicalUrl(productPublicPath(product));
 
-  useEffect(() => {
-    if (!isImageViewerOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsImageViewerOpen(false);
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isImageViewerOpen]);
-
   return (
     <article className="lux-card group min-w-0 overflow-hidden p-0">
       <div
@@ -124,7 +114,7 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
           <button
             type="button"
             className="absolute inset-0 cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-            aria-label={`Open full picture of ${product.name} in ${selectedColourLabel}`}
+            aria-label={`View full product image. Open full picture of ${product.name} in ${selectedColourLabel}`}
             onClick={() => setIsImageViewerOpen(true)}
           >
             <img
@@ -160,35 +150,17 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
           <span className="pill bg-black/55 text-xs text-primary">{product.stockStatus?.replace("_", " ") || "available"}</span>
         </div>
       </div>
-      {isImageViewerOpen && activeImageUrl ? (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Full picture of ${product.name} in ${selectedColourLabel}`}
-          onClick={() => setIsImageViewerOpen(false)}
-        >
-          <div className="relative flex max-h-[94vh] w-full max-w-[min(92vw,760px)] items-center justify-center" onClick={(event) => event.stopPropagation()}>
-            <button
-              type="button"
-              className="absolute right-4 top-4 z-10 rounded-full border border-neutral-900/20 bg-white/90 px-4 py-2 text-sm font-semibold text-neutral-950 shadow-lg transition hover:border-primary hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              onClick={() => setIsImageViewerOpen(false)}
-            >
-              Close
-            </button>
-            <div className="flex h-[min(88vh,860px)] w-full items-center justify-center overflow-hidden rounded-[2rem] border-2 border-neutral-950 bg-white p-4 shadow-2xl sm:rounded-[2.75rem] sm:p-8">
-              <img
-                src={activeImageUrl}
-                alt={`${product.name} in ${selectedColourLabel}`}
-                className="h-full w-full object-contain"
-                onError={(event) => {
-                  if (event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC) event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ImagePreviewModal
+        isOpen={isImageViewerOpen}
+        imageUrl={activeImageUrl}
+        fallbackSrc={PRODUCT_IMAGE_FALLBACK_SRC}
+        alt={`${product.name} in ${selectedColourLabel}`}
+        dialogLabel={`Full picture of ${product.name} in ${selectedColourLabel}`}
+        role="dialog"
+        frameClassName="flex max-h-[92vh] w-full items-center justify-center overflow-hidden rounded-[2rem] border-2 border-neutral-950 bg-white p-4 shadow-2xl sm:rounded-[2.75rem] sm:p-6"
+        imageClassName="h-full w-full object-contain"
+        onClose={() => setIsImageViewerOpen(false)}
+      />
 
 
       <div className="p-5 sm:p-6">
