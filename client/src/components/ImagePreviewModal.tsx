@@ -19,8 +19,8 @@ export default function ImagePreviewModal({
   alt,
   dialogLabel,
   role = "dialog",
-  frameClassName = "flex max-h-[92vh] w-full items-center justify-center overflow-hidden rounded-[2rem] border-2 border-neutral-950 bg-white p-4 shadow-2xl sm:rounded-[2.75rem] sm:p-6",
-  imageClassName = "h-full w-full object-contain",
+  frameClassName = "flex h-full w-full items-center justify-center p-4 sm:p-8",
+  imageClassName = "max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] object-contain sm:max-h-[calc(100vh-4rem)] sm:max-w-[calc(100vw-4rem)]",
   onClose,
 }: ImagePreviewModalProps) {
   useEffect(() => {
@@ -38,16 +38,16 @@ export default function ImagePreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm transition-opacity duration-300 sm:p-6"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 transition-opacity duration-300"
       role={role}
       aria-modal="true"
       aria-label={dialogLabel}
       onClick={onClose}
     >
-      <div className="relative flex max-h-[94vh] w-full max-w-[min(96vw,920px)] items-center justify-center" onClick={(event) => event.stopPropagation()}>
+      <div className="relative h-full w-full" onClick={(event) => event.stopPropagation()}>
         <button
           type="button"
-          className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-neutral-900/20 bg-white/90 text-2xl leading-none text-neutral-950 shadow-lg transition hover:border-primary hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:right-4 sm:top-4"
+          className="absolute right-4 top-3 z-10 inline-flex h-12 w-12 items-center justify-center text-5xl leading-none text-white transition hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-white sm:right-6 sm:top-4"
           aria-label="Close image preview"
           onClick={onClose}
         >
