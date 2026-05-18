@@ -126,7 +126,7 @@ async function compressImage(file: File): Promise<UploadedPhoto> {
       dataUrl,
       fileName: file.name.replace(/\.[^.]+$/, "") || "customer-photo",
       sizeKb: Math.round(blob.size / 1024),
-      source: "upload",
+      source: "gallery",
     };
   } finally {
     URL.revokeObjectURL(objectUrl);
