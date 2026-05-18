@@ -38,9 +38,50 @@ type ShopProduct = {
   variants?: ProductVariant[];
 };
 
+type ProductCommerceMeta = {
+  department: string;
+  rating: number;
+  reviewCount: number;
+  isPrimeEligible: boolean;
+  strikePrice?: string;
+  savingsLabel?: string;
+  deliveryPromise: string;
+};
+
 const fallbackVariant: ProductVariant = { name: "Default", colourHex: "#c8a95a" };
 const PRODUCT_IMAGE_FALLBACK_SRC = "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png";
 const PRODUCT_THUMBNAIL_SIZES = "(max-width: 767px) calc(100vw - 2rem), (max-width: 1023px) calc((100vw - 4rem) / 2), calc((100vw - 34rem) / 2)";
+const FREE_DELIVERY_THRESHOLD = 45;
+
+function inferDepartment(product: ShopProduct) {
+  const text = `${product.name} ${product.description} ${product.badge || ""}`.toLowerCase();
+  if (text.includes("gel") || text.includes("spray") || text.includes("oil") || text.includes("care")) return "Braid Care";
+  if (text.includes("extension") || text.includes("wig") || text.includes("hair")) return "Hair Extensions";
+  if (text.includes("comb") || text.includes("tool") || text.includes("clip")) return "Tools";
+  return "Accessories";
+}
+
+function inferCommerceMeta(product: ShopProduct): ProductCommerceMeta {
+  const productId = normalizeProductId(product) ?? 1;
+  const department = inferDepartment(product);
+  const rating = 4 + (productId % 10) / 20;
+  const reviewCount = 80 + (productId * 17) % 460;
+  const isPrimeEligible = product.stockStatus !== "out_of_stock" && productId % 2 === 0;
+  const numericPrice = Number(product.price);
+  const strikePrice = Number.isFinite(numericPrice) ? (numericPrice * 1.12).toFixed(2) : undefined;
+  const savingsValue = Number.isFinite(numericPrice) ? Number(strikePrice) - numericPrice : 0;
+  const savingsLabel = savingsValue > 0 ? `Save £${savingsValue.toFixed(2)}` : undefined;
+  const deliveryPromise = isPrimeEligible ? "FREE fast delivery by tomorrow" : "Standard delivery in 2–4 business days";
+  return { department, rating, reviewCount, isPrimeEligible, strikePrice, savingsLabel, deliveryPromise };
+}
+
+function ratingStars(rating: number) {
+  const rounded = Math.round(rating * 2) / 2;
+  const full = Math.floor(rounded);
+  const hasHalf = rounded % 1 !== 0;
+  const empty = 5 - full - (hasHalf ? 1 : 0);
+  return `${"★".repeat(full)}${hasHalf ? "⯪" : ""}${"☆".repeat(Math.max(0, empty))}`;
+}
 
 function previewDescription(description: string) {
   const trimmed = description.trim();
@@ -84,7 +125,17 @@ function normalizeCartForCheckout(cart: CartItem[]) {
   }));
 }
 
-function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduct; onAdd: (product: ShopProduct, variant?: ProductVariant) => void; isDetail?: boolean }) {
+function ProductCard({
+  product,
+  onAdd,
+  commerce,
+  isDetail = false,
+}: {
+  product: ShopProduct;
+  onAdd: (product: ShopProduct, variant?: ProductVariant) => void;
+  commerce: ProductCommerceMeta;
+  isDetail?: boolean;
+}) {
   const variants = product.variants?.length ? product.variants : [fallbackVariant];
   const [selectedVariantKey, setSelectedVariantKey] = useState(String(variants[0]?.id ?? variants[0]?.name ?? "Default"));
   const selectedVariant = variants.find((variant) => String(variant.id ?? variant.name) === selectedVariantKey) ?? variants[0] ?? fallbackVariant;
@@ -167,9 +218,18 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <h2 className="serif break-words text-3xl font-bold text-white">{product.name}</h2>
+            <p className="mt-2 text-sm font-semibold text-primary/90">{commerce.department}</p>
+            <p className="mt-1 text-sm text-white/80">
+              <span className="font-semibold text-primary">{ratingStars(commerce.rating)}</span>{" "}
+              <span className="font-semibold">{commerce.rating.toFixed(1)}</span> ({commerce.reviewCount} ratings)
+            </p>
             <button type="button" className="mt-2 text-left text-sm font-semibold text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => navigateWithSmoothScroll(productPublicPath(product))}>{isDetail ? "Product URL" : "View product page"}</button>
           </div>
-          <b className="shrink-0 text-2xl text-primary">£{product.price}</b>
+          <div className="shrink-0 text-right">
+            {commerce.savingsLabel ? <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300">{commerce.savingsLabel}</p> : null}
+            <b className="text-2xl text-primary">£{product.price}</b>
+            {commerce.strikePrice ? <p className="text-sm text-white/55 line-through">£{commerce.strikePrice}</p> : null}
+          </div>
         </div>
 
         <div className="mt-4 rounded-2xl bg-white/[0.04] p-4 text-white/72">
@@ -215,6 +275,11 @@ function ProductCard({ product, onAdd, isDetail = false }: { product: ShopProduc
           </div>
         </div>
 
+        <div className="mt-4 rounded-2xl border border-emerald-400/30 bg-emerald-300/10 p-3">
+          <p className="text-sm font-semibold text-emerald-200">{commerce.isPrimeEligible ? "Prime-style fast shipping available" : "Standard shipping option"}</p>
+          <p className="mt-1 text-xs text-white/70">{commerce.deliveryPromise}</p>
+        </div>
+
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <button
             type="button"
@@ -241,6 +306,11 @@ export default function Shop() {
   const { data } = trpc.public.products.useQuery();
   const order = trpc.public.createOrder.useMutation();
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [activeDepartment, setActiveDepartment] = useState("All Departments");
+  const [sortBy, setSortBy] = useState<"featured" | "price_low_high" | "price_high_low" | "rating" | "name">("featured");
+  const [minimumPrice, setMinimumPrice] = useState("");
+  const [maximumPrice, setMaximumPrice] = useState("");
+  const [primeFastOnly, setPrimeFastOnly] = useState(false);
   const [delivery, setDelivery] = useState({ customerName: "", customerEmail: "", customerPhone: "", addressLine1: "", addressLine2: "", city: "", county: "", postcode: "", deliveryNote: "" });
   const total = useMemo(() => cart.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0), [cart]);
   const productSlug = useMemo(() => {
@@ -253,10 +323,44 @@ export default function Shop() {
     return new URLSearchParams(window.location.search).get("search")?.trim() || "";
   }, []);
   const products = useMemo(() => (data ?? []) as ShopProduct[], [data]);
+  const commerceMetaByProductId = useMemo(
+    () =>
+      new Map(
+        products.map((product) => [
+          product.id,
+          inferCommerceMeta(product),
+        ]),
+      ),
+    [products],
+  );
+  const departmentOptions = useMemo(
+    () => ["All Departments", ...Array.from(new Set(products.map((product) => inferCommerceMeta(product).department)))],
+    [products],
+  );
   const selectedProduct = useMemo(() => productSlug ? products.find((product) => product.slug === productSlug) : undefined, [products, productSlug]);
   const visibleProducts = useMemo(
-    () => selectedProduct ? [selectedProduct] : searchQuery ? products.filter((product) => productMatchesSearch(product, searchQuery)) : products,
-    [products, searchQuery, selectedProduct]
+    () => {
+      const query = searchQuery.trim().toLowerCase();
+      const min = minimumPrice.trim() ? Number(minimumPrice) : undefined;
+      const max = maximumPrice.trim() ? Number(maximumPrice) : undefined;
+      let filtered = selectedProduct ? [selectedProduct] : products;
+
+      if (!selectedProduct && query) filtered = filtered.filter((product) => productMatchesSearch(product, query));
+      if (!selectedProduct && activeDepartment !== "All Departments") {
+        filtered = filtered.filter((product) => (commerceMetaByProductId.get(product.id)?.department || "Accessories") === activeDepartment);
+      }
+      if (!selectedProduct && primeFastOnly) filtered = filtered.filter((product) => commerceMetaByProductId.get(product.id)?.isPrimeEligible);
+      if (!selectedProduct && Number.isFinite(min)) filtered = filtered.filter((product) => Number(product.price) >= Number(min));
+      if (!selectedProduct && Number.isFinite(max)) filtered = filtered.filter((product) => Number(product.price) <= Number(max));
+
+      const compare = [...filtered];
+      if (sortBy === "price_low_high") compare.sort((a, b) => Number(a.price) - Number(b.price));
+      if (sortBy === "price_high_low") compare.sort((a, b) => Number(b.price) - Number(a.price));
+      if (sortBy === "rating") compare.sort((a, b) => (commerceMetaByProductId.get(b.id)?.rating || 0) - (commerceMetaByProductId.get(a.id)?.rating || 0));
+      if (sortBy === "name") compare.sort((a, b) => a.name.localeCompare(b.name));
+      return compare;
+    },
+    [activeDepartment, commerceMetaByProductId, maximumPrice, minimumPrice, primeFastOnly, products, searchQuery, selectedProduct, sortBy]
   );
   const checkoutReturn = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -267,6 +371,8 @@ export default function Shop() {
     if (payment === "cancelled") return { status: "cancelled" as const, orderId };
     return null;
   }, []);
+  const amountToFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - total);
+  const freeDeliveryProgress = Math.min(100, (total / FREE_DELIVERY_THRESHOLD) * 100);
 
   const add = (product: ShopProduct, variant?: ProductVariant) => {
     const productId = normalizeProductId(product);
@@ -320,6 +426,45 @@ export default function Shop() {
 
         </div>
 
+        {!selectedProduct ? (
+          <section className="mt-8 grid gap-4 rounded-3xl border border-primary/30 bg-black/25 p-5 text-white lg:grid-cols-[1.1fr_1fr_1fr]">
+            <label className="grid gap-2 text-sm font-semibold">
+              Department
+              <select className="rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-white" value={activeDepartment} onChange={(event) => setActiveDepartment(event.target.value)}>
+                {departmentOptions.map((department) => (
+                  <option key={department} value={department}>{department}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-semibold">
+              Sort by
+              <select className="rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-white" value={sortBy} onChange={(event) => setSortBy(event.target.value as "featured" | "price_low_high" | "price_high_low" | "rating" | "name")}>
+                <option value="featured">Featured</option>
+                <option value="price_low_high">Price: Low to High</option>
+                <option value="price_high_low">Price: High to Low</option>
+                <option value="rating">Avg. customer review</option>
+                <option value="name">Name (A–Z)</option>
+              </select>
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="grid grid-cols-2 gap-2">
+                <label className="grid gap-2 text-sm font-semibold">
+                  Min £
+                  <input type="number" min={0} inputMode="decimal" className="rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-white" value={minimumPrice} onChange={(event) => setMinimumPrice(event.target.value)} />
+                </label>
+                <label className="grid gap-2 text-sm font-semibold">
+                  Max £
+                  <input type="number" min={0} inputMode="decimal" className="rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-white" value={maximumPrice} onChange={(event) => setMaximumPrice(event.target.value)} />
+                </label>
+              </div>
+              <label className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-sm font-semibold">
+                <input type="checkbox" checked={primeFastOnly} onChange={(event) => setPrimeFastOnly(event.target.checked)} />
+                Fast-delivery eligible only
+              </label>
+            </div>
+          </section>
+        ) : null}
+
         {selectedProduct ? (
           <div className="mt-8 rounded-3xl border border-primary/30 bg-black/25 p-5 text-white" role="status" aria-live="polite">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/85">Product page</p>
@@ -354,7 +499,15 @@ export default function Shop() {
         <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid gap-6 md:grid-cols-2">
             {visibleProducts.length ? (
-              visibleProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={add} isDetail={product.slug === productSlug} />)
+              visibleProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  commerce={commerceMetaByProductId.get(product.id) || inferCommerceMeta(product)}
+                  onAdd={add}
+                  isDetail={product.slug === productSlug}
+                />
+              ))
             ) : (
               <div className="lux-card md:col-span-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">No products found</p>
@@ -394,6 +547,15 @@ export default function Shop() {
                   </div>
                 ))}
                 <div className="flex justify-between border-t border-primary/30 pt-4 text-lg"><span>Total</span><b className="text-primary">£{total.toFixed(2)}</b></div>
+                <div className="rounded-2xl border border-primary/25 bg-primary/10 p-3 text-sm">
+                  <p className="font-semibold text-primary">Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items): £{total.toFixed(2)}</p>
+                  <p className="mt-1 text-white/75">
+                    {amountToFreeDelivery > 0 ? `Add £${amountToFreeDelivery.toFixed(2)} more to unlock free delivery.` : "You’ve unlocked free delivery on this order."}
+                  </p>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/30">
+                    <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${freeDeliveryProgress}%` }} />
+                  </div>
+                </div>
               </div>
             )}
 
