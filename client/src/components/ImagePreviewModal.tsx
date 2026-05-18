@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 type ImagePreviewModalProps = {
   isOpen: boolean;
@@ -36,7 +37,7 @@ export default function ImagePreviewModal({
 
   if (!isOpen || !imageUrl) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 transition-opacity duration-300"
       role={role}
@@ -67,5 +68,5 @@ export default function ImagePreviewModal({
         </div>
       </div>
     </div>
-  );
+  , document.body);
 }
