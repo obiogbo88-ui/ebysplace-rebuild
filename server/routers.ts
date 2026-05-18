@@ -459,11 +459,13 @@ export const appRouter = router({
         const prompt = [
           `Use the uploaded image as the base image and apply only the selected braid style: ${selectedStyle}.`,
           "Non-negotiable identity preservation rules: preserve the exact face from the uploaded image with zero changes and do not change the person’s identity in any way.",
+          "Do not alter the customer’s facial features, skin tone, face shape, eyes, nose, lips, expression, or identity.",
           "Do not modify facial structure, face shape, skin tone, eyes, eyebrows, nose, lips, ears, or expression.",
           "Do not apply beauty filters, face enhancement, smoothing, sharpening, slimming, age adjustment, or retouching to the face.",
           "The face must remain exactly the same as the original uploaded photo and must not look regenerated, reinterpreted, or artificially restyled.",
           `Allowed change only: replace or restyle hair into ${selectedStyle} only.`,
           "The braid style must look realistic, neat, properly installed, and naturally aligned to the scalp and head shape.",
+          "Only apply the selected braid or hairstyle onto the customer’s head and preserve the original face, lighting, and background as much as possible.",
           "Preserve from the original image: original pose, background, lighting, clothing, camera angle, framing, and overall composition.",
           `Output requirement: the final result must look like the exact same person with the exact same face, with only the hairstyle changed to ${selectedStyle}.`,
           "Priority rule: if there is any difficulty during editing, preserve the original face exactly and adjust only the hair.",

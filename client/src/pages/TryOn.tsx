@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { Loader2, UploadCloud, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -36,6 +36,7 @@ type UploadedPhoto = {
   dataUrl: string;
   fileName: string;
   sizeKb: number;
+  source: "upload" | "camera";
 };
 
 type StoredPhoto = {
@@ -69,6 +70,9 @@ async function convertHeicToJpeg(file: File) {
   }
 }
 
+const MAX_TRY_ON_FILE_SIZE_MB = 20;
+const TRY_ON_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,image/*";
+
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -83,8 +87,8 @@ async function compressImage(file: File): Promise<UploadedPhoto> {
     throw new Error("Please choose an image file for the AI Try-On.");
   }
 
-  if (file.size > 20 * 1024 * 1024) {
-    throw new Error("Please choose a photo under 20MB. Very large camera files can time out before upload.");
+  if (file.size > MAX_TRY_ON_FILE_SIZE_MB * 1024 * 1024) {
+    throw new Error(`Please choose a photo under ${MAX_TRY_ON_FILE_SIZE_MB}MB. Very large camera files can time out before upload.`);
   }
 
   const preparedBlob = isHeicLike(file) ? await convertHeicToJpeg(file) : file;
@@ -122,6 +126,7 @@ async function compressImage(file: File): Promise<UploadedPhoto> {
       dataUrl,
       fileName: file.name.replace(/\.[^.]+$/, "") || "customer-photo",
       sizeKb: Math.round(blob.size / 1024),
+      source: "upload",
     };
   } finally {
     URL.revokeObjectURL(objectUrl);
@@ -155,15 +160,16 @@ export default function TryOn() {
 
   const isBusy = isPreparing || upload.isPending || generate.isPending;
 
-  async function onFile(file?: File) {
+  async function onFile(file: File | undefined, source: UploadedPhoto["source"]) {
     if (!file) return;
     setError(undefined);
+    setPhoto(undefined);
     setStoredPhoto(undefined);
     generate.reset();
     setIsPreparing(true);
     try {
       const compressed = await compressImage(file);
-      setPhoto(compressed);
+      setPhoto({ ...compressed, source });
       toast.success("Photo prepared for AI Try-On", {
         description: `Prepared to ${compressed.sizeKb}KB so the AI can read it more reliably.`,
         classNames: aiTryOnToastClassNames,
@@ -180,9 +186,22 @@ export default function TryOn() {
     }
   }
 
+  async function onPhotoInputChange(event: ChangeEvent<HTMLInputElement>, source: UploadedPhoto["source"]) {
+    const selectedFile = event.target.files?.[0];
+    event.target.value = "";
+    await onFile(selectedFile, source);
+  }
+
   async function run() {
     if (!photo) {
       setError("Please upload a clear portrait photo before generating a preview.");
+      return;
+    }
+
+    if (attemptsUsed >= TRY_ON_ATTEMPT_LIMIT) {
+      const message = "You have used your 3 free AI try-on attempts on this device.";
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -194,7 +213,6 @@ export default function TryOn() {
       });
       setStoredPhoto(uploaded);
 
-      if (attemptsUsed >= TRY_ON_ATTEMPT_LIMIT) { toast.error("You have used your 3 free AI try-on attempts on this device."); return; }
       const result = await generate.mutateAsync({
         styleName: style,
         originalImageUrl: uploaded.url,
@@ -203,6 +221,9 @@ export default function TryOn() {
         gender: "woman" as const,
         ageGroup: "adult" as const,
       });
+      const nextAttemptsUsed = attemptsUsed + 1;
+      localStorage.setItem(TRY_ON_ATTEMPT_KEY, String(nextAttemptsUsed));
+      setAttemptsUsed(nextAttemptsUsed);
       toast.success("AI Try-On preview generated", {
         description: result.customerNotification ?? "Your hairstyle preview is ready below.",
         classNames: aiTryOnToastClassNames,
@@ -231,18 +252,36 @@ export default function TryOn() {
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="lux-card border-[#d8b66b]/35 bg-[#fffaf0]/90 shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
-            <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#c8a552]/60 bg-white/70 p-8 text-center transition hover:border-[#9f7a25] hover:bg-[#fff7df]">
-              <UploadCloud className="h-10 w-10 text-[#9f7a25]" />
-              <span className="mt-3 font-semibold text-[#2f2418]">Upload a clear front-facing photo</span>
-              <span className="mt-2 text-sm text-[#6e604f]">JPEG, PNG, WebP, or iPhone HEIC works best. Large photos are resized automatically.</span>
-              <input
-                className="sr-only"
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,image/*"
-                disabled={isBusy}
-                onChange={(event) => onFile(event.target.files?.[0])}
-              />
-            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#c8a552]/60 bg-white/70 p-6 text-center transition hover:border-[#9f7a25] hover:bg-[#fff7df]">
+                <UploadCloud className="h-10 w-10 text-[#9f7a25]" />
+                <span className="mt-3 font-semibold text-[#2f2418]">Upload from device</span>
+                <span className="mt-2 text-sm text-[#6e604f]">Choose from your gallery or saved files.</span>
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept={TRY_ON_ACCEPT}
+                  disabled={isBusy}
+                  onChange={(event) => void onPhotoInputChange(event, "upload")}
+                />
+              </label>
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#c8a552]/60 bg-white/70 p-6 text-center transition hover:border-[#9f7a25] hover:bg-[#fff7df]">
+                <UploadCloud className="h-10 w-10 text-[#9f7a25]" />
+                <span className="mt-3 font-semibold text-[#2f2418]">Take Photo</span>
+                <span className="mt-2 text-sm text-[#6e604f]">On mobile, this opens your phone camera directly.</span>
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept={TRY_ON_ACCEPT}
+                  capture="user"
+                  disabled={isBusy}
+                  onChange={(event) => void onPhotoInputChange(event, "camera")}
+                />
+              </label>
+            </div>
+            <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
+              Step 1: choose a photo source. Step 2: preview it below. Step 3: generate your hairstyle preview when you are happy with the image.
+            </p>
 
             <label className="mt-6 block text-sm font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]" htmlFor="try-on-style">
               Choose style
@@ -266,7 +305,7 @@ export default function TryOn() {
 
             {photo && (
               <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
-                Prepared upload size: <strong className="text-[#2f2418]">{photo.sizeKb}KB</strong>. This helps the AI read the portrait and prevents large-photo upload timeouts.
+                {photo.source === "camera" ? "Camera photo ready for preview." : "Uploaded photo ready for preview."} Prepared upload size: <strong className="text-[#2f2418]">{photo.sizeKb}KB</strong>. This helps the AI read the portrait and prevents large-photo upload timeouts.
               </p>
             )}
             {error && (
@@ -284,10 +323,10 @@ export default function TryOn() {
               <h2 className="serif text-3xl font-bold text-[#2f2418]">Original</h2>
               <div className="mt-4 flex aspect-[3/4] min-h-[24rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-2">
                 {photo ? (
-                  <img className="h-full w-full rounded-xl object-contain" src={photo.dataUrl} alt="Uploaded portrait preview" />
+                  <img className="h-full w-full rounded-xl object-contain" src={photo.dataUrl} alt={photo.source === "camera" ? "Camera portrait preview before submission" : "Uploaded portrait preview before submission"} />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
-                    Your uploaded portrait will appear here.
+                    Your selected portrait will appear here for preview before submission.
                   </div>
                 )}
               </div>

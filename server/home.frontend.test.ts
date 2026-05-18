@@ -349,6 +349,15 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(tryOnSource).toContain('toast.error("AI Try-On failed"');
   });
 
+  it("supports gallery upload, direct camera capture, and preview before AI Try-On submission", () => {
+    expect(tryOnSource).toContain("Upload from device");
+    expect(tryOnSource).toContain("Take Photo");
+    expect(tryOnSource).toContain('capture="user"');
+    expect(tryOnSource).toContain("On mobile, this opens your phone camera directly.");
+    expect(tryOnSource).toContain("Step 1: choose a photo source. Step 2: preview it below. Step 3: generate your hairstyle preview when you are happy with the image.");
+    expect(tryOnSource).toContain("Your selected portrait will appear here for preview before submission.");
+  });
+
   it("keeps the mobile sticky booking CTA text visibly high-contrast", () => {
     expect(appSource).toContain('className="mobile-sticky-booking fixed inset-x-0 bottom-0 z-[70] px-4 py-3 md:hidden"');
     expect(appSource).toContain('className="sticky-booking-cta-button flex min-h-12 w-full flex-col items-center justify-center rounded-full px-5 py-3 text-center text-base font-extrabold tracking-wide shadow-[0_14px_30px_rgba(17,17,17,.26)] transition"');
