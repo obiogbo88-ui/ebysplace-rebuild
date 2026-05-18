@@ -1103,6 +1103,7 @@ export async function listApprovedProductReviews(productId: number) {
   try {
     const db = await getDb();
     if (!db) return [];
+    await ensureProductReviewsTable();
     return await db.select().from(productReviews).where(and(eq(productReviews.productId, productId), eq(productReviews.status, "approved"))).orderBy(desc(productReviews.createdAt));
   } catch (error) {
     console.warn("[Database] Could not load product reviews", error);
@@ -1114,6 +1115,7 @@ export async function listProductReviewSummaries() {
   try {
     const db = await getDb();
     if (!db) return [];
+    await ensureProductReviewsTable();
     const rows = await db
       .select({
         productId: productReviews.productId,
@@ -1133,6 +1135,7 @@ export async function listProductReviewSummaries() {
 export async function submitProductReview(input: { productId: number; customerName: string; rating: number; reviewText: string }) {
   const db = await getDb();
   if (!db) return { id: Date.now(), status: "pending" as const };
+  await ensureProductReviewsTable();
   const inserted = await db.insert(productReviews).values({ ...input, status: "pending", source: "website" }).returning({ id: productReviews.id });
   return { id: inserted[0]?.id ?? 0, status: "pending" as const };
 }
@@ -1140,6 +1143,7 @@ export async function submitProductReview(input: { productId: number; customerNa
 export async function moderateProductReview(id: number, status: "approved" | "rejected") {
   const db = await getDb();
   if (!db) return { success: true };
+  await ensureProductReviewsTable();
   await db.update(productReviews).set({ status }).where(eq(productReviews.id, id));
   return { success: true };
 }
@@ -1471,6 +1475,25 @@ async function ensureEmailNotificationLogTable() {
   }
 }
 
+async function ensureProductReviewsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "productReviews" (
+      "id" SERIAL PRIMARY KEY,
+      "productId" INTEGER NOT NULL,
+      "customerName" VARCHAR(180) NOT NULL,
+      "rating" INTEGER NOT NULL,
+      "reviewText" TEXT NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'pending',
+      "source" VARCHAR(80) NOT NULL DEFAULT 'website',
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure productReviews table", err);
+  }
+}
+
 async function ensureProductVariantsTable() {
   if (!_pool) return;
   try {
@@ -1587,6 +1610,7 @@ export async function adminSummary() {
   const supabaseProducts = await listSupabaseProducts();
   const db = await getDb();
   if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, pendingProductReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0 };
+  await ensureProductReviewsTable();
   const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(productReviews).where(eq(productReviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
   return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, pendingProductReviews: productReviewRows.length, products: supabaseProducts?.length ?? dbProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
 }
@@ -1600,6 +1624,7 @@ export async function adminLists() {
   if (!db) return { bookings: [], orders: [], reviews: seedReviews, productReviews: [], products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   await ensureEmailNotificationLogTable();
   await ensureProductVariantsTable();
+  await ensureProductReviewsTable();
   const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(productReviews).orderBy(desc(productReviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
   const productsWithVariants = supabaseProducts ?? dbProductRows.map((product) => ({
     ...product,
