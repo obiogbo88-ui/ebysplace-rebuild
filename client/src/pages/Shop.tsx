@@ -334,7 +334,7 @@ export default function Shop() {
     [products],
   );
   const departmentOptions = useMemo(
-    () => ["All Departments", ...new Set(products.map((product) => inferCommerceMeta(product).department))],
+    () => ["All Departments", ...Array.from(new Set(products.map((product) => inferCommerceMeta(product).department)))],
     [products],
   );
   const selectedProduct = useMemo(() => productSlug ? products.find((product) => product.slug === productSlug) : undefined, [products, productSlug]);
