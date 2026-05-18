@@ -183,6 +183,18 @@ export const reviews = pgTable("reviews", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
+export const productReviews = pgTable("productReviews", {
+  id: serial("id").primaryKey(),
+  productId: integer("productId").notNull(),
+  customerName: varchar("customerName", { length: 180 }).notNull(),
+  rating: integer("rating").notNull(),
+  reviewText: text("reviewText").notNull(),
+  status: reviewStatusEnum("status").default("pending").notNull(),
+  source: varchar("source", { length: 80 }).default("website").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
 export const newsletterSubscribers = pgTable("newsletterSubscribers", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 320 }).notNull().unique(),
@@ -236,4 +248,5 @@ export type Service = typeof services.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
+export type ProductReview = typeof productReviews.$inferSelect;
 export type EmailNotificationLog = typeof emailNotificationLogs.$inferSelect;

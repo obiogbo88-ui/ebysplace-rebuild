@@ -262,6 +262,8 @@ export const appRouter = router({
     instagramSettings: publicProcedure.query(() => db.getInstagramSettings()),
     websiteSections: publicProcedure.query(() => db.listWebsiteSections()),
     reviews: publicProcedure.query(() => db.listApprovedReviews()),
+    productReviewSummaries: publicProcedure.query(() => db.listProductReviewSummaries()),
+    productReviews: publicProcedure.input(z.object({ productId: z.number().int().positive() })).query(({ input }) => db.listApprovedProductReviews(input.productId)),
     gallery: publicProcedure.input(z.object({ category: z.string().optional() }).optional()).query(({ input }) => db.listGallery(input?.category)),
     newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(async ({ input }) => {
       const result = await db.subscribeNewsletter(input.email, input.productAlerts);
@@ -287,6 +289,20 @@ export const appRouter = router({
         ].join("\n")
       );
       return { ...review, customerNotification: "Thank you for reviewing Eby’s Place. Your review has been received and is pending approval." };
+    }),
+    submitProductReview: publicProcedure.input(z.object({ productId: z.number().int().positive(), customerName: z.string().min(2), rating: z.number().min(1).max(5), reviewText: z.string().min(10) })).mutation(async ({ input }) => {
+      const review = await db.submitProductReview(input);
+      await notifyOwnerSafely(
+        "New product review submitted",
+        [
+          `A customer submitted a product review for moderation.`,
+          `Product ID: ${input.productId}`,
+          `Customer: ${input.customerName}`,
+          `Rating: ${input.rating}/5`,
+          `Status: ${review.status}`,
+        ].join("\n")
+      );
+      return { ...review, customerNotification: "Thank you for your review. It has been received and is pending approval." };
     }),
     createBooking: publicProcedure.input(bookingInput).mutation(async ({ input }) => {
       const { addOns, bookingProducts, ...bookingFields } = input;
@@ -491,6 +507,7 @@ export const appRouter = router({
     listEmailNotificationLogs: adminProcedure.query(() => db.listEmailNotificationLogs()),
     notificationDiagnostics: adminProcedure.query(() => getNotificationDiagnostics()),
     moderateReview: adminProcedure.input(z.object({ id: z.number(), status: reviewStatus })).mutation(({ input }) => db.moderateReview(input.id, input.status)),
+    moderateProductReview: adminProcedure.input(z.object({ id: z.number(), status: reviewStatus })).mutation(({ input }) => db.moderateProductReview(input.id, input.status)),
     updateBookingStatus: adminProcedure.input(z.object({ id: z.number(), status: bookingStatus })).mutation(({ input }) => db.updateBookingStatus(input.id, input.status)),
     updateOrderStatus: adminProcedure.input(z.object({ id: z.number(), status: orderStatus })).mutation(({ input }) => db.updateOrderStatus(input.id, input.status)),
     blockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional(), reason: z.string().optional() })).mutation(({ input }) => db.blockBookingSlot(input)),

@@ -196,6 +196,17 @@ var reviews = pgTable("reviews", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
+var productReviews = pgTable("productReviews", {
+  id: serial("id").primaryKey(),
+  productId: integer("productId").notNull(),
+  customerName: varchar("customerName", { length: 180 }).notNull(),
+  rating: integer("rating").notNull(),
+  reviewText: text("reviewText").notNull(),
+  status: reviewStatusEnum("status").default("pending").notNull(),
+  source: varchar("source", { length: 80 }).default("website").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull()
+});
 var newsletterSubscribers = pgTable("newsletterSubscribers", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 320 }).notNull().unique(),
@@ -1238,6 +1249,43 @@ async function submitReview(input) {
   const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).returning({ id: reviews.id });
   return { id: inserted[0]?.id ?? 0, status: "pending" };
 }
+async function listApprovedProductReviews(productId) {
+  try {
+    const db = await getDb();
+    if (!db) return [];
+    return await db.select().from(productReviews).where(and(eq(productReviews.productId, productId), eq(productReviews.status, "approved"))).orderBy(desc(productReviews.createdAt));
+  } catch (error) {
+    console.warn("[Database] Could not load product reviews", error);
+    return [];
+  }
+}
+async function listProductReviewSummaries() {
+  try {
+    const db = await getDb();
+    if (!db) return [];
+    const rows = await db.select({
+      productId: productReviews.productId,
+      avgRating: sql`ROUND(AVG(${productReviews.rating})::numeric, 1)`,
+      reviewCount: sql`COUNT(*)`
+    }).from(productReviews).where(eq(productReviews.status, "approved")).groupBy(productReviews.productId);
+    return rows.map((row) => ({ productId: row.productId, avgRating: Number(row.avgRating), reviewCount: Number(row.reviewCount) }));
+  } catch (error) {
+    console.warn("[Database] Could not load product review summaries", error);
+    return [];
+  }
+}
+async function submitProductReview(input) {
+  const db = await getDb();
+  if (!db) return { id: Date.now(), status: "pending" };
+  const inserted = await db.insert(productReviews).values({ ...input, status: "pending", source: "website" }).returning({ id: productReviews.id });
+  return { id: inserted[0]?.id ?? 0, status: "pending" };
+}
+async function moderateProductReview(id, status) {
+  const db = await getDb();
+  if (!db) return { success: true };
+  await db.update(productReviews).set({ status }).where(eq(productReviews.id, id));
+  return { success: true };
+}
 function safeParseJson(value, fallback) {
   if (!value) return fallback;
   try {
@@ -1616,9 +1664,9 @@ async function adminSummary() {
   await seedIfNeeded();
   const supabaseProducts = await listSupabaseProducts();
   const db = await getDb();
-  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0 };
-  const [bookingRows, orderRows, reviewRows, dbProductRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
-  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, products: supabaseProducts?.length ?? dbProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
+  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, pendingProductReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0 };
+  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(productReviews).where(eq(productReviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
+  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, pendingProductReviews: productReviewRows.length, products: supabaseProducts?.length ?? dbProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
 }
 async function adminLists() {
   await seedIfNeeded();
@@ -1626,10 +1674,10 @@ async function adminLists() {
   const db = await getDb();
   if (db) await ensureBookingLocationColumns();
   const fallbackProducts = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
-  if (!db) return { bookings: [], orders: [], reviews: seedReviews, products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+  if (!db) return { bookings: [], orders: [], reviews: seedReviews, productReviews: [], products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   await ensureEmailNotificationLogTable();
   await ensureProductVariantsTable();
-  const [bookingRows, orderRows, reviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
+  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(productReviews).orderBy(desc(productReviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
   const productsWithVariants = supabaseProducts ?? dbProductRows.map((product) => ({
     ...product,
     id: Number(product.id),
@@ -1641,7 +1689,7 @@ async function adminLists() {
     seoDescription: product.seoDescription || product.description,
     variants: variantRows.filter((variant) => variant.productId === product.id)
   }));
-  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows, emailNotifications: emailNotificationRows, availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, productReviews: productReviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows, emailNotifications: emailNotificationRows, availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
 }
 async function moderateReview(id, status) {
   const db = await getDb();
@@ -3255,6 +3303,8 @@ var appRouter = router({
     instagramSettings: publicProcedure.query(() => getInstagramSettings()),
     websiteSections: publicProcedure.query(() => listWebsiteSections()),
     reviews: publicProcedure.query(() => listApprovedReviews()),
+    productReviewSummaries: publicProcedure.query(() => listProductReviewSummaries()),
+    productReviews: publicProcedure.input(z2.object({ productId: z2.number().int().positive() })).query(({ input }) => listApprovedProductReviews(input.productId)),
     gallery: publicProcedure.input(z2.object({ category: z2.string().optional() }).optional()).query(({ input }) => listGallery(input?.category)),
     newsletter: publicProcedure.input(z2.object({ email: z2.string().email(), productAlerts: z2.boolean().default(false) })).mutation(async ({ input }) => {
       const result = await subscribeNewsletter(input.email, input.productAlerts);
@@ -3280,6 +3330,20 @@ var appRouter = router({
         ].join("\n")
       );
       return { ...review, customerNotification: "Thank you for reviewing Eby\u2019s Place. Your review has been received and is pending approval." };
+    }),
+    submitProductReview: publicProcedure.input(z2.object({ productId: z2.number().int().positive(), customerName: z2.string().min(2), rating: z2.number().min(1).max(5), reviewText: z2.string().min(10) })).mutation(async ({ input }) => {
+      const review = await submitProductReview(input);
+      await notifyOwnerSafely(
+        "New product review submitted",
+        [
+          `A customer submitted a product review for moderation.`,
+          `Product ID: ${input.productId}`,
+          `Customer: ${input.customerName}`,
+          `Rating: ${input.rating}/5`,
+          `Status: ${review.status}`
+        ].join("\n")
+      );
+      return { ...review, customerNotification: "Thank you for your review. It has been received and is pending approval." };
     }),
     createBooking: publicProcedure.input(bookingInput).mutation(async ({ input }) => {
       const { addOns, bookingProducts, ...bookingFields } = input;
@@ -3478,6 +3542,7 @@ var appRouter = router({
     listEmailNotificationLogs: adminProcedure.query(() => listEmailNotificationLogs()),
     notificationDiagnostics: adminProcedure.query(() => getNotificationDiagnostics()),
     moderateReview: adminProcedure.input(z2.object({ id: z2.number(), status: reviewStatus })).mutation(({ input }) => moderateReview(input.id, input.status)),
+    moderateProductReview: adminProcedure.input(z2.object({ id: z2.number(), status: reviewStatus })).mutation(({ input }) => moderateProductReview(input.id, input.status)),
     updateBookingStatus: adminProcedure.input(z2.object({ id: z2.number(), status: bookingStatus })).mutation(({ input }) => updateBookingStatus(input.id, input.status)),
     updateOrderStatus: adminProcedure.input(z2.object({ id: z2.number(), status: orderStatus })).mutation(({ input }) => updateOrderStatus(input.id, input.status)),
     blockAvailabilitySlot: adminProcedure.input(z2.object({ date: z2.string().min(4), time: z2.string().optional(), reason: z2.string().optional() })).mutation(({ input }) => blockBookingSlot(input)),

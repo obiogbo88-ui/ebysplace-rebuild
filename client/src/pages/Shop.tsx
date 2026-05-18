@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import ImagePreviewModal from "@/components/ImagePreviewModal";
 import { SiteFooter, SiteHeader } from "./Home";
+import { Star } from "lucide-react";
 
 type CartItem = {
   productId: number;
@@ -45,6 +46,14 @@ type ProductCommerceMeta = {
   strikePrice?: string;
   savingsLabel?: string;
   deliveryPromise: string;
+};
+
+type ProductReviewItem = {
+  id: number;
+  customerName: string;
+  rating: number;
+  reviewText: string;
+  createdAt?: Date | string | null;
 };
 
 const fallbackVariant: ProductVariant = { name: "Default", colourHex: "#c8a95a" };
@@ -140,6 +149,13 @@ function ProductCard({
   const selectedVariant = variants.find((variant) => String(variant.id ?? variant.name) === selectedVariantKey) ?? variants[0] ?? fallbackVariant;
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewName, setReviewName] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const submitProductReview = trpc.public.submitProductReview.useMutation();
+  const liveReviews = trpc.public.productReviews.useQuery({ productId: product.id }, { enabled: isDetail && !!product.id });
   const selectedColour = selectedVariant.colourHex || "#c8a95a";
   const selectedColourLabel = readableColourLabel(selectedVariant);
   const selectedVariantImageUrl = selectedVariant.imageUrl?.trim() || "";
@@ -150,6 +166,17 @@ function ProductCard({
   const collapsedDescription = previewDescription(product.description);
   const canToggleDescription = product.description.trim() !== collapsedDescription;
   const visibleDescription = isDetail || isDescriptionExpanded ? product.description : collapsedDescription;
+
+  const handleReviewSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const result = await submitProductReview.mutateAsync({ productId: product.id, customerName: reviewName, rating: reviewRating, reviewText });
+    toast.success(result.customerNotification);
+    setReviewSubmitted(true);
+    setShowReviewForm(false);
+    setReviewName("");
+    setReviewRating(5);
+    setReviewText("");
+  };
 
   return (
     <article className="lux-card group min-w-0 overflow-hidden p-0">
@@ -288,6 +315,62 @@ function ProductCard({
             {outOfStock ? "Currently unavailable" : `Add ${readableColourLabel(selectedVariant)} to bag`}
           </button>
         </div>
+
+        {isDetail && (
+          <div className="mt-6 border-t border-white/10 pt-6">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="serif text-2xl font-bold text-white">Customer Reviews</h3>
+              {!showReviewForm && !reviewSubmitted && (
+                <button type="button" className="btn-dark py-2 text-sm" onClick={() => setShowReviewForm(true)}>Write a review</button>
+              )}
+            </div>
+
+            {showReviewForm && (
+              <form className="mt-4 grid gap-4 rounded-2xl border border-primary/25 bg-white/[0.03] p-4" onSubmit={handleReviewSubmit}>
+                <label className="grid gap-1 text-sm font-bold uppercase tracking-[.16em] text-primary">
+                  Your name
+                  <input className="min-h-11 rounded-xl border border-primary/25 bg-white/10 px-4 py-2 text-base font-semibold normal-case tracking-normal text-white outline-none transition placeholder:text-white/35 focus:border-primary focus:ring-2 focus:ring-primary/25" value={reviewName} onChange={(event) => setReviewName(event.target.value)} placeholder="Your name" required />
+                </label>
+                <fieldset className="grid gap-2">
+                  <legend className="text-sm font-bold uppercase tracking-[.16em] text-primary">Rating</legend>
+                  <div className="flex gap-2" role="radiogroup" aria-label="Star rating">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button key={star} type="button" className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${reviewRating >= star ? "border-primary bg-primary text-[#24170d]" : "border-primary/25 bg-white/10 text-primary"}`} aria-label={`${star} star${star === 1 ? "" : "s"}`} aria-pressed={reviewRating === star} onClick={() => setReviewRating(star)}>
+                        <Star className="h-4 w-4 fill-current" aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <label className="grid gap-1 text-sm font-bold uppercase tracking-[.16em] text-primary">
+                  Review
+                  <textarea className="min-h-28 rounded-xl border border-primary/25 bg-white/10 px-4 py-2 text-base font-semibold normal-case leading-7 tracking-normal text-white outline-none transition placeholder:text-white/35 focus:border-primary focus:ring-2 focus:ring-primary/25" value={reviewText} onChange={(event) => setReviewText(event.target.value)} placeholder="Share your experience with this product." required />
+                </label>
+                <div className="flex gap-3">
+                  <button className="btn-gold py-2 text-sm" type="submit" disabled={submitProductReview.isPending}>{submitProductReview.isPending ? "Submitting..." : "Submit review"}</button>
+                  <button className="btn-dark py-2 text-sm" type="button" onClick={() => setShowReviewForm(false)}>Cancel</button>
+                </div>
+              </form>
+            )}
+
+            {reviewSubmitted && (
+              <p className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm font-semibold text-primary">Your review has been submitted and is pending approval. Thank you!</p>
+            )}
+
+            <div className="mt-4 grid gap-3">
+              {liveReviews.isLoading && <p className="text-sm text-white/55">Loading reviews…</p>}
+              {!liveReviews.isLoading && (liveReviews.data?.length ?? 0) === 0 && (
+                <p className="text-sm text-white/55">No reviews yet. Be the first to leave one.</p>
+              )}
+              {(liveReviews.data ?? []).map((review) => (
+                <div key={review.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <p className="text-sm font-semibold text-primary">{ratingStars(review.rating)} {review.rating}/5</p>
+                  <p className="mt-2 text-sm leading-6 text-white/80">{review.reviewText}</p>
+                  <p className="mt-2 text-xs font-bold text-white/55">{review.customerName}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </article>
   );
@@ -295,6 +378,7 @@ function ProductCard({
 
 export default function Shop() {
   const { data } = trpc.public.products.useQuery();
+  const { data: reviewSummaries } = trpc.public.productReviewSummaries.useQuery();
   const order = trpc.public.createOrder.useMutation();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeDepartment, setActiveDepartment] = useState("All Departments");
@@ -314,15 +398,26 @@ export default function Shop() {
     return new URLSearchParams(window.location.search).get("search")?.trim() || "";
   }, []);
   const products = useMemo(() => (data ?? []) as ShopProduct[], [data]);
+  const reviewSummaryByProductId = useMemo(
+    () => new Map((reviewSummaries ?? []).map((s) => {
+      const summary = s as { productId: number; avgRating: number; reviewCount: number };
+      return [summary.productId, summary] as const;
+    })),
+    [reviewSummaries],
+  );
   const commerceMetaByProductId = useMemo(
     () =>
       new Map(
-        products.map((product) => [
-          product.id,
-          inferCommerceMeta(product),
-        ]),
+        products.map((product) => {
+          const base = inferCommerceMeta(product);
+          const live = reviewSummaryByProductId.get(product.id) as { productId: number; avgRating: number; reviewCount: number } | undefined;
+          return [
+            product.id,
+            live ? { ...base, rating: live.avgRating, reviewCount: live.reviewCount } : base,
+          ];
+        }),
       ),
-    [products],
+    [products, reviewSummaryByProductId],
   );
   const departmentOptions = useMemo(
     () => ["All Departments", ...Array.from(new Set(products.map((product) => inferCommerceMeta(product).department)))],
