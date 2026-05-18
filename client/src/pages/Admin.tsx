@@ -25,6 +25,7 @@ type AdminListData = {
   bookings?: any[];
   orders?: any[];
   reviews?: any[];
+  productReviews?: any[];
   products?: any[];
   services?: any[];
   gallery?: any[];
@@ -120,6 +121,7 @@ const adminOverviewActions = [
   { label: "Services", sectionId: "services", description: "Update public braid service details." },
   { label: "Gallery", sectionId: "gallery", description: "Add or organise gallery images." },
   { label: "Reviews", sectionId: "reviews", description: "Moderate customer reviews safely." },
+  { label: "Product Reviews", sectionId: "product-reviews", description: "Moderate shop product reviews." },
   { label: "Activity", sectionId: "activity-monitoring", description: "Review analytics and live activity monitoring." },
   { label: "Content", sectionId: "content", description: "Update the About Us story, round image, and image description." },
 ] as const;
@@ -181,6 +183,7 @@ export default function Admin() {
     utils.public.instagramSettings.invalidate();
     utils.public.websiteSections.invalidate();
     utils.public.reviews.invalidate();
+    utils.public.productReviewSummaries.invalidate();
     utils.public.gallery.invalidate();
     utils.public.paymentMode.invalidate();
   };
@@ -198,6 +201,7 @@ export default function Admin() {
   };
 
   const moderate = trpc.admin.moderateReview.useMutation(opts);
+  const moderateProductReview = trpc.admin.moderateProductReview.useMutation(opts);
   const blockAvailabilitySlot = trpc.admin.blockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot blocked"); } });
   const unblockAvailabilitySlot = trpc.admin.unblockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot unblocked"); } });
   const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => { scrollAdminFeedback("bookings"); toast.success("Review request sent"); } });
@@ -344,6 +348,9 @@ export default function Admin() {
   const reviewRows = (data.reviews || []) as AdminReviewItem[];
   const pendingReviewRows = reviewRows.filter((review) => review.status === "pending");
   const moderatedReviewRows = reviewRows.filter((review) => review.status !== "pending");
+  const productReviewRows = (data.productReviews || []) as AdminReviewItem[];
+  const pendingProductReviewRows = productReviewRows.filter((review) => review.status === "pending");
+  const moderatedProductReviewRows = productReviewRows.filter((review) => review.status !== "pending");
   const emailNotificationRows = emailLogs.data || data.emailNotifications || [];
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
   const togglePanel = (panelId: string) => setOpenPanels((current) => {
@@ -505,6 +512,7 @@ export default function Admin() {
             <Stat label="Bookings" value={summary.data?.bookings ?? 0} icon={CalendarDays} />
             <Stat label="Orders" value={summary.data?.orders ?? 0} icon={ShoppingBag} />
             <Stat label="Pending reviews" value={summary.data?.pendingReviews ?? 0} icon={MessageSquare} />
+            <Stat label="Pending product reviews" value={summary.data?.pendingProductReviews ?? 0} icon={MessageSquare} />
             <Stat label="Products" value={summary.data?.products ?? 0} icon={Package} />
             <Stat label="Services" value={summary.data?.services ?? 0} icon={Scissors} />
             <Stat label="AI try-ons" value={summary.data?.tryOns ?? 0} icon={Sparkles} />
@@ -666,6 +674,56 @@ export default function Admin() {
                         <div className="mt-3 flex gap-2">
                           <button className="btn-gold py-1 text-xs" disabled={moderate.isPending} onClick={() => moderate.mutate({ id: review.id, status: "approved" })}>Approve</button>
                           <button className="btn-dark py-1 text-xs" disabled={moderate.isPending} onClick={() => moderate.mutate({ id: review.id, status: "rejected" })}>Reject</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </>
+          )}
+          </AdminPanel>
+
+          <AdminPanel id="product-reviews" eyebrow="Shop trust" title="Product reviews moderator" description="Approve or reject customer reviews for shop products. Approved reviews appear live on each product page." icon={MessageSquare} open={isPanelOpen("product-reviews")} onToggle={() => togglePanel("product-reviews")}>
+          {lists.isLoading && <p className="mt-4 text-sm text-white/55">Loading product reviews…</p>}
+          {lists.error && <p className="mt-4 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">Could not load product reviews: {lists.error.message}</p>}
+          {!lists.isLoading && !lists.error && (
+            <>
+              <p className="text-sm text-white/65">Pending product reviews: <b className="text-primary">{pendingProductReviewRows.length}</b></p>
+              {!pendingProductReviewRows.length ? (
+                <p className="mt-4 text-sm text-white/55">{productReviewRows.length ? "All product reviews have already been moderated." : "No product reviews yet. Customer reviews from the shop will appear here."}</p>
+              ) : (
+                <>
+                  <h3 className="mt-5 font-semibold text-primary">Needs moderation</h3>
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    {pendingProductReviewRows.map((review) => (
+                      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4" key={review.id}>
+                        <div className="text-primary">{"★".repeat(review.rating)}</div>
+                        <p className="mt-2 text-white/70">{review.reviewText}</p>
+                        <b className="mt-3 block">{review.customerName}</b>
+                        <p className="text-xs text-white/45">Status: pending</p>
+                        <div className="mt-4 flex gap-2">
+                          <button className="btn-gold py-2" disabled={moderateProductReview.isPending} onClick={() => moderateProductReview.mutate({ id: review.id, status: "approved" })}>Approve</button>
+                          <button className="btn-dark py-2" disabled={moderateProductReview.isPending} onClick={() => moderateProductReview.mutate({ id: review.id, status: "rejected" })}>Reject</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {moderatedProductReviewRows.length > 0 && (
+                <details className="mt-6">
+                  <summary className="cursor-pointer text-sm text-white/55 hover:text-white/80">Show all moderated product reviews ({moderatedProductReviewRows.length})</summary>
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    {moderatedProductReviewRows.map((review) => (
+                      <div className="rounded-2xl border border-white/10 p-4" key={review.id}>
+                        <div className="text-primary">{"★".repeat(review.rating)}</div>
+                        <p className="mt-2 text-white/70">{review.reviewText}</p>
+                        <b className="mt-3 block">{review.customerName}</b>
+                        <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${review.status === "approved" ? "bg-emerald-900/40 text-emerald-300" : "bg-red-900/40 text-red-300"}`}>{review.status}</span>
+                        <div className="mt-3 flex gap-2">
+                          <button className="btn-gold py-1 text-xs" disabled={moderateProductReview.isPending} onClick={() => moderateProductReview.mutate({ id: review.id, status: "approved" })}>Approve</button>
+                          <button className="btn-dark py-1 text-xs" disabled={moderateProductReview.isPending} onClick={() => moderateProductReview.mutate({ id: review.id, status: "rejected" })}>Reject</button>
                         </div>
                       </div>
                     ))}
