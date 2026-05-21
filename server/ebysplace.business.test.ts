@@ -558,10 +558,10 @@ describe("Eby’s Place platform business rules", () => {
       originalImages: [{ url: "https://signed-storage.example.test/try-on/uploads/test-customer-photo.jpg", mimeType: "image/jpeg" }],
     }));
     const generateImageCall = generateImageMock.mock.calls[0]?.[0];
-    expect(generateImageCall?.prompt).toContain("Eby’s Place AI hairstyle try-on");
-    expect(generateImageCall?.prompt).toContain("apply hairstyle Knotless Braids only to the customer’s hair area");
-    expect(generateImageCall?.prompt).toContain("Preserve the customer’s exact face and identity with zero changes.");
-    expect(generateImageCall?.prompt).toContain("Do not change or retouch the face, skin, facial features, expression, age, body, clothing, pose, camera angle, lighting, or background.");
+    expect(generateImageCall?.prompt).toContain("apply the selected hairstyle: Knotless Braids");
+    expect(generateImageCall?.prompt).toContain("Preserve the person’s exact face, identity, skin tone, facial expression, head shape");
+    expect(generateImageCall?.prompt).toContain("Do not change the person into someone else. Only edit the hair area.");
+    expect(generateImageCall?.prompt).toContain("salon preview for Eby’s Place.");
     expect(generateImageCall?.prompt).not.toContain("{{STYLE_NAME}}");
     createSpy.mockRestore();
     updateSpy.mockRestore();

@@ -3529,17 +3529,22 @@ var appRouter = router({
       originalImageKey: z2.string().min(3).optional(),
       mimeType: z2.string().optional(),
       gender: z2.enum(["woman", "man", "child"]).optional(),
-      ageGroup: z2.enum(["child", "teen", "adult", "mature"]).optional()
+      ageGroup: z2.enum(["child", "teen", "adult", "mature"]).optional(),
+      referenceImageUrl: z2.string().url().optional()
     })).mutation(async ({ input }) => {
       const record = await createTryOnGeneration({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, status: "pending" });
       try {
         const selectedStyle = input.styleName;
-        const ebysPlaceTryOnPromptTemplate = "Eby\u2019s Place AI hairstyle try-on: apply hairstyle {{STYLE_NAME}} only to the customer\u2019s hair area in the uploaded image. Preserve the customer\u2019s exact face and identity with zero changes. Do not change or retouch the face, skin, facial features, expression, age, body, clothing, pose, camera angle, lighting, or background. Keep the person exactly the same and generate a realistic result where only the hairstyle is changed to {{STYLE_NAME}}.";
+        const ebysPlaceTryOnPromptTemplate = "Edit this uploaded photo to apply the selected hairstyle: {{STYLE_NAME}}. Preserve the person\u2019s exact face, identity, skin tone, facial expression, head shape, eyes, eyebrows, nose, lips, and overall appearance. Do not change the person into someone else. Only edit the hair area. Keep the original background, pose, lighting, and clothing as much as possible. Make the hairstyle look realistic, neat, professional, and photorealistic like a true salon preview for Eby\u2019s Place.";
         const prompt = ebysPlaceTryOnPromptTemplate.replaceAll("{{STYLE_NAME}}", selectedStyle);
         const storageKey = input.originalImageUrl.startsWith("/") ? input.originalImageKey ?? decodeURIComponent(input.originalImageUrl.replace("/", "")) : null;
         const editableImageUrl = storageKey ? await storageGetSignedUrl(storageKey) : input.originalImageUrl;
         const mimeType = input.mimeType?.startsWith("image/") ? input.mimeType : "image/jpeg";
-        const result = await generateImage({ prompt, originalImages: [{ url: editableImageUrl, mimeType }] });
+        const originalImages = [{ url: editableImageUrl, mimeType }];
+        if (input.referenceImageUrl) {
+          originalImages.push({ url: input.referenceImageUrl, mimeType: "image/jpeg" });
+        }
+        const result = await generateImage({ prompt, originalImages });
         await updateTryOnGeneration(record.id, { status: "completed", generatedImageUrl: result.url });
         await notifyOwnerSafely(
           "New Eby\u2019s Place AI Try-On generated",

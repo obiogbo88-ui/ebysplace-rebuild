@@ -32,6 +32,34 @@ const styles = [
   "Kids Box Braids",
 ];
 
+type StyleInfo = {
+  description: string;
+  referenceImageUrl?: string;
+};
+
+const styleInfo: Record<string, StyleInfo> = {
+  "Knotless Braids": { description: "Individual braids that start with your natural hair before adding extensions — no knots at the root, less tension, very natural and lightweight look." },
+  "Box Braids": { description: "Classic individual braids divided into neat box-shaped sections. Versatile length and thickness, great for protective styling." },
+  "Goddess Braids": { description: "Large, chunky braids that lay flat to the scalp or flow freely, often with curly extensions woven in for a bold goddess-inspired finish." },
+  "Fulani Braids": { description: "West African-inspired cornrows and individual braids combined, typically featuring a centre part and thin braids framing the face." },
+  "Cornrows": { description: "Braids braided close to the scalp in straight or curved rows. Sleek, neat, and perfect for any occasion." },
+  "Stitch Braids": { description: "Cornrows with a stitch-feed-in method that creates a distinctly straight, clean, layered line at each row — a sharp and modern look." },
+  "Lemonade Braids": { description: "Side-swept, feed-in cornrows braided to one side and left to hang freely. Popularised by Beyoncé's Lemonade album aesthetic." },
+  "Boho Braids": { description: "Knotless or box braids with loose, wavy curly ends left out for a carefree, bohemian vibe." },
+  "Tribal Braids": { description: "A fusion of cornrows and box braids with tribal patterns, beads, and unique part designs for a bold, artistic style." },
+  "Senegalese Twists": { description: "Two-strand twists using silky or kinky extensions for a smooth, rope-like finish. Lightweight and elegant." },
+  "Passion Twists": { description: "Two-strand twists with wavy, springy extensions for a romantic, textured look that combines twists with bohemian curls." },
+  "Faux Locs": { description: "Synthetic dreadlock-style locs wrapped around braids for a natural loc appearance without the commitment of real locs." },
+  "Butterfly Locs": { description: "Distressed faux locs with a looped, feathery texture along the shaft — giving a whimsical, butterfly-wing effect." },
+  "Starter Locs": { description: "The beginning stage of dreadlocks — freshly cultivated locs that are short and coil as your natural hair grows and locks over time." },
+  "Men Cornrows": { description: "Neat, scalp-hugging cornrows tailored for men — straight back, curved, or in creative patterns for a clean, sharp look." },
+  "Men Box Braids": { description: "Individual box braids for men, from short to shoulder-length, offering a stylish and low-maintenance protective style." },
+  "Men Twists": { description: "Two-strand twists for men — a simple, clean protective style that works for all hair textures and lengths." },
+  "Kids Braids": { description: "Gentle, protective braided styles suitable for children's hair — designed with scalp comfort and durability in mind." },
+  "Kids Cornrows": { description: "Neat cornrow styles perfect for kids — creative patterns with gentle tension to protect young, delicate hair." },
+  "Kids Box Braids": { description: "Age-appropriate individual box braids for children — neat, playful, and long-lasting protective styling." },
+};
+
 type UploadedPhoto = {
   dataUrl: string;
   fileName: string;
@@ -220,6 +248,7 @@ export default function TryOn() {
         mimeType: uploaded.mimeType,
         gender: "woman" as const,
         ageGroup: "adult" as const,
+        referenceImageUrl: styleInfo[style]?.referenceImageUrl,
       });
       const nextAttemptsUsed = attemptsUsed + 1;
       localStorage.setItem(TRY_ON_ATTEMPT_KEY, String(nextAttemptsUsed));
@@ -249,6 +278,18 @@ export default function TryOn() {
         <p className="mt-5 max-w-3xl text-[#5f5142]">
           Upload a clear portrait photo, choose your style, and see an AI preview.
         </p>
+
+        <div className="mt-6 rounded-2xl border border-[#c8a552]/50 bg-[#fff7df] px-5 py-4 text-sm text-[#5f5142]">
+          <p className="font-semibold text-[#2f2418]">📸 For the best AI result, your photo must have:</p>
+          <ul className="mt-2 list-inside list-disc space-y-1">
+            <li>A clear, unobstructed view of your face</li>
+            <li>Good, even lighting — no harsh shadows or dark backgrounds</li>
+            <li>A front-facing or slight side-angle portrait</li>
+            <li>No blur, filters, or heavy editing</li>
+            <li>Your full head and hair visible in the frame</li>
+          </ul>
+          <p className="mt-2 text-xs text-[#6e604f]">These requirements help the AI preserve your exact face, skin tone, and identity while only editing the hair area.</p>
+        </div>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="lux-card border-[#d8b66b]/35 bg-[#fffaf0]/90 shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
@@ -309,6 +350,12 @@ export default function TryOn() {
                 <option key={item} value={item}>{item}</option>
               ))}
             </select>
+
+            {styleInfo[style] && (
+              <p className="mt-3 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
+                <span className="font-semibold text-[#2f2418]">{style}:</span>{" "}{styleInfo[style].description}
+              </p>
+            )}
 
             <button className="btn-gold mt-6 w-full" onClick={run} disabled={!photo || isBusy}>
               {isBusy ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Wand2 className="mr-2 h-5 w-5" />}
