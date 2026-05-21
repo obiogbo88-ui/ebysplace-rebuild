@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import { Loader2, UploadCloud, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -156,6 +156,13 @@ export default function TryOn() {
   const upload = trpc.public.uploadTryOnPhoto.useMutation();
   const generate = trpc.public.generateTryOn.useMutation();
   const [attemptsUsed, setAttemptsUsed] = useState(() => Number(localStorage.getItem(TRY_ON_ATTEMPT_KEY) || "0"));
+
+  useEffect(() => {
+    if (TRY_ON_ATTEMPT_LIMIT === null) {
+      localStorage.removeItem(TRY_ON_ATTEMPT_KEY);
+      setAttemptsUsed(0);
+    }
+  }, []);
   const [photo, setPhoto] = useState<UploadedPhoto>();
   const [storedPhoto, setStoredPhoto] = useState<StoredPhoto>();
   const [style, setStyle] = useState(styles[0]);
