@@ -145,7 +145,11 @@ function friendlyTryOnError(error: unknown) {
   return message;
 }
 
-const TRY_ON_ATTEMPT_LIMIT = 3;
+const AI_TRYON_FREE_LIMIT_ENV = import.meta.env.VITE_AI_TRYON_FREE_LIMIT;
+const TRY_ON_ATTEMPT_LIMIT: number | null =
+  !AI_TRYON_FREE_LIMIT_ENV || AI_TRYON_FREE_LIMIT_ENV === "unlimited"
+    ? null
+    : Number(AI_TRYON_FREE_LIMIT_ENV);
 const TRY_ON_ATTEMPT_KEY = "ebysplace_tryon_attempts";
 
 export default function TryOn() {
@@ -198,8 +202,8 @@ export default function TryOn() {
       return;
     }
 
-    if (attemptsUsed >= TRY_ON_ATTEMPT_LIMIT) {
-      const message = "You have used your 3 free AI try-on attempts on this device.";
+    if (TRY_ON_ATTEMPT_LIMIT !== null && attemptsUsed >= TRY_ON_ATTEMPT_LIMIT) {
+      const message = `You have used your ${TRY_ON_ATTEMPT_LIMIT} free AI try-on attempts on this device.`;
       setError(message);
       toast.error(message);
       return;
