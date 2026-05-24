@@ -64,26 +64,26 @@ export function SiteHeader() {
           />
         </Link>
 
-        <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 xl:gap-5 2xl:flex">
+        <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 2xl:flex 2xl:gap-3">
           <nav
-            className="flex min-w-0 items-center gap-3 xl:gap-5"
+            className="flex min-w-0 items-center gap-2 2xl:gap-3"
             aria-label="Main navigation"
           >
             {desktopNavLinks.map(item => (
-              <Link key={item.href} className="nav-link whitespace-nowrap text-[0.72rem] tracking-[.12em] xl:text-sm xl:tracking-[.18em]" href={item.href}>
+              <Link key={item.href} className="nav-link whitespace-nowrap text-[0.68rem] tracking-[.1em] 2xl:text-[0.72rem] 2xl:tracking-[.12em]" href={item.href}>
                 {item.label}
               </Link>
             ))}
           </nav>
-          <div className="flex shrink-0 items-center gap-2">
-            <button type="button" className="btn-gold px-4 py-2.5 text-xs uppercase tracking-[.16em] xl:px-5 xl:text-sm" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}>
+          <div className="flex shrink-0 items-center gap-3">
+            <button type="button" className="btn-gold px-3.5 py-2 text-[0.72rem] uppercase tracking-[.14em] 2xl:px-4 2xl:text-xs" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}>
               Book Now
             </button>
-            <button type="button" className="btn-gold px-4 py-2.5 text-xs uppercase tracking-[.16em] xl:px-5 xl:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
+            <button type="button" className="btn-gold px-3.5 py-2 text-[0.72rem] uppercase tracking-[.14em] 2xl:px-4 2xl:text-xs" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
               Shop Now
             </button>
           </div>
-          <form className="relative w-40 xl:w-56" role="search" aria-label="Product search" onSubmit={handleProductSearch}>
+          <form className="relative w-36 2xl:w-44" role="search" aria-label="Product search" onSubmit={handleProductSearch}>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
             <input
               className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"

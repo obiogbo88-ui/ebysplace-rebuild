@@ -133,7 +133,7 @@ export default function Braiders() {
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
               <a className="btn-gold" href="https://kouvia.com/register" target="_blank" rel="noreferrer">Register as a Braider <ExternalLink className="h-4 w-4" /></a>
-              <a className="btn-dark" href="https://kouvia.com" target="_blank" rel="noreferrer">Open Kouvia</a>
+              <a className="btn-dark" href="https://kouviabooking.ebysplace.com/" target="_blank" rel="noopener noreferrer">Open Kouvia</a>
             </div>
           </aside>
         </section>
