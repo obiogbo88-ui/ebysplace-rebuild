@@ -4,6 +4,7 @@ import { SiteFooter, SiteHeader } from "./Home";
 
 const styles = ["All styles", "Knotless", "Box Braids", "Cornrows", "Twists", "Locs", "Kids Styles"];
 const sortOptions = ["Recommended", "Nearest", "Highest rated", "Soonest available"];
+const KOUVIA_BOOKING_URL = "https://kouviabooking.ebysplace.com/";
 
 const demoBraiders = [
   {
@@ -132,8 +133,35 @@ export default function Braiders() {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">Availability and customer review foundation</div>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <a className="btn-gold" href="https://kouvia.com/register" target="_blank" rel="noreferrer">Register as a Braider <ExternalLink className="h-4 w-4" /></a>
-              <a className="btn-dark" href="https://kouviabooking.ebysplace.com/" target="_blank" rel="noopener noreferrer">Open Kouvia</a>
+              <a className="btn-gold" href={KOUVIA_BOOKING_URL} target="_blank" rel="noreferrer">Register as a Braider <ExternalLink className="h-4 w-4" /></a>
+              <a className="btn-dark" href={KOUVIA_BOOKING_URL} target="_blank" rel="noreferrer">Open Kouvia</a>
+            </div>
+            <div className="mt-6 rounded-[1.75rem] border border-white/12 bg-[#130d08] p-4 shadow-[0_20px_45px_rgba(0,0,0,.35)]">
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--gold)]/80">Kouvia app preview</p>
+              <div className="mt-3 overflow-hidden rounded-2xl border border-[var(--gold)]/30 bg-[#0d0906]">
+                <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 text-[0.68rem] uppercase tracking-[0.16em] text-white/50">
+                  <span>Live booking</span>
+                  <span>Somerset, UK</span>
+                </div>
+                <div className="space-y-3 p-3">
+                  <div className="rounded-xl border border-white/10 bg-black/35 p-3">
+                    <p className="text-sm font-semibold text-white">Knotless Braids • Medium</p>
+                    <p className="mt-1 text-xs text-white/55">From £95 · 3h 15m</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/35 p-3">
+                    <p className="text-sm font-semibold text-white">Cornrows • Feed-in</p>
+                    <p className="mt-1 text-xs text-white/55">From £70 · 2h 20m</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/35 p-3">
+                    <p className="text-sm font-semibold text-white">Next slots</p>
+                    <p className="mt-1 text-xs text-white/55">Tue 10:00 • Wed 14:30 • Fri 16:00</p>
+                  </div>
+                </div>
+              </div>
+              <a className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--gold)] transition hover:text-white" href={KOUVIA_BOOKING_URL} target="_blank" rel="noreferrer">
+                Open Kouvia preview
+                <ExternalLink className="h-4 w-4" />
+              </a>
             </div>
           </aside>
         </section>

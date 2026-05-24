@@ -31,7 +31,9 @@ const navLinks = [
   { href: "/reviews", label: "Reviews" },
 ];
 
-const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking" && item.href !== "/shop");
+const desktopNavLinks = navLinks.filter((item) =>
+  ["/services", "/ai-try-on", "/braiders-near-me"].includes(item.href),
+);
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,10 +50,10 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#d8bd74]/55 bg-[#f5ead7]/92 shadow-[0_10px_36px_rgba(66,42,18,.12)] backdrop-blur-xl">
-      <div className="container flex h-24 items-center justify-between gap-2 sm:h-28 sm:gap-4">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:gap-5 sm:py-5">
         <Link
           href="/"
-          className="flex min-w-0 flex-1 items-center py-1 lg:flex-none"
+          className="flex shrink-0 items-center py-1"
           aria-label="Eby’s Place home"
         >
           <img
@@ -96,8 +98,8 @@ export function SiteHeader() {
           </form>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3 2xl:hidden">
-          <form className="relative hidden w-44 md:block xl:w-56" role="search" aria-label="Compact product search" onSubmit={handleProductSearch}>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3 xl:hidden">
+          <form className="relative hidden w-44 lg:block xl:w-56" role="search" aria-label="Compact product search" onSubmit={handleProductSearch}>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
             <input
               className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
@@ -108,7 +110,7 @@ export function SiteHeader() {
             />
           </form>
           <div className="hidden sm:block">
-            <button type="button" className="btn-gold px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
+            <button type="button" className="btn-gold whitespace-nowrap px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
               Shop Now
             </button>
           </div>

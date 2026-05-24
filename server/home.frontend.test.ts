@@ -127,7 +127,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain('decoding="async"');
     expect(homeSource).toContain("h-16 w-[10.5rem] object-contain object-left mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]");
     expect(homeSource).toContain('<div className="hidden sm:block">');
-      expect(homeSource).toContain("btn-gold px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm");
+      expect(homeSource).toContain("btn-gold whitespace-nowrap px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm");
       expect(homeSource).toContain('navigateWithSmoothScroll("/shop", setLocation)');
       expect(homeSource).toContain('Shop Now\n            </button>');
       expect(homeSource).toContain('className="btn-gold px-3.5 py-2 text-[0.72rem] uppercase tracking-[.14em] 2xl:px-4 2xl:text-xs" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}');
