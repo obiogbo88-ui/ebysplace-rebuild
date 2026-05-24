@@ -50,7 +50,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#d8bd74]/55 bg-[#f5ead7]/92 shadow-[0_10px_36px_rgba(66,42,18,.12)] backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:gap-5 sm:py-5">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2.5 px-3 py-3 sm:gap-5 sm:px-4 sm:py-5">
         <Link
           href="/"
           className="flex shrink-0 items-center py-1"
@@ -59,7 +59,7 @@ export function SiteHeader() {
           <img
             src={HEADER_LOGO_SRC}
             alt="Eby’s Place"
-            className="h-16 w-[10.5rem] object-contain object-left mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]"
+            className="h-14 w-[8.75rem] object-contain object-left mix-blend-multiply min-[390px]:w-[9.5rem] sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]"
             loading="eager"
             decoding="async"
             fetchPriority="high"
@@ -98,7 +98,7 @@ export function SiteHeader() {
           </form>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3 xl:hidden">
+        <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2 xl:hidden">
           <form className="relative hidden w-44 lg:block xl:w-56" role="search" aria-label="Compact product search" onSubmit={handleProductSearch}>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
             <input
@@ -109,8 +109,8 @@ export function SiteHeader() {
               placeholder="Search products"
             />
           </form>
-          <div className="hidden sm:block">
-            <button type="button" className="btn-gold whitespace-nowrap px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
+          <div className="flex items-center">
+            <button type="button" className="btn-gold whitespace-nowrap px-2 py-1.5 text-[0.62rem] uppercase tracking-[.12em] min-[390px]:px-2.5 min-[390px]:text-[0.68rem] sm:px-4 sm:py-2.5 sm:text-sm sm:tracking-[.14em]" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
               Shop Now
             </button>
           </div>
@@ -322,7 +322,7 @@ export default function Home() {
         <section className="relative isolate overflow-hidden">
           <div className="hero-video-reference relative flex items-center">
             <img
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover object-center lg:object-[center_20%]"
               src={LANDING_HERO_IMAGE_SRC}
               alt="Eby’s Place pain-free braiding hero style"
               loading="eager"
