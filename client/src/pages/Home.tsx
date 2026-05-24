@@ -109,8 +109,8 @@ export function SiteHeader() {
               placeholder="Search products"
             />
           </form>
-          <div className="hidden sm:block">
-            <button type="button" className="btn-gold whitespace-nowrap px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
+          <div className="block">
+            <button type="button" className="btn-gold whitespace-nowrap px-2 py-1.5 text-[0.62rem] uppercase tracking-[.12em] sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
               Shop Now
             </button>
           </div>
@@ -319,10 +319,10 @@ export default function Home() {
     <div className="luxury-shell">
       <SiteHeader />
       <main>
-        <section className="relative isolate overflow-hidden">
+        <section className="relative isolate overflow-hidden pt-2 md:pt-3">
           <div className="hero-video-reference relative flex items-center">
             <img
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover object-[center_top] md:object-[center_20%]"
               src={LANDING_HERO_IMAGE_SRC}
               alt="Eby’s Place pain-free braiding hero style"
               loading="eager"
