@@ -130,8 +130,8 @@ describe("Eby’s Place landing page visual refinements", () => {
       expect(homeSource).toContain("btn-gold px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm");
       expect(homeSource).toContain('navigateWithSmoothScroll("/shop", setLocation)');
       expect(homeSource).toContain('Shop Now\n            </button>');
-      expect(homeSource).toContain('className="btn-gold px-4 py-2.5 text-xs uppercase tracking-[.16em] xl:px-5 xl:text-sm" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}');
-      expect(homeSource).toContain('className="btn-gold px-4 py-2.5 text-xs uppercase tracking-[.16em] xl:px-5 xl:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}');
+      expect(homeSource).toContain('className="btn-gold px-3.5 py-2 text-[0.72rem] uppercase tracking-[.14em] 2xl:px-4 2xl:text-xs" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}');
+      expect(homeSource).toContain('className="btn-gold px-3.5 py-2 text-[0.72rem] uppercase tracking-[.14em] 2xl:px-4 2xl:text-xs" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}');
       expect(homeSource).toContain('const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking" && item.href !== "/shop");');
     expect(homeSource).not.toContain("h-24 w-[16rem] object-contain mix-blend-multiply sm:h-28 sm:w-[22rem] lg:h-24 lg:w-[18rem] xl:w-[20rem]");
     expect(homeSource).not.toContain("h-52 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
