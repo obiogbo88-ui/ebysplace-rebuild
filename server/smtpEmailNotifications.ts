@@ -183,6 +183,10 @@ export function buildBookingEmailPayloads(booking: any, session: any): EmailPayl
   const dateTime = `${booking?.appointmentDate ?? "Date TBC"}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""}`;
   const paymentStatus = booking?.depositStatus === "paid" ? "Paid" : "Stripe payment confirmed";
   const notes = booking?.deliveryNote || "No customer notes provided.";
+  const surchargePaid = Number(booking?.checkoutSurchargeCharged ?? booking?.homeServiceSurcharge ?? 0);
+  const checkoutTotalPaid = session?.amount_total != null
+    ? Number(session.amount_total) / 100
+    : Number(booking?.checkoutTotalCharged ?? NaN);
 
   const ownerBody = [
     "A new paid Eby’s Place booking has been confirmed through Stripe.",
@@ -193,6 +197,8 @@ export function buildBookingEmailPayloads(booking: any, session: any): EmailPayl
     `Service/hairstyle booked: ${serviceName}`,
     `Booking date and time: ${dateTime}`,
     `Price/payment amount: ${priceLine}`,
+    surchargePaid > 0 ? `Home service surcharge: ${money(surchargePaid)}` : undefined,
+    Number.isFinite(checkoutTotalPaid) ? `Stripe total paid: ${money(checkoutTotalPaid)}` : undefined,
     `Payment status: ${paymentStatus}`,
     `Stripe session: ${session?.id ?? "Not available"}`,
     `Customer notes: ${notes}`,
@@ -206,6 +212,8 @@ export function buildBookingEmailPayloads(booking: any, session: any): EmailPayl
     `Service/hairstyle booked: ${serviceName}`,
     `Booking date and time: ${dateTime}`,
     `Amount paid or amount due: ${amountPaid}`,
+    surchargePaid > 0 ? `Home service surcharge paid: ${money(surchargePaid)}` : undefined,
+    Number.isFinite(checkoutTotalPaid) ? `Stripe total paid: ${money(checkoutTotalPaid)}` : undefined,
     bookingLocationText(booking),
     "If you need to update your appointment, please contact Eby’s Place as soon as possible.",
     `Contact: ${CONTACT_EMAIL} | WhatsApp/phone: ${CONTACT_PHONE}`,
@@ -239,7 +247,7 @@ export function buildOrderEmailPayloads(order: any, items: any[], session: any):
     deliveryText,
     `Payment status: ${paymentStatus}`,
     `Stripe session: ${session?.id ?? "Not available"}`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 
   const customerBody = [
     `Hi ${customerName},`,
@@ -250,7 +258,7 @@ export function buildOrderEmailPayloads(order: any, items: any[], session: any):
     deliveryText,
     "Eby’s Place will contact you if any delivery or collection details need confirming.",
     `Contact: ${CONTACT_EMAIL} | WhatsApp/phone: ${CONTACT_PHONE}`,
-  ].join("\n\n");
+  ].filter(Boolean).join("\n\n");
 
   return [
     { entityType: "order", entityId: Number(order?.id ?? session?.metadata?.order_id ?? 0), audience: "owner", to: config.ownerEmail, subject: `New paid shop order: ${reference}`, body: ownerBody },

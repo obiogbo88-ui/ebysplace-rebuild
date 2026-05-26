@@ -203,7 +203,15 @@ function poundsToMinorUnits(value: string | number) {
   return Math.round(Number(value || 0) * 100);
 }
 
-function buildBookingCheckoutLineItems(input: { serviceName: string; addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
+function buildBookingCheckoutLineItems(input: {
+  serviceName: string;
+  addOns?: Array<{ name: string; price: string }>;
+  bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }>;
+  includeHomeServiceSurcharge?: boolean;
+  homeServiceSurcharge?: number;
+}) {
+  const surcharge = Number(input.homeServiceSurcharge || 0);
+  const includeHomeServiceSurcharge = input.includeHomeServiceSurcharge && Number.isFinite(surcharge) && surcharge > 0;
   return [
     { price_data: { currency: "gbp", unit_amount: 2000, product_data: { name: "Eby’s Place £20 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 },
     ...(input.addOns || []).map((item) => ({
@@ -214,6 +222,19 @@ function buildBookingCheckoutLineItems(input: { serviceName: string; addOns?: Ar
       price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(item.unitPrice), product_data: { name: item.productName, description: "Eby’s Place shop product added to appointment checkout" } },
       quantity: item.quantity,
     })),
+    ...(includeHomeServiceSurcharge
+      ? [{
+        price_data: {
+          currency: "gbp",
+          unit_amount: poundsToMinorUnits(surcharge),
+          product_data: {
+            name: "Home Service Surcharge",
+            description: "Travel surcharge for mobile/home-service appointments",
+          },
+        },
+        quantity: 1,
+      }]
+      : []),
   ];
 }
 
@@ -373,7 +394,15 @@ export const appRouter = router({
       const { addOns, bookingProducts, ...bookingFields } = input;
       const serviceLocation = input.serviceLocation || "studio";
       const settings = await db.getAvailabilitySettings();
-      const homeServiceSurcharge = serviceLocation === "home_service" ? Number(settings.homeServiceSurcharge || 0).toFixed(2) : "0.00";
+      const parsedAvailabilitySurcharge = Number(settings.homeServiceSurcharge);
+      if (serviceLocation === "home_service" && !Number.isFinite(parsedAvailabilitySurcharge)) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Home service surcharge is currently unavailable. Please contact Eby’s Place before completing checkout." });
+      }
+      const homeServiceSurcharge = serviceLocation === "home_service" ? parsedAvailabilitySurcharge.toFixed(2) : "0.00";
+      console.info("[Payments] Home-service surcharge loaded from admin settings", {
+        serviceLocation,
+        surcharge: homeServiceSurcharge,
+      });
       if (serviceLocation === "home_service") {
         const missing = [input.clientName, input.addressLine1, input.city, input.county].some((value) => !value?.trim());
         if (missing) throw new TRPCError({ code: "BAD_REQUEST", message: "Home Service bookings require the customer name, address line 1, city, and county. Postcode is optional." });
@@ -423,12 +452,32 @@ export const appRouter = router({
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
       const booking = await db.getBookingById(input.bookingId);
-      const homeServiceSurcharge = Number(booking?.homeServiceSurcharge || 0);
+      if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found. Please restart your booking before payment." });
+      if (booking.depositStatus === "paid") throw new TRPCError({ code: "BAD_REQUEST", message: "This booking deposit has already been paid." });
+      if (booking.clientEmail !== input.clientEmail || booking.clientName !== input.clientName || booking.serviceName !== input.serviceName) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Booking details changed before checkout. Please restart payment from the booking page." });
+      }
+      const homeServiceSurcharge = Number(booking.homeServiceSurcharge || 0);
+      if (booking.serviceLocation === "home_service" && !Number.isFinite(homeServiceSurcharge)) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Home service surcharge could not be loaded. Please contact Eby’s Place before checkout." });
+      }
+      const includeHomeServiceSurcharge = booking.serviceLocation === "home_service" && homeServiceSurcharge > 0;
       const extrasTotal = bookingExtrasTotal(input);
       const lineItems = buildBookingCheckoutLineItems({
         serviceName: input.serviceName,
         addOns: input.addOns,
         bookingProducts: input.bookingProducts,
+        includeHomeServiceSurcharge,
+        homeServiceSurcharge,
+      });
+      const checkoutTotal = 20 + extrasTotal + (includeHomeServiceSurcharge ? homeServiceSurcharge : 0);
+      console.info("[Payments] Booking checkout surcharge calculation", {
+        bookingId: input.bookingId,
+        serviceLocation: booking.serviceLocation,
+        surchargeAmount: includeHomeServiceSurcharge ? homeServiceSurcharge.toFixed(2) : "0.00",
+        extrasTotal: extrasTotal.toFixed(2),
+        checkoutTotal: checkoutTotal.toFixed(2),
+        lineItemCount: lineItems.length,
       });
       let session: Stripe.Checkout.Session;
       try {
@@ -442,14 +491,37 @@ export const appRouter = router({
         allow_promotion_codes: true,
         success_url: `${origin}/booking/success?booking=${input.bookingId}`,
         cancel_url: `${origin}/booking?payment=cancelled&booking=${input.bookingId}`,
-        metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) },
+        metadata: {
+          booking_id: input.bookingId.toString(),
+          customer_email: input.clientEmail,
+          customer_name: input.clientName,
+          service_name: input.serviceName,
+          deposit_type: "non_refundable_20_gbp",
+          service_location: booking.serviceLocation || "studio",
+          home_service_surcharge: includeHomeServiceSurcharge ? homeServiceSurcharge.toFixed(2) : "0.00",
+          home_service_surcharge_applied: includeHomeServiceSurcharge ? "true" : "false",
+          booking_extras_total: extrasTotal.toFixed(2),
+          booking_checkout_total: checkoutTotal.toFixed(2),
+        },
         });
       } catch (error) {
         logStripeCheckoutFailure("Booking checkout session creation failed", error);
         throw paymentUnavailableError();
       }
       if (!session.url) throw paymentUnavailableError();
-      await db.updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
+      console.info("[Payments] Booking Stripe Checkout session created", {
+        bookingId: input.bookingId,
+        stripeCheckoutSessionId: session.id,
+        serviceLocation: booking.serviceLocation,
+        surchargeAmount: includeHomeServiceSurcharge ? homeServiceSurcharge.toFixed(2) : "0.00",
+        checkoutTotal: checkoutTotal.toFixed(2),
+      });
+      await db.updateBookingCheckout(
+        input.bookingId,
+        session.id,
+        typeof session.payment_intent === "string" ? session.payment_intent : null,
+        { surchargeAmount: includeHomeServiceSurcharge ? homeServiceSurcharge : 0, checkoutTotal },
+      );
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),
     createOrder: publicProcedure.input(orderInput).mutation(async ({ input, ctx }) => {
@@ -460,6 +532,7 @@ export const appRouter = router({
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
       const orderId = order.id.toString();
+      const orderCheckoutTotal = order.items.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity || 0), 0);
       let session: Stripe.Checkout.Session;
       try {
         session = await stripe.checkout.sessions.create({
@@ -494,7 +567,12 @@ export const appRouter = router({
         throw paymentUnavailableError();
       }
       if (!session.url) throw paymentUnavailableError();
-      await db.updateOrderCheckout(order.id, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
+      await db.updateOrderCheckout(
+        order.id,
+        session.id,
+        typeof session.payment_intent === "string" ? session.payment_intent : null,
+        { checkoutTotal: orderCheckoutTotal },
+      );
       await notifyOwnerSafely(
         "New Eby’s Place shop order checkout started",
         [

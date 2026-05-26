@@ -1287,6 +1287,8 @@ async function ensureBookingLocationColumns() {
   await addPgColumnIfMissing("bookings", "county", "VARCHAR(120)");
   await addPgColumnIfMissing("bookings", "deliveryNote", "TEXT");
   await addPgColumnIfMissing("bookings", "homeServiceSurcharge", "NUMERIC(10,2) NOT NULL DEFAULT 0.00");
+  await addPgColumnIfMissing("bookings", "checkoutSurchargeCharged", "NUMERIC(10,2) NOT NULL DEFAULT 0.00");
+  await addPgColumnIfMissing("bookings", "checkoutTotalCharged", "NUMERIC(10,2)");
   await makePgColumnNullable("bookings", "addressLine1");
   await makePgColumnNullable("bookings", "city");
   await makePgColumnNullable("bookings", "postcode");
@@ -1298,6 +1300,7 @@ async function ensureOrderLocationColumns() {
   await addPgColumnIfMissing("orders", "addressLine2", "VARCHAR(255)");
   await addPgColumnIfMissing("orders", "county", "VARCHAR(120)");
   await addPgColumnIfMissing("orders", "deliveryNote", "TEXT");
+  await addPgColumnIfMissing("orders", "checkoutTotalCharged", "NUMERIC(10,2)");
   await makePgColumnNullable("orders", "addressLine1");
   await makePgColumnNullable("orders", "city");
   await makePgColumnNullable("orders", "postcode");
@@ -1606,10 +1609,23 @@ export async function createBooking(input: typeof bookings.$inferInsert) {
   return { id: bookingId };
 }
 
-export async function updateBookingCheckout(id: number, stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
+export async function updateBookingCheckout(
+  id: number,
+  stripeCheckoutSessionId: string,
+  stripePaymentIntentId?: string | null,
+  checkoutDetails?: { surchargeAmount?: number; checkoutTotal?: number },
+) {
   const db = await getDb();
   if (!db) return;
-  await db.update(bookings).set({ depositStatus: "checkout_started", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(bookings.id, id));
+  const surchargeAmount = Number(checkoutDetails?.surchargeAmount ?? 0);
+  const checkoutTotal = Number(checkoutDetails?.checkoutTotal);
+  await db.update(bookings).set({
+    depositStatus: "checkout_started",
+    stripeCheckoutSessionId,
+    stripePaymentIntentId: stripePaymentIntentId ?? null,
+    checkoutSurchargeCharged: Number.isFinite(surchargeAmount) ? surchargeAmount.toFixed(2) : "0.00",
+    checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null,
+  }).where(eq(bookings.id, id));
   await logActivity({
     activityType: "checkout_started",
     activityCategory: "payment",
@@ -1618,7 +1634,11 @@ export async function updateBookingCheckout(id: number, stripeCheckoutSessionId:
     pageUrl: "/booking",
     relatedEntityType: "booking",
     relatedEntityId: id,
-    metadata: { stripeCheckoutSessionId },
+    metadata: {
+      stripeCheckoutSessionId,
+      checkoutSurchargeCharged: Number.isFinite(surchargeAmount) ? surchargeAmount.toFixed(2) : "0.00",
+      checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null,
+    },
   });
 }
 
@@ -1637,6 +1657,18 @@ export async function markBookingDepositPaid(stripeCheckoutSessionId: string, st
     relatedEntityId: booking?.id ?? null,
     metadata: { stripeCheckoutSessionId, stripePaymentIntentId },
   });
+}
+
+export async function recordBookingCheckoutSettlement(stripeCheckoutSessionId: string, input: { checkoutTotal?: number; surchargeAmount?: number }) {
+  const db = await getDb();
+  if (!db) return;
+  await ensureBookingLocationColumns();
+  const checkoutTotal = Number(input.checkoutTotal);
+  const surchargeAmount = Number(input.surchargeAmount ?? 0);
+  await db.update(bookings).set({
+    checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null,
+    checkoutSurchargeCharged: Number.isFinite(surchargeAmount) ? surchargeAmount.toFixed(2) : "0.00",
+  }).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId));
 }
 
 export async function getBookingByCheckoutSession(stripeCheckoutSessionId: string) {
@@ -1712,10 +1744,21 @@ export async function createOrderWithItems(input: { customerName: string; custom
   return { id: orderId, items: validatedItems };
 }
 
-export async function updateOrderCheckout(id: number, stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
+export async function updateOrderCheckout(
+  id: number,
+  stripeCheckoutSessionId: string,
+  stripePaymentIntentId?: string | null,
+  checkoutDetails?: { checkoutTotal?: number },
+) {
   const db = await getDb();
   if (!db) return;
-  await db.update(orders).set({ status: "pending_payment", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, id));
+  const checkoutTotal = Number(checkoutDetails?.checkoutTotal);
+  await db.update(orders).set({
+    status: "pending_payment",
+    stripeCheckoutSessionId,
+    stripePaymentIntentId: stripePaymentIntentId ?? null,
+    checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null,
+  }).where(eq(orders.id, id));
   await logActivity({
     activityType: "checkout_started",
     activityCategory: "payment",
@@ -1724,7 +1767,10 @@ export async function updateOrderCheckout(id: number, stripeCheckoutSessionId: s
     pageUrl: "/shop",
     relatedEntityType: "order",
     relatedEntityId: id,
-    metadata: { stripeCheckoutSessionId },
+    metadata: {
+      stripeCheckoutSessionId,
+      checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null,
+    },
   });
 }
 
@@ -1756,6 +1802,16 @@ export async function markOrderPaid(stripeCheckoutSessionId: string, stripePayme
     if (supabaseProduct) {
       await decrementSupabaseProductStock(item.productId, item.quantity, item.variantId);
       continue;
+    }
+
+    export async function recordOrderCheckoutSettlement(stripeCheckoutSessionId: string, input: { checkoutTotal?: number }) {
+      const db = await getDb();
+      if (!db) return;
+      await ensureOrderLocationColumns();
+      const checkoutTotal = Number(input.checkoutTotal);
+      await db.update(orders).set({
+        checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null,
+      }).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId));
     }
     if (item.variantId) {
       await db.update(productVariants)

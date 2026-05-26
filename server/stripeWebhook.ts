@@ -61,7 +61,21 @@ export function registerStripeWebhook(app: Application) {
         if (session.metadata?.deposit_type === "non_refundable_20_gbp" && session.id) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await db.markBookingDepositPaid(session.id, paymentIntentId);
+          const webhookSurcharge = Number(session.metadata?.home_service_surcharge || 0);
+          const webhookCheckoutTotal = session.amount_total != null ? Number(session.amount_total) / 100 : NaN;
+          await db.recordBookingCheckoutSettlement(session.id, {
+            surchargeAmount: Number.isFinite(webhookSurcharge) ? webhookSurcharge : 0,
+            checkoutTotal: Number.isFinite(webhookCheckoutTotal) ? webhookCheckoutTotal : undefined,
+          });
           const booking = await db.getBookingByCheckoutSession(session.id);
+          const bookingSurcharge = Number(booking?.checkoutSurchargeCharged ?? booking?.homeServiceSurcharge ?? session.metadata?.home_service_surcharge ?? 0);
+          const bookingTotalPaid = Number(booking?.checkoutTotalCharged ?? (session.amount_total != null ? Number(session.amount_total) / 100 : NaN));
+          console.info("[StripeWebhook] Booking payment settlement recorded", {
+            bookingId: booking?.id ?? session.metadata?.booking_id ?? null,
+            stripeCheckoutSessionId: session.id,
+            surchargeAmount: Number.isFinite(bookingSurcharge) ? bookingSurcharge.toFixed(2) : "0.00",
+            totalPaid: Number.isFinite(bookingTotalPaid) ? bookingTotalPaid.toFixed(2) : "unknown",
+          });
           if (booking) {
             void sendBookingPaymentEmailsSafely(booking, session).catch((error) => console.warn("[StripeWebhook] SMTP booking email workflow failed", error));
           }
@@ -93,6 +107,8 @@ export function registerStripeWebhook(app: Application) {
                 `Appointment location: ${bookingLocation === "home_service" ? "Home service" : "Eby’s Place studio"}`,
                 locationConfirmation,
                 "Deposit paid: £20.00 non-refundable booking deposit.",
+                bookingLocation === "home_service" && Number.isFinite(bookingSurcharge) && bookingSurcharge > 0 ? `Home service surcharge paid: £${bookingSurcharge.toFixed(2)}.` : undefined,
+                Number.isFinite(bookingTotalPaid) ? `Stripe total paid: £${bookingTotalPaid.toFixed(2)}.` : undefined,
                 remainingBalance ? `Estimated remaining balance due at appointment: £${remainingBalance}.` : "Remaining balance: confirmed by Eby’s Place according to your final service and add-ons.",
                 booking?.deliveryNote ? `Booking notes and optional selections:\n${booking.deliveryNote}` : undefined,
                 "If anything needs changing, please contact Eby’s Place before your appointment.",
@@ -109,6 +125,8 @@ export function registerStripeWebhook(app: Application) {
               `Customer: ${session.metadata?.customer_name ?? "Not provided"}`,
               `Email: ${session.metadata?.customer_email ?? session.customer_email ?? "Not provided"}`,
               `Stripe session: ${session.id}`,
+              Number.isFinite(bookingSurcharge) && bookingSurcharge > 0 ? `Home service surcharge: £${bookingSurcharge.toFixed(2)}` : undefined,
+              Number.isFinite(bookingTotalPaid) ? `Stripe total paid: £${bookingTotalPaid.toFixed(2)}` : undefined,
               paymentIntentId ? `Payment intent: ${paymentIntentId}` : undefined,
             ].filter(Boolean).join("\n"),
           }).catch((error) => console.warn("[StripeWebhook] Owner payment notification failed", error));
@@ -116,6 +134,10 @@ export function registerStripeWebhook(app: Application) {
         if (session.metadata?.order_type === "shop_products" && session.id) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await db.markOrderPaid(session.id, paymentIntentId);
+          const orderCheckoutTotal = session.amount_total != null ? Number(session.amount_total) / 100 : NaN;
+          await db.recordOrderCheckoutSettlement(session.id, {
+            checkoutTotal: Number.isFinite(orderCheckoutTotal) ? orderCheckoutTotal : undefined,
+          });
           const order = await db.getOrderByCheckoutSession(session.id);
           const deliveryAddress = [order?.addressLine1, order?.addressLine2, order?.city, order?.county, order?.postcode].filter(Boolean).join(", ");
           const orderReference = order?.id ?? session.metadata?.order_id ?? "";
