@@ -33,6 +33,7 @@ type AdminListData = {
   availability?: { blockedSlots?: any[]; homeServiceSurcharge?: string };
   instagram?: { handle?: string; feedUrl?: string; enabled?: boolean; note?: string };
   emailNotifications?: any[];
+  activityLogs?: any[];
 };
 
 type AdminGalleryItem = {
@@ -122,7 +123,7 @@ const adminOverviewActions = [
   { label: "Gallery", sectionId: "gallery", description: "Add or organise gallery images." },
   { label: "Reviews", sectionId: "reviews", description: "Moderate customer reviews safely." },
   { label: "Product Reviews", sectionId: "product-reviews", description: "Moderate shop product reviews." },
-  { label: "Activity", sectionId: "activity-monitoring", description: "Review analytics and live activity monitoring." },
+  { label: "Activity & Notifications", sectionId: "activity-monitoring", description: "Review visitor activity, notifications, and operational events." },
   { label: "Content", sectionId: "content", description: "Update the About Us story, round image, and image description." },
 ] as const;
 
@@ -171,11 +172,42 @@ export default function Admin() {
   const insights = trpc.admin.insights.useQuery(undefined, { retry: false });
   const emailLogs = trpc.admin.listEmailNotificationLogs.useQuery(undefined, { retry: false });
   const utils = trpc.useUtils();
+  const [activityFilters, setActivityFilters] = useState({
+    query: "",
+    datePreset: "last_7_days" as "today" | "yesterday" | "last_7_days" | "last_30_days",
+    activityCategory: "",
+    status: "",
+    sourceApp: "",
+    failedOnly: false,
+    unreadOnly: false,
+  });
+  const activityLogs = trpc.admin.listActivityLogs.useQuery({
+    query: activityFilters.query || undefined,
+    datePreset: activityFilters.datePreset,
+    activityCategory: activityFilters.activityCategory || undefined,
+    status: (activityFilters.status || undefined) as any,
+    sourceApp: activityFilters.sourceApp || undefined,
+    failedOnly: activityFilters.failedOnly || undefined,
+    unreadOnly: activityFilters.unreadOnly || undefined,
+    limit: 200,
+  }, { retry: false, refetchInterval: 15000 });
+  const unreadActivityCount = trpc.admin.unreadActivityCount.useQuery(undefined, { retry: false, refetchInterval: 15000 });
+  const markActivityLogsRead = trpc.admin.markActivityLogsRead.useMutation({
+    onSuccess: () => {
+      utils.admin.listActivityLogs.invalidate();
+      utils.admin.unreadActivityCount.invalidate();
+      utils.admin.summary.invalidate();
+      toast.success("Activity notifications marked as read");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
   const refresh = () => {
     utils.admin.lists.invalidate();
     utils.admin.summary.invalidate();
     utils.admin.insights.invalidate();
     utils.admin.listEmailNotificationLogs.invalidate();
+    utils.admin.listActivityLogs.invalidate();
+    utils.admin.unreadActivityCount.invalidate();
     utils.public.services.invalidate();
     utils.public.featuredServices.invalidate();
     utils.public.products.invalidate();
@@ -352,6 +384,7 @@ export default function Admin() {
   const pendingProductReviewRows = productReviewRows.filter((review) => review.status === "pending");
   const moderatedProductReviewRows = productReviewRows.filter((review) => review.status !== "pending");
   const emailNotificationRows = emailLogs.data || data.emailNotifications || [];
+  const activityRows = activityLogs.data || data.activityLogs || [];
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
   const togglePanel = (panelId: string) => setOpenPanels((current) => {
     const next = new Set(current);
@@ -508,7 +541,7 @@ export default function Admin() {
               </button>
             ))}
           </div>
-          <div className="mt-6 grid gap-5 md:grid-cols-3 xl:grid-cols-6">
+          <div className="mt-6 grid gap-5 md:grid-cols-3 xl:grid-cols-8">
             <Stat label="Bookings" value={summary.data?.bookings ?? 0} icon={CalendarDays} />
             <Stat label="Orders" value={summary.data?.orders ?? 0} icon={ShoppingBag} />
             <Stat label="Pending reviews" value={summary.data?.pendingReviews ?? 0} icon={MessageSquare} />
@@ -516,11 +549,12 @@ export default function Admin() {
             <Stat label="Products" value={summary.data?.products ?? 0} icon={Package} />
             <Stat label="Services" value={summary.data?.services ?? 0} icon={Scissors} />
             <Stat label="AI try-ons" value={summary.data?.tryOns ?? 0} icon={Sparkles} />
+            <Stat label="Unread alerts" value={unreadActivityCount.data ?? summary.data?.unreadActivities ?? 0} icon={Activity} />
           </div>
         </section>
 
         <div className="mt-8 grid gap-6">
-          <AdminPanel id="activity-monitoring" eyebrow="Live intelligence" title="Analytics and activity monitoring" description="Open the current Eby’s Place performance view for product sales, booked styles, AI Try-On usage, and recent owner activity." icon={Activity} open={isPanelOpen("activity-monitoring")} onToggle={() => togglePanel("activity-monitoring")}>
+          <AdminPanel id="activity-monitoring" eyebrow="Live intelligence" title="Analytics and activity monitoring" description="View visits, booking/payment/shop/AI actions, Braiders Near Me/Kouvia events, failures, and admin audit updates in one feed." icon={Activity} open={isPanelOpen("activity-monitoring")} onToggle={() => togglePanel("activity-monitoring")}>
             <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
               <div>
                 <h3 className="serif text-2xl font-bold text-primary"><TrendingUp className="mr-2 inline h-5 w-5" />Best-selling analytics</h3>
@@ -537,6 +571,125 @@ export default function Admin() {
                 <div className="mt-4 max-h-[22rem] overflow-y-auto pr-2">
                   {(insights.data?.recentActivity || []).length ? (insights.data?.recentActivity || []).map((item: any, index: number) => <div className="border-t border-white/10 py-3 text-sm" key={`${item.type}-${index}`}><b className="text-primary">{item.type}</b><span className="ml-2">{item.label}</span><small className="block text-white/45">{item.detail}</small></div>) : <p className="text-sm text-white/45">No recent activity to show yet.</p>}
                 </div>
+              </div>
+            </div>
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="serif text-2xl font-bold text-primary">Activity notifications</h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-primary/35 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary">
+                    Unread {unreadActivityCount.data ?? 0}
+                  </span>
+                  <button
+                    className="btn-dark py-2 text-sm"
+                    type="button"
+                    disabled={markActivityLogsRead.isPending || !(unreadActivityCount.data ?? 0)}
+                    onClick={() => markActivityLogsRead.mutate({})}
+                  >
+                    Mark all as read
+                  </button>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <input
+                  placeholder="Search user/email/page/activity/ID"
+                  value={activityFilters.query}
+                  onChange={(event) => setActivityFilters((current) => ({ ...current, query: event.target.value }))}
+                />
+                <select value={activityFilters.datePreset} onChange={(event) => setActivityFilters((current) => ({ ...current, datePreset: event.target.value as any }))}>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="last_7_days">Last 7 days</option>
+                  <option value="last_30_days">Last 30 days</option>
+                </select>
+                <select value={activityFilters.activityCategory} onChange={(event) => setActivityFilters((current) => ({ ...current, activityCategory: event.target.value }))}>
+                  <option value="">All categories</option>
+                  <option value="visit">Visits</option>
+                  <option value="booking">Bookings</option>
+                  <option value="payment">Payments</option>
+                  <option value="shop">Shop</option>
+                  <option value="ai_try_on">AI Try-On</option>
+                  <option value="kouvia">Braiders/Kouvia</option>
+                  <option value="admin_action">Admin actions</option>
+                </select>
+                <select value={activityFilters.status} onChange={(event) => setActivityFilters((current) => ({ ...current, status: event.target.value }))}>
+                  <option value="">All statuses</option>
+                  <option value="success">Success</option>
+                  <option value="failed">Failed</option>
+                  <option value="pending">Pending</option>
+                  <option value="info">Info</option>
+                </select>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <button type="button" className={`btn-dark py-2 ${activityFilters.failedOnly ? "border-red-400/60 text-red-100" : ""}`} onClick={() => setActivityFilters((current) => ({ ...current, failedOnly: !current.failedOnly }))}>
+                  Failed only
+                </button>
+                <button type="button" className={`btn-dark py-2 ${activityFilters.unreadOnly ? "border-primary/60 text-primary" : ""}`} onClick={() => setActivityFilters((current) => ({ ...current, unreadOnly: !current.unreadOnly }))}>
+                  Unread only
+                </button>
+                <button type="button" className="btn-dark py-2" onClick={() => setActivityFilters({ query: "", datePreset: "last_7_days", activityCategory: "", status: "", sourceApp: "", failedOnly: false, unreadOnly: false })}>
+                  Reset filters
+                </button>
+              </div>
+              <div className="mt-4 max-h-[30rem] overflow-auto rounded-2xl border border-white/10">
+                <table className="w-full min-w-[860px] text-left text-sm">
+                  <thead className="bg-black/40 text-primary">
+                    <tr>
+                      <th className="px-3 py-2">Time/Date</th>
+                      <th className="px-3 py-2">Activity</th>
+                      <th className="px-3 py-2">User/Guest</th>
+                      <th className="px-3 py-2">Page/Feature</th>
+                      <th className="px-3 py-2">Status</th>
+                      <th className="px-3 py-2">Location/Device</th>
+                      <th className="px-3 py-2">Details</th>
+                      <th className="px-3 py-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activityLogs.isLoading ? (
+                      <tr><td className="px-3 py-4 text-white/60" colSpan={8}>Loading activity notifications…</td></tr>
+                    ) : !activityRows.length ? (
+                      <tr><td className="px-3 py-4 text-white/60" colSpan={8}>No activity records found for this filter.</td></tr>
+                    ) : (
+                      activityRows.map((item: any) => (
+                        <tr key={item.id} className="border-t border-white/10">
+                          <td className="px-3 py-3 text-white/70">{new Date(item.createdAt).toLocaleString()}</td>
+                          <td className="px-3 py-3">
+                            <b className="text-primary">{item.activityType}</b>
+                            <small className="block text-white/50">{item.activityCategory}</small>
+                          </td>
+                          <td className="px-3 py-3 text-white/70">
+                            {item.userName || item.userEmail || "Guest"}
+                            <small className="block text-white/45">{item.userEmail || item.sessionId || "-"}</small>
+                          </td>
+                          <td className="px-3 py-3 text-white/70">{item.pageUrl || "-"}</td>
+                          <td className="px-3 py-3">
+                            <span className={`rounded-full border px-2 py-1 text-xs uppercase tracking-[0.12em] ${item.status === "failed" ? "border-red-400/50 text-red-200" : item.status === "success" ? "border-emerald-400/40 text-emerald-200" : item.status === "pending" ? "border-amber-400/40 text-amber-200" : "border-white/20 text-white/70"}`}>
+                              {item.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-white/70">
+                            {[item.city, item.region, item.country].filter(Boolean).join(", ") || "N/A"}
+                            <small className="block text-white/45">{[item.deviceType, item.browser].filter(Boolean).join(" · ") || "-"}</small>
+                          </td>
+                          <td className="px-3 py-3 text-white/70">
+                            {item.description}
+                            {(item.relatedEntityType || item.relatedEntityId) ? <small className="block text-white/45">{item.relatedEntityType || "entity"}: {item.relatedEntityId || "-"}</small> : null}
+                          </td>
+                          <td className="px-3 py-3">
+                            {item.isRead === "false" ? (
+                              <button className="btn-dark py-2 text-xs" type="button" onClick={() => markActivityLogsRead.mutate({ ids: [item.id] })}>
+                                Mark read
+                              </button>
+                            ) : (
+                              <span className="text-xs text-white/45">Read</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </AdminPanel>

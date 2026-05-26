@@ -1,7 +1,8 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
+import { getActivitySessionId, getBrowserInfo, getCurrentPageUrl } from "@/lib/activityTracking";
 import ImagePreviewModal from "@/components/ImagePreviewModal";
 import { SiteFooter, SiteHeader } from "./Home";
 import { Star } from "lucide-react";
@@ -387,6 +388,7 @@ export default function Shop() {
   const { data } = trpc.public.products.useQuery();
   const { data: reviewSummaries } = trpc.public.productReviewSummaries.useQuery();
   const order = trpc.public.createOrder.useMutation();
+  const logActivity = trpc.public.logActivity.useMutation();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeDepartment, setActiveDepartment] = useState("All Departments");
   const [sortBy, setSortBy] = useState<"featured" | "price_low_high" | "price_high_low" | "rating" | "name">("featured");
@@ -467,6 +469,40 @@ export default function Shop() {
   const amountToFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - total);
   const freeDeliveryProgress = Math.min(100, (total / FREE_DELIVERY_THRESHOLD) * 100);
 
+  useEffect(() => {
+    if (!checkoutReturn) return;
+    logActivity.mutate({
+      sessionId: getActivitySessionId(),
+      activityType: checkoutReturn.status === "success" ? "payment_successful" : "payment_failed",
+      activityCategory: "payment",
+      description: checkoutReturn.status === "success" ? "Shop payment returned successfully" : "Shop checkout was cancelled or failed",
+      pageUrl: getCurrentPageUrl(),
+      status: checkoutReturn.status === "success" ? "success" : "failed",
+      relatedEntityType: "order",
+      relatedEntityId: checkoutReturn.orderId || undefined,
+      metadata: { returnStatus: checkoutReturn.status },
+    });
+  }, [checkoutReturn]);
+
+  useEffect(() => {
+    if (!selectedProduct) return;
+    logActivity.mutate({
+      sessionId: getActivitySessionId(),
+      activityType: "product_viewed",
+      activityCategory: "shop",
+      description: `Viewed product ${selectedProduct.name}`,
+      pageUrl: getCurrentPageUrl(),
+      status: "info",
+      relatedEntityType: "product",
+      relatedEntityId: selectedProduct.id,
+      metadata: {
+        slug: selectedProduct.slug,
+        browser: getBrowserInfo().browser,
+        deviceType: getBrowserInfo().deviceType,
+      },
+    });
+  }, [selectedProduct]);
+
   const add = (product: ShopProduct, variant?: ProductVariant) => {
     const productId = normalizeProductId(product);
     if (!productId) {
@@ -480,12 +516,38 @@ export default function Shop() {
       if (existing) return current.map((item) => `${item.productId}:${item.variantId ?? item.variantName ?? "default"}` === key ? { ...item, quantity: item.quantity + 1 } : item);
       return [...current, { productId, variantId, productName: product.name, variantName: variant?.name, quantity: 1, unitPrice: product.price }];
     });
+    logActivity.mutate({
+      sessionId: getActivitySessionId(),
+      activityType: "product_added_to_cart",
+      activityCategory: "shop",
+      description: `${product.name} added to cart`,
+      pageUrl: getCurrentPageUrl(),
+      status: "success",
+      relatedEntityType: "product",
+      relatedEntityId: productId,
+      metadata: { variantName: variant?.name || null },
+    });
     toast.success(`${product.name} added to your bag`);
     smoothScrollToElement("shop-checkout", 80);
   };
 
   const changeQty = (index: number, quantity: number) => setCart((current) => current.map((item, idx) => idx === index ? { ...item, quantity: Math.max(1, quantity) } : item));
-  const remove = (index: number) => setCart((current) => current.filter((_, idx) => idx !== index));
+  const remove = (index: number) => {
+    const removed = cart[index];
+    setCart((current) => current.filter((_, idx) => idx !== index));
+    if (removed) {
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "product_removed_from_cart",
+        activityCategory: "shop",
+        description: `${removed.productName} removed from cart`,
+        pageUrl: getCurrentPageUrl(),
+        status: "info",
+        relatedEntityType: "product",
+        relatedEntityId: removed.productId,
+      });
+    }
+  };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!delivery.addressLine1.trim() || !delivery.city.trim()) {
@@ -498,12 +560,34 @@ export default function Shop() {
       toast.error("Please remove and re-add the affected product before checkout.");
       return;
     }
-    const result = await order.mutateAsync({ ...delivery, items: checkoutItems });
-    toast.success(result.customerNotification);
-    if (result.checkoutUrl) {
-      window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+    try {
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "checkout_started",
+        activityCategory: "payment",
+        description: "Shop checkout started",
+        pageUrl: getCurrentPageUrl(),
+        status: "pending",
+        metadata: { itemCount: checkoutItems.length, total },
+      });
+      const result = await order.mutateAsync({ ...delivery, items: checkoutItems });
+      toast.success(result.customerNotification);
+      if (result.checkoutUrl) {
+        window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+      }
+      setCart([]);
+    } catch (error: any) {
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "checkout_failed",
+        activityCategory: "payment",
+        description: "Shop checkout failed before payment completion",
+        pageUrl: getCurrentPageUrl(),
+        status: "failed",
+        metadata: { errorMessage: error?.message || "checkout_failed" },
+      });
+      toast.error(error?.message || "Checkout could not be started.");
     }
-    setCart([]);
   };
 
   return (

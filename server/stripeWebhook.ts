@@ -174,6 +174,22 @@ export function registerStripeWebhook(app: Application) {
       if (event.type === "payment_intent.payment_failed") {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const failureMessage = paymentIntent.last_payment_error?.message || "Stripe reported a failed payment attempt.";
+        await db.logActivity({
+          request: req,
+          activityType: "payment_failed",
+          activityCategory: "payment",
+          description: `Stripe payment failed for payment intent ${paymentIntent.id}`,
+          status: "failed",
+          pageUrl: "/checkout",
+          relatedEntityType: "payment_intent",
+          relatedEntityId: paymentIntent.id,
+          userEmail: paymentIntent.receipt_email || undefined,
+          metadata: {
+            reason: failureMessage,
+            currency: paymentIntent.currency,
+            amount: paymentIntent.amount,
+          },
+        });
         await notifyOwner({
           title: "Eby’s Place payment failed",
           content: [

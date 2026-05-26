@@ -1,9 +1,11 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import type { Request } from "express";
+import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { normalizeEnvUrl, normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
 import {
   analyticsEvents,
+  activityLogs,
   bookings,
   emailNotificationLogs,
   galleryImages,
@@ -1306,24 +1308,335 @@ async function ensureOrderItemSnapshotColumns() {
   await addPgColumnIfMissing("orderItems", "imageUrl", "VARCHAR(800)");
 }
 
+const SENSITIVE_METADATA_KEY_PATTERN = /(password|passwd|secret|token|key|auth|credential|card|cvv|cvc|iban|stripe|supabase|database|cookie|sessioncookie)/i;
+const MAX_METADATA_KEYS = 50;
+const MAX_METADATA_TEXT = 500;
+const MAX_DESCRIPTION_LENGTH = 500;
+const MAX_PAGE_URL_LENGTH = 800;
+
+type ActivityStatus = "success" | "failed" | "pending" | "info";
+
+type ActivityLogInput = {
+  userId?: number | null;
+  userName?: string | null;
+  userEmail?: string | null;
+  sessionId?: string | null;
+  activityType: string;
+  activityCategory: string;
+  description: string;
+  pageUrl?: string | null;
+  metadata?: unknown;
+  status?: ActivityStatus;
+  relatedEntityType?: string | null;
+  relatedEntityId?: string | number | null;
+  sourceApp?: string | null;
+  request?: Request | null;
+  country?: string | null;
+  city?: string | null;
+  region?: string | null;
+  deviceType?: string | null;
+  browser?: string | null;
+  userAgent?: string | null;
+  ipAddress?: string | null;
+};
+
+type ActivityLogFilterInput = {
+  query?: string;
+  datePreset?: "today" | "yesterday" | "last_7_days" | "last_30_days";
+  activityType?: string;
+  activityCategory?: string;
+  user?: string;
+  status?: ActivityStatus;
+  sourceApp?: string;
+  failedOnly?: boolean;
+  unreadOnly?: boolean;
+  limit?: number;
+};
+
+function truncateText(value: unknown, max = MAX_METADATA_TEXT) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) return null;
+  return normalized.length > max ? `${normalized.slice(0, max - 1)}…` : normalized;
+}
+
+function shouldStoreActivityLogIpAddress() {
+  return String(process.env.ACTIVITY_LOG_STORE_IP ?? "false").trim().toLowerCase() === "true";
+}
+
+function anonymizeIpAddress(rawIp: string | null) {
+  if (!rawIp) return null;
+  if (rawIp.includes(".")) {
+    const parts = rawIp.split(".");
+    if (parts.length === 4) return `${parts[0]}.${parts[1]}.0.0`;
+  }
+  if (rawIp.includes(":")) {
+    const parts = rawIp.split(":").filter(Boolean);
+    return parts.length ? `${parts.slice(0, 2).join(":")}::` : null;
+  }
+  return null;
+}
+
+function detectDeviceType(userAgent: string | null) {
+  if (!userAgent) return null;
+  const normalized = userAgent.toLowerCase();
+  if (/ipad|tablet|kindle|playbook/.test(normalized)) return "tablet";
+  if (/mobi|android|iphone|ipod|blackberry|windows phone/.test(normalized)) return "mobile";
+  return "desktop";
+}
+
+function detectBrowser(userAgent: string | null) {
+  if (!userAgent) return null;
+  const normalized = userAgent.toLowerCase();
+  if (normalized.includes("edg/")) return "Edge";
+  if (normalized.includes("opr/") || normalized.includes("opera")) return "Opera";
+  if (normalized.includes("chrome/") && !normalized.includes("edg/")) return "Chrome";
+  if (normalized.includes("firefox/")) return "Firefox";
+  if (normalized.includes("safari/") && !normalized.includes("chrome/")) return "Safari";
+  return "Unknown";
+}
+
+function sanitizeMetadataValue(value: unknown, depth = 0): unknown {
+  if (depth > 4) return "[truncated]";
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") return truncateText(value);
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.slice(0, 25).map((entry) => sanitizeMetadataValue(entry, depth + 1));
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !SENSITIVE_METADATA_KEY_PATTERN.test(key))
+      .slice(0, MAX_METADATA_KEYS)
+      .map(([key, entry]) => [key, sanitizeMetadataValue(entry, depth + 1)] as const)
+      .filter(([, entry]) => entry !== null && entry !== undefined && entry !== "");
+    return Object.fromEntries(entries);
+  }
+  return truncateText(String(value));
+}
+
+function sanitizeMetadata(input: unknown) {
+  const sanitized = sanitizeMetadataValue(input);
+  if (!sanitized || (typeof sanitized === "object" && !Array.isArray(sanitized) && Object.keys(sanitized as Record<string, unknown>).length === 0)) return null;
+  return sanitized;
+}
+
+function getRequestContext(request?: Request | null) {
+  const req = request ?? null;
+  const userAgent = truncateText(req?.headers["user-agent"] || null, 500);
+  const forwarded = typeof req?.headers["x-forwarded-for"] === "string" ? req.headers["x-forwarded-for"].split(",")[0]?.trim() : null;
+  const rawIp = forwarded || req?.ip || null;
+  const shouldStoreIp = shouldStoreActivityLogIpAddress();
+  const country = truncateText(req?.headers["x-vercel-ip-country"] || null, 120);
+  const city = truncateText(req?.headers["x-vercel-ip-city"] || null, 120);
+  const region = truncateText(req?.headers["x-vercel-ip-country-region"] || null, 120);
+  return {
+    userAgent,
+    ipAddress: shouldStoreIp ? anonymizeIpAddress(rawIp) : null,
+    country,
+    city,
+    region,
+    deviceType: detectDeviceType(userAgent),
+    browser: detectBrowser(userAgent),
+  };
+}
+
+async function ensureActivityLogsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "activityLogs" (
+      "id" SERIAL PRIMARY KEY,
+      "userId" INTEGER,
+      "userName" VARCHAR(180),
+      "userEmail" VARCHAR(320),
+      "sessionId" VARCHAR(128),
+      "activityType" VARCHAR(120) NOT NULL,
+      "activityCategory" VARCHAR(120) NOT NULL,
+      "description" TEXT NOT NULL,
+      "pageUrl" VARCHAR(800),
+      "metadata" JSON,
+      "status" VARCHAR(30) NOT NULL DEFAULT 'info',
+      "ipAddress" VARCHAR(80),
+      "country" VARCHAR(120),
+      "city" VARCHAR(120),
+      "region" VARCHAR(120),
+      "deviceType" VARCHAR(40),
+      "browser" VARCHAR(80),
+      "userAgent" VARCHAR(500),
+      "relatedEntityType" VARCHAR(80),
+      "relatedEntityId" VARCHAR(120),
+      "sourceApp" VARCHAR(80) NOT NULL DEFAULT 'ebysplace',
+      "isRead" TEXT NOT NULL DEFAULT 'false',
+      "createdAtMs" BIGINT NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "activityLogs_createdAt_idx" ON "activityLogs" ("createdAt")`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "activityLogs_category_idx" ON "activityLogs" ("activityCategory")`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "activityLogs_status_idx" ON "activityLogs" ("status")`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "activityLogs_isRead_idx" ON "activityLogs" ("isRead")`);
+  } catch (error) {
+    console.warn("[Database] Could not ensure activityLogs table", error);
+  }
+}
+
+export async function logActivity(input: ActivityLogInput) {
+  const db = await getDb();
+  if (!db) return { success: true };
+  await ensureActivityLogsTable();
+  const requestContext = getRequestContext(input.request);
+  const shouldStoreIp = shouldStoreActivityLogIpAddress();
+  const inputIpAddress = anonymizeIpAddress(truncateText(input.ipAddress, 80));
+  const payload = {
+    userId: input.userId ?? null,
+    userName: truncateText(input.userName, 180),
+    userEmail: truncateText(input.userEmail, 320),
+    sessionId: truncateText(input.sessionId, 128),
+    activityType: truncateText(input.activityType, 120) || "unknown_activity",
+    activityCategory: truncateText(input.activityCategory, 120) || "general",
+    description: truncateText(input.description, MAX_DESCRIPTION_LENGTH) || "Activity recorded",
+    pageUrl: truncateText(input.pageUrl, MAX_PAGE_URL_LENGTH),
+    metadata: sanitizeMetadata(input.metadata),
+    status: truncateText(input.status || "info", 30) || "info",
+    ipAddress: shouldStoreIp ? (inputIpAddress ?? requestContext.ipAddress) : null,
+    country: input.country ?? requestContext.country,
+    city: input.city ?? requestContext.city,
+    region: input.region ?? requestContext.region,
+    deviceType: input.deviceType ?? requestContext.deviceType,
+    browser: input.browser ?? requestContext.browser,
+    userAgent: input.userAgent ?? requestContext.userAgent,
+    relatedEntityType: truncateText(input.relatedEntityType, 80),
+    relatedEntityId: truncateText(input.relatedEntityId, 120),
+    sourceApp: truncateText(input.sourceApp || "ebysplace", 80) || "ebysplace",
+    isRead: "false" as const,
+    createdAtMs: Date.now(),
+    updatedAt: new Date(),
+  };
+  await db.insert(activityLogs).values(payload);
+  return { success: true };
+}
+
+export async function listActivityLogs(filters: ActivityLogFilterInput = {}) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureActivityLogsTable();
+  const conditions = [];
+  if (filters.activityType) conditions.push(eq(activityLogs.activityType, filters.activityType));
+  if (filters.activityCategory) conditions.push(eq(activityLogs.activityCategory, filters.activityCategory));
+  if (filters.status) conditions.push(eq(activityLogs.status, filters.status));
+  if (filters.sourceApp) conditions.push(eq(activityLogs.sourceApp, filters.sourceApp));
+  if (filters.failedOnly) conditions.push(eq(activityLogs.status, "failed"));
+  if (filters.unreadOnly) conditions.push(eq(activityLogs.isRead, "false"));
+  if (filters.user) {
+    const userQuery = `%${filters.user.trim()}%`;
+    conditions.push(or(ilike(activityLogs.userName, userQuery), ilike(activityLogs.userEmail, userQuery), ilike(activityLogs.sessionId, userQuery)));
+  }
+  if (filters.query) {
+    const query = `%${filters.query.trim()}%`;
+    conditions.push(or(
+      ilike(activityLogs.activityType, query),
+      ilike(activityLogs.activityCategory, query),
+      ilike(activityLogs.description, query),
+      ilike(activityLogs.userName, query),
+      ilike(activityLogs.userEmail, query),
+      ilike(activityLogs.sessionId, query),
+      ilike(activityLogs.pageUrl, query),
+      ilike(activityLogs.relatedEntityId, query),
+    ));
+  }
+  if (filters.datePreset) {
+    if (filters.datePreset === "today") conditions.push(sql`${activityLogs.createdAt} >= CURRENT_DATE`);
+    if (filters.datePreset === "yesterday") conditions.push(sql`${activityLogs.createdAt} >= CURRENT_DATE - INTERVAL '1 day' AND ${activityLogs.createdAt} < CURRENT_DATE`);
+    if (filters.datePreset === "last_7_days") conditions.push(sql`${activityLogs.createdAt} >= NOW() - INTERVAL '7 days'`);
+    if (filters.datePreset === "last_30_days") conditions.push(sql`${activityLogs.createdAt} >= NOW() - INTERVAL '30 days'`);
+  }
+  const whereClause = conditions.length ? and(...conditions) : undefined;
+  return db.select().from(activityLogs).where(whereClause).orderBy(desc(activityLogs.createdAt)).limit(Math.min(Math.max(filters.limit ?? 150, 1), 500));
+}
+
+export async function unreadActivityCount() {
+  const db = await getDb();
+  if (!db) return 0;
+  await ensureActivityLogsTable();
+  const rows = await db
+    .select({ value: sql<number>`count(*)` })
+    .from(activityLogs)
+    .where(eq(activityLogs.isRead, "false"));
+  return Number(rows[0]?.value ?? 0);
+}
+
+export async function markActivityLogsRead(ids?: number[]) {
+  const db = await getDb();
+  if (!db) return { success: true };
+  await ensureActivityLogsTable();
+  if (ids?.length) {
+    const normalizedIds = ids.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0);
+    if (!normalizedIds.length) return { success: true };
+    await db
+      .update(activityLogs)
+      .set({ isRead: "true", updatedAt: new Date() })
+      .where(inArray(activityLogs.id, normalizedIds));
+    return { success: true };
+  }
+  await db.update(activityLogs).set({ isRead: "true", updatedAt: new Date() }).where(eq(activityLogs.isRead, "false"));
+  return { success: true };
+}
+
 export async function createBooking(input: typeof bookings.$inferInsert) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
   await ensureBookingLocationColumns();
   const inserted = await db.insert(bookings).values(input).returning({ id: bookings.id });
-  return { id: inserted[0]?.id ?? 0 };
+  const bookingId = inserted[0]?.id ?? 0;
+  await logActivity({
+    activityType: "booking_started",
+    activityCategory: "booking",
+    description: `Booking started for ${input.serviceName}`,
+    status: "pending",
+    pageUrl: "/booking",
+    relatedEntityType: "booking",
+    relatedEntityId: bookingId || null,
+    metadata: {
+      serviceName: input.serviceName,
+      appointmentDate: input.appointmentDate,
+      appointmentTime: input.appointmentTime,
+      serviceLocation: input.serviceLocation,
+      clientName: input.clientName,
+      clientEmail: input.clientEmail,
+    },
+  });
+  return { id: bookingId };
 }
 
 export async function updateBookingCheckout(id: number, stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
   const db = await getDb();
   if (!db) return;
   await db.update(bookings).set({ depositStatus: "checkout_started", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(bookings.id, id));
+  await logActivity({
+    activityType: "checkout_started",
+    activityCategory: "payment",
+    description: `Checkout started for booking #${id}`,
+    status: "pending",
+    pageUrl: "/booking",
+    relatedEntityType: "booking",
+    relatedEntityId: id,
+    metadata: { stripeCheckoutSessionId },
+  });
 }
 
 export async function markBookingDepositPaid(stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
   const db = await getDb();
   if (!db) return;
   await db.update(bookings).set({ depositStatus: "paid", status: "confirmed", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId));
+  const booking = await getBookingByCheckoutSession(stripeCheckoutSessionId);
+  await logActivity({
+    activityType: "payment_successful",
+    activityCategory: "payment",
+    description: `Booking deposit payment successful${booking?.id ? ` for booking #${booking.id}` : ""}`,
+    status: "success",
+    pageUrl: "/booking/success",
+    relatedEntityType: "booking",
+    relatedEntityId: booking?.id ?? null,
+    metadata: { stripeCheckoutSessionId, stripePaymentIntentId },
+  });
 }
 
 export async function getBookingByCheckoutSession(stripeCheckoutSessionId: string) {
@@ -1382,6 +1695,20 @@ export async function createOrderWithItems(input: { customerName: string; custom
   }).returning({ id: orders.id });
   const orderId = inserted[0]?.id ?? 0;
   if (orderId && validatedItems.length) await db.insert(orderItems).values(validatedItems.map((item) => ({ ...item, orderId })));
+  await logActivity({
+    activityType: "checkout_started",
+    activityCategory: "payment",
+    description: `Shop checkout started for order #${orderId}`,
+    status: "pending",
+    pageUrl: "/shop",
+    relatedEntityType: "order",
+    relatedEntityId: orderId || null,
+    metadata: {
+      customerName: input.customerName,
+      customerEmail: input.customerEmail,
+      itemCount: validatedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+    },
+  });
   return { id: orderId, items: validatedItems };
 }
 
@@ -1389,6 +1716,16 @@ export async function updateOrderCheckout(id: number, stripeCheckoutSessionId: s
   const db = await getDb();
   if (!db) return;
   await db.update(orders).set({ status: "pending_payment", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, id));
+  await logActivity({
+    activityType: "checkout_started",
+    activityCategory: "payment",
+    description: `Order checkout session created for order #${id}`,
+    status: "pending",
+    pageUrl: "/shop",
+    relatedEntityType: "order",
+    relatedEntityId: id,
+    metadata: { stripeCheckoutSessionId },
+  });
 }
 
 export async function markOrderPaid(stripeCheckoutSessionId: string, stripePaymentIntentId?: string | null) {
@@ -1400,6 +1737,16 @@ export async function markOrderPaid(stripeCheckoutSessionId: string, stripePayme
   if (!order) return;
   const alreadyPaid = ["paid", "fulfilling", "shipped", "completed"].includes(order.status);
   await db.update(orders).set({ status: "paid", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, order.id));
+  await logActivity({
+    activityType: "payment_successful",
+    activityCategory: "payment",
+    description: `Payment successful for order #${order.id}`,
+    status: "success",
+    pageUrl: "/shop",
+    relatedEntityType: "order",
+    relatedEntityId: order.id,
+    metadata: { stripeCheckoutSessionId, stripePaymentIntentId },
+  });
   if (alreadyPaid) return;
 
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
@@ -1585,10 +1932,42 @@ export async function getEmailNotificationLogById(id: number) {
   return rows[0] ?? null;
 }
 
-export async function recordAnalytics(eventName: string, pagePath: string, metadata?: unknown) {
+export async function recordAnalytics(
+  eventName: string,
+  pagePath: string,
+  metadata?: unknown,
+  options?: {
+    request?: Request | null;
+    user?: { id?: number; name?: string | null; email?: string | null } | null;
+    sessionId?: string | null;
+    activityType?: string;
+    activityCategory?: string;
+    status?: ActivityStatus;
+    description?: string;
+    relatedEntityType?: string | null;
+    relatedEntityId?: string | number | null;
+    sourceApp?: string | null;
+  }
+) {
   const db = await getDb();
   if (!db) return { success: true };
   await db.insert(analyticsEvents).values({ eventName, pagePath, metadata, createdAtMs: Date.now() });
+  await logActivity({
+    request: options?.request,
+    userId: options?.user?.id ?? null,
+    userName: options?.user?.name ?? null,
+    userEmail: options?.user?.email ?? null,
+    sessionId: options?.sessionId ?? null,
+    activityType: options?.activityType ?? eventName,
+    activityCategory: options?.activityCategory ?? "website_visit",
+    description: options?.description ?? `Visitor event: ${eventName}`,
+    pageUrl: pagePath,
+    metadata,
+    status: options?.status ?? "info",
+    relatedEntityType: options?.relatedEntityType ?? null,
+    relatedEntityId: options?.relatedEntityId ?? null,
+    sourceApp: options?.sourceApp ?? "ebysplace",
+  });
   return { success: true };
 }
 
@@ -1596,23 +1975,45 @@ export async function createTryOnGeneration(input: { styleName: string; original
   const db = await getDb();
   if (!db) return { id: Date.now() };
   const inserted = await db.insert(tryOnGenerations).values({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, generatedImageUrl: input.generatedImageUrl, status: input.status ?? "pending", errorMessage: input.errorMessage }).returning({ id: tryOnGenerations.id });
-  return { id: inserted[0]?.id ?? 0 };
+  const id = inserted[0]?.id ?? 0;
+  await logActivity({
+    activityType: "ai_tryon_started",
+    activityCategory: "ai_try_on",
+    description: `AI Try-On started for style ${input.styleName}`,
+    status: "pending",
+    pageUrl: "/ai-try-on",
+    relatedEntityType: "try_on",
+    relatedEntityId: id || null,
+    metadata: { styleName: input.styleName, imageUploaded: Boolean(input.originalImageUrl) },
+  });
+  return { id };
 }
 
 export async function updateTryOnGeneration(id: number, input: { generatedImageUrl?: string; status: "completed" | "failed"; errorMessage?: string }) {
   const db = await getDb();
   if (!db) return;
   await db.update(tryOnGenerations).set(input).where(eq(tryOnGenerations.id, id));
+  await logActivity({
+    activityType: input.status === "completed" ? "ai_tryon_completed" : "ai_tryon_failed",
+    activityCategory: "ai_try_on",
+    description: input.status === "completed" ? `AI Try-On completed for generation #${id}` : `AI Try-On failed for generation #${id}`,
+    status: input.status === "completed" ? "success" : "failed",
+    pageUrl: "/ai-try-on",
+    relatedEntityType: "try_on",
+    relatedEntityId: id,
+    metadata: input.errorMessage ? { errorMessage: input.errorMessage } : undefined,
+  });
 }
 
 export async function adminSummary() {
   await seedIfNeeded();
   const supabaseProducts = await listSupabaseProducts();
   const db = await getDb();
-  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, pendingProductReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0 };
+  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, pendingProductReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0, activityLogs: 0, unreadActivities: 0 };
   await ensureProductReviewsTable();
-  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(productReviews).where(eq(productReviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
-  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, pendingProductReviews: productReviewRows.length, products: supabaseProducts?.length ?? dbProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
+  await ensureActivityLogsTable();
+  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, serviceRows, tryOnRows, activityRows, unreadRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(productReviews).where(eq(productReviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations), db.select().from(activityLogs), db.select({ value: sql<number>`count(*)` }).from(activityLogs).where(eq(activityLogs.isRead, "false"))]);
+  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, pendingProductReviews: productReviewRows.length, products: supabaseProducts?.length ?? dbProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length, activityLogs: activityRows.length, unreadActivities: Number(unreadRows[0]?.value ?? 0) };
 }
 
 export async function adminLists() {
@@ -1621,11 +2022,12 @@ export async function adminLists() {
   const db = await getDb();
   if (db) await ensureBookingLocationColumns();
   const fallbackProducts = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
-  if (!db) return { bookings: [], orders: [], reviews: seedReviews, productReviews: [], products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+  if (!db) return { bookings: [], orders: [], reviews: seedReviews, productReviews: [], products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], activityLogs: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   await ensureEmailNotificationLogTable();
+  await ensureActivityLogsTable();
   await ensureProductVariantsTable();
   await ensureProductReviewsTable();
-  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(productReviews).orderBy(desc(productReviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
+  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows, activityRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(productReviews).orderBy(desc(productReviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80), db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(120)]);
   const productsWithVariants = supabaseProducts ?? dbProductRows.map((product) => ({
     ...product,
     id: Number(product.id),
@@ -1637,7 +2039,7 @@ export async function adminLists() {
     seoDescription: product.seoDescription || product.description,
     variants: variantRows.filter((variant) => variant.productId === product.id),
   }));
-  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, productReviews: productReviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows, emailNotifications: emailNotificationRows, availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, productReviews: productReviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows, emailNotifications: emailNotificationRows, activityLogs: activityRows, availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
 }
 
 export async function moderateReview(id: number, status: "approved" | "rejected") {

@@ -10,7 +10,7 @@ import express from "express";
 import Stripe from "stripe";
 
 // server/db.ts
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
@@ -220,6 +220,33 @@ var analyticsEvents = pgTable("analyticsEvents", {
   metadata: json("metadata"),
   createdAtMs: bigint("createdAtMs", { mode: "number" }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
+});
+var activityLogs = pgTable("activityLogs", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId"),
+  userName: varchar("userName", { length: 180 }),
+  userEmail: varchar("userEmail", { length: 320 }),
+  sessionId: varchar("sessionId", { length: 128 }),
+  activityType: varchar("activityType", { length: 120 }).notNull(),
+  activityCategory: varchar("activityCategory", { length: 120 }).notNull(),
+  description: text("description").notNull(),
+  pageUrl: varchar("pageUrl", { length: 800 }),
+  metadata: json("metadata"),
+  status: varchar("status", { length: 30 }).default("info").notNull(),
+  ipAddress: varchar("ipAddress", { length: 80 }),
+  country: varchar("country", { length: 120 }),
+  city: varchar("city", { length: 120 }),
+  region: varchar("region", { length: 120 }),
+  deviceType: varchar("deviceType", { length: 40 }),
+  browser: varchar("browser", { length: 80 }),
+  userAgent: varchar("userAgent", { length: 500 }),
+  relatedEntityType: varchar("relatedEntityType", { length: 80 }),
+  relatedEntityId: varchar("relatedEntityId", { length: 120 }),
+  sourceApp: varchar("sourceApp", { length: 80 }).default("ebysplace").notNull(),
+  isRead: trueFalseEnum("isRead").default("false").notNull(),
+  createdAtMs: bigint("createdAtMs", { mode: "number" }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
 var emailNotificationLogs = pgTable("emailNotificationLogs", {
   id: serial("id").primaryKey(),
@@ -1427,22 +1454,270 @@ async function ensureOrderItemSnapshotColumns() {
   if (!_pool) return;
   await addPgColumnIfMissing("orderItems", "imageUrl", "VARCHAR(800)");
 }
+var SENSITIVE_METADATA_KEY_PATTERN = /(password|passwd|secret|token|key|auth|credential|card|cvv|cvc|iban|stripe|supabase|database|cookie|sessioncookie)/i;
+var MAX_METADATA_KEYS = 50;
+var MAX_METADATA_TEXT = 500;
+var MAX_DESCRIPTION_LENGTH = 500;
+var MAX_PAGE_URL_LENGTH = 800;
+function truncateText(value, max = MAX_METADATA_TEXT) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) return null;
+  return normalized.length > max ? `${normalized.slice(0, max - 1)}\u2026` : normalized;
+}
+function shouldStoreActivityLogIpAddress() {
+  return String(process.env.ACTIVITY_LOG_STORE_IP ?? "false").trim().toLowerCase() === "true";
+}
+function anonymizeIpAddress(rawIp) {
+  if (!rawIp) return null;
+  if (rawIp.includes(".")) {
+    const parts = rawIp.split(".");
+    if (parts.length === 4) return `${parts[0]}.${parts[1]}.0.0`;
+  }
+  if (rawIp.includes(":")) {
+    const parts = rawIp.split(":").filter(Boolean);
+    return parts.length ? `${parts.slice(0, 2).join(":")}::` : null;
+  }
+  return null;
+}
+function detectDeviceType(userAgent) {
+  if (!userAgent) return null;
+  const normalized = userAgent.toLowerCase();
+  if (/ipad|tablet|kindle|playbook/.test(normalized)) return "tablet";
+  if (/mobi|android|iphone|ipod|blackberry|windows phone/.test(normalized)) return "mobile";
+  return "desktop";
+}
+function detectBrowser(userAgent) {
+  if (!userAgent) return null;
+  const normalized = userAgent.toLowerCase();
+  if (normalized.includes("edg/")) return "Edge";
+  if (normalized.includes("opr/") || normalized.includes("opera")) return "Opera";
+  if (normalized.includes("chrome/") && !normalized.includes("edg/")) return "Chrome";
+  if (normalized.includes("firefox/")) return "Firefox";
+  if (normalized.includes("safari/") && !normalized.includes("chrome/")) return "Safari";
+  return "Unknown";
+}
+function sanitizeMetadataValue(value, depth = 0) {
+  if (depth > 4) return "[truncated]";
+  if (value === null || value === void 0) return null;
+  if (typeof value === "string") return truncateText(value);
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.slice(0, 25).map((entry) => sanitizeMetadataValue(entry, depth + 1));
+  if (typeof value === "object") {
+    const entries = Object.entries(value).filter(([key]) => !SENSITIVE_METADATA_KEY_PATTERN.test(key)).slice(0, MAX_METADATA_KEYS).map(([key, entry]) => [key, sanitizeMetadataValue(entry, depth + 1)]).filter(([, entry]) => entry !== null && entry !== void 0 && entry !== "");
+    return Object.fromEntries(entries);
+  }
+  return truncateText(String(value));
+}
+function sanitizeMetadata(input) {
+  const sanitized = sanitizeMetadataValue(input);
+  if (!sanitized || typeof sanitized === "object" && !Array.isArray(sanitized) && Object.keys(sanitized).length === 0) return null;
+  return sanitized;
+}
+function getRequestContext(request) {
+  const req = request ?? null;
+  const userAgent = truncateText(req?.headers["user-agent"] || null, 500);
+  const forwarded = typeof req?.headers["x-forwarded-for"] === "string" ? req.headers["x-forwarded-for"].split(",")[0]?.trim() : null;
+  const rawIp = forwarded || req?.ip || null;
+  const shouldStoreIp = shouldStoreActivityLogIpAddress();
+  const country = truncateText(req?.headers["x-vercel-ip-country"] || null, 120);
+  const city = truncateText(req?.headers["x-vercel-ip-city"] || null, 120);
+  const region = truncateText(req?.headers["x-vercel-ip-country-region"] || null, 120);
+  return {
+    userAgent,
+    ipAddress: shouldStoreIp ? anonymizeIpAddress(rawIp) : null,
+    country,
+    city,
+    region,
+    deviceType: detectDeviceType(userAgent),
+    browser: detectBrowser(userAgent)
+  };
+}
+async function ensureActivityLogsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "activityLogs" (
+      "id" SERIAL PRIMARY KEY,
+      "userId" INTEGER,
+      "userName" VARCHAR(180),
+      "userEmail" VARCHAR(320),
+      "sessionId" VARCHAR(128),
+      "activityType" VARCHAR(120) NOT NULL,
+      "activityCategory" VARCHAR(120) NOT NULL,
+      "description" TEXT NOT NULL,
+      "pageUrl" VARCHAR(800),
+      "metadata" JSON,
+      "status" VARCHAR(30) NOT NULL DEFAULT 'info',
+      "ipAddress" VARCHAR(80),
+      "country" VARCHAR(120),
+      "city" VARCHAR(120),
+      "region" VARCHAR(120),
+      "deviceType" VARCHAR(40),
+      "browser" VARCHAR(80),
+      "userAgent" VARCHAR(500),
+      "relatedEntityType" VARCHAR(80),
+      "relatedEntityId" VARCHAR(120),
+      "sourceApp" VARCHAR(80) NOT NULL DEFAULT 'ebysplace',
+      "isRead" TEXT NOT NULL DEFAULT 'false',
+      "createdAtMs" BIGINT NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "activityLogs_createdAt_idx" ON "activityLogs" ("createdAt")`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "activityLogs_category_idx" ON "activityLogs" ("activityCategory")`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "activityLogs_status_idx" ON "activityLogs" ("status")`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "activityLogs_isRead_idx" ON "activityLogs" ("isRead")`);
+  } catch (error) {
+    console.warn("[Database] Could not ensure activityLogs table", error);
+  }
+}
+async function logActivity(input) {
+  const db = await getDb();
+  if (!db) return { success: true };
+  await ensureActivityLogsTable();
+  const requestContext = getRequestContext(input.request);
+  const shouldStoreIp = shouldStoreActivityLogIpAddress();
+  const inputIpAddress = anonymizeIpAddress(truncateText(input.ipAddress, 80));
+  const payload = {
+    userId: input.userId ?? null,
+    userName: truncateText(input.userName, 180),
+    userEmail: truncateText(input.userEmail, 320),
+    sessionId: truncateText(input.sessionId, 128),
+    activityType: truncateText(input.activityType, 120) || "unknown_activity",
+    activityCategory: truncateText(input.activityCategory, 120) || "general",
+    description: truncateText(input.description, MAX_DESCRIPTION_LENGTH) || "Activity recorded",
+    pageUrl: truncateText(input.pageUrl, MAX_PAGE_URL_LENGTH),
+    metadata: sanitizeMetadata(input.metadata),
+    status: truncateText(input.status || "info", 30) || "info",
+    ipAddress: shouldStoreIp ? inputIpAddress ?? requestContext.ipAddress : null,
+    country: input.country ?? requestContext.country,
+    city: input.city ?? requestContext.city,
+    region: input.region ?? requestContext.region,
+    deviceType: input.deviceType ?? requestContext.deviceType,
+    browser: input.browser ?? requestContext.browser,
+    userAgent: input.userAgent ?? requestContext.userAgent,
+    relatedEntityType: truncateText(input.relatedEntityType, 80),
+    relatedEntityId: truncateText(input.relatedEntityId, 120),
+    sourceApp: truncateText(input.sourceApp || "ebysplace", 80) || "ebysplace",
+    isRead: "false",
+    createdAtMs: Date.now(),
+    updatedAt: /* @__PURE__ */ new Date()
+  };
+  await db.insert(activityLogs).values(payload);
+  return { success: true };
+}
+async function listActivityLogs(filters = {}) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureActivityLogsTable();
+  const conditions = [];
+  if (filters.activityType) conditions.push(eq(activityLogs.activityType, filters.activityType));
+  if (filters.activityCategory) conditions.push(eq(activityLogs.activityCategory, filters.activityCategory));
+  if (filters.status) conditions.push(eq(activityLogs.status, filters.status));
+  if (filters.sourceApp) conditions.push(eq(activityLogs.sourceApp, filters.sourceApp));
+  if (filters.failedOnly) conditions.push(eq(activityLogs.status, "failed"));
+  if (filters.unreadOnly) conditions.push(eq(activityLogs.isRead, "false"));
+  if (filters.user) {
+    const userQuery = `%${filters.user.trim()}%`;
+    conditions.push(or(ilike(activityLogs.userName, userQuery), ilike(activityLogs.userEmail, userQuery), ilike(activityLogs.sessionId, userQuery)));
+  }
+  if (filters.query) {
+    const query = `%${filters.query.trim()}%`;
+    conditions.push(or(
+      ilike(activityLogs.activityType, query),
+      ilike(activityLogs.activityCategory, query),
+      ilike(activityLogs.description, query),
+      ilike(activityLogs.userName, query),
+      ilike(activityLogs.userEmail, query),
+      ilike(activityLogs.sessionId, query),
+      ilike(activityLogs.pageUrl, query),
+      ilike(activityLogs.relatedEntityId, query)
+    ));
+  }
+  if (filters.datePreset) {
+    if (filters.datePreset === "today") conditions.push(sql`${activityLogs.createdAt} >= CURRENT_DATE`);
+    if (filters.datePreset === "yesterday") conditions.push(sql`${activityLogs.createdAt} >= CURRENT_DATE - INTERVAL '1 day' AND ${activityLogs.createdAt} < CURRENT_DATE`);
+    if (filters.datePreset === "last_7_days") conditions.push(sql`${activityLogs.createdAt} >= NOW() - INTERVAL '7 days'`);
+    if (filters.datePreset === "last_30_days") conditions.push(sql`${activityLogs.createdAt} >= NOW() - INTERVAL '30 days'`);
+  }
+  const whereClause = conditions.length ? and(...conditions) : void 0;
+  return db.select().from(activityLogs).where(whereClause).orderBy(desc(activityLogs.createdAt)).limit(Math.min(Math.max(filters.limit ?? 150, 1), 500));
+}
+async function unreadActivityCount() {
+  const db = await getDb();
+  if (!db) return 0;
+  await ensureActivityLogsTable();
+  const rows = await db.select({ value: sql`count(*)` }).from(activityLogs).where(eq(activityLogs.isRead, "false"));
+  return Number(rows[0]?.value ?? 0);
+}
+async function markActivityLogsRead(ids) {
+  const db = await getDb();
+  if (!db) return { success: true };
+  await ensureActivityLogsTable();
+  if (ids?.length) {
+    const normalizedIds = ids.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0);
+    if (!normalizedIds.length) return { success: true };
+    await db.update(activityLogs).set({ isRead: "true", updatedAt: /* @__PURE__ */ new Date() }).where(inArray(activityLogs.id, normalizedIds));
+    return { success: true };
+  }
+  await db.update(activityLogs).set({ isRead: "true", updatedAt: /* @__PURE__ */ new Date() }).where(eq(activityLogs.isRead, "false"));
+  return { success: true };
+}
 async function createBooking(input) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
   await ensureBookingLocationColumns();
   const inserted = await db.insert(bookings).values(input).returning({ id: bookings.id });
-  return { id: inserted[0]?.id ?? 0 };
+  const bookingId = inserted[0]?.id ?? 0;
+  await logActivity({
+    activityType: "booking_started",
+    activityCategory: "booking",
+    description: `Booking started for ${input.serviceName}`,
+    status: "pending",
+    pageUrl: "/booking",
+    relatedEntityType: "booking",
+    relatedEntityId: bookingId || null,
+    metadata: {
+      serviceName: input.serviceName,
+      appointmentDate: input.appointmentDate,
+      appointmentTime: input.appointmentTime,
+      serviceLocation: input.serviceLocation,
+      clientName: input.clientName,
+      clientEmail: input.clientEmail
+    }
+  });
+  return { id: bookingId };
 }
 async function updateBookingCheckout(id, stripeCheckoutSessionId, stripePaymentIntentId) {
   const db = await getDb();
   if (!db) return;
   await db.update(bookings).set({ depositStatus: "checkout_started", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(bookings.id, id));
+  await logActivity({
+    activityType: "checkout_started",
+    activityCategory: "payment",
+    description: `Checkout started for booking #${id}`,
+    status: "pending",
+    pageUrl: "/booking",
+    relatedEntityType: "booking",
+    relatedEntityId: id,
+    metadata: { stripeCheckoutSessionId }
+  });
 }
 async function markBookingDepositPaid(stripeCheckoutSessionId, stripePaymentIntentId) {
   const db = await getDb();
   if (!db) return;
   await db.update(bookings).set({ depositStatus: "paid", status: "confirmed", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId));
+  const booking = await getBookingByCheckoutSession(stripeCheckoutSessionId);
+  await logActivity({
+    activityType: "payment_successful",
+    activityCategory: "payment",
+    description: `Booking deposit payment successful${booking?.id ? ` for booking #${booking.id}` : ""}`,
+    status: "success",
+    pageUrl: "/booking/success",
+    relatedEntityType: "booking",
+    relatedEntityId: booking?.id ?? null,
+    metadata: { stripeCheckoutSessionId, stripePaymentIntentId }
+  });
 }
 async function getBookingByCheckoutSession(stripeCheckoutSessionId) {
   const db = await getDb();
@@ -1497,12 +1772,36 @@ async function createOrderWithItems(input) {
   }).returning({ id: orders.id });
   const orderId = inserted[0]?.id ?? 0;
   if (orderId && validatedItems.length) await db.insert(orderItems).values(validatedItems.map((item) => ({ ...item, orderId })));
+  await logActivity({
+    activityType: "checkout_started",
+    activityCategory: "payment",
+    description: `Shop checkout started for order #${orderId}`,
+    status: "pending",
+    pageUrl: "/shop",
+    relatedEntityType: "order",
+    relatedEntityId: orderId || null,
+    metadata: {
+      customerName: input.customerName,
+      customerEmail: input.customerEmail,
+      itemCount: validatedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+    }
+  });
   return { id: orderId, items: validatedItems };
 }
 async function updateOrderCheckout(id, stripeCheckoutSessionId, stripePaymentIntentId) {
   const db = await getDb();
   if (!db) return;
   await db.update(orders).set({ status: "pending_payment", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, id));
+  await logActivity({
+    activityType: "checkout_started",
+    activityCategory: "payment",
+    description: `Order checkout session created for order #${id}`,
+    status: "pending",
+    pageUrl: "/shop",
+    relatedEntityType: "order",
+    relatedEntityId: id,
+    metadata: { stripeCheckoutSessionId }
+  });
 }
 async function markOrderPaid(stripeCheckoutSessionId, stripePaymentIntentId) {
   const db = await getDb();
@@ -1513,6 +1812,16 @@ async function markOrderPaid(stripeCheckoutSessionId, stripePaymentIntentId) {
   if (!order) return;
   const alreadyPaid = ["paid", "fulfilling", "shipped", "completed"].includes(order.status);
   await db.update(orders).set({ status: "paid", stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, order.id));
+  await logActivity({
+    activityType: "payment_successful",
+    activityCategory: "payment",
+    description: `Payment successful for order #${order.id}`,
+    status: "success",
+    pageUrl: "/shop",
+    relatedEntityType: "order",
+    relatedEntityId: order.id,
+    metadata: { stripeCheckoutSessionId, stripePaymentIntentId }
+  });
   if (alreadyPaid) return;
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
   const supabaseProductRows = await listSupabaseProducts();
@@ -1665,31 +1974,69 @@ async function getEmailNotificationLogById(id) {
   const rows = await db.select().from(emailNotificationLogs).where(eq(emailNotificationLogs.id, id)).limit(1);
   return rows[0] ?? null;
 }
-async function recordAnalytics(eventName, pagePath, metadata) {
+async function recordAnalytics(eventName, pagePath, metadata, options) {
   const db = await getDb();
   if (!db) return { success: true };
   await db.insert(analyticsEvents).values({ eventName, pagePath, metadata, createdAtMs: Date.now() });
+  await logActivity({
+    request: options?.request,
+    userId: options?.user?.id ?? null,
+    userName: options?.user?.name ?? null,
+    userEmail: options?.user?.email ?? null,
+    sessionId: options?.sessionId ?? null,
+    activityType: options?.activityType ?? eventName,
+    activityCategory: options?.activityCategory ?? "website_visit",
+    description: options?.description ?? `Visitor event: ${eventName}`,
+    pageUrl: pagePath,
+    metadata,
+    status: options?.status ?? "info",
+    relatedEntityType: options?.relatedEntityType ?? null,
+    relatedEntityId: options?.relatedEntityId ?? null,
+    sourceApp: options?.sourceApp ?? "ebysplace"
+  });
   return { success: true };
 }
 async function createTryOnGeneration(input) {
   const db = await getDb();
   if (!db) return { id: Date.now() };
   const inserted = await db.insert(tryOnGenerations).values({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, generatedImageUrl: input.generatedImageUrl, status: input.status ?? "pending", errorMessage: input.errorMessage }).returning({ id: tryOnGenerations.id });
-  return { id: inserted[0]?.id ?? 0 };
+  const id = inserted[0]?.id ?? 0;
+  await logActivity({
+    activityType: "ai_tryon_started",
+    activityCategory: "ai_try_on",
+    description: `AI Try-On started for style ${input.styleName}`,
+    status: "pending",
+    pageUrl: "/ai-try-on",
+    relatedEntityType: "try_on",
+    relatedEntityId: id || null,
+    metadata: { styleName: input.styleName, imageUploaded: Boolean(input.originalImageUrl) }
+  });
+  return { id };
 }
 async function updateTryOnGeneration(id, input) {
   const db = await getDb();
   if (!db) return;
   await db.update(tryOnGenerations).set(input).where(eq(tryOnGenerations.id, id));
+  await logActivity({
+    activityType: input.status === "completed" ? "ai_tryon_completed" : "ai_tryon_failed",
+    activityCategory: "ai_try_on",
+    description: input.status === "completed" ? `AI Try-On completed for generation #${id}` : `AI Try-On failed for generation #${id}`,
+    status: input.status === "completed" ? "success" : "failed",
+    pageUrl: "/ai-try-on",
+    relatedEntityType: "try_on",
+    relatedEntityId: id,
+    metadata: input.errorMessage ? { errorMessage: input.errorMessage } : void 0
+  });
 }
 async function adminSummary() {
   await seedIfNeeded();
   const supabaseProducts = await listSupabaseProducts();
   const db = await getDb();
-  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, pendingProductReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0 };
+  if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, pendingProductReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0, activityLogs: 0, unreadActivities: 0 };
   await ensureProductReviewsTable();
-  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, serviceRows, tryOnRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(productReviews).where(eq(productReviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations)]);
-  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, pendingProductReviews: productReviewRows.length, products: supabaseProducts?.length ?? dbProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length };
+  await ensureActivityLogsTable();
+  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, serviceRows, tryOnRows, activityRows, unreadRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(productReviews).where(eq(productReviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations), db.select().from(activityLogs), db.select({ value: sql`count(*)` }).from(activityLogs).where(eq(activityLogs.isRead, "false"))]);
+  return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, pendingProductReviews: productReviewRows.length, products: supabaseProducts?.length ?? dbProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length, activityLogs: activityRows.length, unreadActivities: Number(unreadRows[0]?.value ?? 0) };
 }
 async function adminLists() {
   await seedIfNeeded();
@@ -1697,11 +2044,12 @@ async function adminLists() {
   const db = await getDb();
   if (db) await ensureBookingLocationColumns();
   const fallbackProducts = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
-  if (!db) return { bookings: [], orders: [], reviews: seedReviews, productReviews: [], products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+  if (!db) return { bookings: [], orders: [], reviews: seedReviews, productReviews: [], products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], activityLogs: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   await ensureEmailNotificationLogTable();
+  await ensureActivityLogsTable();
   await ensureProductVariantsTable();
   await ensureProductReviewsTable();
-  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(productReviews).orderBy(desc(productReviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)]);
+  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows, activityRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(productReviews).orderBy(desc(productReviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80), db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(120)]);
   const productsWithVariants = supabaseProducts ?? dbProductRows.map((product) => ({
     ...product,
     id: Number(product.id),
@@ -1713,7 +2061,7 @@ async function adminLists() {
     seoDescription: product.seoDescription || product.description,
     variants: variantRows.filter((variant) => variant.productId === product.id)
   }));
-  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, productReviews: productReviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows, emailNotifications: emailNotificationRows, availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
+  return { bookings: bookingRows, orders: orderRows, reviews: reviewRows, productReviews: productReviewRows, products: productsWithVariants, services: serviceRows, gallery: galleryRows, tryOns: tryOnRows, sections: sectionRows, emailNotifications: emailNotificationRows, activityLogs: activityRows, availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
 }
 async function moderateReview(id, status) {
   const db = await getDb();
@@ -2514,6 +2862,22 @@ Estimated delivery: 3-5 working days after dispatch.`
       if (event.type === "payment_intent.payment_failed") {
         const paymentIntent = event.data.object;
         const failureMessage = paymentIntent.last_payment_error?.message || "Stripe reported a failed payment attempt.";
+        await logActivity({
+          request: req,
+          activityType: "payment_failed",
+          activityCategory: "payment",
+          description: `Stripe payment failed for payment intent ${paymentIntent.id}`,
+          status: "failed",
+          pageUrl: "/checkout",
+          relatedEntityType: "payment_intent",
+          relatedEntityId: paymentIntent.id,
+          userEmail: paymentIntent.receipt_email || void 0,
+          metadata: {
+            reason: failureMessage,
+            currency: paymentIntent.currency,
+            amount: paymentIntent.amount
+          }
+        });
         await notifyOwner({
           title: "Eby\u2019s Place payment failed",
           content: [
@@ -2532,10 +2896,84 @@ Estimated delivery: 3-5 working days after dispatch.`
   });
 }
 
+// server/activityCollector.ts
+import { z } from "zod";
+var ACTIVITY_COLLECTOR_PATH = "/api/activity/external";
+var MAX_REQUESTS_PER_MINUTE = 120;
+var WINDOW_MS = 6e4;
+var requestWindowByIp = /* @__PURE__ */ new Map();
+function anonymizeIpForRateLimit(rawIp) {
+  if (!rawIp) return "unknown";
+  if (rawIp.includes(".")) {
+    const parts = rawIp.split(".");
+    if (parts.length === 4) return `${parts[0]}.${parts[1]}.0.0`;
+  }
+  if (rawIp.includes(":")) {
+    const parts = rawIp.split(":").filter(Boolean);
+    return parts.length ? `${parts.slice(0, 2).join(":")}::` : "unknown";
+  }
+  return "unknown";
+}
+var externalActivitySchema = z.object({
+  sessionId: z.string().max(128).optional(),
+  userName: z.string().max(180).optional(),
+  userEmail: z.string().email().max(320).optional(),
+  activityType: z.string().min(2).max(120),
+  activityCategory: z.string().min(2).max(120),
+  description: z.string().min(2).max(500),
+  pageUrl: z.string().max(800).optional(),
+  metadata: z.unknown().optional(),
+  status: z.enum(["success", "failed", "pending", "info"]).default("info"),
+  relatedEntityType: z.string().max(80).optional(),
+  relatedEntityId: z.union([z.string(), z.number()]).optional(),
+  sourceApp: z.string().max(80).default("kouviabooking")
+}).strict();
+function rateLimited(req) {
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || null;
+  const key = anonymizeIpForRateLimit(ip);
+  const now = Date.now();
+  const current = requestWindowByIp.get(key);
+  if (!current || current.resetAt < now) {
+    requestWindowByIp.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    return false;
+  }
+  current.count += 1;
+  return current.count > MAX_REQUESTS_PER_MINUTE;
+}
+function registerActivityCollector(app2) {
+  app2.post(ACTIVITY_COLLECTOR_PATH, async (req, res) => {
+    const expectedKey = String(process.env.ACTIVITY_COLLECTOR_KEY || "").trim();
+    const providedKey = String(req.headers["x-activity-collector-key"] || "").trim();
+    if (!expectedKey || providedKey !== expectedKey) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    if (rateLimited(req)) {
+      res.status(429).json({ error: "Rate limit exceeded" });
+      return;
+    }
+    const parsed = externalActivitySchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid payload", issues: parsed.error.issues.map((issue) => issue.path.join(".")).filter(Boolean) });
+      return;
+    }
+    try {
+      await logActivity({
+        request: req,
+        ...parsed.data
+      });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[ActivityCollector] Failed to store external activity", error);
+      res.status(500).json({ error: "Failed to store activity" });
+    }
+  });
+}
+
 // server/routers.ts
 import { TRPCError as TRPCError4 } from "@trpc/server";
 import Stripe2 from "stripe";
-import { z as z2 } from "zod";
+import { z as z3 } from "zod";
 
 // server/storage.ts
 var SUPABASE_URL = normalizeEnvUrl(process.env.SUPABASE_URL) || "https://jcyoipbiplzrocrrhwkp.supabase.co";
@@ -2677,7 +3115,7 @@ async function generateImage(options) {
 }
 
 // server/_core/systemRouter.ts
-import { z } from "zod";
+import { z as z2 } from "zod";
 
 // shared/const.ts
 var ONE_YEAR_MS = 1e3 * 60 * 60 * 24 * 365;
@@ -2723,16 +3161,16 @@ var adminProcedure = t.procedure.use(
 // server/_core/systemRouter.ts
 var systemRouter = router({
   health: publicProcedure.input(
-    z.object({
-      timestamp: z.number().min(0, "timestamp cannot be negative")
+    z2.object({
+      timestamp: z2.number().min(0, "timestamp cannot be negative")
     })
   ).query(() => ({
     ok: true
   })),
   notifyOwner: adminProcedure.input(
-    z.object({
-      title: z.string().min(1, "title is required"),
-      content: z.string().min(1, "content is required")
+    z2.object({
+      title: z2.string().min(1, "title is required"),
+      content: z2.string().min(1, "content is required")
     })
   ).mutation(async ({ input }) => {
     const delivered = await notifyOwner(input);
@@ -3115,59 +3553,60 @@ async function authenticateSupabaseRequest(req) {
 }
 
 // server/routers.ts
-var serviceCategory = z2.enum(["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
-var bookingStatus = z2.enum(["pending", "confirmed", "completed", "cancelled"]);
-var reviewStatus = z2.enum(["approved", "rejected"]);
-var orderStatus = z2.enum(["draft", "pending_payment", "paid", "fulfilling", "shipped", "completed", "cancelled"]);
-var productStockStatus = z2.enum(["in_stock", "low_stock", "out_of_stock"]);
-var productCategory = z2.enum(["Accessories", "Aftercare", "Hair Attachments"]);
-var galleryCategory = z2.enum(["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"]);
-var bookingAddOnInput = z2.object({
-  id: z2.string().min(2),
-  name: z2.string().min(2),
-  price: z2.string().regex(/^\d+(\.\d{2})?$/)
+var serviceCategory = z3.enum(["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
+var bookingStatus = z3.enum(["pending", "confirmed", "completed", "cancelled"]);
+var reviewStatus = z3.enum(["approved", "rejected"]);
+var orderStatus = z3.enum(["draft", "pending_payment", "paid", "fulfilling", "shipped", "completed", "cancelled"]);
+var productStockStatus = z3.enum(["in_stock", "low_stock", "out_of_stock"]);
+var productCategory = z3.enum(["Accessories", "Aftercare", "Hair Attachments"]);
+var galleryCategory = z3.enum(["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"]);
+var activityStatus = z3.enum(["success", "failed", "pending", "info"]);
+var bookingAddOnInput = z3.object({
+  id: z3.string().min(2),
+  name: z3.string().min(2),
+  price: z3.string().regex(/^\d+(\.\d{2})?$/)
 }).strict();
-var bookingProductInput = z2.object({
-  productId: z2.number(),
-  productName: z2.string().min(2),
-  quantity: z2.number().int().positive(),
-  unitPrice: z2.string().regex(/^\d+(\.\d{2})?$/)
+var bookingProductInput = z3.object({
+  productId: z3.number(),
+  productName: z3.string().min(2),
+  quantity: z3.number().int().positive(),
+  unitPrice: z3.string().regex(/^\d+(\.\d{2})?$/)
 }).strict();
-var bookingInput = z2.object({
-  serviceId: z2.number().optional(),
-  serviceLocation: z2.enum(["studio", "home_service"]).default("studio"),
-  serviceName: z2.string().min(2),
-  clientName: z2.string().min(2),
-  clientEmail: z2.string().email(),
-  clientPhone: z2.string().min(6),
-  addressLine1: z2.string().optional(),
-  addressLine2: z2.string().optional(),
-  city: z2.string().optional(),
-  county: z2.string().optional(),
-  postcode: z2.string().optional().default(""),
-  deliveryNote: z2.string().optional(),
-  appointmentDate: z2.string().min(8),
-  appointmentTime: z2.string().min(4),
-  addOns: z2.array(bookingAddOnInput).default([]),
-  bookingProducts: z2.array(bookingProductInput).default([])
+var bookingInput = z3.object({
+  serviceId: z3.number().optional(),
+  serviceLocation: z3.enum(["studio", "home_service"]).default("studio"),
+  serviceName: z3.string().min(2),
+  clientName: z3.string().min(2),
+  clientEmail: z3.string().email(),
+  clientPhone: z3.string().min(6),
+  addressLine1: z3.string().optional(),
+  addressLine2: z3.string().optional(),
+  city: z3.string().optional(),
+  county: z3.string().optional(),
+  postcode: z3.string().optional().default(""),
+  deliveryNote: z3.string().optional(),
+  appointmentDate: z3.string().min(8),
+  appointmentTime: z3.string().min(4),
+  addOns: z3.array(bookingAddOnInput).default([]),
+  bookingProducts: z3.array(bookingProductInput).default([])
 });
-var orderInput = z2.object({
-  customerName: z2.string().min(2),
-  customerEmail: z2.string().email(),
-  customerPhone: z2.string().optional(),
-  addressLine1: z2.string().optional(),
-  addressLine2: z2.string().optional(),
-  city: z2.string().optional(),
-  county: z2.string().optional(),
-  postcode: z2.string().optional().default(""),
-  deliveryNote: z2.string().optional(),
-  items: z2.array(z2.object({
-    productId: z2.number(),
-    variantId: z2.number().optional(),
-    productName: z2.string().min(2),
-    variantName: z2.string().optional(),
-    quantity: z2.number().int().positive(),
-    unitPrice: z2.string().regex(/^\d+(\.\d{2})?$/)
+var orderInput = z3.object({
+  customerName: z3.string().min(2),
+  customerEmail: z3.string().email(),
+  customerPhone: z3.string().optional(),
+  addressLine1: z3.string().optional(),
+  addressLine2: z3.string().optional(),
+  city: z3.string().optional(),
+  county: z3.string().optional(),
+  postcode: z3.string().optional().default(""),
+  deliveryNote: z3.string().optional(),
+  items: z3.array(z3.object({
+    productId: z3.number(),
+    variantId: z3.number().optional(),
+    productName: z3.string().min(2),
+    variantName: z3.string().optional(),
+    quantity: z3.number().int().positive(),
+    unitPrice: z3.string().regex(/^\d+(\.\d{2})?$/)
   })).min(1)
 });
 function getLiveStripeSecretKey() {
@@ -3236,6 +3675,23 @@ async function notifyOwnerSafely(title, content) {
   } catch (error) {
     console.warn("[Notification] Owner notification skipped", error);
   }
+}
+async function logAdminActivity(ctx, input) {
+  await logActivity({
+    request: ctx.req,
+    userId: ctx.user?.id ?? null,
+    userName: ctx.user?.name ?? null,
+    userEmail: ctx.user?.email ?? null,
+    activityType: input.activityType,
+    activityCategory: "admin_action",
+    description: input.description,
+    pageUrl: "/admin",
+    status: input.status ?? "success",
+    relatedEntityType: input.relatedEntityType ?? "admin",
+    relatedEntityId: input.relatedEntityId ?? null,
+    metadata: input.metadata,
+    sourceApp: "ebysplace"
+  });
 }
 function formatBookingExtras(input) {
   const addOns = input.addOns?.length ? input.addOns.map((item) => `${item.name} (\xA3${item.price})`).join(", ") : "None selected";
@@ -3313,13 +3769,43 @@ var appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
-    login: publicProcedure.input(z2.object({ email: z2.string().email(), password: z2.string().min(8) })).mutation(({ input }) => signInAdminWithPassword(input.email, input.password)),
-    requestPasswordReset: publicProcedure.input(z2.object({ email: z2.string().email(), origin: z2.string().url() })).mutation(({ input }) => requestAdminPasswordReset(input.email, input.origin)),
-    updatePassword: publicProcedure.input(z2.object({ accessToken: z2.string().min(20), password: z2.string().min(8) })).mutation(({ input }) => updateAdminPasswordWithRecoveryToken(input.accessToken, input.password)),
-    logout: publicProcedure.mutation(() => ({ success: true }))
+    login: publicProcedure.input(z3.object({ email: z3.string().email(), password: z3.string().min(8) })).mutation(async ({ input, ctx }) => {
+      const result = await signInAdminWithPassword(input.email, input.password);
+      await logActivity({
+        request: ctx.req,
+        userName: result.user?.name || null,
+        userEmail: result.user?.email || null,
+        activityType: "admin_login",
+        activityCategory: "admin_auth",
+        description: "Admin login successful",
+        pageUrl: "/admin/login",
+        status: "success",
+        relatedEntityType: "admin_user",
+        relatedEntityId: result.user?.openId || null,
+        sourceApp: "ebysplace"
+      });
+      return result;
+    }),
+    requestPasswordReset: publicProcedure.input(z3.object({ email: z3.string().email(), origin: z3.string().url() })).mutation(({ input }) => requestAdminPasswordReset(input.email, input.origin)),
+    updatePassword: publicProcedure.input(z3.object({ accessToken: z3.string().min(20), password: z3.string().min(8) })).mutation(({ input }) => updateAdminPasswordWithRecoveryToken(input.accessToken, input.password)),
+    logout: publicProcedure.mutation(async ({ ctx }) => {
+      await logActivity({
+        request: ctx.req,
+        userId: ctx.user?.id ?? null,
+        userName: ctx.user?.name ?? null,
+        userEmail: ctx.user?.email ?? null,
+        activityType: "user_logout",
+        activityCategory: "auth",
+        description: ctx.user?.role === "admin" ? "Admin logout" : "User logout",
+        pageUrl: "/admin",
+        status: "info",
+        sourceApp: "ebysplace"
+      });
+      return { success: true };
+    })
   }),
   public: router({
-    services: publicProcedure.input(z2.object({ category: serviceCategory.optional() }).optional()).query(({ input }) => listServices(input?.category)),
+    services: publicProcedure.input(z3.object({ category: serviceCategory.optional() }).optional()).query(({ input }) => listServices(input?.category)),
     featuredServices: publicProcedure.query(() => listFeaturedServices()),
     products: publicProcedure.query(() => listProducts()),
     availability: publicProcedure.query(() => getAvailabilitySettings()),
@@ -3328,10 +3814,19 @@ var appRouter = router({
     websiteSections: publicProcedure.query(() => listWebsiteSections()),
     reviews: publicProcedure.query(() => listApprovedReviews()),
     productReviewSummaries: publicProcedure.query(() => listProductReviewSummaries()),
-    productReviews: publicProcedure.input(z2.object({ productId: z2.number().int().positive() })).query(({ input }) => listApprovedProductReviews(input.productId)),
-    gallery: publicProcedure.input(z2.object({ category: z2.string().optional() }).optional()).query(({ input }) => listGallery(input?.category)),
-    newsletter: publicProcedure.input(z2.object({ email: z2.string().email(), productAlerts: z2.boolean().default(false) })).mutation(async ({ input }) => {
+    productReviews: publicProcedure.input(z3.object({ productId: z3.number().int().positive() })).query(({ input }) => listApprovedProductReviews(input.productId)),
+    gallery: publicProcedure.input(z3.object({ category: z3.string().optional() }).optional()).query(({ input }) => listGallery(input?.category)),
+    newsletter: publicProcedure.input(z3.object({ email: z3.string().email(), productAlerts: z3.boolean().default(false) })).mutation(async ({ input }) => {
       const result = await subscribeNewsletter(input.email, input.productAlerts);
+      await logActivity({
+        activityType: "newsletter_signup",
+        activityCategory: "newsletter",
+        description: `Newsletter signup: ${input.email}`,
+        status: "success",
+        pageUrl: "/",
+        userEmail: input.email,
+        metadata: { productAlerts: input.productAlerts }
+      });
       await Promise.allSettled([
         sendNewsletterWelcomeEmailSafely({ to: input.email, productAlerts: input.productAlerts }),
         notifyOwnerSafely(
@@ -3341,7 +3836,7 @@ var appRouter = router({
       ]);
       return { ...result, customerNotification: "You\u2019re subscribed to Eby\u2019s Place updates." };
     }),
-    submitReview: publicProcedure.input(z2.object({ customerName: z2.string().min(2), rating: z2.number().min(1).max(5), reviewText: z2.string().min(10) })).mutation(async ({ input }) => {
+    submitReview: publicProcedure.input(z3.object({ customerName: z3.string().min(2), rating: z3.number().min(1).max(5), reviewText: z3.string().min(10) })).mutation(async ({ input }) => {
       const review = await submitReview(input);
       await notifyOwnerSafely(
         "New Eby\u2019s Place review submitted",
@@ -3355,7 +3850,7 @@ var appRouter = router({
       );
       return { ...review, customerNotification: "Thank you for reviewing Eby\u2019s Place. Your review has been received and is pending approval." };
     }),
-    submitProductReview: publicProcedure.input(z2.object({ productId: z2.number().int().positive(), customerName: z2.string().min(2), rating: z2.number().min(1).max(5), reviewText: z2.string().min(10) })).mutation(async ({ input }) => {
+    submitProductReview: publicProcedure.input(z3.object({ productId: z3.number().int().positive(), customerName: z3.string().min(2), rating: z3.number().min(1).max(5), reviewText: z3.string().min(10) })).mutation(async ({ input }) => {
       const review = await submitProductReview(input);
       await notifyOwnerSafely(
         "New product review submitted",
@@ -3409,13 +3904,13 @@ var appRouter = router({
       });
       return { bookingId: booking.id, depositAmount: 20, homeServiceSurcharge: Number(homeServiceSurcharge), depositCurrency: "GBP", serviceLocation, message: "A \xA320 non-refundable deposit is required to secure your Eby\u2019s Place appointment. You will receive on-screen confirmation after payment is confirmed.", customerNotification: "Your Eby\u2019s Place booking request has been received. Add-ons and shop products are optional, and you can complete the secure deposit payment now." };
     }),
-    createDepositCheckout: publicProcedure.input(z2.object({
-      bookingId: z2.number(),
-      clientEmail: z2.string().email(),
-      clientName: z2.string().min(2),
-      serviceName: z2.string().min(2),
-      addOns: z2.array(bookingAddOnInput).default([]),
-      bookingProducts: z2.array(bookingProductInput).default([])
+    createDepositCheckout: publicProcedure.input(z3.object({
+      bookingId: z3.number(),
+      clientEmail: z3.string().email(),
+      clientName: z3.string().min(2),
+      serviceName: z3.string().min(2),
+      addOns: z3.array(bookingAddOnInput).default([]),
+      bookingProducts: z3.array(bookingProductInput).default([])
     })).mutation(async ({ input, ctx }) => {
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
@@ -3509,7 +4004,7 @@ var appRouter = router({
       });
       return { orderId: order.id, checkoutUrl: session.url, status: "pending_payment", message: "Your secure Eby\u2019s Place checkout is ready.", customerNotification: "Your Eby\u2019s Place order checkout is ready. Please complete secure payment to confirm the order." };
     }),
-    uploadTryOnPhoto: publicProcedure.input(z2.object({ dataUrl: z2.string().min(50), fileName: z2.string().default("try-on-photo.jpg") })).mutation(async ({ input }) => {
+    uploadTryOnPhoto: publicProcedure.input(z3.object({ dataUrl: z3.string().min(50), fileName: z3.string().default("try-on-photo.jpg") })).mutation(async ({ input }) => {
       const { mimeType, buffer } = decodeDataUrl(input.dataUrl);
       const supportedTypes = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/webp"]);
       if (!supportedTypes.has(mimeType)) {
@@ -3523,13 +4018,13 @@ var appRouter = router({
       const uploaded = await storagePut(`try-on/uploads/${Date.now()}-${safeName}.${extension}`, buffer, mimeType);
       return { url: uploaded.url, key: uploaded.key, mimeType };
     }),
-    generateTryOn: publicProcedure.input(z2.object({
-      styleName: z2.string().min(2),
-      originalImageUrl: z2.string().min(5),
-      originalImageKey: z2.string().min(3).optional(),
-      mimeType: z2.string().optional(),
-      gender: z2.enum(["woman", "man", "child"]).optional(),
-      ageGroup: z2.enum(["child", "teen", "adult", "mature"]).optional()
+    generateTryOn: publicProcedure.input(z3.object({
+      styleName: z3.string().min(2),
+      originalImageUrl: z3.string().min(5),
+      originalImageKey: z3.string().min(3).optional(),
+      mimeType: z3.string().optional(),
+      gender: z3.enum(["woman", "man", "child"]).optional(),
+      ageGroup: z3.enum(["child", "teen", "adult", "mature"]).optional()
     })).mutation(async ({ input }) => {
       const record = await createTryOnGeneration({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, status: "pending" });
       try {
@@ -3558,28 +4053,127 @@ var appRouter = router({
         throw new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message });
       }
     }),
-    track: publicProcedure.input(z2.object({ eventName: z2.string().min(2), pagePath: z2.string().min(1), metadata: z2.unknown().optional() })).mutation(({ input }) => recordAnalytics(input.eventName, input.pagePath, input.metadata))
+    track: publicProcedure.input(z3.object({
+      eventName: z3.string().min(2),
+      pagePath: z3.string().min(1),
+      metadata: z3.unknown().optional(),
+      sessionId: z3.string().max(128).optional(),
+      activityType: z3.string().max(120).optional(),
+      activityCategory: z3.string().max(120).optional(),
+      status: activityStatus.optional(),
+      description: z3.string().max(500).optional(),
+      relatedEntityType: z3.string().max(80).optional(),
+      relatedEntityId: z3.union([z3.string(), z3.number()]).optional(),
+      sourceApp: z3.string().max(80).optional()
+    })).mutation(({ input, ctx }) => recordAnalytics(input.eventName, input.pagePath, input.metadata, {
+      request: ctx.req,
+      user: ctx.user ? { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } : null,
+      sessionId: input.sessionId,
+      activityType: input.activityType,
+      activityCategory: input.activityCategory,
+      status: input.status,
+      description: input.description,
+      relatedEntityType: input.relatedEntityType,
+      relatedEntityId: input.relatedEntityId,
+      sourceApp: input.sourceApp
+    })),
+    logActivity: publicProcedure.input(z3.object({
+      sessionId: z3.string().max(128).optional(),
+      activityType: z3.string().min(2).max(120),
+      activityCategory: z3.string().min(2).max(120),
+      description: z3.string().min(2).max(500),
+      pageUrl: z3.string().max(800).optional(),
+      metadata: z3.unknown().optional(),
+      status: activityStatus.default("info"),
+      relatedEntityType: z3.string().max(80).optional(),
+      relatedEntityId: z3.union([z3.string(), z3.number()]).optional(),
+      sourceApp: z3.string().max(80).default("ebysplace"),
+      userName: z3.string().max(180).optional(),
+      userEmail: z3.string().email().max(320).optional(),
+      country: z3.string().max(120).optional(),
+      city: z3.string().max(120).optional(),
+      region: z3.string().max(120).optional(),
+      deviceType: z3.string().max(40).optional(),
+      browser: z3.string().max(80).optional(),
+      userAgent: z3.string().max(500).optional()
+    })).mutation(async ({ input, ctx }) => {
+      await logActivity({
+        request: ctx.req,
+        userId: ctx.user?.id ?? null,
+        userName: input.userName ?? ctx.user?.name ?? null,
+        userEmail: input.userEmail ?? ctx.user?.email ?? null,
+        sessionId: input.sessionId,
+        activityType: input.activityType,
+        activityCategory: input.activityCategory,
+        description: input.description,
+        pageUrl: input.pageUrl,
+        metadata: input.metadata,
+        status: input.status,
+        relatedEntityType: input.relatedEntityType,
+        relatedEntityId: input.relatedEntityId,
+        sourceApp: input.sourceApp,
+        country: input.country,
+        city: input.city,
+        region: input.region,
+        deviceType: input.deviceType,
+        browser: input.browser,
+        userAgent: input.userAgent
+      });
+      return { success: true };
+    })
   }),
   admin: router({
     summary: adminProcedure.query(() => adminSummary()),
     lists: adminProcedure.query(() => adminLists()),
     listEmailNotificationLogs: adminProcedure.query(() => listEmailNotificationLogs()),
+    listActivityLogs: adminProcedure.input(z3.object({
+      query: z3.string().optional(),
+      datePreset: z3.enum(["today", "yesterday", "last_7_days", "last_30_days"]).optional(),
+      activityType: z3.string().optional(),
+      activityCategory: z3.string().optional(),
+      user: z3.string().optional(),
+      status: activityStatus.optional(),
+      sourceApp: z3.string().optional(),
+      failedOnly: z3.boolean().optional(),
+      unreadOnly: z3.boolean().optional(),
+      limit: z3.number().int().min(1).max(500).optional()
+    }).optional()).query(({ input }) => listActivityLogs(input || {})),
+    unreadActivityCount: adminProcedure.query(() => unreadActivityCount()),
+    markActivityLogsRead: adminProcedure.input(z3.object({ ids: z3.array(z3.number().int().positive()).optional() }).optional()).mutation(({ input }) => markActivityLogsRead(input?.ids)),
     notificationDiagnostics: adminProcedure.query(() => getNotificationDiagnostics()),
-    moderateReview: adminProcedure.input(z2.object({ id: z2.number(), status: reviewStatus })).mutation(({ input }) => moderateReview(input.id, input.status)),
-    moderateProductReview: adminProcedure.input(z2.object({ id: z2.number(), status: reviewStatus })).mutation(({ input }) => moderateProductReview(input.id, input.status)),
-    updateBookingStatus: adminProcedure.input(z2.object({ id: z2.number(), status: bookingStatus })).mutation(({ input }) => updateBookingStatus(input.id, input.status)),
-    updateOrderStatus: adminProcedure.input(z2.object({ id: z2.number(), status: orderStatus })).mutation(({ input }) => updateOrderStatus(input.id, input.status)),
-    blockAvailabilitySlot: adminProcedure.input(z2.object({ date: z2.string().min(4), time: z2.string().optional(), reason: z2.string().optional() })).mutation(({ input }) => blockBookingSlot(input)),
-    unblockAvailabilitySlot: adminProcedure.input(z2.object({ date: z2.string().min(4), time: z2.string().optional() })).mutation(({ input }) => unblockBookingSlot(input)),
-    updateInstagramSettings: adminProcedure.input(z2.object({ handle: z2.string().min(2), feedUrl: z2.string().url(), enabled: z2.boolean(), note: z2.string().optional() })).mutation(({ input }) => updateInstagramSettings(input)),
-    updateHomeServiceSurcharge: adminProcedure.input(z2.object({ homeServiceSurcharge: z2.string().regex(/^\d+(\.\d{2})?$/) })).mutation(({ input }) => updateHomeServiceSurcharge(input.homeServiceSurcharge)),
-    sendReviewRequest: adminProcedure.input(z2.object({ bookingId: z2.number() })).mutation(async ({ input }) => {
+    moderateReview: adminProcedure.input(z3.object({ id: z3.number(), status: reviewStatus })).mutation(({ input }) => moderateReview(input.id, input.status)),
+    moderateProductReview: adminProcedure.input(z3.object({ id: z3.number(), status: reviewStatus })).mutation(({ input }) => moderateProductReview(input.id, input.status)),
+    updateBookingStatus: adminProcedure.input(z3.object({ id: z3.number(), status: bookingStatus })).mutation(async ({ input, ctx }) => {
+      const result = await updateBookingStatus(input.id, input.status);
+      await logAdminActivity(ctx, {
+        activityType: "admin_booking_status_changed",
+        description: `Admin changed booking #${input.id} status to ${input.status}`,
+        relatedEntityType: "booking",
+        relatedEntityId: input.id
+      });
+      return result;
+    }),
+    updateOrderStatus: adminProcedure.input(z3.object({ id: z3.number(), status: orderStatus })).mutation(async ({ input, ctx }) => {
+      const result = await updateOrderStatus(input.id, input.status);
+      await logAdminActivity(ctx, {
+        activityType: "admin_order_status_changed",
+        description: `Admin changed order #${input.id} status to ${input.status}`,
+        relatedEntityType: "order",
+        relatedEntityId: input.id
+      });
+      return result;
+    }),
+    blockAvailabilitySlot: adminProcedure.input(z3.object({ date: z3.string().min(4), time: z3.string().optional(), reason: z3.string().optional() })).mutation(({ input }) => blockBookingSlot(input)),
+    unblockAvailabilitySlot: adminProcedure.input(z3.object({ date: z3.string().min(4), time: z3.string().optional() })).mutation(({ input }) => unblockBookingSlot(input)),
+    updateInstagramSettings: adminProcedure.input(z3.object({ handle: z3.string().min(2), feedUrl: z3.string().url(), enabled: z3.boolean(), note: z3.string().optional() })).mutation(({ input }) => updateInstagramSettings(input)),
+    updateHomeServiceSurcharge: adminProcedure.input(z3.object({ homeServiceSurcharge: z3.string().regex(/^\d+(\.\d{2})?$/) })).mutation(({ input }) => updateHomeServiceSurcharge(input.homeServiceSurcharge)),
+    sendReviewRequest: adminProcedure.input(z3.object({ bookingId: z3.number() })).mutation(async ({ input }) => {
       const booking = await getBookingById(input.bookingId);
       if (!booking) throw new TRPCError4({ code: "NOT_FOUND", message: "Booking not found." });
       await sendReviewRequestEmailSafely({ to: booking.clientEmail, customerName: booking.clientName, bookingId: booking.id, serviceName: booking.serviceName, reviewUrl: `/reviews?booking=${booking.id}` });
       return { success: true };
     }),
-    resendEmailNotification: adminProcedure.input(z2.object({ logId: z2.number().int().positive() })).mutation(async ({ input }) => {
+    resendEmailNotification: adminProcedure.input(z3.object({ logId: z3.number().int().positive() })).mutation(async ({ input }) => {
       try {
         const result = await resendEmailNotificationLog(input.logId);
         return { success: result.status === "sent" || result.status === "retried", result };
@@ -3587,60 +4181,110 @@ var appRouter = router({
         throw new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Email resend failed." });
       }
     }),
-    updateService: adminProcedure.input(z2.object({ id: z2.number(), name: z2.string().min(2).optional(), description: z2.string().min(10).optional(), duration: z2.string().min(2).optional(), priceFrom: z2.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z2.string().optional(), imageUrl: z2.string().min(5).optional(), isBookable: z2.enum(["true", "false"]).optional(), isFeatured: z2.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+    updateService: adminProcedure.input(z3.object({ id: z3.number(), name: z3.string().min(2).optional(), description: z3.string().min(10).optional(), duration: z3.string().min(2).optional(), priceFrom: z3.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z3.string().optional(), imageUrl: z3.string().min(5).optional(), isBookable: z3.enum(["true", "false"]).optional(), isFeatured: z3.enum(["true", "false"]).optional() })).mutation(async ({ input, ctx }) => {
       const { id, ...changes } = input;
-      return updateService(id, changes);
+      const result = await updateService(id, changes);
+      await logAdminActivity(ctx, {
+        activityType: "admin_service_updated",
+        description: `Admin updated service #${id}`,
+        relatedEntityType: "service",
+        relatedEntityId: id,
+        metadata: changes
+      });
+      return result;
     }),
-    createProduct: adminProcedure.input(z2.object({ name: z2.string().min(2), slug: z2.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/), seoTitle: z2.string().min(8).max(255).optional(), seoDescription: z2.string().min(30).max(320).optional(), category: productCategory, description: z2.string().min(10), price: z2.string().regex(/^\d+(\.\d{2})?$/), imageUrl: z2.string().min(5).optional(), badge: z2.string().optional(), stockStatus: productStockStatus.default("in_stock"), stockQuantity: z2.number().int().min(0).default(0), isFeatured: z2.enum(["true", "false"]).default("false"), variants: z2.array(z2.object({ name: z2.string().min(1), colourHex: z2.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), imageUrl: z2.string().min(5).optional(), stockQuantity: z2.number().int().min(0).default(0) })).default([]) })).mutation(({ input }) => {
+    createProduct: adminProcedure.input(z3.object({ name: z3.string().min(2), slug: z3.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/), seoTitle: z3.string().min(8).max(255).optional(), seoDescription: z3.string().min(30).max(320).optional(), category: productCategory, description: z3.string().min(10), price: z3.string().regex(/^\d+(\.\d{2})?$/), imageUrl: z3.string().min(5).optional(), badge: z3.string().optional(), stockStatus: productStockStatus.default("in_stock"), stockQuantity: z3.number().int().min(0).default(0), isFeatured: z3.enum(["true", "false"]).default("false"), variants: z3.array(z3.object({ name: z3.string().min(1), colourHex: z3.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), imageUrl: z3.string().min(5).optional(), stockQuantity: z3.number().int().min(0).default(0) })).default([]) })).mutation(async ({ input, ctx }) => {
       const { variants, ...product } = input;
-      return createProduct(product, variants);
+      const result = await createProduct(product, variants);
+      await logAdminActivity(ctx, {
+        activityType: "admin_product_created",
+        description: `Admin created product ${input.name}`,
+        relatedEntityType: "product",
+        relatedEntityId: result?.id ?? null
+      });
+      return result;
     }),
-    updateProduct: adminProcedure.input(z2.object({ id: z2.number().int().positive(), name: z2.string().min(2).optional(), slug: z2.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), seoTitle: z2.string().min(8).max(255).optional(), seoDescription: z2.string().min(30).max(320).optional(), category: productCategory.optional(), description: z2.string().min(10).optional(), price: z2.string().regex(/^\d+(\.\d{2})?$/).optional(), imageUrl: z2.string().min(5).optional(), badge: z2.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z2.number().int().min(0).optional(), isFeatured: z2.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+    updateProduct: adminProcedure.input(z3.object({ id: z3.number().int().positive(), name: z3.string().min(2).optional(), slug: z3.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), seoTitle: z3.string().min(8).max(255).optional(), seoDescription: z3.string().min(30).max(320).optional(), category: productCategory.optional(), description: z3.string().min(10).optional(), price: z3.string().regex(/^\d+(\.\d{2})?$/).optional(), imageUrl: z3.string().min(5).optional(), badge: z3.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z3.number().int().min(0).optional(), isFeatured: z3.enum(["true", "false"]).optional() })).mutation(async ({ input, ctx }) => {
       const { id, ...changes } = input;
-      return updateProduct(id, changes);
+      const result = await updateProduct(id, changes);
+      await logAdminActivity(ctx, {
+        activityType: "admin_product_updated",
+        description: `Admin updated product #${id}`,
+        relatedEntityType: "product",
+        relatedEntityId: id,
+        metadata: changes
+      });
+      return result;
     }),
-    updateProductStock: adminProcedure.input(z2.object({ id: z2.number().int().positive(), stockQuantity: z2.number().int().min(0), stockStatus: productStockStatus })).mutation(({ input }) => updateProductStock(input.id, input.stockQuantity, input.stockStatus)),
-    updateProductVariants: adminProcedure.input(z2.object({ productId: z2.number().int().positive(), variants: z2.array(z2.object({ name: z2.string().min(1), colourHex: z2.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), imageUrl: z2.string().min(5).optional(), stockQuantity: z2.number().int().min(0).default(0) })) })).mutation(({ input }) => replaceProductVariants(input.productId, input.variants)),
-    deleteProduct: adminProcedure.input(z2.object({ id: z2.number().int().positive() })).mutation(({ input }) => deleteProduct(input.id)),
-    uploadProductImage: adminProcedure.input(z2.object({ productId: z2.number().int().positive().optional(), productName: z2.string().min(2), dataUrl: z2.string().min(50), fileName: z2.string().default("product-image.png") })).mutation(async ({ input }) => {
+    updateProductStock: adminProcedure.input(z3.object({ id: z3.number().int().positive(), stockQuantity: z3.number().int().min(0), stockStatus: productStockStatus })).mutation(async ({ input, ctx }) => {
+      const result = await updateProductStock(input.id, input.stockQuantity, input.stockStatus);
+      await logAdminActivity(ctx, {
+        activityType: "admin_product_stock_updated",
+        description: `Admin updated stock for product #${input.id}`,
+        relatedEntityType: "product",
+        relatedEntityId: input.id,
+        metadata: { stockQuantity: input.stockQuantity, stockStatus: input.stockStatus }
+      });
+      return result;
+    }),
+    updateProductVariants: adminProcedure.input(z3.object({ productId: z3.number().int().positive(), variants: z3.array(z3.object({ name: z3.string().min(1), colourHex: z3.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), imageUrl: z3.string().min(5).optional(), stockQuantity: z3.number().int().min(0).default(0) })) })).mutation(({ input }) => replaceProductVariants(input.productId, input.variants)),
+    deleteProduct: adminProcedure.input(z3.object({ id: z3.number().int().positive() })).mutation(async ({ input, ctx }) => {
+      const result = await deleteProduct(input.id);
+      await logAdminActivity(ctx, {
+        activityType: "admin_product_deleted",
+        description: `Admin deleted product #${input.id}`,
+        relatedEntityType: "product",
+        relatedEntityId: input.id
+      });
+      return result;
+    }),
+    uploadProductImage: adminProcedure.input(z3.object({ productId: z3.number().int().positive().optional(), productName: z3.string().min(2), dataUrl: z3.string().min(50), fileName: z3.string().default("product-image.png") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.productName}-${input.fileName}`, folder: "products" });
       if (input.productId) await updateProduct(input.productId, { imageUrl: uploaded.url });
       return uploaded;
     }),
-    clearProductImage: adminProcedure.input(z2.object({ productId: z2.number().int().positive(), imageUrl: z2.string().min(5).optional() })).mutation(async ({ input }) => {
+    clearProductImage: adminProcedure.input(z3.object({ productId: z3.number().int().positive(), imageUrl: z3.string().min(5).optional() })).mutation(async ({ input }) => {
       await updateProduct(input.productId, { imageUrl: null });
       return { success: true };
     }),
     insights: adminProcedure.query(() => adminInsights()),
-    uploadServiceImage: adminProcedure.input(z2.object({ serviceId: z2.number(), serviceName: z2.string().min(2), dataUrl: z2.string().min(50), fileName: z2.string().default("service-image.png") })).mutation(async ({ input }) => {
+    uploadServiceImage: adminProcedure.input(z3.object({ serviceId: z3.number(), serviceName: z3.string().min(2), dataUrl: z3.string().min(50), fileName: z3.string().default("service-image.png") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.serviceName}-${input.fileName}`, folder: "services" });
       await updateService(input.serviceId, { imageUrl: uploaded.url });
       return uploaded;
     }),
-    clearServiceImage: adminProcedure.input(z2.object({ serviceId: z2.number(), imageUrl: z2.string().min(5).optional() })).mutation(async ({ input }) => {
+    clearServiceImage: adminProcedure.input(z3.object({ serviceId: z3.number(), imageUrl: z3.string().min(5).optional() })).mutation(async ({ input }) => {
       if (input.imageUrl) await storageRemove(input.imageUrl);
       await updateService(input.serviceId, { imageUrl: null });
       return { success: true };
     }),
-    uploadGalleryImage: adminProcedure.input(z2.object({ dataUrl: z2.string().min(50), fileName: z2.string().default("gallery-image.png") })).mutation(async ({ input }) => uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: input.fileName, folder: "gallery" })),
-    uploadWebsiteSectionImage: adminProcedure.input(z2.object({ sectionKey: z2.string().min(2), dataUrl: z2.string().min(50), fileName: z2.string().default("section-image.png"), imageRole: z2.enum(["main", "portrait"]).default("main") })).mutation(async ({ input }) => {
+    uploadGalleryImage: adminProcedure.input(z3.object({ dataUrl: z3.string().min(50), fileName: z3.string().default("gallery-image.png") })).mutation(async ({ input }) => uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: input.fileName, folder: "gallery" })),
+    uploadWebsiteSectionImage: adminProcedure.input(z3.object({ sectionKey: z3.string().min(2), dataUrl: z3.string().min(50), fileName: z3.string().default("section-image.png"), imageRole: z3.enum(["main", "portrait"]).default("main") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.sectionKey}-${input.imageRole}-${input.fileName}`, folder: "website-sections" });
       await updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url, imageUrl: uploaded.url } : { imageUrl: uploaded.url });
       return uploaded;
     }),
-    clearWebsiteSectionImage: adminProcedure.input(z2.object({ sectionKey: z2.string().min(2), imageRole: z2.enum(["main", "portrait"]).default("main"), imageUrl: z2.string().min(5).optional() })).mutation(async ({ input }) => {
+    clearWebsiteSectionImage: adminProcedure.input(z3.object({ sectionKey: z3.string().min(2), imageRole: z3.enum(["main", "portrait"]).default("main"), imageUrl: z3.string().min(5).optional() })).mutation(async ({ input }) => {
       if (input.imageUrl) await storageRemove(input.imageUrl);
       await updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: null } : { imageUrl: null });
       return { success: true };
     }),
-    addGalleryImage: adminProcedure.input(z2.object({ title: z2.string().min(2), category: galleryCategory, imageUrl: z2.string().min(5), altText: z2.string().min(5), isPublished: z2.enum(["true", "false"]).default("true"), sortOrder: z2.number().int().default(0) })).mutation(({ input }) => addGalleryImage(input)),
-    deleteGalleryImage: adminProcedure.input(z2.object({ id: z2.number().int().positive(), imageUrl: z2.string().min(5).optional() })).mutation(async ({ input }) => {
+    addGalleryImage: adminProcedure.input(z3.object({ title: z3.string().min(2), category: galleryCategory, imageUrl: z3.string().min(5), altText: z3.string().min(5), isPublished: z3.enum(["true", "false"]).default("true"), sortOrder: z3.number().int().default(0) })).mutation(({ input }) => addGalleryImage(input)),
+    deleteGalleryImage: adminProcedure.input(z3.object({ id: z3.number().int().positive(), imageUrl: z3.string().min(5).optional() })).mutation(async ({ input }) => {
       if (input.imageUrl) await storageRemove(input.imageUrl);
       return deleteGalleryImage(input.id);
     }),
-    updateWebsiteSection: adminProcedure.input(z2.object({ sectionKey: z2.string().min(2), title: z2.string().min(2).optional(), eyebrow: z2.string().optional(), body: z2.string().optional(), ctaLabel: z2.string().optional(), ctaHref: z2.string().optional(), imageUrl: z2.string().optional(), portraitImageUrl: z2.string().optional(), portraitDescription: z2.string().optional(), isPublished: z2.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+    updateWebsiteSection: adminProcedure.input(z3.object({ sectionKey: z3.string().min(2), title: z3.string().min(2).optional(), eyebrow: z3.string().optional(), body: z3.string().optional(), ctaLabel: z3.string().optional(), ctaHref: z3.string().optional(), imageUrl: z3.string().optional(), portraitImageUrl: z3.string().optional(), portraitDescription: z3.string().optional(), isPublished: z3.enum(["true", "false"]).optional() })).mutation(async ({ input, ctx }) => {
       const { sectionKey, ...changes } = input;
-      return updateWebsiteSection(sectionKey, changes);
+      const result = await updateWebsiteSection(sectionKey, changes);
+      await logAdminActivity(ctx, {
+        activityType: "admin_content_updated",
+        description: `Admin updated website section ${sectionKey}`,
+        relatedEntityType: "website_section",
+        relatedEntityId: sectionKey,
+        metadata: changes
+      });
+      return result;
     })
   })
 });
@@ -3747,6 +4391,7 @@ var app = express3();
 registerStripeWebhook(app);
 app.use(express3.json({ limit: "50mb" }));
 app.use(express3.urlencoded({ limit: "50mb", extended: true }));
+registerActivityCollector(app);
 app.use("/api/trpc", (_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.setHeader("Pragma", "no-cache");

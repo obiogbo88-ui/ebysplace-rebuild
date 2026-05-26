@@ -21,6 +21,7 @@ const orderStatus = z.enum(["draft", "pending_payment", "paid", "fulfilling", "s
 const productStockStatus = z.enum(["in_stock", "low_stock", "out_of_stock"]);
 const productCategory = z.enum(["Accessories", "Aftercare", "Hair Attachments"]);
 const galleryCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"]);
+const activityStatus = z.enum(["success", "failed", "pending", "info"]);
 
 const bookingAddOnInput = z.object({
   id: z.string().min(2),
@@ -152,6 +153,31 @@ async function notifyOwnerSafely(title: string, content: string) {
   }
 }
 
+async function logAdminActivity(ctx: { req: Request; user?: { id?: number; name?: string | null; email?: string | null } | null }, input: {
+  activityType: string;
+  description: string;
+  relatedEntityType?: string;
+  relatedEntityId?: string | number | null;
+  metadata?: unknown;
+  status?: "success" | "failed" | "pending" | "info";
+}) {
+  await db.logActivity({
+    request: ctx.req,
+    userId: ctx.user?.id ?? null,
+    userName: ctx.user?.name ?? null,
+    userEmail: ctx.user?.email ?? null,
+    activityType: input.activityType,
+    activityCategory: "admin_action",
+    description: input.description,
+    pageUrl: "/admin",
+    status: input.status ?? "success",
+    relatedEntityType: input.relatedEntityType ?? "admin",
+    relatedEntityId: input.relatedEntityId ?? null,
+    metadata: input.metadata,
+    sourceApp: "ebysplace",
+  });
+}
+
 function formatBookingExtras(input: { addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
   const addOns = input.addOns?.length
     ? input.addOns.map((item) => `${item.name} (£${item.price})`).join(", ")
@@ -243,14 +269,44 @@ export const appRouter = router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string().min(8) }))
-      .mutation(({ input }) => signInAdminWithPassword(input.email, input.password)),
+      .mutation(async ({ input, ctx }) => {
+        const result = await signInAdminWithPassword(input.email, input.password);
+        await db.logActivity({
+          request: ctx.req,
+          userName: result.user?.name || null,
+          userEmail: result.user?.email || null,
+          activityType: "admin_login",
+          activityCategory: "admin_auth",
+          description: "Admin login successful",
+          pageUrl: "/admin/login",
+          status: "success",
+          relatedEntityType: "admin_user",
+          relatedEntityId: result.user?.openId || null,
+          sourceApp: "ebysplace",
+        });
+        return result;
+      }),
     requestPasswordReset: publicProcedure
       .input(z.object({ email: z.string().email(), origin: z.string().url() }))
       .mutation(({ input }) => requestAdminPasswordReset(input.email, input.origin)),
     updatePassword: publicProcedure
       .input(z.object({ accessToken: z.string().min(20), password: z.string().min(8) }))
       .mutation(({ input }) => updateAdminPasswordWithRecoveryToken(input.accessToken, input.password)),
-    logout: publicProcedure.mutation(() => ({ success: true } as const)),
+    logout: publicProcedure.mutation(async ({ ctx }) => {
+      await db.logActivity({
+        request: ctx.req,
+        userId: ctx.user?.id ?? null,
+        userName: ctx.user?.name ?? null,
+        userEmail: ctx.user?.email ?? null,
+        activityType: "user_logout",
+        activityCategory: "auth",
+        description: ctx.user?.role === "admin" ? "Admin logout" : "User logout",
+        pageUrl: "/admin",
+        status: "info",
+        sourceApp: "ebysplace",
+      });
+      return { success: true } as const;
+    }),
   }),
 
   public: router({
@@ -267,6 +323,15 @@ export const appRouter = router({
     gallery: publicProcedure.input(z.object({ category: z.string().optional() }).optional()).query(({ input }) => db.listGallery(input?.category)),
     newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(async ({ input }) => {
       const result = await db.subscribeNewsletter(input.email, input.productAlerts);
+      await db.logActivity({
+        activityType: "newsletter_signup",
+        activityCategory: "newsletter",
+        description: `Newsletter signup: ${input.email}`,
+        status: "success",
+        pageUrl: "/",
+        userEmail: input.email,
+        metadata: { productAlerts: input.productAlerts },
+      });
       await Promise.allSettled([
         sendNewsletterWelcomeEmailSafely({ to: input.email, productAlerts: input.productAlerts }),
         notifyOwnerSafely(
@@ -498,18 +563,117 @@ export const appRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
       }
     }),
-    track: publicProcedure.input(z.object({ eventName: z.string().min(2), pagePath: z.string().min(1), metadata: z.unknown().optional() })).mutation(({ input }) => db.recordAnalytics(input.eventName, input.pagePath, input.metadata)),
+    track: publicProcedure.input(z.object({
+      eventName: z.string().min(2),
+      pagePath: z.string().min(1),
+      metadata: z.unknown().optional(),
+      sessionId: z.string().max(128).optional(),
+      activityType: z.string().max(120).optional(),
+      activityCategory: z.string().max(120).optional(),
+      status: activityStatus.optional(),
+      description: z.string().max(500).optional(),
+      relatedEntityType: z.string().max(80).optional(),
+      relatedEntityId: z.union([z.string(), z.number()]).optional(),
+      sourceApp: z.string().max(80).optional(),
+    })).mutation(({ input, ctx }) => db.recordAnalytics(input.eventName, input.pagePath, input.metadata, {
+      request: ctx.req,
+      user: ctx.user ? { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } : null,
+      sessionId: input.sessionId,
+      activityType: input.activityType,
+      activityCategory: input.activityCategory,
+      status: input.status,
+      description: input.description,
+      relatedEntityType: input.relatedEntityType,
+      relatedEntityId: input.relatedEntityId,
+      sourceApp: input.sourceApp,
+    })),
+    logActivity: publicProcedure.input(z.object({
+      sessionId: z.string().max(128).optional(),
+      activityType: z.string().min(2).max(120),
+      activityCategory: z.string().min(2).max(120),
+      description: z.string().min(2).max(500),
+      pageUrl: z.string().max(800).optional(),
+      metadata: z.unknown().optional(),
+      status: activityStatus.default("info"),
+      relatedEntityType: z.string().max(80).optional(),
+      relatedEntityId: z.union([z.string(), z.number()]).optional(),
+      sourceApp: z.string().max(80).default("ebysplace"),
+      userName: z.string().max(180).optional(),
+      userEmail: z.string().email().max(320).optional(),
+      country: z.string().max(120).optional(),
+      city: z.string().max(120).optional(),
+      region: z.string().max(120).optional(),
+      deviceType: z.string().max(40).optional(),
+      browser: z.string().max(80).optional(),
+      userAgent: z.string().max(500).optional(),
+    })).mutation(async ({ input, ctx }) => {
+      await db.logActivity({
+        request: ctx.req,
+        userId: ctx.user?.id ?? null,
+        userName: input.userName ?? ctx.user?.name ?? null,
+        userEmail: input.userEmail ?? ctx.user?.email ?? null,
+        sessionId: input.sessionId,
+        activityType: input.activityType,
+        activityCategory: input.activityCategory,
+        description: input.description,
+        pageUrl: input.pageUrl,
+        metadata: input.metadata,
+        status: input.status,
+        relatedEntityType: input.relatedEntityType,
+        relatedEntityId: input.relatedEntityId,
+        sourceApp: input.sourceApp,
+        country: input.country,
+        city: input.city,
+        region: input.region,
+        deviceType: input.deviceType,
+        browser: input.browser,
+        userAgent: input.userAgent,
+      });
+      return { success: true };
+    }),
   }),
 
   admin: router({
     summary: adminProcedure.query(() => db.adminSummary()),
     lists: adminProcedure.query(() => db.adminLists()),
     listEmailNotificationLogs: adminProcedure.query(() => db.listEmailNotificationLogs()),
+    listActivityLogs: adminProcedure.input(z.object({
+      query: z.string().optional(),
+      datePreset: z.enum(["today", "yesterday", "last_7_days", "last_30_days"]).optional(),
+      activityType: z.string().optional(),
+      activityCategory: z.string().optional(),
+      user: z.string().optional(),
+      status: activityStatus.optional(),
+      sourceApp: z.string().optional(),
+      failedOnly: z.boolean().optional(),
+      unreadOnly: z.boolean().optional(),
+      limit: z.number().int().min(1).max(500).optional(),
+    }).optional()).query(({ input }) => db.listActivityLogs(input || {})),
+    unreadActivityCount: adminProcedure.query(() => db.unreadActivityCount()),
+    markActivityLogsRead: adminProcedure.input(z.object({ ids: z.array(z.number().int().positive()).optional() }).optional()).mutation(({ input }) => db.markActivityLogsRead(input?.ids)),
     notificationDiagnostics: adminProcedure.query(() => getNotificationDiagnostics()),
     moderateReview: adminProcedure.input(z.object({ id: z.number(), status: reviewStatus })).mutation(({ input }) => db.moderateReview(input.id, input.status)),
     moderateProductReview: adminProcedure.input(z.object({ id: z.number(), status: reviewStatus })).mutation(({ input }) => db.moderateProductReview(input.id, input.status)),
-    updateBookingStatus: adminProcedure.input(z.object({ id: z.number(), status: bookingStatus })).mutation(({ input }) => db.updateBookingStatus(input.id, input.status)),
-    updateOrderStatus: adminProcedure.input(z.object({ id: z.number(), status: orderStatus })).mutation(({ input }) => db.updateOrderStatus(input.id, input.status)),
+    updateBookingStatus: adminProcedure.input(z.object({ id: z.number(), status: bookingStatus })).mutation(async ({ input, ctx }) => {
+      const result = await db.updateBookingStatus(input.id, input.status);
+      await logAdminActivity(ctx, {
+        activityType: "admin_booking_status_changed",
+        description: `Admin changed booking #${input.id} status to ${input.status}`,
+        relatedEntityType: "booking",
+        relatedEntityId: input.id,
+      });
+      return result;
+    }),
+    updateOrderStatus: adminProcedure.input(z.object({ id: z.number(), status: orderStatus })).mutation(async ({ input, ctx }) => {
+      const result = await db.updateOrderStatus(input.id, input.status);
+      await logAdminActivity(ctx, {
+        activityType: "admin_order_status_changed",
+        description: `Admin changed order #${input.id} status to ${input.status}`,
+        relatedEntityType: "order",
+        relatedEntityId: input.id,
+      });
+      return result;
+    }),
     blockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional(), reason: z.string().optional() })).mutation(({ input }) => db.blockBookingSlot(input)),
     unblockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional() })).mutation(({ input }) => db.unblockBookingSlot(input)),
     updateInstagramSettings: adminProcedure.input(z.object({ handle: z.string().min(2), feedUrl: z.string().url(), enabled: z.boolean(), note: z.string().optional() })).mutation(({ input }) => db.updateInstagramSettings(input)),
@@ -528,21 +692,63 @@ export const appRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Email resend failed." });
       }
     }),
-    updateService: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), description: z.string().min(10).optional(), duration: z.string().min(2).optional(), priceFrom: z.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z.string().optional(), imageUrl: z.string().min(5).optional(), isBookable: z.enum(["true", "false"]).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+    updateService: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), description: z.string().min(10).optional(), duration: z.string().min(2).optional(), priceFrom: z.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z.string().optional(), imageUrl: z.string().min(5).optional(), isBookable: z.enum(["true", "false"]).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(async ({ input, ctx }) => {
       const { id, ...changes } = input;
-      return db.updateService(id, changes);
+      const result = await db.updateService(id, changes);
+      await logAdminActivity(ctx, {
+        activityType: "admin_service_updated",
+        description: `Admin updated service #${id}`,
+        relatedEntityType: "service",
+        relatedEntityId: id,
+        metadata: changes,
+      });
+      return result;
     }),
-    createProduct: adminProcedure.input(z.object({ name: z.string().min(2), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/), seoTitle: z.string().min(8).max(255).optional(), seoDescription: z.string().min(30).max(320).optional(), category: productCategory, description: z.string().min(10), price: z.string().regex(/^\d+(\.\d{2})?$/), imageUrl: z.string().min(5).optional(), badge: z.string().optional(), stockStatus: productStockStatus.default("in_stock"), stockQuantity: z.number().int().min(0).default(0), isFeatured: z.enum(["true", "false"]).default("false"), variants: z.array(z.object({ name: z.string().min(1), colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), imageUrl: z.string().min(5).optional(), stockQuantity: z.number().int().min(0).default(0) })).default([]) })).mutation(({ input }) => {
+    createProduct: adminProcedure.input(z.object({ name: z.string().min(2), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/), seoTitle: z.string().min(8).max(255).optional(), seoDescription: z.string().min(30).max(320).optional(), category: productCategory, description: z.string().min(10), price: z.string().regex(/^\d+(\.\d{2})?$/), imageUrl: z.string().min(5).optional(), badge: z.string().optional(), stockStatus: productStockStatus.default("in_stock"), stockQuantity: z.number().int().min(0).default(0), isFeatured: z.enum(["true", "false"]).default("false"), variants: z.array(z.object({ name: z.string().min(1), colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), imageUrl: z.string().min(5).optional(), stockQuantity: z.number().int().min(0).default(0) })).default([]) })).mutation(async ({ input, ctx }) => {
       const { variants, ...product } = input;
-      return db.createProduct(product, variants);
+      const result = await db.createProduct(product, variants);
+      await logAdminActivity(ctx, {
+        activityType: "admin_product_created",
+        description: `Admin created product ${input.name}`,
+        relatedEntityType: "product",
+        relatedEntityId: (result as any)?.id ?? null,
+      });
+      return result;
     }),
-    updateProduct: adminProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().min(2).optional(), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), seoTitle: z.string().min(8).max(255).optional(), seoDescription: z.string().min(30).max(320).optional(), category: productCategory.optional(), description: z.string().min(10).optional(), price: z.string().regex(/^\d+(\.\d{2})?$/).optional(), imageUrl: z.string().min(5).optional(), badge: z.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z.number().int().min(0).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+    updateProduct: adminProcedure.input(z.object({ id: z.number().int().positive(), name: z.string().min(2).optional(), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), seoTitle: z.string().min(8).max(255).optional(), seoDescription: z.string().min(30).max(320).optional(), category: productCategory.optional(), description: z.string().min(10).optional(), price: z.string().regex(/^\d+(\.\d{2})?$/).optional(), imageUrl: z.string().min(5).optional(), badge: z.string().optional(), stockStatus: productStockStatus.optional(), stockQuantity: z.number().int().min(0).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(async ({ input, ctx }) => {
       const { id, ...changes } = input;
-      return db.updateProduct(id, changes);
+      const result = await db.updateProduct(id, changes);
+      await logAdminActivity(ctx, {
+        activityType: "admin_product_updated",
+        description: `Admin updated product #${id}`,
+        relatedEntityType: "product",
+        relatedEntityId: id,
+        metadata: changes,
+      });
+      return result;
     }),
-    updateProductStock: adminProcedure.input(z.object({ id: z.number().int().positive(), stockQuantity: z.number().int().min(0), stockStatus: productStockStatus })).mutation(({ input }) => db.updateProductStock(input.id, input.stockQuantity, input.stockStatus)),
+    updateProductStock: adminProcedure.input(z.object({ id: z.number().int().positive(), stockQuantity: z.number().int().min(0), stockStatus: productStockStatus })).mutation(async ({ input, ctx }) => {
+      const result = await db.updateProductStock(input.id, input.stockQuantity, input.stockStatus);
+      await logAdminActivity(ctx, {
+        activityType: "admin_product_stock_updated",
+        description: `Admin updated stock for product #${input.id}`,
+        relatedEntityType: "product",
+        relatedEntityId: input.id,
+        metadata: { stockQuantity: input.stockQuantity, stockStatus: input.stockStatus },
+      });
+      return result;
+    }),
     updateProductVariants: adminProcedure.input(z.object({ productId: z.number().int().positive(), variants: z.array(z.object({ name: z.string().min(1), colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), imageUrl: z.string().min(5).optional(), stockQuantity: z.number().int().min(0).default(0) })) })).mutation(({ input }) => db.replaceProductVariants(input.productId, input.variants)),
-    deleteProduct: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => db.deleteProduct(input.id)),
+    deleteProduct: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input, ctx }) => {
+      const result = await db.deleteProduct(input.id);
+      await logAdminActivity(ctx, {
+        activityType: "admin_product_deleted",
+        description: `Admin deleted product #${input.id}`,
+        relatedEntityType: "product",
+        relatedEntityId: input.id,
+      });
+      return result;
+    }),
     uploadProductImage: adminProcedure.input(z.object({ productId: z.number().int().positive().optional(), productName: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("product-image.png") })).mutation(async ({ input }) => {
       const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.productName}-${input.fileName}`, folder: "products" });
       if (input.productId) await db.updateProduct(input.productId, { imageUrl: uploaded.url });
@@ -582,9 +788,17 @@ export const appRouter = router({
       if (input.imageUrl) await storageRemove(input.imageUrl);
       return db.deleteGalleryImage(input.id);
     }),
-    updateWebsiteSection: adminProcedure.input(z.object({ sectionKey: z.string().min(2), title: z.string().min(2).optional(), eyebrow: z.string().optional(), body: z.string().optional(), ctaLabel: z.string().optional(), ctaHref: z.string().optional(), imageUrl: z.string().optional(), portraitImageUrl: z.string().optional(), portraitDescription: z.string().optional(), isPublished: z.enum(["true", "false"]).optional() })).mutation(({ input }) => {
+    updateWebsiteSection: adminProcedure.input(z.object({ sectionKey: z.string().min(2), title: z.string().min(2).optional(), eyebrow: z.string().optional(), body: z.string().optional(), ctaLabel: z.string().optional(), ctaHref: z.string().optional(), imageUrl: z.string().optional(), portraitImageUrl: z.string().optional(), portraitDescription: z.string().optional(), isPublished: z.enum(["true", "false"]).optional() })).mutation(async ({ input, ctx }) => {
       const { sectionKey, ...changes } = input;
-      return db.updateWebsiteSection(sectionKey, changes);
+      const result = await db.updateWebsiteSection(sectionKey, changes);
+      await logAdminActivity(ctx, {
+        activityType: "admin_content_updated",
+        description: `Admin updated website section ${sectionKey}`,
+        relatedEntityType: "website_section",
+        relatedEntityId: sectionKey,
+        metadata: changes,
+      });
+      return result;
     }),
   }),
 });
