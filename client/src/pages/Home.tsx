@@ -118,7 +118,7 @@ export function SiteHeader() {
           </form>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3 xl:hidden">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3 xl:hidden">
           <form className="relative hidden w-44 lg:block xl:w-56" role="search" aria-label="Compact product search" onSubmit={handleProductSearch}>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
             <input
@@ -129,6 +129,9 @@ export function SiteHeader() {
               placeholder="Search products"
             />
           </form>
+          <button type="button" className="btn-gold min-h-11 shrink-0 whitespace-nowrap px-3 py-2 text-[0.68rem] uppercase tracking-[.14em] sm:hidden" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
+            Shop Now
+          </button>
           <div className="hidden sm:block">
             <button type="button" className="btn-gold whitespace-nowrap px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
               Shop Now
@@ -292,8 +295,8 @@ function HomepageGalleryPreview() {
   if (preview.length === 0) return null;
   return (
     <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {preview.map((image: any) => (
-        <div className="lux-card overflow-hidden p-0" key={image.id}>
+      {preview.map((image: any, index: number) => (
+        <div className="lux-card overflow-hidden p-0" key={`${image.id ?? image.title ?? "gallery"}-${index}`}>
           <div className="media-portrait overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
             <img
               src={image.imageUrl}
@@ -344,9 +347,9 @@ export default function Home() {
       <SiteHeader />
       <main>
         <section className="relative isolate overflow-hidden">
-          <div className="hero-video-reference relative flex items-center">
+          <div className="hero-video-reference relative flex items-center lg:items-start">
             <img
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover object-[center_10%] md:object-[center_12%] lg:object-[center_14%]"
               src={LANDING_HERO_IMAGE_SRC}
               alt="Eby’s Place pain-free braiding hero style"
               loading="eager"
@@ -354,7 +357,7 @@ export default function Home() {
               fetchPriority="high"
             />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.34)_45%,rgba(247,238,222,.08)),linear-gradient(180deg,rgba(247,238,222,.06),rgba(20,12,5,.72))]" />
-            <div className="container relative z-10 py-20 md:py-28">
+            <div className="container relative z-10 py-20 md:py-28 lg:pt-36 lg:pb-24">
               <div className="max-w-3xl py-5 [text-shadow:0_3px_22px_rgba(0,0,0,.88)] sm:py-8 md:py-10">
                 <ul className="hero-slogan-list max-w-[20rem] list-none space-y-0 p-0 lg:max-w-[30rem]" aria-label="Eby’s Place pain-free promise" data-placement="lower-left-side-away-from-model-face">
                   <li>Zero pain.</li>
@@ -438,8 +441,8 @@ export default function Home() {
               </Link>
             </div>
             <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-              {(styles as any[]).map(s => (
-                <article className="lux-card flex flex-col overflow-hidden p-0" key={s.id ?? s.slug}>
+              {(styles as any[]).map((s, index) => (
+                <article className="lux-card flex flex-col overflow-hidden p-0" key={`${s.id ?? s.slug ?? s.name}-${index}`}>
                   {s.imageUrl ? (
                     <div className="media-portrait overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
                       <img
@@ -490,12 +493,12 @@ export default function Home() {
               </div>
             </div>
             <div className="mt-10 grid gap-5 md:grid-cols-3">
-              {featuredShopProducts.map(product => (
+              {featuredShopProducts.map((product, index) => (
                 <button
                   type="button"
                   className="lux-card group block w-full min-w-0 overflow-hidden p-0 text-left transition hover:-translate-y-1 hover:border-primary/55 hover:shadow-[0_22px_55px_rgba(189,140,52,.24)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   onClick={() => navigateWithSmoothScroll(product.slug ? `/shop/${product.slug}` : `/shop?search=${encodeURIComponent(product.name)}`, setLocation)}
-                  key={product.id ?? product.slug}
+                  key={`${product.id ?? product.slug ?? product.name}-${index}`}
                   aria-label={`View ${product.name} product page`}
                 >
                   <div className="relative min-h-[210px] overflow-hidden rounded-t-[1.75rem] border-b border-primary/20 bg-[#130c07]">

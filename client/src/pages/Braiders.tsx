@@ -189,24 +189,66 @@ export default function Braiders() {
               <a className="btn-dark" href={KOUVIA_BOOKING_URL} target="_blank" rel="noreferrer" onClick={() => logKouviaRedirect("kouvia_opened", { entryPoint: "braiders_page_open_kouvia" })}>Open Kouvia</a>
             </div>
             <div className="mt-6 rounded-[1.75rem] border border-white/12 bg-[#130d08] p-4 shadow-[0_20px_45px_rgba(0,0,0,.35)]">
-              <p className="text-xs uppercase tracking-[0.2em] text-[var(--gold)]/80">Kouvia app preview</p>
-              <div className="mt-3 overflow-hidden rounded-2xl border border-[var(--gold)]/30 bg-[#0d0906]">
-                <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 text-[0.68rem] uppercase tracking-[0.16em] text-white/50">
-                  <span>Live booking</span>
-                  <span>Somerset, UK</span>
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--gold)]/80">Kouvia landing page preview</p>
+              <div className="mt-3 overflow-hidden rounded-[1.6rem] border border-[#c8a95a]/35 bg-[#0d0906] shadow-[0_16px_40px_rgba(0,0,0,.34)]">
+                <div className="flex items-center gap-2 border-b border-[#c8a95a]/18 bg-[#120c08] px-3 py-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#f7c948]" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#4ade80]" />
+                  <span className="ml-2 truncate rounded-full border border-[#c8a95a]/25 bg-[#1a120d] px-3 py-1 text-[0.65rem] font-semibold tracking-[0.14em] text-[#eed9ab]">
+                    kouviabooking.ebysplace.com
+                  </span>
                 </div>
-                <div className="space-y-3 p-3">
-                  <div className="rounded-xl border border-white/10 bg-black/35 p-3">
-                    <p className="text-sm font-semibold text-white">Knotless Braids • Medium</p>
-                    <p className="mt-1 text-xs text-white/55">From £95 · 3h 15m</p>
+                <div className="grid gap-4 bg-[radial-gradient(circle_at_top_right,rgba(201,168,76,.18),transparent_32%),linear-gradient(180deg,#120c08_0%,#090603_100%)] p-4">
+                  <div className="rounded-[1.3rem] border border-[#c8a95a]/22 bg-[#15100c] p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-[#d7b56a]">Powered by Eby’s Place</p>
+                        <h3 className="serif mt-2 text-2xl font-bold text-[#fff3d7]">Kouvia</h3>
+                        <p className="mt-2 text-sm leading-6 text-[#d9c4a0]">
+                          Luxury pain-free braiding. Discover trusted braiders, compare openings, and book the right protective style faster.
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-[#d7b56a] px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-black">Live preview</span>
+                    </div>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-full border border-[#c8a95a]/22 bg-[#0e0906] px-4 py-3 text-sm text-[#f7ecd1]">Search location, style, or braider</div>
+                      <div className="rounded-full border border-[#c8a95a]/22 bg-[#0e0906] px-4 py-3 text-sm text-[#cbb58d]">Verified • Luxury pain-free braiding</div>
+                    </div>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-black/35 p-3">
-                    <p className="text-sm font-semibold text-white">Cornrows • Feed-in</p>
-                    <p className="mt-1 text-xs text-white/55">From £70 · 2h 20m</p>
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-black/35 p-3">
-                    <p className="text-sm font-semibold text-white">Next slots</p>
-                    <p className="mt-1 text-xs text-white/55">Tue 10:00 • Wed 14:30 • Fri 16:00</p>
+                  <div className="grid gap-3 sm:grid-cols-[1.1fr_0.9fr]">
+                    <div className="rounded-[1.2rem] border border-[#c8a95a]/20 bg-[#15100c] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-[#d7b56a]">Featured braider</p>
+                          <p className="mt-2 text-lg font-semibold text-[#fff3d7]">Eby’s Place Studio</p>
+                        </div>
+                        <span className="rounded-full bg-[#f4e3be] px-3 py-1 text-xs font-bold text-black">5.0 ★</span>
+                      </div>
+                      <p className="mt-3 text-sm text-[#d9c4a0]">Somerset, UK · Knotless, Cornrows, Kids Styles · Deposit-ready booking</p>
+                      <div className="mt-4 flex flex-wrap gap-2 text-[0.68rem] uppercase tracking-[0.16em] text-[#d7b56a]">
+                        <span className="rounded-full border border-[#c8a95a]/20 px-3 py-1">Verified</span>
+                        <span className="rounded-full border border-[#c8a95a]/20 px-3 py-1">Top rated</span>
+                        <span className="rounded-full border border-[#c8a95a]/20 px-3 py-1">Today 4:30 PM</span>
+                      </div>
+                    </div>
+                    <div className="rounded-[1.2rem] border border-[#c8a95a]/20 bg-[#15100c] p-4">
+                      <p className="text-xs uppercase tracking-[0.18em] text-[#d7b56a]">Landing page cards</p>
+                      <div className="mt-3 space-y-3">
+                        <div className="rounded-xl border border-[#c8a95a]/15 bg-[#0d0906] p-3">
+                          <p className="text-sm font-semibold text-[#fff3d7]">Luxury pain-free braiding</p>
+                          <p className="mt-1 text-xs text-[#cbb58d]">Premium protective styles with comfort-first booking.</p>
+                        </div>
+                        <div className="rounded-xl border border-[#c8a95a]/15 bg-[#0d0906] p-3">
+                          <p className="text-sm font-semibold text-[#fff3d7]">Braiders near me</p>
+                          <p className="mt-1 text-xs text-[#cbb58d]">Search local professionals, compare reviews, and open availability.</p>
+                        </div>
+                        <div className="rounded-xl border border-[#c8a95a]/15 bg-[#0d0906] p-3">
+                          <p className="text-sm font-semibold text-[#fff3d7]">Book on Kouvia</p>
+                          <p className="mt-1 text-xs text-[#cbb58d]">Go straight to the live booking flow at kouviabooking.ebysplace.com.</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

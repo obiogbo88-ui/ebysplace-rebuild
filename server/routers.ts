@@ -110,7 +110,7 @@ function normalizePublicPath(path: string) {
 
 function shouldSkipTrackEvent(input: { eventName: string; pagePath: string; sessionId?: string }) {
   const pagePath = normalizePublicPath(input.pagePath);
-  if (pagePath.startsWith("/admin")) return { skip: true, reason: "admin_path" as const, pagePath };
+  if (isAdminTrackingPath(input.pagePath)) return { skip: true, reason: "admin_path" as const, pagePath };
   const eventKey = `${input.sessionId || "anon"}:${input.eventName}:${pagePath}`;
   const now = Date.now();
   const previous = recentTrackEvents.get(eventKey);
@@ -707,6 +707,7 @@ export const appRouter = router({
       relatedEntityId: z.union([z.string(), z.number()]).optional(),
       sourceApp: z.string().max(80).optional(),
     })).mutation(async ({ input, ctx }) => {
+      if (isAdminTrackingPath(input.pagePath)) return { success: true, skipped: true };
       const trackGate = shouldSkipTrackEvent({ eventName: input.eventName, pagePath: input.pagePath, sessionId: input.sessionId });
       if (trackGate.skip) {
         if (trackGate.reason === "admin_path") {
@@ -748,7 +749,8 @@ export const appRouter = router({
       userAgent: z.string().max(500).optional(),
     })).mutation(async ({ input, ctx }) => {
       const normalizedPageUrl = normalizePublicPath(input.pageUrl || "/");
-      if (normalizedPageUrl.startsWith("/admin")) {
+      if (isAdminTrackingPath(normalizedPageUrl)) return { success: true, skipped: true };
+      if (isAdminTrackingPath(normalizedPageUrl)) {
         console.info("[Tracking] Ignored admin route public.logActivity event", {
           activityType: input.activityType,
           pageUrl: normalizedPageUrl,
