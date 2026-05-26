@@ -145,6 +145,22 @@ function getOrigin(req: Request) {
   return typeof origin === "string" ? origin : "http://localhost:3000";
 }
 
+function normalizeTrackingPath(pathOrUrl: string) {
+  const raw = (pathOrUrl || "/").trim();
+  if (!raw) return "/";
+  try {
+    const parsed = new URL(raw, "https://www.ebysplace.com");
+    return parsed.pathname || "/";
+  } catch {
+    return raw.split(/[?#]/)[0] || "/";
+  }
+}
+
+function isAdminTrackingPath(pathOrUrl: string) {
+  const pathname = normalizeTrackingPath(pathOrUrl).toLowerCase();
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
 async function notifyOwnerSafely(title: string, content: string) {
   try {
     await notifyOwner({ title, content });
@@ -575,18 +591,21 @@ export const appRouter = router({
       relatedEntityType: z.string().max(80).optional(),
       relatedEntityId: z.union([z.string(), z.number()]).optional(),
       sourceApp: z.string().max(80).optional(),
-    })).mutation(({ input, ctx }) => db.recordAnalytics(input.eventName, input.pagePath, input.metadata, {
-      request: ctx.req,
-      user: ctx.user ? { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } : null,
-      sessionId: input.sessionId,
-      activityType: input.activityType,
-      activityCategory: input.activityCategory,
-      status: input.status,
-      description: input.description,
-      relatedEntityType: input.relatedEntityType,
-      relatedEntityId: input.relatedEntityId,
-      sourceApp: input.sourceApp,
-    })),
+    })).mutation(({ input, ctx }) => {
+      if (isAdminTrackingPath(input.pagePath)) return { success: true, skipped: true };
+      return db.recordAnalytics(input.eventName, normalizeTrackingPath(input.pagePath), input.metadata, {
+        request: ctx.req,
+        user: ctx.user ? { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } : null,
+        sessionId: input.sessionId,
+        activityType: input.activityType,
+        activityCategory: input.activityCategory,
+        status: input.status,
+        description: input.description,
+        relatedEntityType: input.relatedEntityType,
+        relatedEntityId: input.relatedEntityId,
+        sourceApp: input.sourceApp,
+      });
+    }),
     logActivity: publicProcedure.input(z.object({
       sessionId: z.string().max(128).optional(),
       activityType: z.string().min(2).max(120),
@@ -607,6 +626,16 @@ export const appRouter = router({
       browser: z.string().max(80).optional(),
       userAgent: z.string().max(500).optional(),
     })).mutation(async ({ input, ctx }) => {
+      const normalizedPageUrl = normalizeTrackingPath(input.pageUrl || "/");
+      if (isAdminTrackingPath(normalizedPageUrl)) return { success: true, skipped: true };
+      const activityType = input.activityType;
+      const shouldThrottle = await db.shouldThrottlePublicActivity({
+        sessionId: input.sessionId ?? null,
+        activityType,
+        pageUrl: normalizedPageUrl,
+        sourceApp: input.sourceApp,
+      });
+      if (shouldThrottle) return { success: true, skipped: true };
       await db.logActivity({
         request: ctx.req,
         userId: ctx.user?.id ?? null,
@@ -616,7 +645,7 @@ export const appRouter = router({
         activityType: input.activityType,
         activityCategory: input.activityCategory,
         description: input.description,
-        pageUrl: input.pageUrl,
+        pageUrl: normalizedPageUrl,
         metadata: input.metadata,
         status: input.status,
         relatedEntityType: input.relatedEntityType,

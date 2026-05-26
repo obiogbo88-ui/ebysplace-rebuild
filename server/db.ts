@@ -1478,6 +1478,52 @@ async function ensureActivityLogsTable() {
   }
 }
 
+function normalizePathForTracking(value?: string | null) {
+  const raw = (value || "/").trim();
+  if (!raw) return "/";
+  try {
+    const parsed = new URL(raw, "https://www.ebysplace.com");
+    return parsed.pathname || "/";
+  } catch {
+    return raw.split(/[?#]/)[0] || "/";
+  }
+}
+
+function isAdminPathForTracking(value?: string | null) {
+  const pathname = normalizePathForTracking(value).toLowerCase();
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
+export async function shouldThrottlePublicActivity(input: {
+  sessionId?: string | null;
+  activityType?: string | null;
+  pageUrl?: string | null;
+  sourceApp?: string | null;
+  windowMs?: number;
+}) {
+  const db = await getDb();
+  if (!db) return false;
+  const sessionId = truncateText(input.sessionId, 128);
+  const activityType = truncateText(input.activityType, 120);
+  const pageUrl = truncateText(normalizePathForTracking(input.pageUrl), MAX_PAGE_URL_LENGTH);
+  const sourceApp = truncateText(input.sourceApp || "ebysplace", 80) || "ebysplace";
+  if (!sessionId || !activityType) return false;
+  await ensureActivityLogsTable();
+  const windowStart = Date.now() - Math.max(input.windowMs ?? 8000, 500);
+  const rows = await db
+    .select({ id: activityLogs.id })
+    .from(activityLogs)
+    .where(and(
+      eq(activityLogs.sessionId, sessionId),
+      eq(activityLogs.activityType, activityType),
+      eq(activityLogs.sourceApp, sourceApp),
+      eq(activityLogs.pageUrl, pageUrl),
+      sql`${activityLogs.createdAtMs} >= ${windowStart}`,
+    ))
+    .limit(1);
+  return rows.length > 0;
+}
+
 export async function logActivity(input: ActivityLogInput) {
   const db = await getDb();
   if (!db) return { success: true };
@@ -1951,22 +1997,34 @@ export async function recordAnalytics(
 ) {
   const db = await getDb();
   if (!db) return { success: true };
-  await db.insert(analyticsEvents).values({ eventName, pagePath, metadata, createdAtMs: Date.now() });
+  const normalizedPagePath = normalizePathForTracking(pagePath);
+  const sourceApp = truncateText(options?.sourceApp || "ebysplace", 80) || "ebysplace";
+  const activityType = truncateText(options?.activityType ?? eventName, 120) || truncateText(eventName, 120) || "unknown_activity";
+  if (isAdminPathForTracking(normalizedPagePath)) return { success: true, skipped: true };
+  if (await shouldThrottlePublicActivity({
+    sessionId: options?.sessionId ?? null,
+    activityType,
+    pageUrl: normalizedPagePath,
+    sourceApp,
+  })) {
+    return { success: true, skipped: true };
+  }
+  await db.insert(analyticsEvents).values({ eventName, pagePath: normalizedPagePath, metadata, createdAtMs: Date.now() });
   await logActivity({
     request: options?.request,
     userId: options?.user?.id ?? null,
     userName: options?.user?.name ?? null,
     userEmail: options?.user?.email ?? null,
     sessionId: options?.sessionId ?? null,
-    activityType: options?.activityType ?? eventName,
+    activityType,
     activityCategory: options?.activityCategory ?? "website_visit",
     description: options?.description ?? `Visitor event: ${eventName}`,
-    pageUrl: pagePath,
+    pageUrl: normalizedPagePath,
     metadata,
     status: options?.status ?? "info",
     relatedEntityType: options?.relatedEntityType ?? null,
     relatedEntityId: options?.relatedEntityId ?? null,
-    sourceApp: options?.sourceApp ?? "ebysplace",
+    sourceApp,
   });
   return { success: true };
 }
