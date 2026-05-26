@@ -223,6 +223,9 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(shopSource).toContain("onError={(event) =>");
     expect(appSource).toContain('afterRouteScroll(`${location}${window.location.hash || ""}`, 40)');
     expect(appSource).toContain('import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";');
+    expect(adminSource).toContain("Open admin notifications");
+    expect(adminSource).toContain("No new notifications");
+    expect(adminSource).toContain("Open full activity feed");
   });
 
   it("clears product image references without deleting stored product image assets", () => {

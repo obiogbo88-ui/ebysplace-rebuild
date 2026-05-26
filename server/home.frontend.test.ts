@@ -126,6 +126,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain('fetchPriority="high"');
     expect(homeSource).toContain('decoding="async"');
     expect(homeSource).toContain("h-16 w-[10.5rem] object-contain object-left mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]");
+    expect(homeSource).toContain('className="btn-gold min-h-11 shrink-0 whitespace-nowrap px-3 py-2 text-[0.68rem] uppercase tracking-[.14em] sm:hidden"');
     expect(homeSource).toContain('<div className="hidden sm:block">');
       expect(homeSource).toContain("btn-gold whitespace-nowrap px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm");
       expect(homeSource).toContain('navigateWithSmoothScroll("/shop", setLocation)');
