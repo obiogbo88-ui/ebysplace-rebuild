@@ -1571,6 +1571,39 @@ async function ensureActivityLogsTable() {
     console.warn("[Database] Could not ensure activityLogs table", error);
   }
 }
+function normalizePathForTracking(value) {
+  const raw = (value || "/").trim();
+  if (!raw) return "/";
+  try {
+    const parsed = new URL(raw, "https://www.ebysplace.com");
+    return parsed.pathname || "/";
+  } catch {
+    return raw.split(/[?#]/)[0] || "/";
+  }
+}
+function isAdminPathForTracking(value) {
+  const pathname = normalizePathForTracking(value).toLowerCase();
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+async function shouldThrottlePublicActivity(input) {
+  const db = await getDb();
+  if (!db) return false;
+  const sessionId = truncateText(input.sessionId, 128);
+  const activityType = truncateText(input.activityType, 120);
+  const pageUrl = truncateText(normalizePathForTracking(input.pageUrl), MAX_PAGE_URL_LENGTH);
+  const sourceApp = truncateText(input.sourceApp || "ebysplace", 80) || "ebysplace";
+  if (!sessionId || !activityType) return false;
+  await ensureActivityLogsTable();
+  const windowStart = Date.now() - Math.max(input.windowMs ?? 8e3, 500);
+  const rows = await db.select({ id: activityLogs.id }).from(activityLogs).where(and(
+    eq(activityLogs.sessionId, sessionId),
+    eq(activityLogs.activityType, activityType),
+    eq(activityLogs.sourceApp, sourceApp),
+    eq(activityLogs.pageUrl, pageUrl),
+    sql`${activityLogs.createdAtMs} >= ${windowStart}`
+  )).limit(1);
+  return rows.length > 0;
+}
 async function logActivity(input) {
   const db = await getDb();
   if (!db) return { success: true };
@@ -1977,22 +2010,34 @@ async function getEmailNotificationLogById(id) {
 async function recordAnalytics(eventName, pagePath, metadata, options) {
   const db = await getDb();
   if (!db) return { success: true };
-  await db.insert(analyticsEvents).values({ eventName, pagePath, metadata, createdAtMs: Date.now() });
+  const normalizedPagePath = normalizePathForTracking(pagePath);
+  const sourceApp = truncateText(options?.sourceApp || "ebysplace", 80) || "ebysplace";
+  const activityType = truncateText(options?.activityType ?? eventName, 120) || truncateText(eventName, 120) || "unknown_activity";
+  if (isAdminPathForTracking(normalizedPagePath)) return { success: true, skipped: true };
+  if (await shouldThrottlePublicActivity({
+    sessionId: options?.sessionId ?? null,
+    activityType,
+    pageUrl: normalizedPagePath,
+    sourceApp
+  })) {
+    return { success: true, skipped: true };
+  }
+  await db.insert(analyticsEvents).values({ eventName, pagePath: normalizedPagePath, metadata, createdAtMs: Date.now() });
   await logActivity({
     request: options?.request,
     userId: options?.user?.id ?? null,
     userName: options?.user?.name ?? null,
     userEmail: options?.user?.email ?? null,
     sessionId: options?.sessionId ?? null,
-    activityType: options?.activityType ?? eventName,
+    activityType,
     activityCategory: options?.activityCategory ?? "website_visit",
     description: options?.description ?? `Visitor event: ${eventName}`,
-    pageUrl: pagePath,
+    pageUrl: normalizedPagePath,
     metadata,
     status: options?.status ?? "info",
     relatedEntityType: options?.relatedEntityType ?? null,
     relatedEntityId: options?.relatedEntityId ?? null,
-    sourceApp: options?.sourceApp ?? "ebysplace"
+    sourceApp
   });
   return { success: true };
 }
@@ -3669,6 +3714,20 @@ function getOrigin(req) {
   const origin = req.headers.origin;
   return typeof origin === "string" ? origin : "http://localhost:3000";
 }
+function normalizeTrackingPath(pathOrUrl) {
+  const raw = (pathOrUrl || "/").trim();
+  if (!raw) return "/";
+  try {
+    const parsed = new URL(raw, "https://www.ebysplace.com");
+    return parsed.pathname || "/";
+  } catch {
+    return raw.split(/[?#]/)[0] || "/";
+  }
+}
+function isAdminTrackingPath(pathOrUrl) {
+  const pathname = normalizeTrackingPath(pathOrUrl).toLowerCase();
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
 async function notifyOwnerSafely(title, content) {
   try {
     await notifyOwner({ title, content });
@@ -4065,18 +4124,21 @@ var appRouter = router({
       relatedEntityType: z3.string().max(80).optional(),
       relatedEntityId: z3.union([z3.string(), z3.number()]).optional(),
       sourceApp: z3.string().max(80).optional()
-    })).mutation(({ input, ctx }) => recordAnalytics(input.eventName, input.pagePath, input.metadata, {
-      request: ctx.req,
-      user: ctx.user ? { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } : null,
-      sessionId: input.sessionId,
-      activityType: input.activityType,
-      activityCategory: input.activityCategory,
-      status: input.status,
-      description: input.description,
-      relatedEntityType: input.relatedEntityType,
-      relatedEntityId: input.relatedEntityId,
-      sourceApp: input.sourceApp
-    })),
+    })).mutation(({ input, ctx }) => {
+      if (isAdminTrackingPath(input.pagePath)) return { success: true, skipped: true };
+      return recordAnalytics(input.eventName, normalizeTrackingPath(input.pagePath), input.metadata, {
+        request: ctx.req,
+        user: ctx.user ? { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } : null,
+        sessionId: input.sessionId,
+        activityType: input.activityType,
+        activityCategory: input.activityCategory,
+        status: input.status,
+        description: input.description,
+        relatedEntityType: input.relatedEntityType,
+        relatedEntityId: input.relatedEntityId,
+        sourceApp: input.sourceApp
+      });
+    }),
     logActivity: publicProcedure.input(z3.object({
       sessionId: z3.string().max(128).optional(),
       activityType: z3.string().min(2).max(120),
@@ -4097,6 +4159,16 @@ var appRouter = router({
       browser: z3.string().max(80).optional(),
       userAgent: z3.string().max(500).optional()
     })).mutation(async ({ input, ctx }) => {
+      const normalizedPageUrl = normalizeTrackingPath(input.pageUrl || "/");
+      if (isAdminTrackingPath(normalizedPageUrl)) return { success: true, skipped: true };
+      const activityType = input.activityType;
+      const shouldThrottle = await shouldThrottlePublicActivity({
+        sessionId: input.sessionId ?? null,
+        activityType,
+        pageUrl: normalizedPageUrl,
+        sourceApp: input.sourceApp
+      });
+      if (shouldThrottle) return { success: true, skipped: true };
       await logActivity({
         request: ctx.req,
         userId: ctx.user?.id ?? null,
@@ -4106,7 +4178,7 @@ var appRouter = router({
         activityType: input.activityType,
         activityCategory: input.activityCategory,
         description: input.description,
-        pageUrl: input.pageUrl,
+        pageUrl: normalizedPageUrl,
         metadata: input.metadata,
         status: input.status,
         relatedEntityType: input.relatedEntityType,
