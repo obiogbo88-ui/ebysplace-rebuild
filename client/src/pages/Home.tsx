@@ -70,7 +70,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#d8bd74]/55 bg-[#f5ead7]/92 shadow-[0_10px_36px_rgba(66,42,18,.12)] backdrop-blur-xl">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4 lg:px-6">
+      <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-2 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 lg:px-8 xl:px-10">
         <Link
           href="/"
           className="flex shrink-0 items-center py-1"
@@ -86,9 +86,10 @@ export function SiteHeader() {
           />
         </Link>
 
-        <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 xl:flex xl:gap-3">
+        <div className="hidden min-w-0 flex-1 items-center justify-end xl:flex">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-2 2xl:gap-x-4">
           <nav
-            className="flex min-w-0 items-center gap-2 xl:gap-3"
+            className="flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-2 xl:gap-x-3"
             aria-label="Main navigation"
           >
             {desktopNavLinks.map(item => (
@@ -105,7 +106,7 @@ export function SiteHeader() {
               Shop Now
             </button>
           </div>
-          <form className="relative w-[clamp(13rem,19vw,18rem)]" role="search" aria-label="Product search" onSubmit={handleProductSearch}>
+          <form className="relative w-full min-w-[11rem] max-w-[17rem] xl:w-[clamp(11rem,15vw,16rem)] 2xl:w-[clamp(12rem,17vw,18rem)]" role="search" aria-label="Product search" onSubmit={handleProductSearch}>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
             <input
               className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
@@ -116,6 +117,7 @@ export function SiteHeader() {
               aria-label="Search Eby’s Place products"
             />
           </form>
+          </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 min-[390px]:gap-2 sm:gap-3 xl:hidden">
@@ -134,7 +136,7 @@ export function SiteHeader() {
           </button>
           <button
             type="button"
-            className="rounded-full border border-[#c8a95a] bg-[#111111] p-2.5 text-[#f5d66e] shadow-[0_10px_24px_rgba(17,17,17,.26)] transition hover:bg-[#1a1a1a] sm:p-3"
+            className="rounded-full border border-[#b8892f] bg-[#0b0b0b] p-2.5 text-[#f8de82] shadow-[0_12px_28px_rgba(17,17,17,.34)] ring-1 ring-[#f3d478]/30 transition hover:bg-[#1a1a1a] sm:p-3"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(value => !value)}
