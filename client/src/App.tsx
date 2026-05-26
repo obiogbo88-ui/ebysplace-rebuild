@@ -260,7 +260,7 @@ function DynamicSeoMetadata() {
 
   useEffect(() => {
     const pagePath = location.split(/[?#]/)[0] || "/";
-    if (pagePath.startsWith("/admin")) return;
+    if (!shouldTrackPublicActivity(pagePath)) return;
     const dedupeKey = "ebysplace:last-public-page-visit";
     const now = Date.now();
     try {
@@ -278,7 +278,14 @@ function DynamicSeoMetadata() {
     const eventKey = createTrackingEventKey({
       eventName: "page_visit",
       pagePath,
-      sessionId: getActivitySessionId(),
+      sessionId,
+      activityType: "website_visit",
+    });
+    if (shouldThrottleTrackingEvent(eventKey)) return;
+    track.mutate({
+      eventName: "page_visit",
+      pagePath,
+      sessionId,
       activityType: "website_visit",
       activityCategory: "visit",
       description: `Visited ${pagePath}`,

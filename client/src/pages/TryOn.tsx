@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { Loader2, UploadCloud, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -73,6 +73,95 @@ async function convertHeicToJpeg(file: File) {
 
 const MAX_TRY_ON_FILE_SIZE_MB = 20;
 const TRY_ON_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,image/*";
+const TRY_ON_ATTEMPT_LIMIT = 3;
+const TRY_ON_USAGE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const TRY_ON_ATTEMPT_KEY = "ebysplace_tryon_attempts";
+
+type TryOnUsageState = {
+  attemptsUsed: number;
+  windowStartedAt: number | null;
+  resetAtMs: number | null;
+};
+
+function emptyTryOnUsageState(): TryOnUsageState {
+  return {
+    attemptsUsed: 0,
+    windowStartedAt: null,
+    resetAtMs: null,
+  };
+}
+
+function normalizeTryOnUsageState(value: unknown) {
+  if (typeof value === "number" || typeof value === "string") {
+    const legacyAttempts = Number(value);
+    if (!Number.isFinite(legacyAttempts) || legacyAttempts <= 0) return emptyTryOnUsageState();
+    const windowStartedAt = Date.now();
+    return {
+      attemptsUsed: Math.min(TRY_ON_ATTEMPT_LIMIT, Math.floor(legacyAttempts)),
+      windowStartedAt,
+      resetAtMs: windowStartedAt + TRY_ON_USAGE_WINDOW_MS,
+    };
+  }
+  if (!value || typeof value !== "object") return emptyTryOnUsageState();
+  const rawAttempts = Number((value as { attemptsUsed?: unknown }).attemptsUsed);
+  const rawWindowStartedAt = Number((value as { windowStartedAt?: unknown }).windowStartedAt);
+  const attemptsUsed = Number.isFinite(rawAttempts) && rawAttempts > 0 ? Math.min(TRY_ON_ATTEMPT_LIMIT, Math.floor(rawAttempts)) : 0;
+  const windowStartedAt = Number.isFinite(rawWindowStartedAt) && rawWindowStartedAt > 0 ? rawWindowStartedAt : null;
+  if (!attemptsUsed || !windowStartedAt) return emptyTryOnUsageState();
+  const resetAtMs = windowStartedAt + TRY_ON_USAGE_WINDOW_MS;
+  if (resetAtMs <= Date.now()) return emptyTryOnUsageState();
+  return { attemptsUsed, windowStartedAt, resetAtMs };
+}
+
+function persistTryOnUsageState(value: TryOnUsageState) {
+  if (typeof window === "undefined") return;
+  if (!value.attemptsUsed || !value.windowStartedAt) {
+    window.localStorage.removeItem(TRY_ON_ATTEMPT_KEY);
+    return;
+  }
+  window.localStorage.setItem(TRY_ON_ATTEMPT_KEY, JSON.stringify({
+    attemptsUsed: value.attemptsUsed,
+    windowStartedAt: value.windowStartedAt,
+  }));
+}
+
+function readTryOnUsageState() {
+  if (typeof window === "undefined") return emptyTryOnUsageState();
+  try {
+    const stored = window.localStorage.getItem(TRY_ON_ATTEMPT_KEY);
+    const normalized = normalizeTryOnUsageState(stored ? JSON.parse(stored) : null);
+    persistTryOnUsageState(normalized);
+    return normalized;
+  } catch {
+    persistTryOnUsageState(emptyTryOnUsageState());
+    return emptyTryOnUsageState();
+  }
+}
+
+function consumeTryOnAttempt() {
+  const current = readTryOnUsageState();
+  const windowStartedAt = current.windowStartedAt ?? Date.now();
+  const next: TryOnUsageState = {
+    attemptsUsed: Math.min(TRY_ON_ATTEMPT_LIMIT, current.attemptsUsed + 1),
+    windowStartedAt,
+    resetAtMs: windowStartedAt + TRY_ON_USAGE_WINDOW_MS,
+  };
+  persistTryOnUsageState(next);
+  return next;
+}
+
+function formatTryOnResetCountdown(msRemaining: number) {
+  const totalMinutes = Math.max(1, Math.ceil(msRemaining / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    const leftoverHours = hours % 24;
+    return leftoverHours ? `${days}d ${leftoverHours}h` : `${days}d`;
+  }
+  if (hours > 0) return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+  return `${minutes}m`;
+}
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -146,14 +235,11 @@ function friendlyTryOnError(error: unknown) {
   return message;
 }
 
-const TRY_ON_ATTEMPT_LIMIT = 3;
-const TRY_ON_ATTEMPT_KEY = "ebysplace_tryon_attempts";
-
 export default function TryOn() {
   const upload = trpc.public.uploadTryOnPhoto.useMutation();
   const generate = trpc.public.generateTryOn.useMutation();
   const logActivity = trpc.public.logActivity.useMutation();
-  const [attemptsUsed, setAttemptsUsed] = useState(() => Number(localStorage.getItem(TRY_ON_ATTEMPT_KEY) || "0"));
+  const [usageState, setUsageState] = useState<TryOnUsageState>(() => readTryOnUsageState());
   const [photo, setPhoto] = useState<UploadedPhoto>();
   const [storedPhoto, setStoredPhoto] = useState<StoredPhoto>();
   const [style, setStyle] = useState(styles[0]);
@@ -161,6 +247,15 @@ export default function TryOn() {
   const [isPreparing, setIsPreparing] = useState(false);
 
   const isBusy = isPreparing || upload.isPending || generate.isPending;
+  const attemptsUsed = usageState.attemptsUsed;
+  const attemptsRemaining = Math.max(0, TRY_ON_ATTEMPT_LIMIT - attemptsUsed);
+  const resetCountdown = usageState.resetAtMs ? formatTryOnResetCountdown(Math.max(0, usageState.resetAtMs - Date.now())) : null;
+
+  useEffect(() => {
+    if (!usageState.resetAtMs || attemptsUsed < TRY_ON_ATTEMPT_LIMIT) return;
+    const timer = window.setInterval(() => setUsageState(readTryOnUsageState()), 60000);
+    return () => window.clearInterval(timer);
+  }, [attemptsUsed, usageState.resetAtMs]);
 
   async function onFile(file: File | undefined, source: UploadedPhoto["source"]) {
     if (!file) return;
@@ -218,15 +313,20 @@ export default function TryOn() {
   }
 
   async function run() {
+    const currentUsage = readTryOnUsageState();
+    setUsageState(currentUsage);
+
     if (!photo) {
       setError("Please upload a clear portrait photo before generating a preview.");
       return;
     }
 
-    if (attemptsUsed >= TRY_ON_ATTEMPT_LIMIT) {
-      const message = "You have used your 3 free AI try-on attempts on this device.";
+    if (currentUsage.attemptsUsed >= TRY_ON_ATTEMPT_LIMIT) {
+      const message = currentUsage.resetAtMs
+        ? `You have used your 3 free AI try-on attempts on this device. Please try again in ${formatTryOnResetCountdown(Math.max(0, currentUsage.resetAtMs - Date.now()))}.`
+        : "You have used your 3 free AI try-on attempts on this device. Please try again after 24 hours.";
       setError(message);
-      toast.error(message);
+      toast.error(message, { classNames: aiTryOnToastClassNames });
       return;
     }
 
@@ -255,9 +355,7 @@ export default function TryOn() {
         gender: "woman" as const,
         ageGroup: "adult" as const,
       });
-      const nextAttemptsUsed = attemptsUsed + 1;
-      localStorage.setItem(TRY_ON_ATTEMPT_KEY, String(nextAttemptsUsed));
-      setAttemptsUsed(nextAttemptsUsed);
+      setUsageState(consumeTryOnAttempt());
       toast.success("AI Try-On preview generated", {
         description: result.customerNotification ?? "Your hairstyle preview is ready below.",
         classNames: aiTryOnToastClassNames,
@@ -367,6 +465,13 @@ export default function TryOn() {
               {isBusy ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Wand2 className="mr-2 h-5 w-5" />}
               {isPreparing ? "Preparing photo…" : upload.isPending ? "Uploading photo…" : generate.isPending ? "Generating preview…" : "Generate hairstyle preview"}
             </button>
+            <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
+              {attemptsRemaining > 0 ? (
+                <>You have <strong className="text-[#2f2418]">{attemptsRemaining}</strong> of {TRY_ON_ATTEMPT_LIMIT} AI Try-On attempts remaining on this device.</>
+              ) : (
+                <>You have used all {TRY_ON_ATTEMPT_LIMIT} attempts on this device. {resetCountdown ? `Your tries refresh in about ${resetCountdown}.` : "Your tries refresh after 24 hours."}</>
+              )}
+            </p>
 
             {photo && (
               <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
@@ -390,9 +495,9 @@ export default function TryOn() {
           <section className="grid gap-5 md:grid-cols-2">
             <div className="lux-card border-[#d8b66b]/35 bg-[#fffaf0]/90 shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
               <h2 className="serif text-3xl font-bold text-[#2f2418]">Original</h2>
-              <div className="mt-4 flex aspect-[3/4] min-h-[24rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-2">
+              <div className="mt-4 flex aspect-[4/5] min-h-[22rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-3 sm:min-h-[26rem] sm:p-4">
                 {photo ? (
-                  <img className="h-full w-full rounded-xl object-contain" src={photo.dataUrl} alt={photo.source === "camera" ? "Camera portrait preview before submission" : photo.source === "gallery" ? "Gallery portrait preview before submission" : "Desktop upload portrait preview before submission"} />
+                  <img className="h-full w-full rounded-xl object-contain object-top" src={photo.dataUrl} alt={photo.source === "camera" ? "Camera portrait preview before submission" : photo.source === "gallery" ? "Gallery portrait preview before submission" : "Desktop upload portrait preview before submission"} />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
                     Your selected portrait will appear here for preview before submission.
@@ -402,9 +507,9 @@ export default function TryOn() {
             </div>
             <div className="lux-card border-[#d8b66b]/35 bg-[#fffaf0]/90 shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
               <h2 className="serif text-3xl font-bold text-[#2f2418]">Generated</h2>
-              <div className="mt-4 flex aspect-[3/4] min-h-[24rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-2">
+              <div className="mt-4 flex aspect-[4/5] min-h-[22rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-3 sm:min-h-[26rem] sm:p-4">
                 {generate.data?.generatedImageUrl ? (
-                  <img className="h-full w-full rounded-xl object-contain" src={generate.data.generatedImageUrl} alt={`${style} AI Try-On preview`} />
+                  <img className="h-full w-full rounded-xl object-contain object-top" src={generate.data.generatedImageUrl} alt={`${style} AI Try-On preview`} />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
                     Your AI result will appear here after upload and generation.

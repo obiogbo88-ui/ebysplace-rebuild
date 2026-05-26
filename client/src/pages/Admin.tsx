@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import heic2any from "heic2any";
 import {
+  Bell,
   CalendarDays,
   Images,
   MessageSquare,
@@ -18,8 +19,14 @@ import {
   Users,
   Mail,
   Trash2,
+  CheckCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type AdminListData = {
   bookings?: any[];
@@ -165,12 +172,31 @@ function AdminPanel({ id, title, eyebrow, description, icon: Icon, open, onToggl
   );
 }
 
+function isImportantAdminNotification(item: any) {
+  return item?.status === "failed"
+    || ["booking", "payment", "shop", "ai_try_on", "kouvia", "visit"].includes(item?.activityCategory || "");
+}
+
+function adminNotificationTitle(item: any) {
+  if (item?.status === "failed") return "Attention needed";
+  if (item?.activityCategory === "booking") return "New booking";
+  if (item?.activityCategory === "payment" || item?.activityCategory === "shop") return "New order or payment";
+  if (item?.activityCategory === "ai_try_on") return "New AI Try-On activity";
+  if (item?.activityCategory === "kouvia" && String(item?.activityType || "").includes("registration")) return "New braider registration";
+  if (item?.activityCategory === "kouvia") return "Braiders / Kouvia activity";
+  if (item?.activityCategory === "visit") return "Website visitor activity";
+  return "Admin notification";
+}
+
 export default function Admin() {
   const { user } = useAuth();
   const summary = trpc.admin.summary.useQuery(undefined, { retry: false });
   const lists = trpc.admin.lists.useQuery(undefined, { retry: false });
   const insights = trpc.admin.insights.useQuery(undefined, { retry: false });
   const emailLogs = trpc.admin.listEmailNotificationLogs.useQuery(undefined, { retry: false });
+  const notificationFeed = trpc.admin.listActivityLogs.useQuery({
+    limit: 12,
+  }, { retry: false, refetchInterval: 15000 });
   const utils = trpc.useUtils();
   const [activityFilters, setActivityFilters] = useState({
     query: "",
@@ -385,6 +411,7 @@ export default function Admin() {
   const moderatedProductReviewRows = productReviewRows.filter((review) => review.status !== "pending");
   const emailNotificationRows = emailLogs.data || data.emailNotifications || [];
   const activityRows = activityLogs.data || data.activityLogs || [];
+  const notificationRows = (notificationFeed.data || []).filter(isImportantAdminNotification).slice(0, 6);
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
   const togglePanel = (panelId: string) => setOpenPanels((current) => {
     const next = new Set(current);
@@ -539,10 +566,78 @@ export default function Admin() {
             </p>
           </div>
           <div className="lux-card grid gap-3 py-4">
-            <div>
-              <p className="text-sm text-white/55">Signed in as</p>
-              <b>{user?.name || user?.email || "Admin"}</b>
-              <p className="text-xs text-primary">{user?.role}</p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm text-white/55">Signed in as</p>
+                <b>{user?.name || user?.email || "Admin"}</b>
+                <p className="text-xs text-primary">{user?.role}</p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary/30 bg-black text-primary transition hover:bg-primary hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label="Open admin notifications"
+                  >
+                    <Bell className="h-5 w-5" />
+                    {(unreadActivityCount.data ?? 0) > 0 ? (
+                      <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-black">
+                        {unreadActivityCount.data}
+                      </span>
+                    ) : null}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[min(24rem,calc(100vw-2rem))] rounded-3xl border border-primary/25 bg-[#fffaf0] p-3 shadow-[0_20px_55px_rgba(46,27,16,.18)]">
+                  <div className="flex items-center justify-between gap-3 px-1 pb-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Notifications</p>
+                      <p className="text-sm text-[#5f5142]">{(unreadActivityCount.data ?? 0) > 0 ? `${unreadActivityCount.data} unread alerts` : "No new notifications"}</p>
+                    </div>
+                    <button
+                      className="inline-flex items-center gap-2 rounded-full border border-primary/30 px-3 py-1.5 text-xs font-semibold text-[#2f2418] transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      type="button"
+                      disabled={markActivityLogsRead.isPending || !(unreadActivityCount.data ?? 0)}
+                      onClick={() => markActivityLogsRead.mutate({})}
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      Mark as read
+                    </button>
+                  </div>
+                  <div className="grid gap-2">
+                    {notificationRows.length ? notificationRows.map((item: any) => (
+                      <div key={item.id} className="rounded-2xl border border-primary/15 bg-white p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[#2f2418]">{adminNotificationTitle(item)}</p>
+                            <p className="mt-1 text-sm text-[#5f5142]">{item.description}</p>
+                            <p className="mt-2 text-xs text-[#7b6547]">{new Date(item.createdAt).toLocaleString()}</p>
+                          </div>
+                          {item.isRead === "false" ? (
+                            <button className="shrink-0 rounded-full border border-primary/30 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-primary transition hover:bg-primary/10" type="button" onClick={() => markActivityLogsRead.mutate({ ids: [item.id] })}>
+                              Mark read
+                            </button>
+                          ) : (
+                            <span className="shrink-0 rounded-full border border-emerald-300/50 bg-emerald-50 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                              Read
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="rounded-2xl border border-dashed border-primary/25 bg-white px-4 py-6 text-center text-sm text-[#5f5142]">
+                        No new notifications
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    className="mt-3 w-full rounded-full border border-primary/25 px-4 py-2 text-sm font-semibold text-[#2f2418] transition hover:bg-primary/10"
+                    type="button"
+                    onClick={() => openProtectedOverviewSection("activity-monitoring", "Activity & Notifications")}
+                  >
+                    Open full activity feed
+                  </button>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <button className="btn-dark py-2 text-sm" type="button" onClick={openPublicHomepage}>Back to Homepage</button>
           </div>
