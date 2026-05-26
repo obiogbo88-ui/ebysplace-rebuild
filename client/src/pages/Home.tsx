@@ -70,7 +70,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#d8bd74]/55 bg-[#f5ead7]/92 shadow-[0_10px_36px_rgba(66,42,18,.12)] backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:gap-5 sm:py-5">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4 lg:px-6">
         <Link
           href="/"
           className="flex shrink-0 items-center py-1"
@@ -79,20 +79,20 @@ export function SiteHeader() {
           <img
             src={HEADER_LOGO_SRC}
             alt="Eby’s Place"
-            className="h-16 w-[10.5rem] object-contain object-left mix-blend-multiply sm:h-24 sm:w-[19rem] lg:h-20 lg:w-[16rem] xl:w-[18rem]"
+            className="h-12 w-[8.25rem] object-contain object-left mix-blend-multiply min-[380px]:h-14 min-[380px]:w-[9.5rem] sm:h-20 sm:w-[14rem] lg:h-[4.5rem] lg:w-[15rem] xl:w-[16.5rem]"
             loading="eager"
             decoding="async"
             fetchPriority="high"
           />
         </Link>
 
-        <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 2xl:flex 2xl:gap-3">
+        <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 xl:flex xl:gap-3">
           <nav
-            className="flex min-w-0 items-center gap-2 2xl:gap-3"
+            className="flex min-w-0 items-center gap-2 xl:gap-3"
             aria-label="Main navigation"
           >
             {desktopNavLinks.map(item => (
-              <Link key={item.href} className="nav-link whitespace-nowrap text-[0.68rem] tracking-[.1em] 2xl:text-[0.72rem] 2xl:tracking-[.12em]" href={item.href} onClick={() => { if (item.href === "/braiders-near-me") trackBraidersClick(); }}>
+              <Link key={item.href} className="nav-link whitespace-nowrap text-[0.66rem] tracking-[.1em] 2xl:text-[0.72rem] 2xl:tracking-[.12em]" href={item.href} onClick={() => { if (item.href === "/braiders-near-me") trackBraidersClick(); }}>
                 {item.label}
               </Link>
             ))}
@@ -105,7 +105,7 @@ export function SiteHeader() {
               Shop Now
             </button>
           </div>
-          <form className="relative w-36 2xl:w-44" role="search" aria-label="Product search" onSubmit={handleProductSearch}>
+          <form className="relative w-[clamp(13rem,19vw,18rem)]" role="search" aria-label="Product search" onSubmit={handleProductSearch}>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
             <input
               className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
@@ -118,8 +118,8 @@ export function SiteHeader() {
           </form>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3 xl:hidden">
-          <form className="relative hidden w-44 lg:block xl:w-56" role="search" aria-label="Compact product search" onSubmit={handleProductSearch}>
+        <div className="flex shrink-0 items-center gap-1.5 min-[390px]:gap-2 sm:gap-3 xl:hidden">
+          <form className="relative hidden w-40 lg:block lg:w-52" role="search" aria-label="Compact product search" onSubmit={handleProductSearch}>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
             <input
               className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
@@ -129,25 +129,20 @@ export function SiteHeader() {
               placeholder="Search products"
             />
           </form>
-          <button type="button" className="btn-gold min-h-11 shrink-0 whitespace-nowrap px-3 py-2 text-[0.68rem] uppercase tracking-[.14em] sm:hidden" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
+          <button type="button" className="btn-gold min-h-10 shrink-0 whitespace-nowrap px-2.5 py-2 text-[0.62rem] uppercase tracking-[.12em] min-[390px]:px-3 min-[390px]:text-[0.67rem] sm:px-4 sm:py-2.5 sm:text-xs" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
             Shop Now
           </button>
-          <div className="hidden sm:block">
-            <button type="button" className="btn-gold whitespace-nowrap px-2.5 py-2 text-xs uppercase tracking-[.14em] sm:px-4 sm:py-2.5 sm:text-sm" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}>
-              Shop Now
-            </button>
-          </div>
           <button
             type="button"
-            className="rounded-full border border-[#c8a95a]/45 bg-[#2a1a0b]/90 p-2.5 text-[#f7e3a3] sm:p-3"
+            className="rounded-full border border-[#c8a95a] bg-[#111111] p-2.5 text-[#f5d66e] shadow-[0_10px_24px_rgba(17,17,17,.26)] transition hover:bg-[#1a1a1a] sm:p-3"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(value => !value)}
           >
             {menuOpen ? (
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5 stroke-[2.6]" />
             ) : (
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5 stroke-[2.6]" />
             )}
           </button>
         </div>

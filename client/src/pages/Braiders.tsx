@@ -199,58 +199,13 @@ export default function Braiders() {
                     kouviabooking.ebysplace.com
                   </span>
                 </div>
-                <div className="grid gap-4 bg-[radial-gradient(circle_at_top_right,rgba(201,168,76,.18),transparent_32%),linear-gradient(180deg,#120c08_0%,#090603_100%)] p-4">
-                  <div className="rounded-[1.3rem] border border-[#c8a95a]/22 bg-[#15100c] p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-[#d7b56a]">Powered by Eby’s Place</p>
-                        <h3 className="serif mt-2 text-2xl font-bold text-[#fff3d7]">Kouvia</h3>
-                        <p className="mt-2 text-sm leading-6 text-[#d9c4a0]">
-                          Luxury pain-free braiding. Discover trusted braiders, compare openings, and book the right protective style faster.
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-[#d7b56a] px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-black">Live preview</span>
-                    </div>
-                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                      <div className="rounded-full border border-[#c8a95a]/22 bg-[#0e0906] px-4 py-3 text-sm text-[#f7ecd1]">Search location, style, or braider</div>
-                      <div className="rounded-full border border-[#c8a95a]/22 bg-[#0e0906] px-4 py-3 text-sm text-[#cbb58d]">Verified • Luxury pain-free braiding</div>
-                    </div>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-[1.1fr_0.9fr]">
-                    <div className="rounded-[1.2rem] border border-[#c8a95a]/20 bg-[#15100c] p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.18em] text-[#d7b56a]">Featured braider</p>
-                          <p className="mt-2 text-lg font-semibold text-[#fff3d7]">Eby’s Place Studio</p>
-                        </div>
-                        <span className="rounded-full bg-[#f4e3be] px-3 py-1 text-xs font-bold text-black">5.0 ★</span>
-                      </div>
-                      <p className="mt-3 text-sm text-[#d9c4a0]">Somerset, UK · Knotless, Cornrows, Kids Styles · Deposit-ready booking</p>
-                      <div className="mt-4 flex flex-wrap gap-2 text-[0.68rem] uppercase tracking-[0.16em] text-[#d7b56a]">
-                        <span className="rounded-full border border-[#c8a95a]/20 px-3 py-1">Verified</span>
-                        <span className="rounded-full border border-[#c8a95a]/20 px-3 py-1">Top rated</span>
-                        <span className="rounded-full border border-[#c8a95a]/20 px-3 py-1">Today 4:30 PM</span>
-                      </div>
-                    </div>
-                    <div className="rounded-[1.2rem] border border-[#c8a95a]/20 bg-[#15100c] p-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-[#d7b56a]">Landing page cards</p>
-                      <div className="mt-3 space-y-3">
-                        <div className="rounded-xl border border-[#c8a95a]/15 bg-[#0d0906] p-3">
-                          <p className="text-sm font-semibold text-[#fff3d7]">Luxury pain-free braiding</p>
-                          <p className="mt-1 text-xs text-[#cbb58d]">Premium protective styles with comfort-first booking.</p>
-                        </div>
-                        <div className="rounded-xl border border-[#c8a95a]/15 bg-[#0d0906] p-3">
-                          <p className="text-sm font-semibold text-[#fff3d7]">Braiders near me</p>
-                          <p className="mt-1 text-xs text-[#cbb58d]">Search local professionals, compare reviews, and open availability.</p>
-                        </div>
-                        <div className="rounded-xl border border-[#c8a95a]/15 bg-[#0d0906] p-3">
-                          <p className="text-sm font-semibold text-[#fff3d7]">Book on Kouvia</p>
-                          <p className="mt-1 text-xs text-[#cbb58d]">Go straight to the live booking flow at kouviabooking.ebysplace.com.</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <iframe
+                  src={KOUVIA_BOOKING_URL}
+                  title="Kouvia booking live preview"
+                  className="h-[30rem] w-full border-0 bg-white"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
               </div>
               <a className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--gold)] transition hover:text-white" href={KOUVIA_BOOKING_URL} target="_blank" rel="noreferrer" onClick={() => logKouviaRedirect("kouvia_opened", { entryPoint: "kouvia_preview_card" })}>
                 Open Kouvia preview
