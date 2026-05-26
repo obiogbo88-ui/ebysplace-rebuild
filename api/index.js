@@ -1464,6 +1464,9 @@ function truncateText(value, max = MAX_METADATA_TEXT) {
   if (!normalized) return null;
   return normalized.length > max ? `${normalized.slice(0, max - 1)}\u2026` : normalized;
 }
+function shouldStoreActivityLogIpAddress() {
+  return String(process.env.ACTIVITY_LOG_STORE_IP ?? "false").trim().toLowerCase() === "true";
+}
 function anonymizeIpAddress(rawIp) {
   if (!rawIp) return null;
   if (rawIp.includes(".")) {
@@ -1516,7 +1519,7 @@ function getRequestContext(request) {
   const userAgent = truncateText(req?.headers["user-agent"] || null, 500);
   const forwarded = typeof req?.headers["x-forwarded-for"] === "string" ? req.headers["x-forwarded-for"].split(",")[0]?.trim() : null;
   const rawIp = forwarded || req?.ip || null;
-  const shouldStoreIp = String(process.env.ACTIVITY_LOG_STORE_IP || "").toLowerCase() === "true";
+  const shouldStoreIp = shouldStoreActivityLogIpAddress();
   const country = truncateText(req?.headers["x-vercel-ip-country"] || null, 120);
   const city = truncateText(req?.headers["x-vercel-ip-city"] || null, 120);
   const region = truncateText(req?.headers["x-vercel-ip-country-region"] || null, 120);
@@ -1573,6 +1576,8 @@ async function logActivity(input) {
   if (!db) return { success: true };
   await ensureActivityLogsTable();
   const requestContext = getRequestContext(input.request);
+  const shouldStoreIp = shouldStoreActivityLogIpAddress();
+  const inputIpAddress = anonymizeIpAddress(truncateText(input.ipAddress, 80));
   const payload = {
     userId: input.userId ?? null,
     userName: truncateText(input.userName, 180),
@@ -1584,7 +1589,7 @@ async function logActivity(input) {
     pageUrl: truncateText(input.pageUrl, MAX_PAGE_URL_LENGTH),
     metadata: sanitizeMetadata(input.metadata),
     status: truncateText(input.status || "info", 30) || "info",
-    ipAddress: input.ipAddress ?? requestContext.ipAddress,
+    ipAddress: shouldStoreIp ? inputIpAddress ?? requestContext.ipAddress : null,
     country: input.country ?? requestContext.country,
     city: input.city ?? requestContext.city,
     region: input.region ?? requestContext.region,
@@ -2897,6 +2902,18 @@ var ACTIVITY_COLLECTOR_PATH = "/api/activity/external";
 var MAX_REQUESTS_PER_MINUTE = 120;
 var WINDOW_MS = 6e4;
 var requestWindowByIp = /* @__PURE__ */ new Map();
+function anonymizeIpForRateLimit(rawIp) {
+  if (!rawIp) return "unknown";
+  if (rawIp.includes(".")) {
+    const parts = rawIp.split(".");
+    if (parts.length === 4) return `${parts[0]}.${parts[1]}.0.0`;
+  }
+  if (rawIp.includes(":")) {
+    const parts = rawIp.split(":").filter(Boolean);
+    return parts.length ? `${parts.slice(0, 2).join(":")}::` : "unknown";
+  }
+  return "unknown";
+}
 var externalActivitySchema = z.object({
   sessionId: z.string().max(128).optional(),
   userName: z.string().max(180).optional(),
@@ -2912,11 +2929,12 @@ var externalActivitySchema = z.object({
   sourceApp: z.string().max(80).default("kouviabooking")
 }).strict();
 function rateLimited(req) {
-  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "unknown";
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || null;
+  const key = anonymizeIpForRateLimit(ip);
   const now = Date.now();
-  const current = requestWindowByIp.get(ip);
+  const current = requestWindowByIp.get(key);
   if (!current || current.resetAt < now) {
-    requestWindowByIp.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    requestWindowByIp.set(key, { count: 1, resetAt: now + WINDOW_MS });
     return false;
   }
   current.count += 1;
