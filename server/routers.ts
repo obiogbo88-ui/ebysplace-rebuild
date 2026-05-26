@@ -94,9 +94,34 @@ function getLiveStripePublishableKey() {
 }
 
 const CUSTOMER_PAYMENT_UNAVAILABLE_MESSAGE = "Payment is currently unavailable. Please contact us to complete your booking.";
+const TRACK_THROTTLE_WINDOW_MS = 10000;
+const recentTrackEvents = new Map<string, number>();
 
 function paymentUnavailableError() {
   return new TRPCError({ code: "PRECONDITION_FAILED", message: CUSTOMER_PAYMENT_UNAVAILABLE_MESSAGE });
+}
+
+function normalizePublicPath(path: string) {
+  const normalized = (path || "/").trim();
+  const withoutOrigin = normalized.replace(/^https?:\/\/[^/]+/i, "");
+  const [pathname] = withoutOrigin.split(/[?#]/);
+  return pathname || "/";
+}
+
+function shouldSkipTrackEvent(input: { eventName: string; pagePath: string; sessionId?: string }) {
+  const pagePath = normalizePublicPath(input.pagePath);
+  if (pagePath.startsWith("/admin")) return { skip: true, reason: "admin_path" as const, pagePath };
+  const eventKey = `${input.sessionId || "anon"}:${input.eventName}:${pagePath}`;
+  const now = Date.now();
+  const previous = recentTrackEvents.get(eventKey);
+  recentTrackEvents.set(eventKey, now);
+  for (const [key, timestamp] of recentTrackEvents.entries()) {
+    if (now - timestamp > TRACK_THROTTLE_WINDOW_MS * 6) recentTrackEvents.delete(key);
+  }
+  if (typeof previous === "number" && now - previous < TRACK_THROTTLE_WINDOW_MS) {
+    return { skip: true, reason: "throttled_duplicate" as const, pagePath };
+  }
+  return { skip: false, reason: null, pagePath };
 }
 
 function getStripe() {
@@ -132,6 +157,18 @@ function logStripeCheckoutFailure(context: string, error: unknown) {
   if (configurationMessage) {
     console.error(`[Payments] ${context}: ${configurationMessage}`, error);
     return;
+  }
+
+  function adminMutationFailure(action: string, error: unknown): TRPCError {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[Admin] ${action} failed`, { message });
+    if (/database unavailable/i.test(message)) {
+      return new TRPCError({
+        code: "SERVICE_UNAVAILABLE",
+        message: `${action} failed because the database is unavailable. Check DATABASE_URL and Supabase server credentials in Vercel.`,
+      });
+    }
+    return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `${action} failed: ${message}` });
   }
   console.error(`[Payments] ${context}`, error);
 }
@@ -653,18 +690,27 @@ export const appRouter = router({
       relatedEntityType: z.string().max(80).optional(),
       relatedEntityId: z.union([z.string(), z.number()]).optional(),
       sourceApp: z.string().max(80).optional(),
-    })).mutation(({ input, ctx }) => db.recordAnalytics(input.eventName, input.pagePath, input.metadata, {
-      request: ctx.req,
-      user: ctx.user ? { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } : null,
-      sessionId: input.sessionId,
-      activityType: input.activityType,
-      activityCategory: input.activityCategory,
-      status: input.status,
-      description: input.description,
-      relatedEntityType: input.relatedEntityType,
-      relatedEntityId: input.relatedEntityId,
-      sourceApp: input.sourceApp,
-    })),
+    })).mutation(async ({ input, ctx }) => {
+      const trackGate = shouldSkipTrackEvent({ eventName: input.eventName, pagePath: input.pagePath, sessionId: input.sessionId });
+      if (trackGate.skip) {
+        if (trackGate.reason === "admin_path") {
+          console.info("[Tracking] Ignored admin route public.track event", { eventName: input.eventName, pagePath: trackGate.pagePath });
+        }
+        return { success: true, skipped: true, reason: trackGate.reason };
+      }
+      return db.recordAnalytics(input.eventName, trackGate.pagePath, input.metadata, {
+        request: ctx.req,
+        user: ctx.user ? { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } : null,
+        sessionId: input.sessionId,
+        activityType: input.activityType,
+        activityCategory: input.activityCategory,
+        status: input.status,
+        description: input.description,
+        relatedEntityType: input.relatedEntityType,
+        relatedEntityId: input.relatedEntityId,
+        sourceApp: input.sourceApp,
+      });
+    }),
     logActivity: publicProcedure.input(z.object({
       sessionId: z.string().max(128).optional(),
       activityType: z.string().min(2).max(120),
@@ -685,6 +731,22 @@ export const appRouter = router({
       browser: z.string().max(80).optional(),
       userAgent: z.string().max(500).optional(),
     })).mutation(async ({ input, ctx }) => {
+      const normalizedPageUrl = normalizePublicPath(input.pageUrl || "/");
+      if (normalizedPageUrl.startsWith("/admin")) {
+        console.info("[Tracking] Ignored admin route public.logActivity event", {
+          activityType: input.activityType,
+          pageUrl: normalizedPageUrl,
+        });
+        return { success: true, skipped: true, reason: "admin_path" };
+      }
+      const activityGate = shouldSkipTrackEvent({
+        eventName: input.activityType,
+        pagePath: normalizedPageUrl,
+        sessionId: input.sessionId,
+      });
+      if (activityGate.skip && activityGate.reason === "throttled_duplicate") {
+        return { success: true, skipped: true, reason: "throttled_duplicate" };
+      }
       await db.logActivity({
         request: ctx.req,
         userId: ctx.user?.id ?? null,
@@ -694,7 +756,7 @@ export const appRouter = router({
         activityType: input.activityType,
         activityCategory: input.activityCategory,
         description: input.description,
-        pageUrl: input.pageUrl,
+        pageUrl: normalizedPageUrl,
         metadata: input.metadata,
         status: input.status,
         relatedEntityType: input.relatedEntityType,
@@ -755,7 +817,14 @@ export const appRouter = router({
     blockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional(), reason: z.string().optional() })).mutation(({ input }) => db.blockBookingSlot(input)),
     unblockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional() })).mutation(({ input }) => db.unblockBookingSlot(input)),
     updateInstagramSettings: adminProcedure.input(z.object({ handle: z.string().min(2), feedUrl: z.string().url(), enabled: z.boolean(), note: z.string().optional() })).mutation(({ input }) => db.updateInstagramSettings(input)),
-    updateHomeServiceSurcharge: adminProcedure.input(z.object({ homeServiceSurcharge: z.string().regex(/^\d+(\.\d{2})?$/) })).mutation(({ input }) => db.updateHomeServiceSurcharge(input.homeServiceSurcharge)),
+    updateHomeServiceSurcharge: adminProcedure.input(z.object({ homeServiceSurcharge: z.string().regex(/^\d+(\.\d{2})?$/) })).mutation(async ({ input }) => {
+      try {
+        console.info("[Admin] Updating home service surcharge", { surcharge: input.homeServiceSurcharge });
+        return await db.updateHomeServiceSurcharge(input.homeServiceSurcharge);
+      } catch (error) {
+        throw adminMutationFailure("Home service surcharge update", error);
+      }
+    }),
     sendReviewRequest: adminProcedure.input(z.object({ bookingId: z.number() })).mutation(async ({ input }) => {
       const booking = await db.getBookingById(input.bookingId);
       if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });
@@ -828,9 +897,13 @@ export const appRouter = router({
       return result;
     }),
     uploadProductImage: adminProcedure.input(z.object({ productId: z.number().int().positive().optional(), productName: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("product-image.png") })).mutation(async ({ input }) => {
-      const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.productName}-${input.fileName}`, folder: "products" });
-      if (input.productId) await db.updateProduct(input.productId, { imageUrl: uploaded.url });
-      return uploaded;
+      try {
+        const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.productName}-${input.fileName}`, folder: "products" });
+        if (input.productId) await db.updateProduct(input.productId, { imageUrl: uploaded.url });
+        return uploaded;
+      } catch (error) {
+        throw adminMutationFailure("Product image upload", error);
+      }
     }),
     clearProductImage: adminProcedure.input(z.object({ productId: z.number().int().positive(), imageUrl: z.string().min(5).optional() })).mutation(async ({ input }) => {
       // Product image removal is a catalogue-level action: detach the image from the
@@ -841,9 +914,13 @@ export const appRouter = router({
     }),
     insights: adminProcedure.query(() => db.adminInsights()),
     uploadServiceImage: adminProcedure.input(z.object({ serviceId: z.number(), serviceName: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("service-image.png") })).mutation(async ({ input }) => {
-      const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.serviceName}-${input.fileName}`, folder: "services" });
-      await db.updateService(input.serviceId, { imageUrl: uploaded.url });
-      return uploaded;
+      try {
+        const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.serviceName}-${input.fileName}`, folder: "services" });
+        await db.updateService(input.serviceId, { imageUrl: uploaded.url });
+        return uploaded;
+      } catch (error) {
+        throw adminMutationFailure("Service image upload", error);
+      }
     }),
     clearServiceImage: adminProcedure.input(z.object({ serviceId: z.number(), imageUrl: z.string().min(5).optional() })).mutation(async ({ input }) => {
       if (input.imageUrl) await storageRemove(input.imageUrl);
@@ -852,9 +929,13 @@ export const appRouter = router({
     }),
     uploadGalleryImage: adminProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("gallery-image.png") })).mutation(async ({ input }) => uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: input.fileName, folder: "gallery" })),
     uploadWebsiteSectionImage: adminProcedure.input(z.object({ sectionKey: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("section-image.png"), imageRole: z.enum(["main", "portrait"]).default("main") })).mutation(async ({ input }) => {
-      const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.sectionKey}-${input.imageRole}-${input.fileName}`, folder: "website-sections" });
-      await db.updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url, imageUrl: uploaded.url } : { imageUrl: uploaded.url });
-      return uploaded;
+      try {
+        const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.sectionKey}-${input.imageRole}-${input.fileName}`, folder: "website-sections" });
+        await db.updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url, imageUrl: uploaded.url } : { imageUrl: uploaded.url });
+        return uploaded;
+      } catch (error) {
+        throw adminMutationFailure("Website section image upload", error);
+      }
     }),
     clearWebsiteSectionImage: adminProcedure.input(z.object({ sectionKey: z.string().min(2), imageRole: z.enum(["main", "portrait"]).default("main"), imageUrl: z.string().min(5).optional() })).mutation(async ({ input }) => {
       if (input.imageUrl) await storageRemove(input.imageUrl);

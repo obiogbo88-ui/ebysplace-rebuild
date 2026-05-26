@@ -1,4 +1,4 @@
-import { useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { trpc } from "@/lib/trpc";
@@ -372,7 +372,7 @@ export default function Admin() {
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [deletingGalleryId, setDeletingGalleryId] = useState<number | null>(null);
-  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set());
+  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["activity-monitoring"]));
   const newProductFileRef = useRef<{ file: File; dataUrl: string } | null>(null);
   const [newProductPreviewUrl, setNewProductPreviewUrl] = useState<string>("");
   const data = (lists.data || {}) as AdminListData;
@@ -395,6 +395,40 @@ export default function Admin() {
   const openPublicHomepage = () => {
     navigateWithSmoothScroll("/");
   };
+  const resolvePanelFromHash = (hashValue: string) => {
+    const hash = hashValue.replace(/^#/, "").trim().toLowerCase();
+    if (!hash || hash === "overview") return null;
+    if (hash === "activity" || hash === "activity-monitoring") return "activity-monitoring";
+    const validPanels = new Set([
+      "bookings",
+      "availability",
+      "orders",
+      "products",
+      "services",
+      "gallery",
+      "instagram",
+      "reviews",
+      "email-notifications",
+      "content",
+      "product-reviews",
+      "users",
+    ]);
+    return validPanels.has(hash) ? hash : null;
+  };
+  useEffect(() => {
+    const syncPanelFromHash = () => {
+      const panelId = resolvePanelFromHash(window.location.hash || "");
+      if (!panelId) return;
+      setOpenPanels((current) => {
+        if (current.has(panelId)) return current;
+        return new Set(current).add(panelId);
+      });
+      window.setTimeout(() => smoothScrollToElement(panelId, 60), 10);
+    };
+    syncPanelFromHash();
+    window.addEventListener("hashchange", syncPanelFromHash);
+    return () => window.removeEventListener("hashchange", syncPanelFromHash);
+  }, []);
   const openProtectedOverviewSection = (sectionId: string, label: string) => {
     setOpenPanels((current) => new Set(current).add(sectionId));
     smoothScrollToElement(sectionId, 60);

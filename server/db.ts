@@ -1521,7 +1521,10 @@ export async function listActivityLogs(filters: ActivityLogFilterInput = {}) {
   const db = await getDb();
   if (!db) return [];
   await ensureActivityLogsTable();
-  const conditions = [];
+  const conditions = [
+    sql`${activityLogs.activityType} NOT LIKE 'admin_%'`,
+    sql`COALESCE(${activityLogs.pageUrl}, '') NOT LIKE '/admin%'`,
+  ];
   if (filters.activityType) conditions.push(eq(activityLogs.activityType, filters.activityType));
   if (filters.activityCategory) conditions.push(eq(activityLogs.activityCategory, filters.activityCategory));
   if (filters.status) conditions.push(eq(activityLogs.status, filters.status));
@@ -1562,7 +1565,11 @@ export async function unreadActivityCount() {
   const rows = await db
     .select({ value: sql<number>`count(*)` })
     .from(activityLogs)
-    .where(eq(activityLogs.isRead, "false"));
+    .where(and(
+      eq(activityLogs.isRead, "false"),
+      sql`${activityLogs.activityType} NOT LIKE 'admin_%'`,
+      sql`COALESCE(${activityLogs.pageUrl}, '') NOT LIKE '/admin%'`,
+    ));
   return Number(rows[0]?.value ?? 0);
 }
 
@@ -1803,16 +1810,6 @@ export async function markOrderPaid(stripeCheckoutSessionId: string, stripePayme
       await decrementSupabaseProductStock(item.productId, item.quantity, item.variantId);
       continue;
     }
-
-    export async function recordOrderCheckoutSettlement(stripeCheckoutSessionId: string, input: { checkoutTotal?: number }) {
-      const db = await getDb();
-      if (!db) return;
-      await ensureOrderLocationColumns();
-      const checkoutTotal = Number(input.checkoutTotal);
-      await db.update(orders).set({
-        checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null,
-      }).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId));
-    }
     if (item.variantId) {
       await db.update(productVariants)
         .set({ stockQuantity: sql`GREATEST(${productVariants.stockQuantity} - ${item.quantity}, 0)` })
@@ -1825,6 +1822,16 @@ export async function markOrderPaid(stripeCheckoutSessionId: string, stripePayme
       })
       .where(eq(products.id, item.productId));
   }
+}
+
+export async function recordOrderCheckoutSettlement(stripeCheckoutSessionId: string, input: { checkoutTotal?: number }) {
+  const db = await getDb();
+  if (!db) return;
+  await ensureOrderLocationColumns();
+  const checkoutTotal = Number(input.checkoutTotal);
+  await db.update(orders).set({
+    checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null,
+  }).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId));
 }
 
 export async function getOrderByCheckoutSession(stripeCheckoutSessionId: string) {

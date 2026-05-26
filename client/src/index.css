@@ -318,3 +318,33 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
   h2 { font-size: clamp(2rem, 9vw, 3.25rem); }
   .section-pad { padding-top: 5rem; padding-bottom: 5rem; }
 }
+
+[data-sonner-toast] {
+  font-size: 0.95rem !important;
+  line-height: 1.45 !important;
+  border-width: 1px !important;
+  box-shadow: 0 14px 34px rgba(17, 17, 17, 0.28) !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  background: #14532d !important;
+  color: #f0fdf4 !important;
+  border-color: #86efac !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background: #7f1d1d !important;
+  color: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+}
+
+[data-sonner-toast][data-type="warning"] {
+  background: #facc15 !important;
+  color: #1f2937 !important;
+  border-color: #ca8a04 !important;
+}
+
+[data-sonner-toast] [data-button],
+[data-sonner-toast] button {
+  color: inherit !important;
+}

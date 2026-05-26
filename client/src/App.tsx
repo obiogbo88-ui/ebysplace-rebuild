@@ -253,14 +253,28 @@ function DynamicSeoMetadata() {
   }, [location]);
 
   useEffect(() => {
+    const pagePath = location.split(/[?#]/)[0] || "/";
+    if (pagePath.startsWith("/admin")) return;
+    const dedupeKey = "ebysplace:last-public-page-visit";
+    const now = Date.now();
+    try {
+      const previous = typeof window !== "undefined" ? window.sessionStorage.getItem(dedupeKey) : null;
+      if (previous) {
+        const parsed = JSON.parse(previous) as { pagePath?: string; atMs?: number };
+        if (parsed.pagePath === pagePath && typeof parsed.atMs === "number" && now - parsed.atMs < 10000) return;
+      }
+      if (typeof window !== "undefined") window.sessionStorage.setItem(dedupeKey, JSON.stringify({ pagePath, atMs: now }));
+    } catch {
+      // Ignore dedupe storage read/write failures.
+    }
     const browserInfo = getBrowserInfo();
     track.mutate({
       eventName: "page_visit",
-      pagePath: location.split(/[?#]/)[0] || "/",
+      pagePath,
       sessionId: getActivitySessionId(),
       activityType: "website_visit",
       activityCategory: "visit",
-      description: `Visited ${location.split(/[?#]/)[0] || "/"}`,
+      description: `Visited ${pagePath}`,
       status: "info",
       metadata: {
         referrer: typeof document !== "undefined" ? document.referrer || null : null,
@@ -268,7 +282,7 @@ function DynamicSeoMetadata() {
         deviceType: browserInfo.deviceType,
       },
     });
-  }, [location, track]);
+  }, [location]);
 
   return null;
 }
@@ -388,7 +402,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <Toaster />
+          <Toaster richColors closeButton duration={7000} />
           <SharedLinkPathNormalizer />
           <DynamicSeoMetadata />
           <ScrollToTop />
