@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { getStoredAuthToken, setStoredAuthSession } from "@/const";
 import { CANONICAL_SITE_ORIGIN } from "@/lib/canonicalUrl";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -24,6 +24,7 @@ export default function AdminLogin() {
   const utils = trpc.useUtils();
   const [email, setEmail] = useState("info@ebysplace.com");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [resetRequested, setResetRequested] = useState(false);
   const [resetCooldownSeconds, setResetCooldownSeconds] = useState(0);
   const returnTo = useMemo(getReturnTarget, []);
@@ -143,15 +144,27 @@ export default function AdminLogin() {
                           : "Forgot password?"}
                     </Button>
                   </div>
-                  <Input
-                    id="admin-password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className="border-[#d8b66b]/50 bg-white text-[#2f2418]"
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="admin-password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="border-[#d8b66b]/50 bg-white pr-12 text-[#2f2418]"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-[#6f5f4b] hover:bg-primary/10 hover:text-primary"
+                      onClick={() => setShowPassword((current) => !current)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                   {resetRequested ? (
                     <p className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs leading-5 text-[#5f5142]">
                       Check the configured admin inbox for a password reset link, then return here to sign in with the new password.
