@@ -1,4 +1,4 @@
-import { useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { trpc } from "@/lib/trpc";
@@ -372,7 +372,7 @@ export default function Admin() {
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [deletingGalleryId, setDeletingGalleryId] = useState<number | null>(null);
-  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set());
+  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["activity-monitoring"]));
   const newProductFileRef = useRef<{ file: File; dataUrl: string } | null>(null);
   const [newProductPreviewUrl, setNewProductPreviewUrl] = useState<string>("");
   const data = (lists.data || {}) as AdminListData;
@@ -395,6 +395,40 @@ export default function Admin() {
   const openPublicHomepage = () => {
     navigateWithSmoothScroll("/");
   };
+  const resolvePanelFromHash = (hashValue: string) => {
+    const hash = hashValue.replace(/^#/, "").trim().toLowerCase();
+    if (!hash || hash === "overview") return null;
+    if (hash === "activity" || hash === "activity-monitoring") return "activity-monitoring";
+    const validPanels = new Set([
+      "bookings",
+      "availability",
+      "orders",
+      "products",
+      "services",
+      "gallery",
+      "instagram",
+      "reviews",
+      "email-notifications",
+      "content",
+      "product-reviews",
+      "users",
+    ]);
+    return validPanels.has(hash) ? hash : null;
+  };
+  useEffect(() => {
+    const syncPanelFromHash = () => {
+      const panelId = resolvePanelFromHash(window.location.hash || "");
+      if (!panelId) return;
+      setOpenPanels((current) => {
+        if (current.has(panelId)) return current;
+        return new Set(current).add(panelId);
+      });
+      window.setTimeout(() => smoothScrollToElement(panelId, 60), 10);
+    };
+    syncPanelFromHash();
+    window.addEventListener("hashchange", syncPanelFromHash);
+    return () => window.removeEventListener("hashchange", syncPanelFromHash);
+  }, []);
   const openProtectedOverviewSection = (sectionId: string, label: string) => {
     setOpenPanels((current) => new Set(current).add(sectionId));
     smoothScrollToElement(sectionId, 60);
@@ -700,7 +734,7 @@ export default function Admin() {
           <div className="mt-5 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-primary">
-                <tr><th>Client</th><th>Service</th><th>Location</th><th>Date</th><th>Deposit</th><th>Status</th><th>Change status</th></tr>
+                <tr><th>Client</th><th>Service</th><th>Location</th><th>Date</th><th>Deposit</th><th>Surcharge</th><th>Stripe total</th><th>Status</th><th>Change status</th></tr>
               </thead>
               <tbody>
                 {(data.bookings || []).map((booking: any) => (
@@ -710,6 +744,8 @@ export default function Admin() {
                     <td>{booking.serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}<small className="block text-white/45">{booking.serviceLocation === "home_service" ? [booking.addressLine1, booking.addressLine2, booking.city, booking.county, booking.postcode].filter(Boolean).join(", ") : "Studio address hidden until paid confirmation"}</small></td>
                     <td>{booking.appointmentDate} {booking.appointmentTime}</td>
                     <td>{booking.depositStatus}</td>
+                    <td>£{Number(booking.checkoutSurchargeCharged ?? booking.homeServiceSurcharge ?? 0).toFixed(2)}</td>
+                    <td>{booking.checkoutTotalCharged != null ? `£${Number(booking.checkoutTotalCharged).toFixed(2)}` : "Pending"}</td>
                     <td>{booking.status}</td>
                     <td>
                       <select value={booking.status} onChange={(event) => updateBooking.mutate({ id: booking.id, status: event.target.value as any })}>
@@ -746,7 +782,7 @@ export default function Admin() {
             {(data.orders || []).length ? data.orders!.map((order: any) => (
               <div className="rounded-2xl border border-white/10 p-4" key={order.id}>
                 <div className="flex flex-wrap justify-between gap-3">
-                  <div><b>{order.customerName}</b><p className="text-sm text-white/55">{order.customerEmail} · {order.addressLine1}, {order.city}, {order.postcode}</p></div>
+                  <div><b>{order.customerName}</b><p className="text-sm text-white/55">{order.customerEmail} · {order.addressLine1}, {order.city}, {order.postcode}</p><p className="text-xs text-white/45">Stripe total: {order.checkoutTotalCharged != null ? `£${Number(order.checkoutTotalCharged).toFixed(2)}` : "Pending"}</p></div>
                   <select value={order.status} onChange={(event) => updateOrder.mutate({ id: order.id, status: event.target.value as any })}>
                     <option value="draft">Draft</option><option value="pending_payment">Pending payment</option><option value="paid">Paid</option><option value="fulfilling">Fulfilling</option><option value="shipped">Shipped</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
                   </select>

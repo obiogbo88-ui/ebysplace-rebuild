@@ -260,22 +260,25 @@ function DynamicSeoMetadata() {
 
   useEffect(() => {
     const pagePath = location.split(/[?#]/)[0] || "/";
-    if (!shouldTrackPublicActivity(pagePath)) return;
-
+    if (pagePath.startsWith("/admin")) return;
+    const dedupeKey = "ebysplace:last-public-page-visit";
+    const now = Date.now();
+    try {
+      const previous = typeof window !== "undefined" ? window.sessionStorage.getItem(dedupeKey) : null;
+      if (previous) {
+        const parsed = JSON.parse(previous) as { pagePath?: string; atMs?: number };
+        if (parsed.pagePath === pagePath && typeof parsed.atMs === "number" && now - parsed.atMs < 10000) return;
+      }
+      if (typeof window !== "undefined") window.sessionStorage.setItem(dedupeKey, JSON.stringify({ pagePath, atMs: now }));
+    } catch {
+      // Ignore dedupe storage read/write failures.
+    }
     const browserInfo = getBrowserInfo();
     const sessionId = getActivitySessionId();
     const eventKey = createTrackingEventKey({
       eventName: "page_visit",
       pagePath,
-      sessionId,
-      activityType: "website_visit",
-    });
-    if (shouldThrottleTrackingEvent(eventKey)) return;
-
-    window.setTimeout(() => track.mutate({
-      eventName: "page_visit",
-      pagePath,
-      sessionId,
+      sessionId: getActivitySessionId(),
       activityType: "website_visit",
       activityCategory: "visit",
       description: `Visited ${pagePath}`,
@@ -285,7 +288,7 @@ function DynamicSeoMetadata() {
         browser: browserInfo.browser,
         deviceType: browserInfo.deviceType,
       },
-    }, { onError: () => {} }), 0);
+    });
   }, [location]);
 
   return null;
@@ -406,7 +409,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <Toaster />
+          <Toaster richColors closeButton duration={7000} />
           <SharedLinkPathNormalizer />
           <DynamicSeoMetadata />
           <ScrollToTop />

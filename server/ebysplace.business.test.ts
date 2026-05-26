@@ -194,6 +194,15 @@ describe("Eby’s Place platform business rules", () => {
 
   it("creates Stripe Checkout sessions with booking metadata and dynamic redirects", async () => {
     stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_live_123", url: "https://checkout.stripe.com/session", payment_intent: "pi_live_123" });
+    const getBookingByIdSpy = vi.spyOn(db, "getBookingById").mockResolvedValueOnce({
+      id: 42,
+      serviceLocation: "studio",
+      homeServiceSurcharge: "0.00",
+      clientEmail: "client@example.com",
+      clientName: "Test Client",
+      serviceName: "Goddess Braids",
+      depositStatus: "unpaid",
+    } as any);
     const caller = appRouter.createCaller(publicContext());
 
     const result = await caller.public.createDepositCheckout({
@@ -229,14 +238,63 @@ describe("Eby’s Place platform business rules", () => {
       expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 800, product_data: expect.objectContaining({ name: "Add-on: Beads" }) }), quantity: 1 }),
       expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 850, product_data: expect.objectContaining({ name: "X-Pression Braiding Hair" }) }), quantity: 2 }),
     ]));
-    expect(checkoutConfig.metadata).toEqual(expect.objectContaining({ booking_extras_total: "25.00" }));
+    expect(checkoutConfig.line_items).toHaveLength(3);
+    expect(checkoutConfig.metadata).toEqual(expect.objectContaining({ booking_extras_total: "25.00", home_service_surcharge: "0.00", home_service_surcharge_applied: "false", booking_checkout_total: "45.00" }));
     expect(JSON.stringify(stripeCreateSessionMock.mock.calls[0][0])).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
+    getBookingByIdSpy.mockRestore();
+  });
+
+  it("adds the home-service surcharge exactly once as a dedicated Stripe line item", async () => {
+    stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_live_home_123", url: "https://checkout.stripe.com/session-home", payment_intent: "pi_live_home_123" });
+    const getBookingByIdSpy = vi.spyOn(db, "getBookingById").mockResolvedValueOnce({
+      id: 43,
+      serviceLocation: "home_service",
+      homeServiceSurcharge: "20.00",
+      clientEmail: "client@example.com",
+      clientName: "Test Client",
+      serviceName: "Goddess Braids",
+      depositStatus: "unpaid",
+    } as any);
+    const caller = appRouter.createCaller(publicContext());
+
+    const result = await caller.public.createDepositCheckout({
+      bookingId: 43,
+      clientEmail: "client@example.com",
+      clientName: "Test Client",
+      serviceName: "Goddess Braids",
+    });
+
+    expect(result.checkoutUrl).toBe("https://checkout.stripe.com/session-home");
+    const checkoutConfig = stripeCreateSessionMock.mock.calls[0][0];
+    const surchargeLineItems = checkoutConfig.line_items.filter((item: any) => item.price_data?.product_data?.name === "Home Service Surcharge");
+    expect(surchargeLineItems).toHaveLength(1);
+    expect(surchargeLineItems[0]).toEqual(expect.objectContaining({
+      quantity: 1,
+      price_data: expect.objectContaining({
+        unit_amount: 2000,
+      }),
+    }));
+    expect(checkoutConfig.metadata).toEqual(expect.objectContaining({
+      home_service_surcharge: "20.00",
+      home_service_surcharge_applied: "true",
+      booking_checkout_total: "40.00",
+    }));
+    getBookingByIdSpy.mockRestore();
   });
 
   it("uses project-specific live Stripe secret override when the platform-managed Stripe key is not live", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test_platform_managed_key";
     process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY = ["sk", "live", "project", "override"].join("_");
     stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_live_override", url: "https://checkout.stripe.com/live-override", payment_intent: "pi_live_override" });
+    const getBookingByIdSpy = vi.spyOn(db, "getBookingById").mockResolvedValueOnce({
+      id: 44,
+      serviceLocation: "studio",
+      homeServiceSurcharge: "0.00",
+      clientEmail: "eby@example.com",
+      clientName: "Eby Test",
+      serviceName: "Knotless Braids",
+      depositStatus: "unpaid",
+    } as any);
     const caller = appRouter.createCaller(publicContext());
 
     const result = await caller.public.createDepositCheckout({
@@ -249,6 +307,7 @@ describe("Eby’s Place platform business rules", () => {
     expect(result.checkoutUrl).toBe("https://checkout.stripe.com/live-override");
     expect(stripeCreateSessionMock).toHaveBeenCalledOnce();
     expect(vi.mocked(Stripe)).toHaveBeenCalledWith(["sk", "live", "project", "override"].join("_"));
+    getBookingByIdSpy.mockRestore();
     delete process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY;
   });
 
@@ -256,6 +315,15 @@ describe("Eby’s Place platform business rules", () => {
     process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY = " 'sk_test_project_key_with_quotes' ";
     process.env.STRIPE_SECRET_KEY = `\"${["sk", "live", "platform", "fallback"].join("_")}\"`;
     stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_live_fallback", url: "https://checkout.stripe.com/live-fallback", payment_intent: "pi_live_fallback" });
+    const getBookingByIdSpy = vi.spyOn(db, "getBookingById").mockResolvedValueOnce({
+      id: 44,
+      serviceLocation: "studio",
+      homeServiceSurcharge: "0.00",
+      clientEmail: "eby@example.com",
+      clientName: "Eby Test",
+      serviceName: "Knotless Braids",
+      depositStatus: "unpaid",
+    } as any);
     const caller = appRouter.createCaller(publicContext());
 
     const result = await caller.public.createDepositCheckout({
@@ -268,12 +336,22 @@ describe("Eby’s Place platform business rules", () => {
     expect(result.checkoutUrl).toBe("https://checkout.stripe.com/live-fallback");
     expect(stripeCreateSessionMock).toHaveBeenCalledOnce();
     expect(vi.mocked(Stripe)).toHaveBeenCalledWith(["sk", "live", "platform", "fallback"].join("_"));
+    getBookingByIdSpy.mockRestore();
   });
 
   it("removes accidental internal whitespace from copied live Stripe secret keys", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test_platform_managed_key";
     process.env.EBYSPLACE_LIVE_STRIPE_SECRET_KEY = ` ${["sk", "live", "project"].join("_")} \n override\twithout\rspaces `;
     stripeCreateSessionMock.mockResolvedValueOnce({ id: "cs_live_whitespace", url: "https://checkout.stripe.com/live-whitespace", payment_intent: "pi_live_whitespace" });
+    const getBookingByIdSpy = vi.spyOn(db, "getBookingById").mockResolvedValueOnce({
+      id: 44,
+      serviceLocation: "studio",
+      homeServiceSurcharge: "0.00",
+      clientEmail: "eby@example.com",
+      clientName: "Eby Test",
+      serviceName: "Knotless Braids",
+      depositStatus: "unpaid",
+    } as any);
     const caller = appRouter.createCaller(publicContext());
 
     const result = await caller.public.createDepositCheckout({
@@ -286,6 +364,7 @@ describe("Eby’s Place platform business rules", () => {
     expect(result.checkoutUrl).toBe("https://checkout.stripe.com/live-whitespace");
     expect(stripeCreateSessionMock).toHaveBeenCalledOnce();
     expect(vi.mocked(Stripe)).toHaveBeenCalledWith(["sk", "live", "project"].join("_") + "overridewithoutspaces");
+    getBookingByIdSpy.mockRestore();
   });
 
   it("creates Stripe Checkout sessions for shop product orders with Eby’s Place customer-facing copy", async () => {
@@ -336,7 +415,7 @@ describe("Eby’s Place platform business rules", () => {
       description: "Eby’s Place shop product",
     });
     expect(JSON.stringify(checkoutConfig)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
-    expect(updateCheckoutSpy).toHaveBeenCalledWith(88, "cs_shop_live_123", "pi_shop_live_123");
+    expect(updateCheckoutSpy).toHaveBeenCalledWith(88, "cs_shop_live_123", "pi_shop_live_123", { checkoutTotal: 17 });
     createOrderSpy.mockRestore();
     updateCheckoutSpy.mockRestore();
   });

@@ -10,9 +10,21 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       style={
         {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
+          "--normal-bg": "#111111",
+          "--normal-text": "#f8f4eb",
+          "--normal-border": "#c9a84c",
+          "--success-bg": "#14532d",
+          "--success-text": "#f0fdf4",
+          "--success-border": "#86efac",
+          "--error-bg": "#7f1d1d",
+          "--error-text": "#fef2f2",
+          "--error-border": "#fca5a5",
+          "--warning-bg": "#facc15",
+          "--warning-text": "#1f2937",
+          "--warning-border": "#ca8a04",
+          "--info-bg": "#1d4ed8",
+          "--info-text": "#eff6ff",
+          "--info-border": "#93c5fd",
         } as React.CSSProperties
       }
       {...props}

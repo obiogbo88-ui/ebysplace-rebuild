@@ -39,7 +39,7 @@ const menuItems = [
   { icon: Images, label: "Gallery", path: "/admin#gallery" },
   { icon: Instagram, label: "Instagram", path: "/admin#instagram" },
   { icon: MessageSquare, label: "Reviews", path: "/admin#reviews" },
-  { icon: Activity, label: "Activity & Notifications", path: "/admin#activity-monitoring" },
+  { icon: Activity, label: "Activity & Notifications", path: "/admin#activity" },
   { icon: Users, label: "Admin Users", path: "/admin#users" },
 ];
 
@@ -135,6 +135,17 @@ function DashboardLayoutContent({
   const activePath = location === "/admin" && currentHash ? `/admin${currentHash}` : location;
   const activeMenuItem = menuItems.find(item => item.path === activePath) ?? menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
+  const normalizeAdminHash = (hashValue: string) => {
+    if (!hashValue) return "";
+    if (hashValue === "#activity-monitoring") return "#activity";
+    return hashValue;
+  };
+  const hashToSectionId = (hashValue: string) => {
+    const normalizedHash = normalizeAdminHash(hashValue);
+    const sectionId = normalizedHash.replace(/^#/, "");
+    if (sectionId === "activity") return "activity-monitoring";
+    return sectionId;
+  };
 
   useEffect(() => {
     if (isCollapsed) {
@@ -143,7 +154,7 @@ function DashboardLayoutContent({
   }, [isCollapsed]);
 
   useEffect(() => {
-    const syncHash = () => setCurrentHash(window.location.hash);
+    const syncHash = () => setCurrentHash(normalizeAdminHash(window.location.hash));
     syncHash();
     window.addEventListener("hashchange", syncHash);
     return () => window.removeEventListener("hashchange", syncHash);
@@ -160,12 +171,17 @@ function DashboardLayoutContent({
 
   const navigateAdminMenu = (path: string) => {
     const [pathname, sectionId] = path.split("#");
-    setLocation(path);
+    setLocation(pathname || "/admin");
     if (pathname === "/admin" && sectionId) {
+      const normalizedHash = normalizeAdminHash(`#${sectionId}`);
+      const targetSectionId = hashToSectionId(normalizedHash);
+      window.history.replaceState(null, "", `/admin${normalizedHash}`);
       smoothScrollToElement(sectionId, 60);
-      setCurrentHash(`#${sectionId}`);
+      if (targetSectionId !== sectionId) smoothScrollToElement(targetSectionId, 60);
+      setCurrentHash(normalizedHash);
       return;
     }
+    window.history.replaceState(null, "", "/admin");
     setCurrentHash("");
   };
 
@@ -242,7 +258,7 @@ function DashboardLayoutContent({
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
                       />
                       <span>{item.label}</span>
-                      {item.path === "/admin#activity-monitoring" && (unreadActivityCount.data ?? 0) > 0 ? (
+                      {item.path === "/admin#activity" && (unreadActivityCount.data ?? 0) > 0 ? (
                         <span className="ml-auto rounded-full border border-primary/35 bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary group-data-[collapsible=icon]:hidden">
                           {unreadActivityCount.data}
                         </span>
