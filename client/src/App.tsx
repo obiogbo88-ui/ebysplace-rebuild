@@ -5,7 +5,13 @@ import { Redirect, Route, Switch, useLocation } from "wouter";
 import { canonicalUrl } from "@/lib/canonicalUrl";
 import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";
 import { trpc } from "@/lib/trpc";
-import { getActivitySessionId, getBrowserInfo } from "@/lib/activityTracking";
+import {
+  createTrackingEventKey,
+  getActivitySessionId,
+  getBrowserInfo,
+  shouldThrottleTrackingEvent,
+  shouldTrackPublicActivity,
+} from "@/lib/activityTracking";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
@@ -253,22 +259,34 @@ function DynamicSeoMetadata() {
   }, [location]);
 
   useEffect(() => {
+    const pagePath = location.split(/[?#]/)[0] || "/";
+    if (!shouldTrackPublicActivity(pagePath)) return;
+
     const browserInfo = getBrowserInfo();
-    track.mutate({
+    const sessionId = getActivitySessionId();
+    const eventKey = createTrackingEventKey({
       eventName: "page_visit",
-      pagePath: location.split(/[?#]/)[0] || "/",
-      sessionId: getActivitySessionId(),
+      pagePath,
+      sessionId,
+      activityType: "website_visit",
+    });
+    if (shouldThrottleTrackingEvent(eventKey)) return;
+
+    window.setTimeout(() => track.mutate({
+      eventName: "page_visit",
+      pagePath,
+      sessionId,
       activityType: "website_visit",
       activityCategory: "visit",
-      description: `Visited ${location.split(/[?#]/)[0] || "/"}`,
+      description: `Visited ${pagePath}`,
       status: "info",
       metadata: {
         referrer: typeof document !== "undefined" ? document.referrer || null : null,
         browser: browserInfo.browser,
         deviceType: browserInfo.deviceType,
       },
-    });
-  }, [location, track]);
+    }, { onError: () => {} }), 0);
+  }, [location]);
 
   return null;
 }

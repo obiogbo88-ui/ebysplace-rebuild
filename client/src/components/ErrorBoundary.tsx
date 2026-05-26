@@ -29,10 +29,16 @@ function currentCanonicalUrlWithRefreshMarker() {
 }
 
 async function clearBrowserCaches() {
-  if (typeof window === "undefined" || !("caches" in window)) return;
+  if (typeof window === "undefined") return;
   try {
-    const cacheNames = await window.caches.keys();
-    await Promise.all(cacheNames.map((cacheName) => window.caches.delete(cacheName)));
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+    if ("caches" in window) {
+      const cacheNames = await window.caches.keys();
+      await Promise.all(cacheNames.map((cacheName) => window.caches.delete(cacheName)));
+    }
   } catch {
     // Cache access can be blocked in some browsers. A cache-busting canonical reload still helps.
   }
@@ -46,6 +52,11 @@ class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error, isRecovering: isDynamicImportFailure(error) };
+  }
+
+  componentDidMount() {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.removeItem(CHUNK_RECOVERY_STORAGE_KEY);
   }
 
   componentDidCatch(error: Error) {
