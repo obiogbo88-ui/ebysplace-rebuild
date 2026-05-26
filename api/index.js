@@ -112,6 +112,8 @@ var bookings = pgTable("bookings", {
   postcode: varchar("postcode", { length: 40 }),
   deliveryNote: text("deliveryNote"),
   homeServiceSurcharge: numeric("homeServiceSurcharge", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  checkoutSurchargeCharged: numeric("checkoutSurchargeCharged", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  checkoutTotalCharged: numeric("checkoutTotalCharged", { precision: 10, scale: 2 }),
   appointmentDate: varchar("appointmentDate", { length: 20 }).notNull(),
   appointmentTime: varchar("appointmentTime", { length: 20 }).notNull(),
   status: bookingStatusEnum("status").default("pending").notNull(),
@@ -160,6 +162,7 @@ var orders = pgTable("orders", {
   postcode: varchar("postcode", { length: 40 }),
   deliveryNote: text("deliveryNote"),
   status: orderStatusEnum("status").default("draft").notNull(),
+  checkoutTotalCharged: numeric("checkoutTotalCharged", { precision: 10, scale: 2 }),
   stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1436,6 +1439,8 @@ async function ensureBookingLocationColumns() {
   await addPgColumnIfMissing("bookings", "county", "VARCHAR(120)");
   await addPgColumnIfMissing("bookings", "deliveryNote", "TEXT");
   await addPgColumnIfMissing("bookings", "homeServiceSurcharge", "NUMERIC(10,2) NOT NULL DEFAULT 0.00");
+  await addPgColumnIfMissing("bookings", "checkoutSurchargeCharged", "NUMERIC(10,2) NOT NULL DEFAULT 0.00");
+  await addPgColumnIfMissing("bookings", "checkoutTotalCharged", "NUMERIC(10,2)");
   await makePgColumnNullable("bookings", "addressLine1");
   await makePgColumnNullable("bookings", "city");
   await makePgColumnNullable("bookings", "postcode");
@@ -1446,6 +1451,7 @@ async function ensureOrderLocationColumns() {
   await addPgColumnIfMissing("orders", "addressLine2", "VARCHAR(255)");
   await addPgColumnIfMissing("orders", "county", "VARCHAR(120)");
   await addPgColumnIfMissing("orders", "deliveryNote", "TEXT");
+  await addPgColumnIfMissing("orders", "checkoutTotalCharged", "NUMERIC(10,2)");
   await makePgColumnNullable("orders", "addressLine1");
   await makePgColumnNullable("orders", "city");
   await makePgColumnNullable("orders", "postcode");
@@ -1571,6 +1577,39 @@ async function ensureActivityLogsTable() {
     console.warn("[Database] Could not ensure activityLogs table", error);
   }
 }
+function normalizePathForTracking(value) {
+  const raw = (value || "/").trim();
+  if (!raw) return "/";
+  try {
+    const parsed = new URL(raw, "https://www.ebysplace.com");
+    return parsed.pathname || "/";
+  } catch {
+    return raw.split(/[?#]/)[0] || "/";
+  }
+}
+function isAdminPathForTracking(value) {
+  const pathname = normalizePathForTracking(value).toLowerCase();
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+async function shouldThrottlePublicActivity(input) {
+  const db = await getDb();
+  if (!db) return false;
+  const sessionId = truncateText(input.sessionId, 128);
+  const activityType = truncateText(input.activityType, 120);
+  const pageUrl = truncateText(normalizePathForTracking(input.pageUrl), MAX_PAGE_URL_LENGTH);
+  const sourceApp = truncateText(input.sourceApp || "ebysplace", 80) || "ebysplace";
+  if (!sessionId || !activityType) return false;
+  await ensureActivityLogsTable();
+  const windowStart = Date.now() - Math.max(input.windowMs ?? 8e3, 500);
+  const rows = await db.select({ id: activityLogs.id }).from(activityLogs).where(and(
+    eq(activityLogs.sessionId, sessionId),
+    eq(activityLogs.activityType, activityType),
+    eq(activityLogs.sourceApp, sourceApp),
+    eq(activityLogs.pageUrl, pageUrl),
+    sql`${activityLogs.createdAtMs} >= ${windowStart}`
+  )).limit(1);
+  return rows.length > 0;
+}
 async function logActivity(input) {
   const db = await getDb();
   if (!db) return { success: true };
@@ -1610,7 +1649,10 @@ async function listActivityLogs(filters = {}) {
   const db = await getDb();
   if (!db) return [];
   await ensureActivityLogsTable();
-  const conditions = [];
+  const conditions = [
+    sql`${activityLogs.activityType} NOT LIKE 'admin_%'`,
+    sql`COALESCE(${activityLogs.pageUrl}, '') NOT LIKE '/admin%'`
+  ];
   if (filters.activityType) conditions.push(eq(activityLogs.activityType, filters.activityType));
   if (filters.activityCategory) conditions.push(eq(activityLogs.activityCategory, filters.activityCategory));
   if (filters.status) conditions.push(eq(activityLogs.status, filters.status));
@@ -1647,7 +1689,11 @@ async function unreadActivityCount() {
   const db = await getDb();
   if (!db) return 0;
   await ensureActivityLogsTable();
-  const rows = await db.select({ value: sql`count(*)` }).from(activityLogs).where(eq(activityLogs.isRead, "false"));
+  const rows = await db.select({ value: sql`count(*)` }).from(activityLogs).where(and(
+    eq(activityLogs.isRead, "false"),
+    sql`${activityLogs.activityType} NOT LIKE 'admin_%'`,
+    sql`COALESCE(${activityLogs.pageUrl}, '') NOT LIKE '/admin%'`
+  ));
   return Number(rows[0]?.value ?? 0);
 }
 async function markActivityLogsRead(ids) {
@@ -1688,10 +1734,18 @@ async function createBooking(input) {
   });
   return { id: bookingId };
 }
-async function updateBookingCheckout(id, stripeCheckoutSessionId, stripePaymentIntentId) {
+async function updateBookingCheckout(id, stripeCheckoutSessionId, stripePaymentIntentId, checkoutDetails) {
   const db = await getDb();
   if (!db) return;
-  await db.update(bookings).set({ depositStatus: "checkout_started", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(bookings.id, id));
+  const surchargeAmount = Number(checkoutDetails?.surchargeAmount ?? 0);
+  const checkoutTotal = Number(checkoutDetails?.checkoutTotal);
+  await db.update(bookings).set({
+    depositStatus: "checkout_started",
+    stripeCheckoutSessionId,
+    stripePaymentIntentId: stripePaymentIntentId ?? null,
+    checkoutSurchargeCharged: Number.isFinite(surchargeAmount) ? surchargeAmount.toFixed(2) : "0.00",
+    checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null
+  }).where(eq(bookings.id, id));
   await logActivity({
     activityType: "checkout_started",
     activityCategory: "payment",
@@ -1700,7 +1754,11 @@ async function updateBookingCheckout(id, stripeCheckoutSessionId, stripePaymentI
     pageUrl: "/booking",
     relatedEntityType: "booking",
     relatedEntityId: id,
-    metadata: { stripeCheckoutSessionId }
+    metadata: {
+      stripeCheckoutSessionId,
+      checkoutSurchargeCharged: Number.isFinite(surchargeAmount) ? surchargeAmount.toFixed(2) : "0.00",
+      checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null
+    }
   });
 }
 async function markBookingDepositPaid(stripeCheckoutSessionId, stripePaymentIntentId) {
@@ -1718,6 +1776,17 @@ async function markBookingDepositPaid(stripeCheckoutSessionId, stripePaymentInte
     relatedEntityId: booking?.id ?? null,
     metadata: { stripeCheckoutSessionId, stripePaymentIntentId }
   });
+}
+async function recordBookingCheckoutSettlement(stripeCheckoutSessionId, input) {
+  const db = await getDb();
+  if (!db) return;
+  await ensureBookingLocationColumns();
+  const checkoutTotal = Number(input.checkoutTotal);
+  const surchargeAmount = Number(input.surchargeAmount ?? 0);
+  await db.update(bookings).set({
+    checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null,
+    checkoutSurchargeCharged: Number.isFinite(surchargeAmount) ? surchargeAmount.toFixed(2) : "0.00"
+  }).where(eq(bookings.stripeCheckoutSessionId, stripeCheckoutSessionId));
 }
 async function getBookingByCheckoutSession(stripeCheckoutSessionId) {
   const db = await getDb();
@@ -1788,10 +1857,16 @@ async function createOrderWithItems(input) {
   });
   return { id: orderId, items: validatedItems };
 }
-async function updateOrderCheckout(id, stripeCheckoutSessionId, stripePaymentIntentId) {
+async function updateOrderCheckout(id, stripeCheckoutSessionId, stripePaymentIntentId, checkoutDetails) {
   const db = await getDb();
   if (!db) return;
-  await db.update(orders).set({ status: "pending_payment", stripeCheckoutSessionId, stripePaymentIntentId: stripePaymentIntentId ?? null }).where(eq(orders.id, id));
+  const checkoutTotal = Number(checkoutDetails?.checkoutTotal);
+  await db.update(orders).set({
+    status: "pending_payment",
+    stripeCheckoutSessionId,
+    stripePaymentIntentId: stripePaymentIntentId ?? null,
+    checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null
+  }).where(eq(orders.id, id));
   await logActivity({
     activityType: "checkout_started",
     activityCategory: "payment",
@@ -1800,7 +1875,10 @@ async function updateOrderCheckout(id, stripeCheckoutSessionId, stripePaymentInt
     pageUrl: "/shop",
     relatedEntityType: "order",
     relatedEntityId: id,
-    metadata: { stripeCheckoutSessionId }
+    metadata: {
+      stripeCheckoutSessionId,
+      checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null
+    }
   });
 }
 async function markOrderPaid(stripeCheckoutSessionId, stripePaymentIntentId) {
@@ -1839,6 +1917,15 @@ async function markOrderPaid(stripeCheckoutSessionId, stripePaymentIntentId) {
       stockStatus: sql`CASE WHEN GREATEST(${products.stockQuantity} - ${item.quantity}, 0) = 0 THEN 'out_of_stock' ELSE ${products.stockStatus} END`
     }).where(eq(products.id, item.productId));
   }
+}
+async function recordOrderCheckoutSettlement(stripeCheckoutSessionId, input) {
+  const db = await getDb();
+  if (!db) return;
+  await ensureOrderLocationColumns();
+  const checkoutTotal = Number(input.checkoutTotal);
+  await db.update(orders).set({
+    checkoutTotalCharged: Number.isFinite(checkoutTotal) ? checkoutTotal.toFixed(2) : null
+  }).where(eq(orders.stripeCheckoutSessionId, stripeCheckoutSessionId));
 }
 async function getOrderByCheckoutSession(stripeCheckoutSessionId) {
   const db = await getDb();
@@ -1977,22 +2064,34 @@ async function getEmailNotificationLogById(id) {
 async function recordAnalytics(eventName, pagePath, metadata, options) {
   const db = await getDb();
   if (!db) return { success: true };
-  await db.insert(analyticsEvents).values({ eventName, pagePath, metadata, createdAtMs: Date.now() });
+  const normalizedPagePath = normalizePathForTracking(pagePath);
+  const sourceApp = truncateText(options?.sourceApp || "ebysplace", 80) || "ebysplace";
+  const activityType = truncateText(options?.activityType ?? eventName, 120) || truncateText(eventName, 120) || "unknown_activity";
+  if (isAdminPathForTracking(normalizedPagePath)) return { success: true, skipped: true };
+  if (await shouldThrottlePublicActivity({
+    sessionId: options?.sessionId ?? null,
+    activityType,
+    pageUrl: normalizedPagePath,
+    sourceApp
+  })) {
+    return { success: true, skipped: true };
+  }
+  await db.insert(analyticsEvents).values({ eventName, pagePath: normalizedPagePath, metadata, createdAtMs: Date.now() });
   await logActivity({
     request: options?.request,
     userId: options?.user?.id ?? null,
     userName: options?.user?.name ?? null,
     userEmail: options?.user?.email ?? null,
     sessionId: options?.sessionId ?? null,
-    activityType: options?.activityType ?? eventName,
+    activityType,
     activityCategory: options?.activityCategory ?? "website_visit",
     description: options?.description ?? `Visitor event: ${eventName}`,
-    pageUrl: pagePath,
+    pageUrl: normalizedPagePath,
     metadata,
     status: options?.status ?? "info",
     relatedEntityType: options?.relatedEntityType ?? null,
     relatedEntityId: options?.relatedEntityId ?? null,
-    sourceApp: options?.sourceApp ?? "ebysplace"
+    sourceApp
   });
   return { success: true };
 }
@@ -2607,6 +2706,8 @@ function buildBookingEmailPayloads(booking, session) {
   const dateTime = `${booking?.appointmentDate ?? "Date TBC"}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""}`;
   const paymentStatus = booking?.depositStatus === "paid" ? "Paid" : "Stripe payment confirmed";
   const notes = booking?.deliveryNote || "No customer notes provided.";
+  const surchargePaid = Number(booking?.checkoutSurchargeCharged ?? booking?.homeServiceSurcharge ?? 0);
+  const checkoutTotalPaid = session?.amount_total != null ? Number(session.amount_total) / 100 : Number(booking?.checkoutTotalCharged ?? NaN);
   const ownerBody = [
     "A new paid Eby\u2019s Place booking has been confirmed through Stripe.",
     `Booking reference: ${reference}`,
@@ -2616,6 +2717,8 @@ function buildBookingEmailPayloads(booking, session) {
     `Service/hairstyle booked: ${serviceName}`,
     `Booking date and time: ${dateTime}`,
     `Price/payment amount: ${priceLine}`,
+    surchargePaid > 0 ? `Home service surcharge: ${money(surchargePaid)}` : void 0,
+    Number.isFinite(checkoutTotalPaid) ? `Stripe total paid: ${money(checkoutTotalPaid)}` : void 0,
     `Payment status: ${paymentStatus}`,
     `Stripe session: ${session?.id ?? "Not available"}`,
     `Customer notes: ${notes}`,
@@ -2628,6 +2731,8 @@ function buildBookingEmailPayloads(booking, session) {
     `Service/hairstyle booked: ${serviceName}`,
     `Booking date and time: ${dateTime}`,
     `Amount paid or amount due: ${amountPaid}`,
+    surchargePaid > 0 ? `Home service surcharge paid: ${money(surchargePaid)}` : void 0,
+    Number.isFinite(checkoutTotalPaid) ? `Stripe total paid: ${money(checkoutTotalPaid)}` : void 0,
     bookingLocationText(booking),
     "If you need to update your appointment, please contact Eby\u2019s Place as soon as possible.",
     `Contact: ${CONTACT_EMAIL} | WhatsApp/phone: ${CONTACT_PHONE}`
@@ -2657,7 +2762,7 @@ ${itemsSummary}`,
     deliveryText,
     `Payment status: ${paymentStatus}`,
     `Stripe session: ${session?.id ?? "Not available"}`
-  ].join("\n");
+  ].filter(Boolean).join("\n");
   const customerBody = [
     `Hi ${customerName},`,
     "Thank you for shopping with Eby\u2019s Place. Your payment has been received and your order is being prepared.",
@@ -2668,7 +2773,7 @@ ${itemsSummary}`,
     deliveryText,
     "Eby\u2019s Place will contact you if any delivery or collection details need confirming.",
     `Contact: ${CONTACT_EMAIL} | WhatsApp/phone: ${CONTACT_PHONE}`
-  ].join("\n\n");
+  ].filter(Boolean).join("\n\n");
   return [
     { entityType: "order", entityId: Number(order?.id ?? session?.metadata?.order_id ?? 0), audience: "owner", to: config.ownerEmail, subject: `New paid shop order: ${reference}`, body: ownerBody },
     { entityType: "order", entityId: Number(order?.id ?? session?.metadata?.order_id ?? 0), audience: "customer", to: order?.customerEmail ?? session?.customer_email ?? session?.metadata?.customer_email, subject: `Eby\u2019s Place order confirmation: ${reference}`, body: customerBody }
@@ -2748,7 +2853,21 @@ function registerStripeWebhook(app2) {
         if (session.metadata?.deposit_type === "non_refundable_20_gbp" && session.id) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await markBookingDepositPaid(session.id, paymentIntentId);
+          const webhookSurcharge = Number(session.metadata?.home_service_surcharge || 0);
+          const webhookCheckoutTotal = session.amount_total != null ? Number(session.amount_total) / 100 : NaN;
+          await recordBookingCheckoutSettlement(session.id, {
+            surchargeAmount: Number.isFinite(webhookSurcharge) ? webhookSurcharge : 0,
+            checkoutTotal: Number.isFinite(webhookCheckoutTotal) ? webhookCheckoutTotal : void 0
+          });
           const booking = await getBookingByCheckoutSession(session.id);
+          const bookingSurcharge = Number(booking?.checkoutSurchargeCharged ?? booking?.homeServiceSurcharge ?? session.metadata?.home_service_surcharge ?? 0);
+          const bookingTotalPaid = Number(booking?.checkoutTotalCharged ?? (session.amount_total != null ? Number(session.amount_total) / 100 : NaN));
+          console.info("[StripeWebhook] Booking payment settlement recorded", {
+            bookingId: booking?.id ?? session.metadata?.booking_id ?? null,
+            stripeCheckoutSessionId: session.id,
+            surchargeAmount: Number.isFinite(bookingSurcharge) ? bookingSurcharge.toFixed(2) : "0.00",
+            totalPaid: Number.isFinite(bookingTotalPaid) ? bookingTotalPaid.toFixed(2) : "unknown"
+          });
           if (booking) {
             void sendBookingPaymentEmailsSafely(booking, session).catch((error) => console.warn("[StripeWebhook] SMTP booking email workflow failed", error));
           }
@@ -2778,6 +2897,8 @@ function registerStripeWebhook(app2) {
                 `Appointment location: ${bookingLocation === "home_service" ? "Home service" : "Eby\u2019s Place studio"}`,
                 locationConfirmation,
                 "Deposit paid: \xA320.00 non-refundable booking deposit.",
+                bookingLocation === "home_service" && Number.isFinite(bookingSurcharge) && bookingSurcharge > 0 ? `Home service surcharge paid: \xA3${bookingSurcharge.toFixed(2)}.` : void 0,
+                Number.isFinite(bookingTotalPaid) ? `Stripe total paid: \xA3${bookingTotalPaid.toFixed(2)}.` : void 0,
                 remainingBalance ? `Estimated remaining balance due at appointment: \xA3${remainingBalance}.` : "Remaining balance: confirmed by Eby\u2019s Place according to your final service and add-ons.",
                 booking?.deliveryNote ? `Booking notes and optional selections:
 ${booking.deliveryNote}` : void 0,
@@ -2795,6 +2916,8 @@ ${booking.deliveryNote}` : void 0,
               `Customer: ${session.metadata?.customer_name ?? "Not provided"}`,
               `Email: ${session.metadata?.customer_email ?? session.customer_email ?? "Not provided"}`,
               `Stripe session: ${session.id}`,
+              Number.isFinite(bookingSurcharge) && bookingSurcharge > 0 ? `Home service surcharge: \xA3${bookingSurcharge.toFixed(2)}` : void 0,
+              Number.isFinite(bookingTotalPaid) ? `Stripe total paid: \xA3${bookingTotalPaid.toFixed(2)}` : void 0,
               paymentIntentId ? `Payment intent: ${paymentIntentId}` : void 0
             ].filter(Boolean).join("\n")
           }).catch((error) => console.warn("[StripeWebhook] Owner payment notification failed", error));
@@ -2802,6 +2925,10 @@ ${booking.deliveryNote}` : void 0,
         if (session.metadata?.order_type === "shop_products" && session.id) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await markOrderPaid(session.id, paymentIntentId);
+          const orderCheckoutTotal = session.amount_total != null ? Number(session.amount_total) / 100 : NaN;
+          await recordOrderCheckoutSettlement(session.id, {
+            checkoutTotal: Number.isFinite(orderCheckoutTotal) ? orderCheckoutTotal : void 0
+          });
           const order = await getOrderByCheckoutSession(session.id);
           const deliveryAddress = [order?.addressLine1, order?.addressLine2, order?.city, order?.county, order?.postcode].filter(Boolean).join(", ");
           const orderReference2 = order?.id ?? session.metadata?.order_id ?? "";
@@ -3625,8 +3752,31 @@ function getLiveStripePublishableKey() {
   return candidates.find((key) => key.startsWith("pk_live_")) || candidates.find(Boolean) || "";
 }
 var CUSTOMER_PAYMENT_UNAVAILABLE_MESSAGE = "Payment is currently unavailable. Please contact us to complete your booking.";
+var TRACK_THROTTLE_WINDOW_MS = 1e4;
+var recentTrackEvents = /* @__PURE__ */ new Map();
 function paymentUnavailableError() {
   return new TRPCError4({ code: "PRECONDITION_FAILED", message: CUSTOMER_PAYMENT_UNAVAILABLE_MESSAGE });
+}
+function normalizePublicPath(path2) {
+  const normalized = (path2 || "/").trim();
+  const withoutOrigin = normalized.replace(/^https?:\/\/[^/]+/i, "");
+  const [pathname] = withoutOrigin.split(/[?#]/);
+  return pathname || "/";
+}
+function shouldSkipTrackEvent(input) {
+  const pagePath = normalizePublicPath(input.pagePath);
+  if (isAdminTrackingPath(input.pagePath)) return { skip: true, reason: "admin_path", pagePath };
+  const eventKey = `${input.sessionId || "anon"}:${input.eventName}:${pagePath}`;
+  const now = Date.now();
+  const previous = recentTrackEvents.get(eventKey);
+  recentTrackEvents.set(eventKey, now);
+  for (const [key, timestamp2] of recentTrackEvents.entries()) {
+    if (now - timestamp2 > TRACK_THROTTLE_WINDOW_MS * 6) recentTrackEvents.delete(key);
+  }
+  if (typeof previous === "number" && now - previous < TRACK_THROTTLE_WINDOW_MS) {
+    return { skip: true, reason: "throttled_duplicate", pagePath };
+  }
+  return { skip: false, reason: null, pagePath };
 }
 function getStripe() {
   const key = getLiveStripeSecretKey();
@@ -3660,6 +3810,17 @@ function logStripeCheckoutFailure(context, error) {
     console.error(`[Payments] ${context}: ${configurationMessage}`, error);
     return;
   }
+  function adminMutationFailure2(action, error2) {
+    const message = error2 instanceof Error ? error2.message : String(error2);
+    console.error(`[Admin] ${action} failed`, { message });
+    if (/database unavailable/i.test(message)) {
+      return new TRPCError4({
+        code: "SERVICE_UNAVAILABLE",
+        message: `${action} failed because the database is unavailable. Check DATABASE_URL and Supabase server credentials in Vercel.`
+      });
+    }
+    return new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: `${action} failed: ${message}` });
+  }
   console.error(`[Payments] ${context}`, error);
 }
 function getLivePaymentMode() {
@@ -3668,6 +3829,20 @@ function getLivePaymentMode() {
 function getOrigin(req) {
   const origin = req.headers.origin;
   return typeof origin === "string" ? origin : "http://localhost:3000";
+}
+function normalizeTrackingPath(pathOrUrl) {
+  const raw = (pathOrUrl || "/").trim();
+  if (!raw) return "/";
+  try {
+    const parsed = new URL(raw, "https://www.ebysplace.com");
+    return parsed.pathname || "/";
+  } catch {
+    return raw.split(/[?#]/)[0] || "/";
+  }
+}
+function isAdminTrackingPath(pathOrUrl) {
+  const pathname = normalizeTrackingPath(pathOrUrl).toLowerCase();
+  return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 async function notifyOwnerSafely(title, content) {
   try {
@@ -3712,6 +3887,8 @@ function poundsToMinorUnits(value) {
   return Math.round(Number(value || 0) * 100);
 }
 function buildBookingCheckoutLineItems(input) {
+  const surcharge = Number(input.homeServiceSurcharge || 0);
+  const includeHomeServiceSurcharge = input.includeHomeServiceSurcharge && Number.isFinite(surcharge) && surcharge > 0;
   return [
     { price_data: { currency: "gbp", unit_amount: 2e3, product_data: { name: "Eby\u2019s Place \xA320 non-refundable booking deposit", description: `Deposit for ${input.serviceName}` } }, quantity: 1 },
     ...(input.addOns || []).map((item) => ({
@@ -3721,7 +3898,18 @@ function buildBookingCheckoutLineItems(input) {
     ...(input.bookingProducts || []).map((item) => ({
       price_data: { currency: "gbp", unit_amount: poundsToMinorUnits(item.unitPrice), product_data: { name: item.productName, description: "Eby\u2019s Place shop product added to appointment checkout" } },
       quantity: item.quantity
-    }))
+    })),
+    ...includeHomeServiceSurcharge ? [{
+      price_data: {
+        currency: "gbp",
+        unit_amount: poundsToMinorUnits(surcharge),
+        product_data: {
+          name: "Home Service Surcharge",
+          description: "Travel surcharge for mobile/home-service appointments"
+        }
+      },
+      quantity: 1
+    }] : []
   ];
 }
 function bookingExtrasTotal(input) {
@@ -3868,7 +4056,15 @@ var appRouter = router({
       const { addOns, bookingProducts, ...bookingFields } = input;
       const serviceLocation = input.serviceLocation || "studio";
       const settings = await getAvailabilitySettings();
-      const homeServiceSurcharge = serviceLocation === "home_service" ? Number(settings.homeServiceSurcharge || 0).toFixed(2) : "0.00";
+      const parsedAvailabilitySurcharge = Number(settings.homeServiceSurcharge);
+      if (serviceLocation === "home_service" && !Number.isFinite(parsedAvailabilitySurcharge)) {
+        throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Home service surcharge is currently unavailable. Please contact Eby\u2019s Place before completing checkout." });
+      }
+      const homeServiceSurcharge = serviceLocation === "home_service" ? parsedAvailabilitySurcharge.toFixed(2) : "0.00";
+      console.info("[Payments] Home-service surcharge loaded from admin settings", {
+        serviceLocation,
+        surcharge: homeServiceSurcharge
+      });
       if (serviceLocation === "home_service") {
         const missing = [input.clientName, input.addressLine1, input.city, input.county].some((value) => !value?.trim());
         if (missing) throw new TRPCError4({ code: "BAD_REQUEST", message: "Home Service bookings require the customer name, address line 1, city, and county. Postcode is optional." });
@@ -3915,12 +4111,32 @@ var appRouter = router({
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
       const booking = await getBookingById(input.bookingId);
-      const homeServiceSurcharge = Number(booking?.homeServiceSurcharge || 0);
+      if (!booking) throw new TRPCError4({ code: "NOT_FOUND", message: "Booking not found. Please restart your booking before payment." });
+      if (booking.depositStatus === "paid") throw new TRPCError4({ code: "BAD_REQUEST", message: "This booking deposit has already been paid." });
+      if (booking.clientEmail !== input.clientEmail || booking.clientName !== input.clientName || booking.serviceName !== input.serviceName) {
+        throw new TRPCError4({ code: "BAD_REQUEST", message: "Booking details changed before checkout. Please restart payment from the booking page." });
+      }
+      const homeServiceSurcharge = Number(booking.homeServiceSurcharge || 0);
+      if (booking.serviceLocation === "home_service" && !Number.isFinite(homeServiceSurcharge)) {
+        throw new TRPCError4({ code: "PRECONDITION_FAILED", message: "Home service surcharge could not be loaded. Please contact Eby\u2019s Place before checkout." });
+      }
+      const includeHomeServiceSurcharge = booking.serviceLocation === "home_service" && homeServiceSurcharge > 0;
       const extrasTotal = bookingExtrasTotal(input);
       const lineItems = buildBookingCheckoutLineItems({
         serviceName: input.serviceName,
         addOns: input.addOns,
-        bookingProducts: input.bookingProducts
+        bookingProducts: input.bookingProducts,
+        includeHomeServiceSurcharge,
+        homeServiceSurcharge
+      });
+      const checkoutTotal = 20 + extrasTotal + (includeHomeServiceSurcharge ? homeServiceSurcharge : 0);
+      console.info("[Payments] Booking checkout surcharge calculation", {
+        bookingId: input.bookingId,
+        serviceLocation: booking.serviceLocation,
+        surchargeAmount: includeHomeServiceSurcharge ? homeServiceSurcharge.toFixed(2) : "0.00",
+        extrasTotal: extrasTotal.toFixed(2),
+        checkoutTotal: checkoutTotal.toFixed(2),
+        lineItemCount: lineItems.length
       });
       let session;
       try {
@@ -3934,14 +4150,37 @@ var appRouter = router({
           allow_promotion_codes: true,
           success_url: `${origin}/booking/success?booking=${input.bookingId}`,
           cancel_url: `${origin}/booking?payment=cancelled&booking=${input.bookingId}`,
-          metadata: { booking_id: input.bookingId.toString(), customer_email: input.clientEmail, customer_name: input.clientName, service_name: input.serviceName, deposit_type: "non_refundable_20_gbp", service_location: booking?.serviceLocation || "studio", home_service_surcharge: homeServiceSurcharge.toFixed(2), booking_extras_total: extrasTotal.toFixed(2) }
+          metadata: {
+            booking_id: input.bookingId.toString(),
+            customer_email: input.clientEmail,
+            customer_name: input.clientName,
+            service_name: input.serviceName,
+            deposit_type: "non_refundable_20_gbp",
+            service_location: booking.serviceLocation || "studio",
+            home_service_surcharge: includeHomeServiceSurcharge ? homeServiceSurcharge.toFixed(2) : "0.00",
+            home_service_surcharge_applied: includeHomeServiceSurcharge ? "true" : "false",
+            booking_extras_total: extrasTotal.toFixed(2),
+            booking_checkout_total: checkoutTotal.toFixed(2)
+          }
         });
       } catch (error) {
         logStripeCheckoutFailure("Booking checkout session creation failed", error);
         throw paymentUnavailableError();
       }
       if (!session.url) throw paymentUnavailableError();
-      await updateBookingCheckout(input.bookingId, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
+      console.info("[Payments] Booking Stripe Checkout session created", {
+        bookingId: input.bookingId,
+        stripeCheckoutSessionId: session.id,
+        serviceLocation: booking.serviceLocation,
+        surchargeAmount: includeHomeServiceSurcharge ? homeServiceSurcharge.toFixed(2) : "0.00",
+        checkoutTotal: checkoutTotal.toFixed(2)
+      });
+      await updateBookingCheckout(
+        input.bookingId,
+        session.id,
+        typeof session.payment_intent === "string" ? session.payment_intent : null,
+        { surchargeAmount: includeHomeServiceSurcharge ? homeServiceSurcharge : 0, checkoutTotal }
+      );
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),
     createOrder: publicProcedure.input(orderInput).mutation(async ({ input, ctx }) => {
@@ -3952,6 +4191,7 @@ var appRouter = router({
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
       const orderId = order.id.toString();
+      const orderCheckoutTotal = order.items.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity || 0), 0);
       let session;
       try {
         session = await stripe.checkout.sessions.create({
@@ -3986,7 +4226,12 @@ var appRouter = router({
         throw paymentUnavailableError();
       }
       if (!session.url) throw paymentUnavailableError();
-      await updateOrderCheckout(order.id, session.id, typeof session.payment_intent === "string" ? session.payment_intent : null);
+      await updateOrderCheckout(
+        order.id,
+        session.id,
+        typeof session.payment_intent === "string" ? session.payment_intent : null,
+        { checkoutTotal: orderCheckoutTotal }
+      );
       await notifyOwnerSafely(
         "New Eby\u2019s Place shop order checkout started",
         [
@@ -4065,18 +4310,28 @@ var appRouter = router({
       relatedEntityType: z3.string().max(80).optional(),
       relatedEntityId: z3.union([z3.string(), z3.number()]).optional(),
       sourceApp: z3.string().max(80).optional()
-    })).mutation(({ input, ctx }) => recordAnalytics(input.eventName, input.pagePath, input.metadata, {
-      request: ctx.req,
-      user: ctx.user ? { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } : null,
-      sessionId: input.sessionId,
-      activityType: input.activityType,
-      activityCategory: input.activityCategory,
-      status: input.status,
-      description: input.description,
-      relatedEntityType: input.relatedEntityType,
-      relatedEntityId: input.relatedEntityId,
-      sourceApp: input.sourceApp
-    })),
+    })).mutation(async ({ input, ctx }) => {
+      if (isAdminTrackingPath(input.pagePath)) return { success: true, skipped: true };
+      const trackGate = shouldSkipTrackEvent({ eventName: input.eventName, pagePath: input.pagePath, sessionId: input.sessionId });
+      if (trackGate.skip) {
+        if (trackGate.reason === "admin_path") {
+          console.info("[Tracking] Ignored admin route public.track event", { eventName: input.eventName, pagePath: trackGate.pagePath });
+        }
+        return { success: true, skipped: true, reason: trackGate.reason };
+      }
+      return recordAnalytics(input.eventName, trackGate.pagePath, input.metadata, {
+        request: ctx.req,
+        user: ctx.user ? { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } : null,
+        sessionId: input.sessionId,
+        activityType: input.activityType,
+        activityCategory: input.activityCategory,
+        status: input.status,
+        description: input.description,
+        relatedEntityType: input.relatedEntityType,
+        relatedEntityId: input.relatedEntityId,
+        sourceApp: input.sourceApp
+      });
+    }),
     logActivity: publicProcedure.input(z3.object({
       sessionId: z3.string().max(128).optional(),
       activityType: z3.string().min(2).max(120),
@@ -4097,6 +4352,23 @@ var appRouter = router({
       browser: z3.string().max(80).optional(),
       userAgent: z3.string().max(500).optional()
     })).mutation(async ({ input, ctx }) => {
+      const normalizedPageUrl = normalizePublicPath(input.pageUrl || "/");
+      if (isAdminTrackingPath(normalizedPageUrl)) return { success: true, skipped: true };
+      if (isAdminTrackingPath(normalizedPageUrl)) {
+        console.info("[Tracking] Ignored admin route public.logActivity event", {
+          activityType: input.activityType,
+          pageUrl: normalizedPageUrl
+        });
+        return { success: true, skipped: true, reason: "admin_path" };
+      }
+      const activityGate = shouldSkipTrackEvent({
+        eventName: input.activityType,
+        pagePath: normalizedPageUrl,
+        sessionId: input.sessionId
+      });
+      if (activityGate.skip && activityGate.reason === "throttled_duplicate") {
+        return { success: true, skipped: true, reason: "throttled_duplicate" };
+      }
       await logActivity({
         request: ctx.req,
         userId: ctx.user?.id ?? null,
@@ -4106,7 +4378,7 @@ var appRouter = router({
         activityType: input.activityType,
         activityCategory: input.activityCategory,
         description: input.description,
-        pageUrl: input.pageUrl,
+        pageUrl: normalizedPageUrl,
         metadata: input.metadata,
         status: input.status,
         relatedEntityType: input.relatedEntityType,
@@ -4166,7 +4438,14 @@ var appRouter = router({
     blockAvailabilitySlot: adminProcedure.input(z3.object({ date: z3.string().min(4), time: z3.string().optional(), reason: z3.string().optional() })).mutation(({ input }) => blockBookingSlot(input)),
     unblockAvailabilitySlot: adminProcedure.input(z3.object({ date: z3.string().min(4), time: z3.string().optional() })).mutation(({ input }) => unblockBookingSlot(input)),
     updateInstagramSettings: adminProcedure.input(z3.object({ handle: z3.string().min(2), feedUrl: z3.string().url(), enabled: z3.boolean(), note: z3.string().optional() })).mutation(({ input }) => updateInstagramSettings(input)),
-    updateHomeServiceSurcharge: adminProcedure.input(z3.object({ homeServiceSurcharge: z3.string().regex(/^\d+(\.\d{2})?$/) })).mutation(({ input }) => updateHomeServiceSurcharge(input.homeServiceSurcharge)),
+    updateHomeServiceSurcharge: adminProcedure.input(z3.object({ homeServiceSurcharge: z3.string().regex(/^\d+(\.\d{2})?$/) })).mutation(async ({ input }) => {
+      try {
+        console.info("[Admin] Updating home service surcharge", { surcharge: input.homeServiceSurcharge });
+        return await updateHomeServiceSurcharge(input.homeServiceSurcharge);
+      } catch (error) {
+        throw adminMutationFailure("Home service surcharge update", error);
+      }
+    }),
     sendReviewRequest: adminProcedure.input(z3.object({ bookingId: z3.number() })).mutation(async ({ input }) => {
       const booking = await getBookingById(input.bookingId);
       if (!booking) throw new TRPCError4({ code: "NOT_FOUND", message: "Booking not found." });
@@ -4239,9 +4518,13 @@ var appRouter = router({
       return result;
     }),
     uploadProductImage: adminProcedure.input(z3.object({ productId: z3.number().int().positive().optional(), productName: z3.string().min(2), dataUrl: z3.string().min(50), fileName: z3.string().default("product-image.png") })).mutation(async ({ input }) => {
-      const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.productName}-${input.fileName}`, folder: "products" });
-      if (input.productId) await updateProduct(input.productId, { imageUrl: uploaded.url });
-      return uploaded;
+      try {
+        const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.productName}-${input.fileName}`, folder: "products" });
+        if (input.productId) await updateProduct(input.productId, { imageUrl: uploaded.url });
+        return uploaded;
+      } catch (error) {
+        throw adminMutationFailure("Product image upload", error);
+      }
     }),
     clearProductImage: adminProcedure.input(z3.object({ productId: z3.number().int().positive(), imageUrl: z3.string().min(5).optional() })).mutation(async ({ input }) => {
       await updateProduct(input.productId, { imageUrl: null });
@@ -4249,9 +4532,13 @@ var appRouter = router({
     }),
     insights: adminProcedure.query(() => adminInsights()),
     uploadServiceImage: adminProcedure.input(z3.object({ serviceId: z3.number(), serviceName: z3.string().min(2), dataUrl: z3.string().min(50), fileName: z3.string().default("service-image.png") })).mutation(async ({ input }) => {
-      const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.serviceName}-${input.fileName}`, folder: "services" });
-      await updateService(input.serviceId, { imageUrl: uploaded.url });
-      return uploaded;
+      try {
+        const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.serviceName}-${input.fileName}`, folder: "services" });
+        await updateService(input.serviceId, { imageUrl: uploaded.url });
+        return uploaded;
+      } catch (error) {
+        throw adminMutationFailure("Service image upload", error);
+      }
     }),
     clearServiceImage: adminProcedure.input(z3.object({ serviceId: z3.number(), imageUrl: z3.string().min(5).optional() })).mutation(async ({ input }) => {
       if (input.imageUrl) await storageRemove(input.imageUrl);
@@ -4260,9 +4547,13 @@ var appRouter = router({
     }),
     uploadGalleryImage: adminProcedure.input(z3.object({ dataUrl: z3.string().min(50), fileName: z3.string().default("gallery-image.png") })).mutation(async ({ input }) => uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: input.fileName, folder: "gallery" })),
     uploadWebsiteSectionImage: adminProcedure.input(z3.object({ sectionKey: z3.string().min(2), dataUrl: z3.string().min(50), fileName: z3.string().default("section-image.png"), imageRole: z3.enum(["main", "portrait"]).default("main") })).mutation(async ({ input }) => {
-      const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.sectionKey}-${input.imageRole}-${input.fileName}`, folder: "website-sections" });
-      await updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url, imageUrl: uploaded.url } : { imageUrl: uploaded.url });
-      return uploaded;
+      try {
+        const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.sectionKey}-${input.imageRole}-${input.fileName}`, folder: "website-sections" });
+        await updateWebsiteSection(input.sectionKey, input.imageRole === "portrait" ? { portraitImageUrl: uploaded.url, imageUrl: uploaded.url } : { imageUrl: uploaded.url });
+        return uploaded;
+      } catch (error) {
+        throw adminMutationFailure("Website section image upload", error);
+      }
     }),
     clearWebsiteSectionImage: adminProcedure.input(z3.object({ sectionKey: z3.string().min(2), imageRole: z3.enum(["main", "portrait"]).default("main"), imageUrl: z3.string().min(5).optional() })).mutation(async ({ input }) => {
       if (input.imageUrl) await storageRemove(input.imageUrl);
