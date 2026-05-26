@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll, smoothScrollToTop } from "@/lib/smoothScroll";
+import { getActivitySessionId, getBrowserInfo, getCurrentPageUrl } from "@/lib/activityTracking";
 import {
   CalendarDays,
   Heart,
@@ -39,6 +40,27 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [, setLocation] = useLocation();
+  const track = trpc.public.track.useMutation();
+
+  const trackBraidersClick = () => {
+    const browserInfo = getBrowserInfo();
+    track.mutate({
+      eventName: "braiders_near_me_click",
+      pagePath: getCurrentPageUrl(),
+      sessionId: getActivitySessionId(),
+      activityType: "braiders_near_me_clicked",
+      activityCategory: "kouvia",
+      description: "User clicked Braiders Near Me from website navigation",
+      status: "info",
+      metadata: {
+        browser: browserInfo.browser,
+        deviceType: browserInfo.deviceType,
+      },
+      relatedEntityType: "feature",
+      relatedEntityId: "braiders_near_me",
+      sourceApp: "ebysplace",
+    });
+  };
 
   const handleProductSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -72,7 +94,7 @@ export function SiteHeader() {
             aria-label="Main navigation"
           >
             {desktopNavLinks.map(item => (
-              <Link key={item.href} className="nav-link whitespace-nowrap text-[0.68rem] tracking-[.1em] 2xl:text-[0.72rem] 2xl:tracking-[.12em]" href={item.href}>
+              <Link key={item.href} className="nav-link whitespace-nowrap text-[0.68rem] tracking-[.1em] 2xl:text-[0.72rem] 2xl:tracking-[.12em]" href={item.href} onClick={() => { if (item.href === "/braiders-near-me") trackBraidersClick(); }}>
                 {item.label}
               </Link>
             ))}
@@ -152,7 +174,10 @@ export function SiteHeader() {
                 key={item.href}
                 className="rounded-2xl border border-[#d8bd74]/35 bg-white/45 px-4 py-3 text-sm font-semibold text-[#2a1a0b] transition hover:border-[#b9933e] hover:bg-white/70 hover:text-[#8a641e]"
                 href={item.href}
-                onClick={() => setMenuOpen(false)}
+                onClick={() => {
+                  if (item.href === "/braiders-near-me") trackBraidersClick();
+                  setMenuOpen(false);
+                }}
               >
                 {item.label}
               </Link>
@@ -299,6 +324,7 @@ export default function Home() {
   const newsletter = trpc.public.newsletter.useMutation({
     onSuccess: () => smoothScrollToTop(40),
   });
+  const logActivity = trpc.public.logActivity.useMutation();
   const [email, setEmail] = useState("");
   const aboutSection = (sections as any[]).find((section) => section.sectionKey === "about_us") || {
     eyebrow: "Our Story",
@@ -562,6 +588,16 @@ export default function Home() {
               onSubmit={e => {
                 e.preventDefault();
                 newsletter.mutate({ email, productAlerts: true });
+                logActivity.mutate({
+                  sessionId: getActivitySessionId(),
+                  activityType: "newsletter_signup",
+                  activityCategory: "newsletter",
+                  description: "Newsletter signup submitted",
+                  pageUrl: getCurrentPageUrl(),
+                  userEmail: email,
+                  status: "success",
+                  sourceApp: "ebysplace",
+                });
                 setEmail("");
               }}
             >

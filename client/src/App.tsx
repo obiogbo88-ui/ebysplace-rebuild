@@ -4,6 +4,8 @@ import { lazy, Suspense, useEffect } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import { canonicalUrl } from "@/lib/canonicalUrl";
 import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";
+import { trpc } from "@/lib/trpc";
+import { getActivitySessionId, getBrowserInfo } from "@/lib/activityTracking";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
@@ -225,6 +227,7 @@ function upsertCanonicalLink(href: string) {
 
 function DynamicSeoMetadata() {
   const [location] = useLocation();
+  const track = trpc.public.track.useMutation();
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -248,6 +251,24 @@ function DynamicSeoMetadata() {
     upsertMeta('meta[name="twitter:title"]', "name", "twitter:title", seo.title);
     upsertMeta('meta[name="twitter:description"]', "name", "twitter:description", seo.description);
   }, [location]);
+
+  useEffect(() => {
+    const browserInfo = getBrowserInfo();
+    track.mutate({
+      eventName: "page_visit",
+      pagePath: location.split(/[?#]/)[0] || "/",
+      sessionId: getActivitySessionId(),
+      activityType: "website_visit",
+      activityCategory: "visit",
+      description: `Visited ${location.split(/[?#]/)[0] || "/"}`,
+      status: "info",
+      metadata: {
+        referrer: typeof document !== "undefined" ? document.referrer || null : null,
+        browser: browserInfo.browser,
+        deviceType: browserInfo.deviceType,
+      },
+    });
+  }, [location, track]);
 
   return null;
 }

@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from "react";
 import { Loader2, UploadCloud, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { getActivitySessionId, getBrowserInfo, getCurrentPageUrl } from "@/lib/activityTracking";
 import { SiteFooter, SiteHeader } from "./Home";
 
 const aiTryOnToastClassNames = {
@@ -151,6 +152,7 @@ const TRY_ON_ATTEMPT_KEY = "ebysplace_tryon_attempts";
 export default function TryOn() {
   const upload = trpc.public.uploadTryOnPhoto.useMutation();
   const generate = trpc.public.generateTryOn.useMutation();
+  const logActivity = trpc.public.logActivity.useMutation();
   const [attemptsUsed, setAttemptsUsed] = useState(() => Number(localStorage.getItem(TRY_ON_ATTEMPT_KEY) || "0"));
   const [photo, setPhoto] = useState<UploadedPhoto>();
   const [storedPhoto, setStoredPhoto] = useState<StoredPhoto>();
@@ -170,6 +172,20 @@ export default function TryOn() {
     try {
       const compressed = await compressImage(file);
       setPhoto({ ...compressed, source });
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "ai_tryon_image_uploaded",
+        activityCategory: "ai_try_on",
+        description: "AI Try-On image prepared for upload",
+        pageUrl: getCurrentPageUrl(),
+        status: "success",
+        metadata: {
+          source,
+          sizeKb: compressed.sizeKb,
+          browser: getBrowserInfo().browser,
+          deviceType: getBrowserInfo().deviceType,
+        },
+      });
       toast.success("Photo prepared for AI Try-On", {
         description: `Prepared to ${compressed.sizeKb}KB so the AI can read it more reliably.`,
         classNames: aiTryOnToastClassNames,
@@ -177,6 +193,15 @@ export default function TryOn() {
     } catch (err) {
       const message = friendlyTryOnError(err);
       setError(message);
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "ai_tryon_failed",
+        activityCategory: "ai_try_on",
+        description: "AI Try-On image preparation failed",
+        pageUrl: getCurrentPageUrl(),
+        status: "failed",
+        metadata: { errorMessage: message },
+      });
       toast.error("Photo could not be prepared", {
         description: message,
         classNames: aiTryOnToastClassNames,
@@ -207,6 +232,15 @@ export default function TryOn() {
 
     setError(undefined);
     try {
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "ai_tryon_started",
+        activityCategory: "ai_try_on",
+        description: `AI Try-On generation started for ${style}`,
+        pageUrl: getCurrentPageUrl(),
+        status: "pending",
+        metadata: { styleName: style, imageUploaded: true },
+      });
       const uploaded = storedPhoto ?? await upload.mutateAsync({
         dataUrl: photo.dataUrl,
         fileName: `${photo.fileName}.jpg`,
@@ -228,9 +262,28 @@ export default function TryOn() {
         description: result.customerNotification ?? "Your hairstyle preview is ready below.",
         classNames: aiTryOnToastClassNames,
       });
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "ai_tryon_completed",
+        activityCategory: "ai_try_on",
+        description: `AI Try-On generation completed for ${style}`,
+        pageUrl: getCurrentPageUrl(),
+        status: "success",
+        relatedEntityType: "try_on",
+        relatedEntityId: result.id,
+      });
     } catch (err) {
       const message = friendlyTryOnError(err);
       setError(message);
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "ai_tryon_failed",
+        activityCategory: "ai_try_on",
+        description: `AI Try-On generation failed for ${style}`,
+        pageUrl: getCurrentPageUrl(),
+        status: "failed",
+        metadata: { errorMessage: message },
+      });
       toast.error("AI Try-On failed", {
         description: message,
         classNames: aiTryOnToastClassNames,

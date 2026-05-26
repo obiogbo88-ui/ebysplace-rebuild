@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { smoothScrollToElement } from "@/lib/smoothScroll";
+import { getActivitySessionId, getBrowserInfo, getCurrentPageUrl } from "@/lib/activityTracking";
 import { SiteFooter, SiteHeader } from "./Home";
 import { ChevronLeft } from "lucide-react";
 
@@ -187,6 +188,7 @@ export default function Booking() {
   );
   const create = trpc.public.createBooking.useMutation();
   const checkout = trpc.public.createDepositCheckout.useMutation();
+  const logActivity = trpc.public.logActivity.useMutation();
   const availability = trpc.public.availability.useQuery();
   const paymentMode = trpc.public.paymentMode.useQuery();
   const bookingBlockedSlots = availability.data?.blockedSlots || [];
@@ -208,6 +210,20 @@ export default function Booking() {
     }
     if (params.get("payment") === "cancelled") {
       goToStep(6);
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "booking_cancelled",
+        activityCategory: "booking",
+        description: "Booking payment flow returned as cancelled",
+        pageUrl: getCurrentPageUrl(),
+        status: "failed",
+        relatedEntityType: "booking",
+        relatedEntityId: params.get("booking") || undefined,
+        metadata: {
+          browser: getBrowserInfo().browser,
+          deviceType: getBrowserInfo().deviceType,
+        },
+      });
       toast.error("Deposit payment was not completed", {
         description: "No payment was taken. Review your booking and click Pay £20 Deposit again when ready.",
       });
@@ -269,6 +285,22 @@ export default function Booking() {
       return;
     }
     try {
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "booking_started",
+        activityCategory: "booking",
+        description: `Booking submission started for ${form.serviceName}`,
+        pageUrl: getCurrentPageUrl(),
+        status: "pending",
+        metadata: {
+          serviceName: form.serviceName,
+          appointmentDate: form.appointmentDate,
+          appointmentTime: form.appointmentTime,
+          serviceLocation: form.serviceLocation,
+          browser: getBrowserInfo().browser,
+          deviceType: getBrowserInfo().deviceType,
+        },
+      });
       const checkoutProducts = normalizeBookingProductsForCheckout(selectedProducts);
       if (checkoutProducts.some((item) => !Number.isFinite(item.productId) || item.productId <= 0)) {
         toast.error("Please remove and re-add the affected appointment product before checkout.");
@@ -291,8 +323,30 @@ export default function Booking() {
         addOns: selectedAddOns.map(({ id, name, price }) => ({ id, name, price })),
         bookingProducts: checkoutProducts,
       });
-      if (session.checkoutUrl) window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
+      if (session.checkoutUrl) {
+        logActivity.mutate({
+          sessionId: getActivitySessionId(),
+          activityType: "checkout_started",
+          activityCategory: "payment",
+          description: `Booking checkout started for booking #${booking.bookingId}`,
+          pageUrl: getCurrentPageUrl(),
+          status: "pending",
+          relatedEntityType: "booking",
+          relatedEntityId: booking.bookingId,
+          metadata: { checkoutProvider: "stripe" },
+        });
+        window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
+      }
     } catch (error) {
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "booking_failed",
+        activityCategory: "booking",
+        description: "Booking flow failed before payment completion",
+        pageUrl: getCurrentPageUrl(),
+        status: "failed",
+        metadata: { errorMessage: bookingCheckoutErrorDescription(error) },
+      });
       toast.error("Booking could not be completed", {
         description: bookingCheckoutErrorDescription(error),
       });

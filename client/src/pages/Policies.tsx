@@ -33,6 +33,11 @@ const policies: Record<PolicyKey, PolicyContent> = {
           "We use information to manage bookings, process shop orders, respond to enquiries, operate the website, moderate reviews, improve customer care, and keep appropriate business records.",
       },
       {
+        title: "Activity and visitor monitoring",
+        body:
+          "To protect service quality and platform security, we record activity events such as page visits, booking/shop/payment flow status, AI Try-On actions, and Braiders Near Me/Kouvia interactions. We store privacy-safe metadata (for example browser/device and approximate region/country when available), avoid exact GPS without clear consent, and restrict activity-log access to authorised admins only.",
+      },
+      {
         title: "Cookies",
         body:
           "The website may use essential cookies for security, checkout, booking, and account functionality. Analytics or preference cookies should only be used where appropriate consent or settings are available.",

@@ -211,6 +211,34 @@ export const analyticsEvents = pgTable("analyticsEvents", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const activityLogs = pgTable("activityLogs", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId"),
+  userName: varchar("userName", { length: 180 }),
+  userEmail: varchar("userEmail", { length: 320 }),
+  sessionId: varchar("sessionId", { length: 128 }),
+  activityType: varchar("activityType", { length: 120 }).notNull(),
+  activityCategory: varchar("activityCategory", { length: 120 }).notNull(),
+  description: text("description").notNull(),
+  pageUrl: varchar("pageUrl", { length: 800 }),
+  metadata: json("metadata"),
+  status: varchar("status", { length: 30 }).default("info").notNull(),
+  ipAddress: varchar("ipAddress", { length: 80 }),
+  country: varchar("country", { length: 120 }),
+  city: varchar("city", { length: 120 }),
+  region: varchar("region", { length: 120 }),
+  deviceType: varchar("deviceType", { length: 40 }),
+  browser: varchar("browser", { length: 80 }),
+  userAgent: varchar("userAgent", { length: 500 }),
+  relatedEntityType: varchar("relatedEntityType", { length: 80 }),
+  relatedEntityId: varchar("relatedEntityId", { length: 120 }),
+  sourceApp: varchar("sourceApp", { length: 80 }).default("ebysplace").notNull(),
+  isRead: trueFalseEnum("isRead").default("false").notNull(),
+  createdAtMs: bigint("createdAtMs", { mode: "number" }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
 export const emailNotificationLogs = pgTable("emailNotificationLogs", {
   id: serial("id").primaryKey(),
   entityType: emailNotificationEntityEnum("entityType").notNull(),
@@ -250,3 +278,4 @@ export type Booking = typeof bookings.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type ProductReview = typeof productReviews.$inferSelect;
 export type EmailNotificationLog = typeof emailNotificationLogs.$inferSelect;
+export type ActivityLog = typeof activityLogs.$inferSelect;

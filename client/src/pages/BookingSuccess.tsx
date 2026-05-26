@@ -1,9 +1,26 @@
 import { Link } from "wouter";
+import { useEffect } from "react";
+import { trpc } from "@/lib/trpc";
+import { getActivitySessionId, getCurrentPageUrl } from "@/lib/activityTracking";
 import { SiteFooter, SiteHeader } from "./Home";
 
 export default function BookingSuccess() {
   const searchParams = new URLSearchParams(window.location.search);
   const bookingId = searchParams.get("booking");
+  const logActivity = trpc.public.logActivity.useMutation();
+
+  useEffect(() => {
+    logActivity.mutate({
+      sessionId: getActivitySessionId(),
+      activityType: "payment_successful",
+      activityCategory: "payment",
+      description: `Booking payment returned successfully${bookingId ? ` for booking #${bookingId}` : ""}`,
+      pageUrl: getCurrentPageUrl(),
+      status: "success",
+      relatedEntityType: "booking",
+      relatedEntityId: bookingId || undefined,
+    });
+  }, [bookingId]);
 
   return (
     <div className="luxury-shell">

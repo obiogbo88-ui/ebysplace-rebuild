@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, MapPin, Star, CalendarCheck, ExternalLink, SlidersHorizontal, Navigation } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { getActivitySessionId, getBrowserInfo, getCurrentPageUrl } from "@/lib/activityTracking";
 import { SiteFooter, SiteHeader } from "./Home";
 
 const styles = ["All styles", "Knotless", "Box Braids", "Cornrows", "Twists", "Locs", "Kids Styles"];
@@ -62,6 +64,7 @@ export default function Braiders() {
   const [selectedStyle, setSelectedStyle] = useState("All styles");
   const [sortBy, setSortBy] = useState("Recommended");
   const [locationEnabled, setLocationEnabled] = useState(false);
+  const logActivity = trpc.public.logActivity.useMutation();
 
   const filteredBraiders = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -77,6 +80,55 @@ export default function Braiders() {
       return b.rating - a.rating || a.distance - b.distance;
     });
   }, [query, selectedStyle, sortBy]);
+
+  useEffect(() => {
+    logActivity.mutate({
+      sessionId: getActivitySessionId(),
+      activityType: "kouvia_section_opened",
+      activityCategory: "kouvia",
+      description: "User opened Braiders Near Me / Kouvia section",
+      pageUrl: getCurrentPageUrl(),
+      status: "info",
+      metadata: {
+        browser: getBrowserInfo().browser,
+        deviceType: getBrowserInfo().deviceType,
+      },
+      sourceApp: "ebysplace",
+    });
+  }, []);
+
+  useEffect(() => {
+    const value = query.trim();
+    if (!value) return;
+    const timer = window.setTimeout(() => {
+      logActivity.mutate({
+        sessionId: getActivitySessionId(),
+        activityType: "braider_search_performed",
+        activityCategory: "kouvia",
+        description: "Braider search performed",
+        pageUrl: getCurrentPageUrl(),
+        status: "info",
+        metadata: { query: value, selectedStyle, sortBy },
+        sourceApp: "ebysplace",
+      });
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [query, selectedStyle, sortBy]);
+
+  const logKouviaRedirect = (action: string, metadata?: Record<string, unknown>) => {
+    logActivity.mutate({
+      sessionId: getActivitySessionId(),
+      activityType: action,
+      activityCategory: "kouvia",
+      description: `User redirected to ${KOUVIA_BOOKING_URL}`,
+      pageUrl: getCurrentPageUrl(),
+      status: "info",
+      metadata,
+      sourceApp: "ebysplace",
+      relatedEntityType: "external_link",
+      relatedEntityId: KOUVIA_BOOKING_URL,
+    });
+  };
 
   return (
     <div className="luxury-shell">
@@ -115,7 +167,7 @@ export default function Braiders() {
               </label>
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-white/55">
-              <button type="button" onClick={() => setLocationEnabled(true)} className="inline-flex items-center gap-2 rounded-full border border-white/12 px-4 py-2 transition hover:border-[var(--gold)] hover:text-white">
+              <button type="button" onClick={() => { setLocationEnabled(true); logActivity.mutate({ sessionId: getActivitySessionId(), activityType: "braider_location_entered", activityCategory: "kouvia", description: "Braider location search enabled", pageUrl: getCurrentPageUrl(), status: "info", metadata: { mode: "demo_location" }, sourceApp: "ebysplace" }); }} className="inline-flex items-center gap-2 rounded-full border border-white/12 px-4 py-2 transition hover:border-[var(--gold)] hover:text-white">
                 <Navigation className="h-4 w-4" />
                 {locationEnabled ? "Using Somerset demo distances" : "Use my location"}
               </button>
@@ -133,8 +185,8 @@ export default function Braiders() {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">Availability and customer review foundation</div>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <a className="btn-gold" href={KOUVIA_BOOKING_URL} target="_blank" rel="noreferrer">Register as a Braider <ExternalLink className="h-4 w-4" /></a>
-              <a className="btn-dark" href={KOUVIA_BOOKING_URL} target="_blank" rel="noreferrer">Open Kouvia</a>
+              <a className="btn-gold" href={KOUVIA_BOOKING_URL} target="_blank" rel="noreferrer" onClick={() => logKouviaRedirect("braider_registration_started", { entryPoint: "braiders_page_register_cta" })}>Register as a Braider <ExternalLink className="h-4 w-4" /></a>
+              <a className="btn-dark" href={KOUVIA_BOOKING_URL} target="_blank" rel="noreferrer" onClick={() => logKouviaRedirect("kouvia_opened", { entryPoint: "braiders_page_open_kouvia" })}>Open Kouvia</a>
             </div>
             <div className="mt-6 rounded-[1.75rem] border border-white/12 bg-[#130d08] p-4 shadow-[0_20px_45px_rgba(0,0,0,.35)]">
               <p className="text-xs uppercase tracking-[0.2em] text-[var(--gold)]/80">Kouvia app preview</p>
@@ -158,7 +210,7 @@ export default function Braiders() {
                   </div>
                 </div>
               </div>
-              <a className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--gold)] transition hover:text-white" href={KOUVIA_BOOKING_URL} target="_blank" rel="noreferrer">
+              <a className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--gold)] transition hover:text-white" href={KOUVIA_BOOKING_URL} target="_blank" rel="noreferrer" onClick={() => logKouviaRedirect("kouvia_opened", { entryPoint: "kouvia_preview_card" })}>
                 Open Kouvia preview
                 <ExternalLink className="h-4 w-4" />
               </a>
@@ -193,6 +245,20 @@ export default function Braiders() {
                   <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-sm text-white/65">
                     <span className="flex items-center gap-2"><CalendarCheck className="h-4 w-4 text-[var(--gold)]" /> {braider.availability}</span>
                     <span>{braider.reviews} reviews</span>
+                    <a
+                      className="btn-dark py-2 text-xs"
+                      href={KOUVIA_BOOKING_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() =>
+                        logKouviaRedirect("customer_booking_started_kouvia", {
+                          braiderName: braider.name,
+                          braiderArea: braider.area,
+                        })
+                      }
+                    >
+                      Contact / Book
+                    </a>
                   </div>
                 </article>
               ))}

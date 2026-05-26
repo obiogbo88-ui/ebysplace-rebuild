@@ -22,7 +22,8 @@ import {
 import { getAdminLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
-import { CalendarDays, Home, Images, Instagram, LayoutDashboard, LogOut, MessageSquare, Package, PanelLeft, Scissors, ShoppingBag, Users } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { Activity, CalendarDays, Home, Images, Instagram, LayoutDashboard, LogOut, MessageSquare, Package, PanelLeft, Scissors, ShoppingBag, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -38,6 +39,7 @@ const menuItems = [
   { icon: Images, label: "Gallery", path: "/admin#gallery" },
   { icon: Instagram, label: "Instagram", path: "/admin#instagram" },
   { icon: MessageSquare, label: "Reviews", path: "/admin#reviews" },
+  { icon: Activity, label: "Activity & Notifications", path: "/admin#activity-monitoring" },
   { icon: Users, label: "Admin Users", path: "/admin#users" },
 ];
 
@@ -119,6 +121,11 @@ function DashboardLayoutContent({
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
+  const unreadActivityCount = trpc.admin.unreadActivityCount.useQuery(undefined, {
+    enabled: Boolean(user?.role === "admin"),
+    retry: false,
+    refetchInterval: 15000,
+  });
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -235,6 +242,11 @@ function DashboardLayoutContent({
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
                       />
                       <span>{item.label}</span>
+                      {item.path === "/admin#activity-monitoring" && (unreadActivityCount.data ?? 0) > 0 ? (
+                        <span className="ml-auto rounded-full border border-primary/35 bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary group-data-[collapsible=icon]:hidden">
+                          {unreadActivityCount.data}
+                        </span>
+                      ) : null}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
