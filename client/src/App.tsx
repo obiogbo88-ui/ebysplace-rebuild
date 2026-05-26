@@ -5,7 +5,13 @@ import { Redirect, Route, Switch, useLocation } from "wouter";
 import { canonicalUrl } from "@/lib/canonicalUrl";
 import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";
 import { trpc } from "@/lib/trpc";
-import { getActivitySessionId, getBrowserInfo } from "@/lib/activityTracking";
+import {
+  createTrackingEventKey,
+  getActivitySessionId,
+  getBrowserInfo,
+  shouldThrottleTrackingEvent,
+  shouldTrackPublicActivity,
+} from "@/lib/activityTracking";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
@@ -268,7 +274,8 @@ function DynamicSeoMetadata() {
       // Ignore dedupe storage read/write failures.
     }
     const browserInfo = getBrowserInfo();
-    track.mutate({
+    const sessionId = getActivitySessionId();
+    const eventKey = createTrackingEventKey({
       eventName: "page_visit",
       pagePath,
       sessionId: getActivitySessionId(),

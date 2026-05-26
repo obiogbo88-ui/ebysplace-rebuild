@@ -29,7 +29,7 @@ function currentCanonicalUrlWithRefreshMarker() {
 }
 
 async function clearBrowserCaches() {
-  if (typeof window === "undefined" || !("caches" in window)) return;
+  if (typeof window === "undefined") return;
   try {
     const cacheNames = await window.caches.keys();
     await Promise.all(cacheNames.map((cacheName) => window.caches.delete(cacheName)));
@@ -50,6 +50,11 @@ class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error, isRecovering: isDynamicImportFailure(error) };
+  }
+
+  componentDidMount() {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.removeItem(CHUNK_RECOVERY_STORAGE_KEY);
   }
 
   componentDidCatch(error: Error) {

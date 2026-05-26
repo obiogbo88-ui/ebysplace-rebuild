@@ -182,6 +182,22 @@ function getOrigin(req: Request) {
   return typeof origin === "string" ? origin : "http://localhost:3000";
 }
 
+function normalizeTrackingPath(pathOrUrl: string) {
+  const raw = (pathOrUrl || "/").trim();
+  if (!raw) return "/";
+  try {
+    const parsed = new URL(raw, "https://www.ebysplace.com");
+    return parsed.pathname || "/";
+  } catch {
+    return raw.split(/[?#]/)[0] || "/";
+  }
+}
+
+function isAdminTrackingPath(pathOrUrl: string) {
+  const pathname = normalizeTrackingPath(pathOrUrl).toLowerCase();
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
 async function notifyOwnerSafely(title: string, content: string) {
   try {
     await notifyOwner({ title, content });

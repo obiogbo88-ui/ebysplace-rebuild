@@ -156,4 +156,21 @@ describe("live production repair safeguards", () => {
     expect(appSource).toContain('<Route path="/book-now" component={Booking} />');
     expect(appSource).toContain('<Route path="/bookings" component={Booking} />');
   });
+
+  it("prevents admin routes from generating public tracking spam and throttles duplicate visitor events", () => {
+    const appSource = readProjectFile("client/src/App.tsx");
+    const activityTrackingSource = readProjectFile("client/src/lib/activityTracking.ts");
+    const routerSource = readProjectFile("server/routers.ts");
+    const dbSource = readProjectFile("server/db.ts");
+
+    expect(activityTrackingSource).toContain("export function shouldTrackPublicActivity");
+    expect(activityTrackingSource).toContain("export function shouldThrottleTrackingEvent");
+    expect(activityTrackingSource).toContain("export function isAdminPath");
+    expect(appSource).toContain("if (!shouldTrackPublicActivity(pagePath)) return;");
+    expect(appSource).toContain("if (shouldThrottleTrackingEvent(eventKey)) return;");
+    expect(routerSource).toContain("if (isAdminTrackingPath(input.pagePath)) return { success: true, skipped: true };");
+    expect(routerSource).toContain("if (isAdminTrackingPath(normalizedPageUrl)) return { success: true, skipped: true };");
+    expect(dbSource).toContain("export async function shouldThrottlePublicActivity");
+    expect(dbSource).toContain("if (isAdminPathForTracking(normalizedPagePath)) return { success: true, skipped: true };");
+  });
 });
