@@ -295,8 +295,8 @@ function HomepageGalleryPreview() {
   if (preview.length === 0) return null;
   return (
     <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {preview.map((image: any) => (
-        <div className="lux-card overflow-hidden p-0" key={image.id}>
+      {preview.map((image: any, index: number) => (
+        <div className="lux-card overflow-hidden p-0" key={`${image.id ?? image.title ?? "gallery"}-${index}`}>
           <div className="media-portrait overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
             <img
               src={image.imageUrl}
@@ -441,8 +441,8 @@ export default function Home() {
               </Link>
             </div>
             <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-              {(styles as any[]).map(s => (
-                <article className="lux-card flex flex-col overflow-hidden p-0" key={s.id ?? s.slug}>
+              {(styles as any[]).map((s, index) => (
+                <article className="lux-card flex flex-col overflow-hidden p-0" key={`${s.id ?? s.slug ?? s.name}-${index}`}>
                   {s.imageUrl ? (
                     <div className="media-portrait overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
                       <img
@@ -493,12 +493,12 @@ export default function Home() {
               </div>
             </div>
             <div className="mt-10 grid gap-5 md:grid-cols-3">
-              {featuredShopProducts.map(product => (
+              {featuredShopProducts.map((product, index) => (
                 <button
                   type="button"
                   className="lux-card group block w-full min-w-0 overflow-hidden p-0 text-left transition hover:-translate-y-1 hover:border-primary/55 hover:shadow-[0_22px_55px_rgba(189,140,52,.24)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   onClick={() => navigateWithSmoothScroll(product.slug ? `/shop/${product.slug}` : `/shop?search=${encodeURIComponent(product.name)}`, setLocation)}
-                  key={product.id ?? product.slug}
+                  key={`${product.id ?? product.slug ?? product.name}-${index}`}
                   aria-label={`View ${product.name} product page`}
                 >
                   <div className="relative min-h-[210px] overflow-hidden rounded-t-[1.75rem] border-b border-primary/20 bg-[#130c07]">

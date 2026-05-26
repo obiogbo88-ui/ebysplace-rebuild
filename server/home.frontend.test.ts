@@ -343,7 +343,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(tryOnSource).toContain("const aiTryOnToastClassNames");
     expect(tryOnSource).toContain('title: "!text-black"');
     expect(tryOnSource).toContain('description: "!text-black"');
-    expect(tryOnSource.match(/classNames: aiTryOnToastClassNames/g)?.length).toBe(4);
+    expect(tryOnSource.match(/classNames: aiTryOnToastClassNames/g)?.length).toBe(5);
     expect(tryOnSource).toContain('toast.success("Photo prepared for AI Try-On"');
     expect(tryOnSource).toContain('toast.success("AI Try-On preview generated"');
     expect(tryOnSource).toContain('toast.error("Photo could not be prepared"');
