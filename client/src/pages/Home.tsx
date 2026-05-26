@@ -32,9 +32,7 @@ const navLinks = [
   { href: "/reviews", label: "Reviews" },
 ];
 
-const desktopNavLinks = navLinks.filter((item) =>
-  ["/services", "/ai-try-on", "/braiders-near-me"].includes(item.href),
-);
+const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking" && item.href !== "/shop");
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);

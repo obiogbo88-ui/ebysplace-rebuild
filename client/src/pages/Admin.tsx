@@ -554,7 +554,7 @@ export default function Admin() {
         </section>
 
         <div className="mt-8 grid gap-6">
-          <AdminPanel id="activity-monitoring" eyebrow="Live intelligence" title="Activity & Notifications" description="View visits, booking/payment/shop/AI actions, Braiders Near Me/Kouvia events, failures, and admin audit updates in one feed." icon={Activity} open={isPanelOpen("activity-monitoring")} onToggle={() => togglePanel("activity-monitoring")}>
+          <AdminPanel id="activity-monitoring" eyebrow="Live intelligence" title="Analytics and activity monitoring" description="View visits, booking/payment/shop/AI actions, Braiders Near Me/Kouvia events, failures, and admin audit updates in one feed." icon={Activity} open={isPanelOpen("activity-monitoring")} onToggle={() => togglePanel("activity-monitoring")}>
             <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
               <div>
                 <h3 className="serif text-2xl font-bold text-primary"><TrendingUp className="mr-2 inline h-5 w-5" />Best-selling analytics</h3>

@@ -1,7 +1,13 @@
 const SESSION_KEY = "ebysplace_activity_session_id";
 
 function randomSessionId() {
-  return `sess_${Math.random().toString(36).slice(2, 10)}_${Date.now().toString(36)}`;
+  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+    const bytes = new Uint8Array(8);
+    window.crypto.getRandomValues(bytes);
+    const randomPart = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+    return `sess_${randomPart}_${Date.now().toString(36)}`;
+  }
+  return `sess_${Date.now().toString(36)}_${(Date.now() % 9973).toString(36)}`;
 }
 
 export function getActivitySessionId() {
@@ -26,4 +32,3 @@ export function getCurrentPageUrl() {
   if (typeof window === "undefined") return "/";
   return `${window.location.pathname}${window.location.search || ""}`;
 }
-
