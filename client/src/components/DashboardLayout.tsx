@@ -176,7 +176,8 @@ function DashboardLayoutContent({
       const normalizedHash = normalizeAdminHash(`#${sectionId}`);
       const targetSectionId = hashToSectionId(normalizedHash);
       window.history.replaceState(null, "", `/admin${normalizedHash}`);
-      smoothScrollToElement(targetSectionId, 60);
+      smoothScrollToElement(sectionId, 60);
+      if (targetSectionId !== sectionId) smoothScrollToElement(targetSectionId, 60);
       setCurrentHash(normalizedHash);
       return;
     }
