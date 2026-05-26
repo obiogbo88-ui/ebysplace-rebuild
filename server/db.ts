@@ -1359,6 +1359,10 @@ function truncateText(value: unknown, max = MAX_METADATA_TEXT) {
   return normalized.length > max ? `${normalized.slice(0, max - 1)}…` : normalized;
 }
 
+function shouldStoreActivityLogIpAddress() {
+  return String(process.env.ACTIVITY_LOG_STORE_IP ?? "false").trim().toLowerCase() === "true";
+}
+
 function anonymizeIpAddress(rawIp: string | null) {
   if (!rawIp) return null;
   if (rawIp.includes(".")) {
@@ -1420,7 +1424,7 @@ function getRequestContext(request?: Request | null) {
   const userAgent = truncateText(req?.headers["user-agent"] || null, 500);
   const forwarded = typeof req?.headers["x-forwarded-for"] === "string" ? req.headers["x-forwarded-for"].split(",")[0]?.trim() : null;
   const rawIp = forwarded || req?.ip || null;
-  const shouldStoreIp = String(process.env.ACTIVITY_LOG_STORE_IP || "").toLowerCase() === "true";
+  const shouldStoreIp = shouldStoreActivityLogIpAddress();
   const country = truncateText(req?.headers["x-vercel-ip-country"] || null, 120);
   const city = truncateText(req?.headers["x-vercel-ip-city"] || null, 120);
   const region = truncateText(req?.headers["x-vercel-ip-country-region"] || null, 120);
@@ -1479,6 +1483,8 @@ export async function logActivity(input: ActivityLogInput) {
   if (!db) return { success: true };
   await ensureActivityLogsTable();
   const requestContext = getRequestContext(input.request);
+  const shouldStoreIp = shouldStoreActivityLogIpAddress();
+  const inputIpAddress = anonymizeIpAddress(truncateText(input.ipAddress, 80));
   const payload = {
     userId: input.userId ?? null,
     userName: truncateText(input.userName, 180),
@@ -1490,7 +1496,7 @@ export async function logActivity(input: ActivityLogInput) {
     pageUrl: truncateText(input.pageUrl, MAX_PAGE_URL_LENGTH),
     metadata: sanitizeMetadata(input.metadata),
     status: truncateText(input.status || "info", 30) || "info",
-    ipAddress: input.ipAddress ?? requestContext.ipAddress,
+    ipAddress: shouldStoreIp ? (inputIpAddress ?? requestContext.ipAddress) : null,
     country: input.country ?? requestContext.country,
     city: input.city ?? requestContext.city,
     region: input.region ?? requestContext.region,

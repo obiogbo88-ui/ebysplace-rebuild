@@ -7,6 +7,19 @@ const MAX_REQUESTS_PER_MINUTE = 120;
 const WINDOW_MS = 60_000;
 const requestWindowByIp = new Map<string, { count: number; resetAt: number }>();
 
+function anonymizeIpForRateLimit(rawIp: string | null) {
+  if (!rawIp) return "unknown";
+  if (rawIp.includes(".")) {
+    const parts = rawIp.split(".");
+    if (parts.length === 4) return `${parts[0]}.${parts[1]}.0.0`;
+  }
+  if (rawIp.includes(":")) {
+    const parts = rawIp.split(":").filter(Boolean);
+    return parts.length ? `${parts.slice(0, 2).join(":")}::` : "unknown";
+  }
+  return "unknown";
+}
+
 const externalActivitySchema = z.object({
   sessionId: z.string().max(128).optional(),
   userName: z.string().max(180).optional(),
@@ -23,11 +36,12 @@ const externalActivitySchema = z.object({
 }).strict();
 
 function rateLimited(req: Request) {
-  const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || req.ip || "unknown";
+  const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || req.ip || null;
+  const key = anonymizeIpForRateLimit(ip);
   const now = Date.now();
-  const current = requestWindowByIp.get(ip);
+  const current = requestWindowByIp.get(key);
   if (!current || current.resetAt < now) {
-    requestWindowByIp.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    requestWindowByIp.set(key, { count: 1, resetAt: now + WINDOW_MS });
     return false;
   }
   current.count += 1;
@@ -63,4 +77,3 @@ export function registerActivityCollector(app: Application) {
     }
   });
 }
-
