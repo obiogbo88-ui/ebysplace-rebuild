@@ -100,7 +100,7 @@ export default function Services() {
           </div>
 
           {isLoading ? (
-            <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-7">
               {[1, 2, 3].map(item => (
                 <div
                   key={item}
@@ -113,7 +113,7 @@ export default function Services() {
               {initialSearchTerm ? `No services currently match “${initialSearchTerm}”.` : "No services are currently published in this category."}
             </div>
           ) : (
-            <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-7">
               {visibleServices.map(service => {
                 const isBookable = service.isBookable !== "false";
                 return (
@@ -122,7 +122,7 @@ export default function Services() {
                   key={service.id ?? service.slug}
                 >
                   {service.imageUrl ? (
-                    <div className="media-portrait overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
+                    <div className="media-portrait media-service overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
                       <img
                         src={service.imageUrl}
                         alt={`${service.name} hairstyle by Eby’s Place`}
