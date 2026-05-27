@@ -86,9 +86,9 @@ export function SiteHeader() {
           />
         </Link>
 
-        <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 xl:flex xl:gap-3">
+        <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 xl:flex xl:gap-2 2xl:gap-4">
           <nav
-            className="flex min-w-0 items-center gap-2 xl:gap-3"
+            className="flex min-w-0 items-center gap-1.5 xl:gap-2 2xl:gap-3"
             aria-label="Main navigation"
           >
             {desktopNavLinks.map(item => (
@@ -105,7 +105,7 @@ export function SiteHeader() {
               Shop Now
             </button>
           </div>
-          <form className="relative w-[clamp(13rem,19vw,18rem)]" role="search" aria-label="Product search" onSubmit={handleProductSearch}>
+          <form className="relative w-[clamp(8rem,11vw,18rem)] 2xl:w-[clamp(13rem,19vw,18rem)]" role="search" aria-label="Product search" onSubmit={handleProductSearch}>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]" aria-hidden="true" />
             <input
               className="h-11 w-full rounded-full border border-[#d8bd74]/55 bg-white/55 py-2 pl-9 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
@@ -134,7 +134,7 @@ export function SiteHeader() {
           </button>
           <button
             type="button"
-            className="rounded-full border border-[#c8a95a] bg-[#111111] p-2.5 text-[#f5d66e] shadow-[0_10px_24px_rgba(17,17,17,.26)] transition hover:bg-[#1a1a1a] sm:p-3"
+            className="rounded-full border border-[#c8a95a] bg-[#111111] p-2.5 text-primary shadow-[0_10px_24px_rgba(17,17,17,.26)] transition hover:bg-[#1a1a1a] sm:p-3"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(value => !value)}
