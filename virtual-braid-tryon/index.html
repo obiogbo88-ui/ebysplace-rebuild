@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Virtual Braid Try-On</title>
+    <meta name="title" content="Virtual Braid Try-On" />
+    <meta
+      name="description"
+      content="Virtual Braid Try-On lets you preview premium braid styles while preserving your original face and identity with protected facial details and realistic hair-only edits."
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #f9f6f1;
+        color: #23180f;
+      }
+      .page {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .hero,
+      .section,
+      .panel {
+        background: #fff;
+        border: 1px solid #eadfce;
+        border-radius: 16px;
+      }
+      .hero {
+        padding: 24px;
+        margin-bottom: 18px;
+      }
+      .hero h1 {
+        margin: 0 0 10px;
+        font-size: clamp(1.4rem, 2vw, 2.1rem);
+      }
+      .hero p {
+        margin: 0;
+        line-height: 1.5;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+      }
+      .section,
+      .panel {
+        padding: 18px;
+      }
+      label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin: 10px 0 6px;
+      }
+      input,
+      select,
+      button {
+        font: inherit;
+      }
+      input[type="file"],
+      select,
+      input[type="range"] {
+        width: 100%;
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .controls > div {
+        min-width: 0;
+      }
+      button {
+        border: 0;
+        border-radius: 12px;
+        padding: 12px 14px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn-primary {
+        background: #3a2814;
+        color: #fff;
+      }
+      .btn-secondary {
+        background: #eee3d1;
+        color: #2f2111;
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+      .status {
+        margin-top: 10px;
+        font-size: 0.92rem;
+      }
+      .muted {
+        color: #68503a;
+      }
+      .attempts {
+        margin-top: 10px;
+        background: #f6efe6;
+        border: 1px solid #eadfce;
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 0.92rem;
+      }
+      .preview-wrap {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .preview {
+        width: 100%;
+        aspect-ratio: 1/1;
+        object-fit: contain;
+        border: 1px solid #eadfce;
+        background: #faf7f2;
+        border-radius: 12px;
+      }
+      .section-label {
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #7a6248;
+        margin-bottom: 8px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero" aria-labelledby="page-heading">
+        <div class="section-label">Virtual Braid Try-On</div>
+        <h1 id="page-heading">Virtual Braid Try-On</h1>
+        <p>
+          Upload your selfie and preview your selected braid style while keeping your original face and identity preserved.
+          Only the hair area is changed; your facial features, skin tone, expression, pose, background, lighting,
+          clothing, and jewellery stay protected.
+        </p>
+      </section>
+
+      <div class="grid">
+        <section class="section" aria-labelledby="controls-heading">
+          <div class="section-label">Virtual Braid Try-On Setup</div>
+          <h2 id="controls-heading">Create your Virtual Braid Try-On preview</h2>
+
+          <label for="selfie-input">Upload selfie</label>
+          <input id="selfie-input" type="file" accept="image/*" />
+
+          <label for="style-select">Select braid style</label>
+          <select id="style-select">
+            <option value="">Choose a braid style</option>
+            <option>Bohemian Knotless Braids</option>
+            <option>Waist-Length Knotless Braids</option>
+            <option>Goddess Braids</option>
+            <option>Fulani Braids</option>
+            <option>Cornrow Updo Braids</option>
+            <option>Stitch Braids Ponytail</option>
+          </select>
+
+          <div class="section-label" style="margin-top: 16px">Face guide controls</div>
+          <p class="muted" style="margin: 0 0 6px">Fine-tune the protected face region for better face-lock compositing.</p>
+
+          <div class="controls">
+            <div>
+              <label for="face-center-x">Face center X</label>
+              <input id="face-center-x" type="range" min="0.2" max="0.8" step="0.01" value="0.5" />
+            </div>
+            <div>
+              <label for="face-center-y">Face center Y</label>
+              <input id="face-center-y" type="range" min="0.18" max="0.65" step="0.01" value="0.4" />
+            </div>
+            <div>
+              <label for="face-radius-x">Face radius X</label>
+              <input id="face-radius-x" type="range" min="0.1" max="0.35" step="0.01" value="0.19" />
+            </div>
+            <div>
+              <label for="face-radius-y">Face radius Y</label>
+              <input id="face-radius-y" type="range" min="0.12" max="0.4" step="0.01" value="0.25" />
+            </div>
+            <div>
+              <label for="face-feather">Face feather</label>
+              <input id="face-feather" type="range" min="8" max="80" step="1" value="28" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="generate-btn" class="btn-primary" type="button">Generate Virtual Braid Try-On</button>
+            <button id="download-btn" class="btn-secondary" type="button" disabled>Download Virtual Braid Try-On image</button>
+          </div>
+
+          <div id="attempts" class="attempts" aria-live="polite"></div>
+          <p id="status" class="status muted" aria-live="polite">Upload a photo and choose a style to begin.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="preview-heading">
+          <div class="section-label">Virtual Braid Try-On Result</div>
+          <h2 id="preview-heading">Face-locked Virtual Braid Try-On preview</h2>
+          <div class="preview-wrap">
+            <img id="preview-image" class="preview" alt="Virtual Braid Try-On preview" />
+            <canvas id="guide-canvas" class="preview" aria-label="Face guide overlay"></canvas>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

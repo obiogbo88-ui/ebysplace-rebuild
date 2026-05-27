@@ -1197,6 +1197,7 @@ async function listServices(category) {
     await seedIfNeeded();
     const db = await getDb();
     if (!db) return fallback;
+    await ensureServicesTable();
     const rows = await db.select().from(services).orderBy(asc(services.sortOrder));
     return mergeWithSeedServices(rows, category);
   } catch (error) {
@@ -1210,6 +1211,7 @@ async function listFeaturedServices() {
     await seedIfNeeded();
     const db = await getDb();
     if (!db) return fallback;
+    await ensureServicesTable();
     const rows = await db.select().from(services).where(eq(services.isFeatured, "true")).orderBy(asc(services.sortOrder));
     const safeRows = mergeWithSeedServices(rows).filter((item) => item.isFeatured === "true");
     return safeRows.length ? safeRows : fallback;
@@ -1224,6 +1226,7 @@ async function listWebsiteSections() {
     await seedIfNeeded();
     const db = await getDb();
     if (!db) return fallback;
+    await ensureWebsiteSectionColumns();
     const rows = await db.select().from(websiteSections).where(eq(websiteSections.isPublished, "true")).orderBy(asc(websiteSections.sortOrder));
     return rows.length ? rows : fallback;
   } catch (error) {
@@ -1266,6 +1269,7 @@ async function listApprovedReviews() {
     await seedIfNeeded();
     const db = await getDb();
     if (!db) return seedReviews;
+    await ensureReviewsTable();
     const rows = await db.select().from(reviews).where(eq(reviews.status, "approved")).orderBy(desc(reviews.createdAt));
     return rows.length ? rows : seedReviews;
   } catch (error) {
@@ -1276,6 +1280,7 @@ async function listApprovedReviews() {
 async function submitReview(input) {
   const db = await getDb();
   if (!db) return { id: Date.now(), status: "pending" };
+  await ensureReviewsTable();
   const inserted = await db.insert(reviews).values({ ...input, status: "pending", source: "website" }).returning({ id: reviews.id });
   return { id: inserted[0]?.id ?? 0, status: "pending" };
 }
@@ -1405,6 +1410,7 @@ async function listGallery(category) {
     await seedIfNeeded();
     const db = await getDb();
     if (!db) return fallback;
+    await ensureGalleryTable();
     const filter = category && category !== "All" ? and(eq(galleryImages.isPublished, "true"), eq(galleryImages.category, category)) : eq(galleryImages.isPublished, "true");
     const rows = await db.select().from(galleryImages).where(filter).orderBy(asc(galleryImages.sortOrder), desc(galleryImages.createdAt));
     const safeRows = rows.filter((row) => isUsableImageUrl(row.imageUrl));
@@ -1422,6 +1428,34 @@ async function addPgColumnIfMissing(tableName, columnName, definition) {
     await _pool.query(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "${columnName}" ${definition}`);
   } catch (err) {
     console.warn(`[Database] Could not add column ${tableName}.${columnName}`, err);
+  }
+}
+async function renamePgColumnIfMissing(tableName, oldColumnName, newColumnName) {
+  if (!_pool || oldColumnName === newColumnName) return;
+  try {
+    await _pool.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = '${tableName}'
+            AND column_name = '${oldColumnName}'
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = '${tableName}'
+            AND column_name = '${newColumnName}'
+        ) THEN
+          EXECUTE 'ALTER TABLE "${tableName}" RENAME COLUMN "${oldColumnName}" TO "${newColumnName}"';
+        END IF;
+      END $$;
+    `);
+  } catch (err) {
+    console.warn(`[Database] Could not rename column ${tableName}.${oldColumnName} -> ${newColumnName}`, err);
   }
 }
 async function makePgColumnNullable(tableName, columnName) {
@@ -1447,14 +1481,182 @@ async function ensureBookingLocationColumns() {
 }
 async function ensureOrderLocationColumns() {
   if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "orders" (
+      "id" SERIAL PRIMARY KEY,
+      "customerName" VARCHAR(180) NOT NULL DEFAULT 'Guest',
+      "customerEmail" VARCHAR(320) NOT NULL DEFAULT 'unknown@example.com',
+      "customerPhone" VARCHAR(80),
+      "serviceLocation" TEXT NOT NULL DEFAULT 'studio',
+      "addressLine1" VARCHAR(255),
+      "addressLine2" VARCHAR(255),
+      "city" VARCHAR(120),
+      "county" VARCHAR(120),
+      "postcode" VARCHAR(40),
+      "deliveryNote" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'draft',
+      "checkoutTotalCharged" NUMERIC(10,2),
+      "stripeCheckoutSessionId" VARCHAR(255),
+      "stripePaymentIntentId" VARCHAR(255),
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure orders table", err);
+  }
+  await renamePgColumnIfMissing("orders", "customer_name", "customerName");
+  await renamePgColumnIfMissing("orders", "customer_email", "customerEmail");
+  await renamePgColumnIfMissing("orders", "customer_phone", "customerPhone");
+  await renamePgColumnIfMissing("orders", "servicelocation", "serviceLocation");
+  await renamePgColumnIfMissing("orders", "service_location", "serviceLocation");
+  await renamePgColumnIfMissing("orders", "address_line1", "addressLine1");
+  await renamePgColumnIfMissing("orders", "address_line2", "addressLine2");
+  await renamePgColumnIfMissing("orders", "delivery_note", "deliveryNote");
+  await renamePgColumnIfMissing("orders", "checkout_total_charged", "checkoutTotalCharged");
+  await renamePgColumnIfMissing("orders", "stripe_checkout_session_id", "stripeCheckoutSessionId");
+  await renamePgColumnIfMissing("orders", "stripe_payment_intent_id", "stripePaymentIntentId");
+  await renamePgColumnIfMissing("orders", "created_at", "createdAt");
+  await renamePgColumnIfMissing("orders", "updated_at", "updatedAt");
   await addPgColumnIfMissing("orders", "serviceLocation", "TEXT NOT NULL DEFAULT 'studio'");
+  await addPgColumnIfMissing("orders", "customerPhone", "VARCHAR(80)");
   await addPgColumnIfMissing("orders", "addressLine2", "VARCHAR(255)");
   await addPgColumnIfMissing("orders", "county", "VARCHAR(120)");
   await addPgColumnIfMissing("orders", "deliveryNote", "TEXT");
+  await addPgColumnIfMissing("orders", "status", "TEXT NOT NULL DEFAULT 'draft'");
   await addPgColumnIfMissing("orders", "checkoutTotalCharged", "NUMERIC(10,2)");
+  await addPgColumnIfMissing("orders", "stripeCheckoutSessionId", "VARCHAR(255)");
+  await addPgColumnIfMissing("orders", "stripePaymentIntentId", "VARCHAR(255)");
+  await addPgColumnIfMissing("orders", "createdAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
+  await addPgColumnIfMissing("orders", "updatedAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
   await makePgColumnNullable("orders", "addressLine1");
   await makePgColumnNullable("orders", "city");
   await makePgColumnNullable("orders", "postcode");
+}
+async function ensureReviewsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "reviews" (
+      "id" SERIAL PRIMARY KEY,
+      "customerName" VARCHAR(180) NOT NULL DEFAULT 'Guest',
+      "rating" INTEGER NOT NULL DEFAULT 5,
+      "reviewText" TEXT NOT NULL DEFAULT '',
+      "status" TEXT NOT NULL DEFAULT 'pending',
+      "source" VARCHAR(80) NOT NULL DEFAULT 'website',
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure reviews table", err);
+  }
+  await renamePgColumnIfMissing("reviews", "customer_name", "customerName");
+  await renamePgColumnIfMissing("reviews", "review_text", "reviewText");
+  await renamePgColumnIfMissing("reviews", "created_at", "createdAt");
+  await renamePgColumnIfMissing("reviews", "updated_at", "updatedAt");
+  await addPgColumnIfMissing("reviews", "status", "TEXT NOT NULL DEFAULT 'pending'");
+  await addPgColumnIfMissing("reviews", "source", "VARCHAR(80) NOT NULL DEFAULT 'website'");
+  await addPgColumnIfMissing("reviews", "createdAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
+  await addPgColumnIfMissing("reviews", "updatedAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
+}
+async function ensureServicesTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "services" (
+      "id" SERIAL PRIMARY KEY,
+      "name" VARCHAR(180) NOT NULL DEFAULT 'Untitled service',
+      "slug" VARCHAR(220) NOT NULL DEFAULT 'untitled-service',
+      "category" VARCHAR(120) NOT NULL DEFAULT 'Braids',
+      "description" TEXT NOT NULL DEFAULT '',
+      "duration" VARCHAR(80) NOT NULL DEFAULT 'Unknown duration',
+      "priceFrom" NUMERIC(10,2) NOT NULL DEFAULT 0,
+      "badge" VARCHAR(80),
+      "imageUrl" VARCHAR(800),
+      "isBookable" TEXT NOT NULL DEFAULT 'true',
+      "isFeatured" TEXT NOT NULL DEFAULT 'false',
+      "sortOrder" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure services table", err);
+  }
+  await renamePgColumnIfMissing("services", "price_from", "priceFrom");
+  await renamePgColumnIfMissing("services", "image_url", "imageUrl");
+  await renamePgColumnIfMissing("services", "is_bookable", "isBookable");
+  await renamePgColumnIfMissing("services", "is_featured", "isFeatured");
+  await renamePgColumnIfMissing("services", "sort_order", "sortOrder");
+  await renamePgColumnIfMissing("services", "created_at", "createdAt");
+  await renamePgColumnIfMissing("services", "updated_at", "updatedAt");
+  await addPgColumnIfMissing("services", "duration", "VARCHAR(80) NOT NULL DEFAULT 'Unknown duration'");
+  await addPgColumnIfMissing("services", "priceFrom", "NUMERIC(10,2) NOT NULL DEFAULT 0");
+  await addPgColumnIfMissing("services", "badge", "VARCHAR(80)");
+  await addPgColumnIfMissing("services", "imageUrl", "VARCHAR(800)");
+  await addPgColumnIfMissing("services", "isBookable", "TEXT NOT NULL DEFAULT 'true'");
+  await addPgColumnIfMissing("services", "isFeatured", "TEXT NOT NULL DEFAULT 'false'");
+  await addPgColumnIfMissing("services", "sortOrder", "INTEGER NOT NULL DEFAULT 0");
+  await addPgColumnIfMissing("services", "createdAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
+  await addPgColumnIfMissing("services", "updatedAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
+}
+async function ensureGalleryTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "galleryImages" (
+      "id" SERIAL PRIMARY KEY,
+      "title" VARCHAR(180) NOT NULL DEFAULT 'Gallery image',
+      "category" TEXT NOT NULL DEFAULT 'Braids',
+      "imageUrl" VARCHAR(800) NOT NULL DEFAULT '',
+      "altText" VARCHAR(255) NOT NULL DEFAULT 'Eby\u2019s Place gallery image',
+      "isPublished" TEXT NOT NULL DEFAULT 'true',
+      "sortOrder" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure galleryImages table", err);
+  }
+  await renamePgColumnIfMissing("galleryImages", "image_url", "imageUrl");
+  await renamePgColumnIfMissing("galleryImages", "alt_text", "altText");
+  await renamePgColumnIfMissing("galleryImages", "is_published", "isPublished");
+  await renamePgColumnIfMissing("galleryImages", "sort_order", "sortOrder");
+  await renamePgColumnIfMissing("galleryImages", "created_at", "createdAt");
+  await addPgColumnIfMissing("galleryImages", "isPublished", "TEXT NOT NULL DEFAULT 'true'");
+  await addPgColumnIfMissing("galleryImages", "sortOrder", "INTEGER NOT NULL DEFAULT 0");
+  await addPgColumnIfMissing("galleryImages", "createdAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
+}
+async function ensureWebsiteSectionColumns() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "websiteSections" (
+      "id" SERIAL PRIMARY KEY,
+      "sectionKey" VARCHAR(80) NOT NULL UNIQUE,
+      "title" VARCHAR(255) NOT NULL DEFAULT 'section',
+      "eyebrow" VARCHAR(160),
+      "body" TEXT,
+      "ctaLabel" VARCHAR(120),
+      "ctaHref" VARCHAR(500),
+      "imageUrl" VARCHAR(800),
+      "portraitImageUrl" VARCHAR(800),
+      "portraitDescription" TEXT,
+      "sortOrder" INTEGER NOT NULL DEFAULT 0,
+      "isPublished" TEXT NOT NULL DEFAULT 'true',
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure websiteSections table", err);
+  }
+  await renamePgColumnIfMissing("websiteSections", "section_key", "sectionKey");
+  await renamePgColumnIfMissing("websiteSections", "cta_label", "ctaLabel");
+  await renamePgColumnIfMissing("websiteSections", "cta_href", "ctaHref");
+  await renamePgColumnIfMissing("websiteSections", "image_url", "imageUrl");
+  await renamePgColumnIfMissing("websiteSections", "portrait_image_url", "portraitImageUrl");
+  await renamePgColumnIfMissing("websiteSections", "portrait_description", "portraitDescription");
+  await renamePgColumnIfMissing("websiteSections", "sort_order", "sortOrder");
+  await renamePgColumnIfMissing("websiteSections", "is_published", "isPublished");
+  await renamePgColumnIfMissing("websiteSections", "created_at", "createdAt");
+  await renamePgColumnIfMissing("websiteSections", "updated_at", "updatedAt");
+  await addPgColumnIfMissing("websiteSections", "portraitImageUrl", "VARCHAR(800)");
+  await addPgColumnIfMissing("websiteSections", "portraitDescription", "TEXT");
+  await addPgColumnIfMissing("websiteSections", "createdAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
+  await addPgColumnIfMissing("websiteSections", "updatedAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
 }
 async function ensureOrderItemSnapshotColumns() {
   if (!_pool) return;
@@ -1988,6 +2190,15 @@ async function ensureProductReviewsTable() {
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
       "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
     )`);
+    await renamePgColumnIfMissing("productReviews", "product_id", "productId");
+    await renamePgColumnIfMissing("productReviews", "customer_name", "customerName");
+    await renamePgColumnIfMissing("productReviews", "review_text", "reviewText");
+    await renamePgColumnIfMissing("productReviews", "created_at", "createdAt");
+    await renamePgColumnIfMissing("productReviews", "updated_at", "updatedAt");
+    await addPgColumnIfMissing("productReviews", "status", "TEXT NOT NULL DEFAULT 'pending'");
+    await addPgColumnIfMissing("productReviews", "source", "VARCHAR(80) NOT NULL DEFAULT 'website'");
+    await addPgColumnIfMissing("productReviews", "createdAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
+    await addPgColumnIfMissing("productReviews", "updatedAt", "TIMESTAMP NOT NULL DEFAULT NOW()");
   } catch (err) {
     console.warn("[Database] Could not ensure productReviews table", err);
   }
@@ -2132,23 +2343,73 @@ async function adminSummary() {
   const supabaseProducts = await listSupabaseProducts();
   const db = await getDb();
   if (!db) return { bookings: 0, orders: 0, pendingReviews: 0, pendingProductReviews: 0, products: supabaseProducts?.length ?? seedProducts.length, services: seedServices.length, tryOns: 0, activityLogs: 0, unreadActivities: 0 };
+  await ensureBookingLocationColumns();
+  await ensureOrderLocationColumns();
+  await ensureReviewsTable();
+  await ensureServicesTable();
   await ensureProductReviewsTable();
   await ensureActivityLogsTable();
-  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, serviceRows, tryOnRows, activityRows, unreadRows] = await Promise.all([db.select().from(bookings), db.select().from(orders), db.select().from(reviews).where(eq(reviews.status, "pending")), db.select().from(productReviews).where(eq(productReviews.status, "pending")), db.select().from(products), db.select().from(services), db.select().from(tryOnGenerations), db.select().from(activityLogs), db.select({ value: sql`count(*)` }).from(activityLogs).where(eq(activityLogs.isRead, "false"))]);
+  const safeAdminRows = async (label, fallback, action) => {
+    try {
+      return await action();
+    } catch (error) {
+      console.warn(`[Admin] Could not load ${label}`, error);
+      return fallback;
+    }
+  };
+  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, serviceRows, tryOnRows, activityRows, unreadRows] = await Promise.all([
+    safeAdminRows("bookings summary", [], () => db.select().from(bookings)),
+    safeAdminRows("orders summary", [], () => db.select().from(orders)),
+    safeAdminRows("reviews summary", [], () => db.select().from(reviews).where(eq(reviews.status, "pending"))),
+    safeAdminRows("product reviews summary", [], () => db.select().from(productReviews).where(eq(productReviews.status, "pending"))),
+    safeAdminRows("products summary", [], () => db.select().from(products)),
+    safeAdminRows("services summary", [], () => db.select().from(services)),
+    safeAdminRows("try-on summary", [], () => db.select().from(tryOnGenerations)),
+    safeAdminRows("activity summary", [], () => db.select().from(activityLogs)),
+    safeAdminRows("unread activity summary", [{ value: 0 }], () => db.select({ value: sql`count(*)` }).from(activityLogs).where(eq(activityLogs.isRead, "false")))
+  ]);
   return { bookings: bookingRows.length, orders: orderRows.length, pendingReviews: reviewRows.length, pendingProductReviews: productReviewRows.length, products: supabaseProducts?.length ?? dbProductRows.length, services: serviceRows.length, tryOns: tryOnRows.length, activityLogs: activityRows.length, unreadActivities: Number(unreadRows[0]?.value ?? 0) };
 }
 async function adminLists() {
   await seedIfNeeded();
   const supabaseProducts = await listSupabaseProducts();
   const db = await getDb();
-  if (db) await ensureBookingLocationColumns();
+  if (db) {
+    await ensureBookingLocationColumns();
+    await ensureOrderLocationColumns();
+    await ensureReviewsTable();
+    await ensureServicesTable();
+    await ensureGalleryTable();
+    await ensureWebsiteSectionColumns();
+  }
   const fallbackProducts = seedProducts.map((product, index) => ({ ...product, id: index + 1, image_url: product.imageUrl, stock: product.stockQuantity, status: product.stockStatus, colour: null, variants: [] }));
   if (!db) return { bookings: [], orders: [], reviews: seedReviews, productReviews: [], products: supabaseProducts ?? fallbackProducts, services: seedServices, gallery: [], tryOns: [], sections: [], emailNotifications: [], activityLogs: [], availability: await getAvailabilitySettings(), instagram: await getInstagramSettings() };
   await ensureEmailNotificationLogTable();
   await ensureActivityLogsTable();
   await ensureProductVariantsTable();
   await ensureProductReviewsTable();
-  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows, activityRows] = await Promise.all([db.select().from(bookings).orderBy(desc(bookings.createdAt)), db.select().from(orders).orderBy(desc(orders.createdAt)), db.select().from(reviews).orderBy(desc(reviews.createdAt)), db.select().from(productReviews).orderBy(desc(productReviews.createdAt)), db.select().from(products).orderBy(desc(products.createdAt)), db.select().from(productVariants), db.select().from(services).orderBy(asc(services.sortOrder)), db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt)), db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)), db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder)), db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80), db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(120)]);
+  const loadAdminCollection = async (label, fallback, action) => {
+    try {
+      return await action();
+    } catch (error) {
+      console.warn(`[Admin] Could not load ${label}`, error);
+      return fallback;
+    }
+  };
+  const [bookingRows, orderRows, reviewRows, productReviewRows, dbProductRows, variantRows, serviceRows, galleryRows, tryOnRows, sectionRows, emailNotificationRows, activityRows] = await Promise.all([
+    loadAdminCollection("bookings", [], () => db.select().from(bookings).orderBy(desc(bookings.createdAt))),
+    loadAdminCollection("orders", [], () => db.select().from(orders).orderBy(desc(orders.createdAt))),
+    loadAdminCollection("reviews", seedReviews, () => db.select().from(reviews).orderBy(desc(reviews.createdAt))),
+    loadAdminCollection("product reviews", [], () => db.select().from(productReviews).orderBy(desc(productReviews.createdAt))),
+    loadAdminCollection("products", [], () => db.select().from(products).orderBy(desc(products.createdAt))),
+    loadAdminCollection("product variants", [], () => db.select().from(productVariants)),
+    loadAdminCollection("services", seedServices, () => db.select().from(services).orderBy(asc(services.sortOrder))),
+    loadAdminCollection("gallery", [], () => db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt))),
+    loadAdminCollection("try-ons", [], () => db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt))),
+    loadAdminCollection("website sections", seedWebsiteSections, () => db.select().from(websiteSections).orderBy(asc(websiteSections.sortOrder))),
+    loadAdminCollection("email notifications", [], () => db.select().from(emailNotificationLogs).orderBy(desc(emailNotificationLogs.createdAt)).limit(80)),
+    loadAdminCollection("activity logs", [], () => db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(120))
+  ]);
   const productsWithVariants = supabaseProducts ?? dbProductRows.map((product) => ({
     ...product,
     id: Number(product.id),
@@ -2177,8 +2438,16 @@ async function updateBookingStatus(id, status) {
 async function updateService(id, input) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
+  await ensureServicesTable();
   await db.update(services).set(input).where(eq(services.id, id));
   return { id, ...input };
+}
+async function createService(input) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await ensureServicesTable();
+  const inserted = await db.insert(services).values(input).returning({ id: services.id });
+  return { id: inserted[0]?.id ?? 0, ...input };
 }
 async function updateProduct(id, input) {
   if (!Number.isFinite(id) || id <= 0) throw new Error("A valid Supabase product id is required.");
@@ -2247,20 +2516,30 @@ async function updateProductStock(id, stockQuantity, stockStatus) {
 async function addGalleryImage(input) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
+  await ensureGalleryTable();
   const result = await db.insert(galleryImages).values(input).returning({ id: galleryImages.id });
   return { id: result[0]?.id, ...input };
 }
 async function deleteGalleryImage(id) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
+  await ensureGalleryTable();
   await db.delete(galleryImages).where(eq(galleryImages.id, id));
   return { id };
 }
 async function updateWebsiteSection(sectionKey, input) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
+  await ensureWebsiteSectionColumns();
   await db.insert(websiteSections).values({ sectionKey, title: input.title ?? sectionKey, ...input }).onConflictDoUpdate({ target: websiteSections.sectionKey, set: { ...input, updatedAt: /* @__PURE__ */ new Date() } });
   return { sectionKey, ...input };
+}
+async function deleteService(id) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await ensureServicesTable();
+  await db.delete(services).where(eq(services.id, id));
+  return { id, deleted: true };
 }
 async function adminInsights() {
   await seedIfNeeded();
@@ -2271,16 +2550,27 @@ async function adminInsights() {
     bestTriedStyles: [],
     recentActivity: []
   };
+  await ensureBookingLocationColumns();
+  await ensureOrderLocationColumns();
+  await ensureReviewsTable();
+  const safeInsightRows = async (label, fallback, action) => {
+    try {
+      return await action();
+    } catch (error) {
+      console.warn(`[Admin] Could not load ${label}`, error);
+      return fallback;
+    }
+  };
   const [productSales, bookedServices, triedStyles, bookingRows, orderRows, reviewRows, analyticsRows, tryOnRows, subscriberRows] = await Promise.all([
-    db.select({ label: orderItems.productName, units: sql`sum(${orderItems.quantity})`, revenue: sql`sum(${orderItems.quantity} * ${orderItems.unitPrice})` }).from(orderItems).groupBy(orderItems.productName).orderBy(desc(sql`sum(${orderItems.quantity})`)).limit(8),
-    db.select({ label: bookings.serviceName, total: sql`count(*)` }).from(bookings).groupBy(bookings.serviceName).orderBy(desc(sql`count(*)`)).limit(8),
-    db.select({ label: tryOnGenerations.styleName, total: sql`count(*)` }).from(tryOnGenerations).groupBy(tryOnGenerations.styleName).orderBy(desc(sql`count(*)`)).limit(8),
-    db.select().from(bookings).orderBy(desc(bookings.createdAt)).limit(6),
-    db.select().from(orders).orderBy(desc(orders.createdAt)).limit(6),
-    db.select().from(reviews).orderBy(desc(reviews.createdAt)).limit(6),
-    db.select().from(analyticsEvents).orderBy(desc(analyticsEvents.createdAt)).limit(6),
-    db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)).limit(6),
-    db.select().from(newsletterSubscribers).orderBy(desc(newsletterSubscribers.createdAt)).limit(6)
+    safeInsightRows("product sales insight", [], () => db.select({ label: orderItems.productName, units: sql`sum(${orderItems.quantity})`, revenue: sql`sum(${orderItems.quantity} * ${orderItems.unitPrice})` }).from(orderItems).groupBy(orderItems.productName).orderBy(desc(sql`sum(${orderItems.quantity})`)).limit(8)),
+    safeInsightRows("booked services insight", [], () => db.select({ label: bookings.serviceName, total: sql`count(*)` }).from(bookings).groupBy(bookings.serviceName).orderBy(desc(sql`count(*)`)).limit(8)),
+    safeInsightRows("try-on styles insight", [], () => db.select({ label: tryOnGenerations.styleName, total: sql`count(*)` }).from(tryOnGenerations).groupBy(tryOnGenerations.styleName).orderBy(desc(sql`count(*)`)).limit(8)),
+    safeInsightRows("recent bookings insight", [], () => db.select().from(bookings).orderBy(desc(bookings.createdAt)).limit(6)),
+    safeInsightRows("recent orders insight", [], () => db.select().from(orders).orderBy(desc(orders.createdAt)).limit(6)),
+    safeInsightRows("recent reviews insight", [], () => db.select().from(reviews).orderBy(desc(reviews.createdAt)).limit(6)),
+    safeInsightRows("recent analytics insight", [], () => db.select().from(analyticsEvents).orderBy(desc(analyticsEvents.createdAt)).limit(6)),
+    safeInsightRows("recent try-ons insight", [], () => db.select().from(tryOnGenerations).orderBy(desc(tryOnGenerations.createdAt)).limit(6)),
+    safeInsightRows("recent subscribers insight", [], () => db.select().from(newsletterSubscribers).orderBy(desc(newsletterSubscribers.createdAt)).limit(6))
   ]);
   const recentActivity = [
     ...bookingRows.map((item) => ({ type: "Booking", label: item.clientName, detail: `${item.serviceName} \xB7 ${item.status}`, createdAt: item.createdAt })),
@@ -4460,7 +4750,29 @@ var appRouter = router({
         throw new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Email resend failed." });
       }
     }),
-    updateService: adminProcedure.input(z3.object({ id: z3.number(), name: z3.string().min(2).optional(), description: z3.string().min(10).optional(), duration: z3.string().min(2).optional(), priceFrom: z3.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z3.string().optional(), imageUrl: z3.string().min(5).optional(), isBookable: z3.enum(["true", "false"]).optional(), isFeatured: z3.enum(["true", "false"]).optional() })).mutation(async ({ input, ctx }) => {
+    createService: adminProcedure.input(z3.object({
+      name: z3.string().min(2),
+      slug: z3.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+      category: serviceCategory,
+      description: z3.string().min(10),
+      duration: z3.string().min(2),
+      priceFrom: z3.string().regex(/^\d+(\.\d{2})?$/),
+      badge: z3.string().optional(),
+      imageUrl: z3.string().min(5).optional(),
+      isBookable: z3.enum(["true", "false"]).default("true"),
+      isFeatured: z3.enum(["true", "false"]).default("false"),
+      sortOrder: z3.number().int().min(0).default(0)
+    })).mutation(async ({ input, ctx }) => {
+      const result = await createService(input);
+      await logAdminActivity(ctx, {
+        activityType: "admin_service_created",
+        description: `Admin created service ${input.name}`,
+        relatedEntityType: "service",
+        relatedEntityId: result?.id ?? null
+      });
+      return result;
+    }),
+    updateService: adminProcedure.input(z3.object({ id: z3.number(), name: z3.string().min(2).optional(), slug: z3.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), category: serviceCategory.optional(), description: z3.string().min(10).optional(), duration: z3.string().min(2).optional(), priceFrom: z3.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z3.string().optional(), imageUrl: z3.string().min(5).optional(), isBookable: z3.enum(["true", "false"]).optional(), isFeatured: z3.enum(["true", "false"]).optional(), sortOrder: z3.number().int().min(0).optional() })).mutation(async ({ input, ctx }) => {
       const { id, ...changes } = input;
       const result = await updateService(id, changes);
       await logAdminActivity(ctx, {
@@ -4469,6 +4781,17 @@ var appRouter = router({
         relatedEntityType: "service",
         relatedEntityId: id,
         metadata: changes
+      });
+      return result;
+    }),
+    deleteService: adminProcedure.input(z3.object({ id: z3.number().int().positive(), imageUrl: z3.string().min(5).optional() })).mutation(async ({ input, ctx }) => {
+      if (input.imageUrl) await storageRemove(input.imageUrl);
+      const result = await deleteService(input.id);
+      await logAdminActivity(ctx, {
+        activityType: "admin_service_deleted",
+        description: `Admin deleted service #${input.id}`,
+        relatedEntityType: "service",
+        relatedEntityId: input.id
       });
       return result;
     }),

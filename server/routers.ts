@@ -857,7 +857,29 @@ export const appRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Email resend failed." });
       }
     }),
-    updateService: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), description: z.string().min(10).optional(), duration: z.string().min(2).optional(), priceFrom: z.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z.string().optional(), imageUrl: z.string().min(5).optional(), isBookable: z.enum(["true", "false"]).optional(), isFeatured: z.enum(["true", "false"]).optional() })).mutation(async ({ input, ctx }) => {
+    createService: adminProcedure.input(z.object({
+      name: z.string().min(2),
+      slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+      category: serviceCategory,
+      description: z.string().min(10),
+      duration: z.string().min(2),
+      priceFrom: z.string().regex(/^\d+(\.\d{2})?$/),
+      badge: z.string().optional(),
+      imageUrl: z.string().min(5).optional(),
+      isBookable: z.enum(["true", "false"]).default("true"),
+      isFeatured: z.enum(["true", "false"]).default("false"),
+      sortOrder: z.number().int().min(0).default(0),
+    })).mutation(async ({ input, ctx }) => {
+      const result = await db.createService(input);
+      await logAdminActivity(ctx, {
+        activityType: "admin_service_created",
+        description: `Admin created service ${input.name}`,
+        relatedEntityType: "service",
+        relatedEntityId: (result as any)?.id ?? null,
+      });
+      return result;
+    }),
+    updateService: adminProcedure.input(z.object({ id: z.number(), name: z.string().min(2).optional(), slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(), category: serviceCategory.optional(), description: z.string().min(10).optional(), duration: z.string().min(2).optional(), priceFrom: z.string().regex(/^\d+(\.\d{2})?$/).optional(), badge: z.string().optional(), imageUrl: z.string().min(5).optional(), isBookable: z.enum(["true", "false"]).optional(), isFeatured: z.enum(["true", "false"]).optional(), sortOrder: z.number().int().min(0).optional() })).mutation(async ({ input, ctx }) => {
       const { id, ...changes } = input;
       const result = await db.updateService(id, changes);
       await logAdminActivity(ctx, {
@@ -866,6 +888,17 @@ export const appRouter = router({
         relatedEntityType: "service",
         relatedEntityId: id,
         metadata: changes,
+      });
+      return result;
+    }),
+    deleteService: adminProcedure.input(z.object({ id: z.number().int().positive(), imageUrl: z.string().min(5).optional() })).mutation(async ({ input, ctx }) => {
+      if (input.imageUrl) await storageRemove(input.imageUrl);
+      const result = await db.deleteService(input.id);
+      await logAdminActivity(ctx, {
+        activityType: "admin_service_deleted",
+        description: `Admin deleted service #${input.id}`,
+        relatedEntityType: "service",
+        relatedEntityId: input.id,
       });
       return result;
     }),

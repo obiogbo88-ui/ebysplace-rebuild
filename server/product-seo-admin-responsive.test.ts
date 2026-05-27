@@ -119,17 +119,24 @@ describe("product SEO administration and responsive page safeguards", () => {
     const gallerySource = readSource("client/src/pages/Gallery.tsx");
 
     expect(dbSource).toContain("export async function listServices(category?: string)");
+    expect(dbSource).toContain("export async function createService");
+    expect(dbSource).toContain("export async function deleteService");
     expect(dbSource).toContain("export async function updateService(id: number");
     expect(dbSource).toContain("export async function addGalleryImage");
     expect(dbSource).toContain("export async function moderateReview");
     expect(dbSource).toContain("export async function updateWebsiteSection");
     expect(dbSource).toContain("export async function updateBookingStatus");
     expect(dbSource).toContain("export async function updateOrderStatus");
+    expect(dbSource).toContain("loadAdminCollection");
+    expect(dbSource).toContain("safeAdminRows");
     expect(dbSource).toContain("await db.insert(services).values(seedServices).onConflictDoNothing({");
     expect(dbSource).toContain("await db.insert(products).values(seedProducts).onConflictDoUpdate({");
+    expect(adminSource).toContain("createService.mutate");
+    expect(adminSource).toContain("deleteService.mutate");
     expect(adminSource).toContain("updateService.mutate");
     expect(adminSource).toContain("SEO slug");
-    expect(adminSource).toContain("Save service price, image & availability");
+    expect(adminSource).toContain("Add a new service");
+    expect(adminSource).toContain("Save service");
     expect(adminSource).toContain("updateWebsiteSection.mutate");
     expect(adminSource).toContain("addGallery.mutate");
     expect(bookingSource).toContain("trpc.public.services.useQuery");
@@ -172,6 +179,8 @@ describe("product SEO administration and responsive page safeguards", () => {
     const appSource = readSource("client/src/App.tsx");
 
     expect(routerSource).toContain("createProduct: adminProcedure");
+    expect(routerSource).toContain("createService: adminProcedure");
+    expect(routerSource).toContain("deleteService: adminProcedure");
     expect(routerSource).toContain("uploadProductImage: adminProcedure");
     expect(routerSource).toContain("insights: adminProcedure");
     expect(dbSource).toContain("export async function createProduct");
@@ -187,6 +196,7 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(adminSource).toContain("Colour name|#hexcode|stock");
     expect(adminSource).toContain("Add more gallery images");
     expect(adminSource).toContain("Add or replace service image");
+    expect(adminSource).toContain("Delete service");
     expect(adminSource).toContain("Best-selling analytics");
     expect(adminSource).toContain("Analytics and activity monitoring");
     expect(adminSource).toContain("<AdminPanel id=\"bookings\"");

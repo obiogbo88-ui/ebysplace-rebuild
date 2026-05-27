@@ -102,9 +102,15 @@ describe("live production repair safeguards", () => {
     expect(schemaSource).toContain('pgTable("users"');
     expect(schemaSource).toContain('category: varchar("category", { length: 120 }).notNull()');
     expect(schemaSource).toContain('productName: varchar("productName", { length: 180 }).notNull(),\n  imageUrl: varchar("imageUrl", { length: 800 }),');
+    expect(schemaSource).toContain('serviceLocation: bookingLocationTypeEnum("serviceLocation").default("studio").notNull()');
+    expect(schemaSource).toContain('checkoutTotalCharged: numeric("checkoutTotalCharged", { precision: 10, scale: 2 })');
+    expect(schemaSource).toContain('export const productReviews = pgTable("productReviews"');
     expect(schemaSource).not.toContain('serviceCategoryEnum("category")');
     expect(supabaseSchemaSource).toContain('"category" VARCHAR(120) NOT NULL');
     expect(supabaseSchemaSource).toContain('"imageUrl" VARCHAR(800)');
+    expect(supabaseSchemaSource).toContain('"serviceLocation" VARCHAR(20) NOT NULL DEFAULT \'studio\'');
+    expect(supabaseSchemaSource).toContain('"checkoutTotalCharged" NUMERIC(10, 2)');
+    expect(supabaseSchemaSource).toContain('CREATE TABLE "productReviews"');
     expect(schemaSource).not.toContain("mysqlTable");
     expect(packageSource).toContain('"pg"');
     expect(drizzleConfigSource).toContain('dialect: "postgresql"');

@@ -67,11 +67,16 @@ CREATE TABLE "bookings" (
   "clientName" VARCHAR(180) NOT NULL,
   "clientEmail" VARCHAR(320) NOT NULL,
   "clientPhone" VARCHAR(80) NOT NULL,
-  "addressLine1" VARCHAR(255) NOT NULL,
-  "city" VARCHAR(120) NOT NULL,
+  "serviceLocation" VARCHAR(20) NOT NULL DEFAULT 'studio',
+  "addressLine1" VARCHAR(255),
+  "addressLine2" VARCHAR(255),
+  "city" VARCHAR(120),
   "county" VARCHAR(120),
-  "postcode" VARCHAR(40) NOT NULL,
+  "postcode" VARCHAR(40),
   "deliveryNote" TEXT,
+  "homeServiceSurcharge" NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  "checkoutSurchargeCharged" NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  "checkoutTotalCharged" NUMERIC(10, 2),
   "appointmentDate" VARCHAR(20) NOT NULL,
   "appointmentTime" VARCHAR(20) NOT NULL,
   "status" "booking_status_enum" NOT NULL DEFAULT 'pending',
@@ -115,12 +120,15 @@ CREATE TABLE "orders" (
   "customerName" VARCHAR(180) NOT NULL,
   "customerEmail" VARCHAR(320) NOT NULL,
   "customerPhone" VARCHAR(80),
-  "addressLine1" VARCHAR(255) NOT NULL,
-  "city" VARCHAR(120) NOT NULL,
+  "serviceLocation" VARCHAR(20) NOT NULL DEFAULT 'studio',
+  "addressLine1" VARCHAR(255),
+  "addressLine2" VARCHAR(255),
+  "city" VARCHAR(120),
   "county" VARCHAR(120),
-  "postcode" VARCHAR(40) NOT NULL,
+  "postcode" VARCHAR(40),
   "deliveryNote" TEXT,
   "status" "order_status_enum" NOT NULL DEFAULT 'draft',
+  "checkoutTotalCharged" NUMERIC(10, 2),
   "stripeCheckoutSessionId" VARCHAR(255),
   "stripePaymentIntentId" VARCHAR(255),
   "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -160,6 +168,19 @@ CREATE TABLE "reviews" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
   "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
   CONSTRAINT "reviews_rating_check" CHECK ("rating" >= 1 AND "rating" <= 5)
+);
+
+CREATE TABLE "productReviews" (
+  "id" SERIAL PRIMARY KEY,
+  "productId" INTEGER NOT NULL,
+  "customerName" VARCHAR(180) NOT NULL,
+  "rating" INTEGER NOT NULL,
+  "reviewText" TEXT NOT NULL,
+  "status" "review_status_enum" NOT NULL DEFAULT 'pending',
+  "source" VARCHAR(80) NOT NULL DEFAULT 'website',
+  "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+  CONSTRAINT "productReviews_rating_check" CHECK ("rating" >= 1 AND "rating" <= 5)
 );
 
 CREATE TABLE "newsletterSubscribers" (

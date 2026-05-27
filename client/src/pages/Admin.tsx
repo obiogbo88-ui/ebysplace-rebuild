@@ -121,6 +121,7 @@ async function normalizeAdminUploadFile(file: File) {
 
 const galleryCategories = ["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"] as const;
 const productCategories = ["Accessories", "Aftercare", "Hair Attachments"] as const;
+const serviceCategories = ["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"] as const;
 const adminOverviewActions = [
   { label: "Bookings", sectionId: "bookings", description: "Review and update appointment statuses." },
   { label: "Orders", sectionId: "orders", description: "Open protected shop order fulfilment." },
@@ -302,7 +303,24 @@ export default function Admin() {
     },
     onError: (error: any) => toast.error(error.message),
   });
+  const createService = trpc.admin.createService.useMutation({
+    onSuccess: () => {
+      refresh();
+      setNewService({ name: "", slug: "", category: "Braids", description: "", duration: "", priceFrom: "", badge: "", imageUrl: "", isBookable: "true", isFeatured: "false", sortOrder: 0 });
+      scrollAdminFeedback("services");
+      toast.success("Service saved");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
   const updateService = trpc.admin.updateService.useMutation(opts);
+  const deleteService = trpc.admin.deleteService.useMutation({
+    onSuccess: () => {
+      refresh();
+      scrollAdminFeedback("services");
+      toast.success("Service deleted");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
   const syncProductImageInput = (productId: number, imageUrl: string) => {
     const imageInput = document.getElementById(`product-image-${productId}`) as HTMLInputElement | null;
     if (imageInput) imageInput.value = imageUrl;
@@ -396,6 +414,7 @@ export default function Admin() {
   const [instagramSettings, setInstagramSettings] = useState({ handle: "@ebysplace", feedUrl: "https://www.instagram.com/ebysplace/", enabled: true, note: "Latest Eby’s Place Instagram posts appear here once the production feed is connected." });
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
+  const [newService, setNewService] = useState({ name: "", slug: "", category: "Braids", description: "", duration: "", priceFrom: "", badge: "", imageUrl: "", isBookable: "true", isFeatured: "false", sortOrder: 0 });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [deletingGalleryId, setDeletingGalleryId] = useState<number | null>(null);
   const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["activity-monitoring"]));
@@ -505,6 +524,10 @@ export default function Admin() {
 
   async function handleServiceImageUpload(service: any, file?: File) {
     if (!file) return;
+    if (!service.id) {
+      toast.error("Please connect the live database before editing this service.");
+      return;
+    }
     try {
       setUploadingServiceId(service.id);
       const normalizedFile = await normalizeAdminUploadFile(file);
@@ -1087,24 +1110,87 @@ export default function Admin() {
           </AdminPanel>
 
           <AdminPanel id="services" eyebrow="Service catalogue" title="Services prices editor" description="Maintain braid-service pricing, duration, and service imagery from a dedicated owner-only panel." icon={Scissors} open={isPanelOpen("services")} onToggle={() => togglePanel("services")}>
+            <details open className="mt-4 rounded-2xl border border-primary/20 bg-black/20 p-4">
+              <summary className="cursor-pointer font-semibold text-primary">Add a new service</summary>
+              <form
+                className="mt-4 grid gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const priceFrom = Number(newService.priceFrom);
+                  if (!Number.isFinite(priceFrom) || priceFrom < 0) {
+                    toast.error("Service price must be valid.");
+                    return;
+                  }
+                  createService.mutate({
+                    name: newService.name,
+                    slug: (newService.slug || newService.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+                    category: newService.category as any,
+                    description: newService.description,
+                    duration: newService.duration,
+                    priceFrom: priceFrom.toFixed(2),
+                    badge: newService.badge || undefined,
+                    imageUrl: newService.imageUrl || undefined,
+                    isBookable: newService.isBookable as "true" | "false",
+                    isFeatured: newService.isFeatured as "true" | "false",
+                    sortOrder: Number(newService.sortOrder) || 0,
+                  });
+                }}
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input required placeholder="Service name" value={newService.name} onChange={(event) => setNewService({ ...newService, name: event.target.value })} />
+                  <input placeholder="SEO slug" value={newService.slug} onChange={(event) => setNewService({ ...newService, slug: event.target.value })} />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <select value={newService.category} onChange={(event) => setNewService({ ...newService, category: event.target.value })}>
+                    {serviceCategories.map((category) => <option key={category}>{category}</option>)}
+                  </select>
+                  <input required placeholder="Duration" value={newService.duration} onChange={(event) => setNewService({ ...newService, duration: event.target.value })} />
+                </div>
+                <textarea required placeholder="Public service description" value={newService.description} onChange={(event) => setNewService({ ...newService, description: event.target.value })} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input required type="number" min="0" step="0.01" placeholder="Price from (£)" value={newService.priceFrom} onChange={(event) => setNewService({ ...newService, priceFrom: event.target.value })} />
+                  <input placeholder="Badge" value={newService.badge} onChange={(event) => setNewService({ ...newService, badge: event.target.value })} />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <select value={newService.isBookable} onChange={(event) => setNewService({ ...newService, isBookable: event.target.value })}>
+                    <option value="true">Available for booking</option>
+                    <option value="false">Unavailable for booking</option>
+                  </select>
+                  <select value={newService.isFeatured} onChange={(event) => setNewService({ ...newService, isFeatured: event.target.value })}>
+                    <option value="false">Standard service</option>
+                    <option value="true">Featured service</option>
+                  </select>
+                  <input type="number" min="0" placeholder="Sort order" value={newService.sortOrder} onChange={(event) => setNewService({ ...newService, sortOrder: Number(event.target.value) })} />
+                </div>
+                <input placeholder="Supabase Storage public image URL (optional)" value={newService.imageUrl} onChange={(event) => setNewService({ ...newService, imageUrl: event.target.value })} />
+                <button className="btn-gold" disabled={createService.isPending}>{createService.isPending ? "Saving service…" : "Save service"}</button>
+              </form>
+            </details>
             <div className="mt-5 grid gap-4">
               {(data.services || []).map((service: any) => (
-                <div className="rounded-2xl border border-white/10 p-4" key={service.id}>
+              <div className="rounded-2xl border border-white/10 p-4" key={service.id ?? service.slug ?? service.name}>
                   <div className="grid gap-4 md:grid-cols-[128px_1fr]">
                     <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]">
                       {service.imageUrl ? <img src={service.imageUrl} alt={service.name} /> : <div className="flex h-full items-center justify-center text-xs text-white/35">No image</div>}
                     </div>
                     <div>
                       <div className="flex justify-between gap-3"><span>{service.name}<small className="block text-white/45">{service.category} · {service.duration}</small></span><b>£{service.priceFrom}</b></div>
-                      <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_1fr_1fr_auto]">
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Service name<input defaultValue={service.name} id={`service-name-${service.id}`} /></label>
+                        <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Slug<input defaultValue={service.slug} id={`service-slug-${service.id}`} /></label>
+                      </div>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Category<select defaultValue={service.category} id={`service-category-${service.id}`}>{serviceCategories.map((category) => <option key={category}>{category}</option>)}</select></label>
+                        <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Featured<select defaultValue={service.isFeatured || "false"} id={`service-featured-${service.id}`}><option value="false">Standard</option><option value="true">Featured</option></select></label>
+                      </div>
+                      <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_1fr_1fr_1fr]">
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Service price (£)<input type="number" min="0" step="0.01" defaultValue={service.priceFrom} id={`price-${service.id}`} /></label>
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Duration<input defaultValue={service.duration} id={`duration-${service.id}`} /></label>
                         <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Availability<select defaultValue={service.isBookable || "true"} id={`availability-${service.id}`}><option value="true">Available for booking</option><option value="false">Unavailable for booking</option></select></label>
-                        <button className="btn-dark py-2" onClick={() => { const priceFrom = readAdminPrice(`price-${service.id}`, "Service price"); if (!priceFrom) return; updateService.mutate({ id: service.id, priceFrom, duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value, imageUrl: (document.getElementById(`service-image-${service.id}`) as HTMLInputElement)?.value.trim() || undefined, isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as "true" | "false" }); }}>Save service price, image & availability</button>
+                        <label className="grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Sort order<input type="number" min="0" defaultValue={service.sortOrder ?? 0} id={`service-sort-${service.id}`} /></label>
                       </div>
-                      <div className="mt-2 flex">
-                        <button type="button" className="btn-dark py-2 text-sm" onClick={() => updateService.mutate({ id: service.id, isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as "true" | "false" })}>Save service availability</button>
-                      </div>
+                      <label className="mt-3 grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Description<textarea defaultValue={service.description} id={`service-description-${service.id}`} rows={4} /></label>
+                      <label className="mt-3 grid gap-1 text-xs uppercase tracking-[0.2em] text-primary/80">Badge<input defaultValue={service.badge || ""} id={`service-badge-${service.id}`} /></label>
                       <details open className="mt-3 rounded-2xl border border-primary/20 bg-black/20 p-3">
                         <summary className="cursor-pointer text-sm font-semibold text-primary">Add or replace service image</summary>
                         <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto]">
@@ -1113,9 +1199,53 @@ export default function Admin() {
                             <UploadCloud className="mr-2 h-4 w-4" /> {uploadingServiceId === service.id ? "Uploading…" : "Upload image"}
                             <input className="sr-only" type="file" accept={ADMIN_UPLOAD_ACCEPT} disabled={uploadingServiceId === service.id} onChange={(event) => handleServiceImageUpload(service, event.target.files?.[0])} />
                           </label>
-                          <button className="btn-dark py-2" type="button" disabled={!service.imageUrl || clearServiceImage.isPending} onClick={() => clearServiceImage.mutate({ serviceId: service.id, imageUrl: service.imageUrl || undefined })}><Trash2 className="mr-2 h-4 w-4" /> Remove image</button>
+                          <button className="btn-dark py-2" type="button" disabled={!service.id || !service.imageUrl || clearServiceImage.isPending} onClick={() => clearServiceImage.mutate({ serviceId: service.id, imageUrl: service.imageUrl || undefined })}><Trash2 className="mr-2 h-4 w-4" /> Remove image</button>
                         </div>
                       </details>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <button
+                          className="btn-gold flex-1 py-2"
+                          type="button"
+                          onClick={() => {
+                            if (!service.id) {
+                              toast.error("This service has no database ID. Please connect the live database and refresh.");
+                              return;
+                            }
+                            const priceFrom = readAdminPrice(`price-${service.id}`, "Service price");
+                            if (!priceFrom) return;
+                            updateService.mutate({
+                              id: service.id,
+                              name: (document.getElementById(`service-name-${service.id}`) as HTMLInputElement).value,
+                              slug: (document.getElementById(`service-slug-${service.id}`) as HTMLInputElement).value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+                              category: (document.getElementById(`service-category-${service.id}`) as HTMLSelectElement).value as any,
+                              description: (document.getElementById(`service-description-${service.id}`) as HTMLTextAreaElement).value,
+                              duration: (document.getElementById(`duration-${service.id}`) as HTMLInputElement).value,
+                              priceFrom,
+                              badge: (document.getElementById(`service-badge-${service.id}`) as HTMLInputElement).value || undefined,
+                              imageUrl: (document.getElementById(`service-image-${service.id}`) as HTMLInputElement)?.value.trim() || undefined,
+                              isBookable: (document.getElementById(`availability-${service.id}`) as HTMLSelectElement).value as "true" | "false",
+                              isFeatured: (document.getElementById(`service-featured-${service.id}`) as HTMLSelectElement).value as "true" | "false",
+                              sortOrder: Number((document.getElementById(`service-sort-${service.id}`) as HTMLInputElement).value) || 0,
+                            });
+                          }}
+                        >
+                          Save service
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-dark border-red-400/40 py-2 text-red-100 hover:border-red-300 hover:text-red-50"
+                          disabled={deleteService.isPending || !service.id}
+                          onClick={() => {
+                            if (!service.id) {
+                              toast.error("This service has no database ID. Please connect the live database and refresh.");
+                              return;
+                            }
+                            if (window.confirm(`Delete ${service.name}?`)) deleteService.mutate({ id: service.id, imageUrl: service.imageUrl || undefined });
+                          }}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete service
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
