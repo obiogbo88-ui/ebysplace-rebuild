@@ -142,9 +142,9 @@ export function SiteHeader() {
             onClick={() => setMenuOpen(value => !value)}
           >
             {menuOpen ? (
-              <X className="h-5 w-5 stroke-[2.6]" />
+              <X className="h-5 w-5 stroke-[#d4af37] [stroke-width:2.6]" />
             ) : (
-              <Menu className="h-5 w-5 stroke-[2.6]" />
+              <Menu className="h-5 w-5 stroke-[#d4af37] [stroke-width:2.6]" />
             )}
           </button>
         </div>
