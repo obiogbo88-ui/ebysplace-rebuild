@@ -509,7 +509,7 @@ export default function TryOn() {
               <h2 className="serif text-3xl font-bold text-[#2f2418]">Generated</h2>
               <div className="mt-4 flex aspect-[4/5] min-h-[22rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-3 sm:min-h-[26rem] sm:p-4">
                 {generate.data?.generatedImageUrl ? (
-                  <img className="h-full w-full rounded-xl object-contain object-top" src={generate.data.generatedImageUrl} alt={`${style} AI Try-On preview`} />
+                  <img className="h-full w-full max-h-full max-w-full rounded-xl object-contain object-center" src={generate.data.generatedImageUrl} alt={`${style} AI Try-On preview`} />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
                     Your AI result will appear here after upload and generation.
