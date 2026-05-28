@@ -349,7 +349,7 @@ function BackToTopButton() {
       type="button"
       aria-label="Back to top"
       onClick={() => smoothScrollToTop(0)}
-      className="back-to-top-btn fixed bottom-40 right-4 z-[79] flex h-12 w-12 items-center justify-center rounded-full shadow-[0_8px_24px_rgba(17,17,17,.28)] transition duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C8A83A] md:bottom-24 md:right-6 md:h-14 md:w-14"
+      className="back-to-top-btn fixed bottom-40 left-4 z-[79] flex h-12 w-12 items-center justify-center rounded-full shadow-[0_8px_24px_rgba(17,17,17,.28)] transition duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C8A83A] md:bottom-24 md:left-6 md:h-14 md:w-14"
     >
       <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 md:h-6 md:w-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="18 15 12 9 6 15" />
@@ -362,8 +362,7 @@ function BackToTopButton() {
 function FloatingWhatsAppButton() {
   const [location] = useLocation();
   const isAdmin = location.startsWith("/admin");
-  const isHome = location === "/";
-  if (isAdmin || isHome) return null;
+  if (isAdmin) return null;
 
   const whatsappUrl = "https://wa.me/447864585110?text=Hi%20Eby%27s%20Place%2C%20I%20would%20like%20to%20make%20an%20enquiry.";
 
