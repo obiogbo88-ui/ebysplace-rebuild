@@ -1,9 +1,9 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import { canonicalUrl } from "@/lib/canonicalUrl";
-import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";
+import { afterRouteScroll, navigateWithSmoothScroll, smoothScrollToTop } from "@/lib/smoothScroll";
 import { trpc } from "@/lib/trpc";
 import {
   createTrackingEventKey,
@@ -331,6 +331,34 @@ function ScrollToTop() {
   return null;
 }
 
+function BackToTopButton() {
+  const [visible, setVisible] = useState(false);
+  const [location] = useLocation();
+  const isAdmin = location.startsWith("/admin");
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 300);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  if (isAdmin || !visible) return null;
+
+  return (
+    <button
+      type="button"
+      aria-label="Back to top"
+      onClick={() => smoothScrollToTop(0)}
+      className="back-to-top-btn fixed bottom-40 right-4 z-[79] flex h-12 w-12 items-center justify-center rounded-full shadow-[0_8px_24px_rgba(17,17,17,.28)] transition duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C8A83A] md:bottom-24 md:right-6 md:h-14 md:w-14"
+    >
+      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 md:h-6 md:w-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="18 15 12 9 6 15" />
+      </svg>
+      <span className="sr-only">Back to top</span>
+    </button>
+  );
+}
+
 function FloatingWhatsAppButton() {
   const [location] = useLocation();
   const isAdmin = location.startsWith("/admin");
@@ -421,6 +449,7 @@ function App() {
           <DynamicSeoMetadata />
           <ScrollToTop />
           <Router />
+          <BackToTopButton />
           <FloatingWhatsAppButton />
           <MobileStickyBookingCta />
         </TooltipProvider>
