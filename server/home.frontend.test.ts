@@ -198,14 +198,16 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("Modern automation");
   });
 
-  it("keeps the sitewide floating WhatsApp shortcut off the homepage and removes the duplicate green homepage logo", () => {
+  it("keeps the sitewide floating WhatsApp shortcut on the homepage, moves the back-to-top arrow left, and removes the duplicate green homepage logo", () => {
     expect(appSource).toContain("function FloatingWhatsAppButton()");
     expect(appSource).toContain("https://wa.me/447864585110?text=Hi%20Eby%27s%20Place%2C%20I%20would%20like%20to%20make%20an%20enquiry.");
     expect(appSource).toContain("Message Eby’s Place on WhatsApp");
-    expect(appSource).toContain('const isHome = location === "/";');
-    expect(appSource).toContain("if (isAdmin || isHome) return null;");
+    expect(appSource).not.toContain('const isHome = location === "/";');
+    expect(appSource).toContain("if (isAdmin) return null;");
     expect(appSource).toContain("bottom-24 right-4");
     expect(appSource).toContain("md:bottom-6 md:right-6");
+    expect(appSource).toContain("back-to-top-btn fixed bottom-40 left-4");
+    expect(appSource).toContain("md:bottom-24 md:left-6");
     expect(appSource).toContain("<FloatingWhatsAppButton />");
     expect(homeSource).not.toContain("bg-[#25D366]");
     expect(homeSource).not.toContain("Chat with Eby’s Place on WhatsApp");
