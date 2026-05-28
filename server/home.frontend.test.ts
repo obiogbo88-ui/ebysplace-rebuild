@@ -378,7 +378,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("/policies/returns");
     expect(homeSource).toContain("Returns Policy");
     expect(appSource).toContain('afterRouteScroll(`${location}${window.location.hash || ""}`, 40)');
-    expect(appSource).toContain('import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";');
+    expect(appSource).toContain('import { afterRouteScroll, navigateWithSmoothScroll, smoothScrollToTop } from "@/lib/smoothScroll";');
     expect(appSource).toContain("/policies/privacy");
     expect(appSource).toContain("/policies/shopping");
     expect(appSource).toContain("/policies/returns");

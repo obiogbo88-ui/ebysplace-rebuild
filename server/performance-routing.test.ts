@@ -9,7 +9,7 @@ describe("website loading performance safeguards", () => {
   it("keeps public pages route-lazy so non-current pages do not inflate the startup bundle", () => {
     const app = readProjectFile("client/src/App.tsx");
 
-    expect(app).toContain('import { lazy, Suspense, useEffect } from "react"');
+    expect(app).toContain('import { lazy, Suspense, useEffect, useState } from "react"');
     expect(app).toContain("<Suspense fallback={<RouteLoading />}> ".trim());
 
     const routeModules = [

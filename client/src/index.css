@@ -314,6 +314,16 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
   text-shadow: none;
 }
 
+.back-to-top-btn {
+  background: #C8A83A;
+  color: #111111;
+}
+.back-to-top-btn:hover,
+.back-to-top-btn:focus-visible {
+  background: #D4AF37;
+  color: #0B0B0B;
+}
+
 @media (max-width: 767px) {
   .luxury-shell { padding-bottom: 5.5rem; }
   h1 { font-size: clamp(2.4rem, 12vw, 4.2rem); }
