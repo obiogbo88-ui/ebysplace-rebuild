@@ -1,6 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import { canonicalUrl } from "@/lib/canonicalUrl";
 import { afterRouteScroll, navigateWithSmoothScroll } from "@/lib/smoothScroll";
@@ -334,8 +334,7 @@ function ScrollToTop() {
 function FloatingWhatsAppButton() {
   const [location] = useLocation();
   const isAdmin = location.startsWith("/admin");
-  const isHome = location === "/";
-  if (isAdmin || isHome) return null;
+  if (isAdmin) return null;
 
   const whatsappUrl = "https://wa.me/447864585110?text=Hi%20Eby%27s%20Place%2C%20I%20would%20like%20to%20make%20an%20enquiry.";
 
@@ -352,6 +351,39 @@ function FloatingWhatsAppButton() {
       </svg>
       <span className="sr-only">Message Eby’s Place on WhatsApp</span>
     </a>
+  );
+}
+
+function BackToTopButton() {
+  const [location] = useLocation();
+  const isAdmin = location.startsWith("/admin");
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const updateVisibility = () => {
+      setIsVisible(window.scrollY > 240);
+    };
+
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+    return () => window.removeEventListener("scroll", updateVisibility);
+  }, [location]);
+
+  if (isAdmin || !isVisible) return null;
+
+  return (
+    <button
+      type="button"
+      aria-label="Back to top"
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      className="fixed bottom-24 left-4 z-[80] flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#C9A84C] bg-[#111111] text-[#C9A84C] shadow-[0_16px_36px_rgba(17,17,17,.26)] transition duration-200 hover:-translate-y-1 hover:bg-[#C9A84C] hover:text-[#111111] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C9A84C] md:bottom-6 md:left-6"
+    >
+      <svg viewBox="0 0 20 20" aria-hidden="true" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m5 12 5-5 5 5" />
+      </svg>
+    </button>
   );
 }
 
@@ -421,6 +453,7 @@ function App() {
           <DynamicSeoMetadata />
           <ScrollToTop />
           <Router />
+          <BackToTopButton />
           <FloatingWhatsAppButton />
           <MobileStickyBookingCta />
         </TooltipProvider>
