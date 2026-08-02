@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll, smoothScrollToTop } from "@/lib/smoothScroll";
 import { getActivitySessionId, getBrowserInfo, getCurrentPageUrl } from "@/lib/activityTracking";
+import { getServiceImageFallback } from "@/lib/serviceImageFallback";
 import {
   CalendarDays,
   Heart,
@@ -448,6 +449,10 @@ export default function Home() {
                         sizes={PRODUCT_THUMBNAIL_SIZES}
                         loading="lazy"
                         decoding="async"
+                        onError={(event) => {
+                          const fallback = getServiceImageFallback(s);
+                          if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+                        }}
                       />
                     </div>
                   ) : null}

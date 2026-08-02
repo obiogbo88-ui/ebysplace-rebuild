@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { CalendarDays, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
+import { getServiceImageFallback } from "@/lib/serviceImageFallback";
 import { SiteFooter, SiteHeader } from "./Home";
 
 const tabs = ["All", "Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"] as const;
@@ -128,6 +129,10 @@ export default function Services() {
                         alt={`${service.name} hairstyle by Eby’s Place`}
                         loading="lazy"
                         decoding="async"
+                        onError={(event) => {
+                          const fallback = getServiceImageFallback(service);
+                          if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+                        }}
                       />
                     </div>
                   ) : null}

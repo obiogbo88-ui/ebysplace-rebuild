@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { smoothScrollToElement } from "@/lib/smoothScroll";
 import { getActivitySessionId, getBrowserInfo, getCurrentPageUrl } from "@/lib/activityTracking";
+import { getServiceImageFallback } from "@/lib/serviceImageFallback";
 import { SiteFooter, SiteHeader } from "./Home";
 import { ChevronLeft } from "lucide-react";
 
@@ -422,6 +423,10 @@ export default function Booking() {
                             className="h-full w-full object-cover"
                             loading="lazy"
                             decoding="async"
+                            onError={(event) => {
+                              const fallback = getServiceImageFallback(service);
+                              if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+                            }}
                           />
                         </div>
                       ) : null}
