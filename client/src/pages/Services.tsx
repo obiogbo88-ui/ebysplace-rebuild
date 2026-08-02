@@ -132,7 +132,12 @@ export default function Services() {
                         decoding="async"
                         onError={(event) => {
                           const fallback = getServiceImageFallback(service);
-                          if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+                          if (fallback && event.currentTarget.src !== fallback) {
+                            event.currentTarget.src = fallback;
+                          } else if (!fallback || event.currentTarget.src === fallback) {
+                            const container = event.currentTarget.closest('.media-service') as HTMLElement | null;
+                            if (container) container.style.display = 'none';
+                          }
                         }}
                       />
                     </div>
