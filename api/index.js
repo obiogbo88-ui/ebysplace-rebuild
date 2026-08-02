@@ -4094,22 +4094,22 @@ function stripeConfigurationLogMessage(error) {
   }
   return "";
 }
+function adminMutationFailure(action, error2) {
+  const message = error2 instanceof Error ? error2.message : String(error2);
+  console.error(`[Admin] ${action} failed`, { message });
+  if (/database unavailable/i.test(message)) {
+    return new TRPCError4({
+      code: "SERVICE_UNAVAILABLE",
+      message: `${action} failed because the database is unavailable. Check DATABASE_URL and Supabase server credentials in Vercel.`
+    });
+  }
+  return new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: `${action} failed: ${message}` });
+}
 function logStripeCheckoutFailure(context, error) {
   const configurationMessage = stripeConfigurationLogMessage(error);
   if (configurationMessage) {
     console.error(`[Payments] ${context}: ${configurationMessage}`, error);
     return;
-  }
-  function adminMutationFailure2(action, error2) {
-    const message = error2 instanceof Error ? error2.message : String(error2);
-    console.error(`[Admin] ${action} failed`, { message });
-    if (/database unavailable/i.test(message)) {
-      return new TRPCError4({
-        code: "SERVICE_UNAVAILABLE",
-        message: `${action} failed because the database is unavailable. Check DATABASE_URL and Supabase server credentials in Vercel.`
-      });
-    }
-    return new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: `${action} failed: ${message}` });
   }
   console.error(`[Payments] ${context}`, error);
 }
