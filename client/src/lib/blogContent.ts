@@ -28,23 +28,9 @@ export const blogPosts: BlogPost[] = [
     publishDate: "2026-08-02",
     readTime: "5 min read",
     imageUrl:
-      "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_halobraid_robot.png",
-    imageAlt: "Halobraid robot mascot representing the AI-assisted halo braid style guide",
+      "https://mma.prnewswire.com/media/2449952/HaloBraid_Robot.jpg",
+    imageAlt: "The HaloBraid braid-assist device, a cream-and-gold robotic machine for professional hair braiding",
     featured: true,
-    galleryImages: [
-      {
-        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_halo_braids_gallery_1.png",
-        alt: "Front view of a completed halo braid style showing the crown wrap and clean parting",
-      },
-      {
-        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_halo_braids_gallery_2.png",
-        alt: "Side profile of halo braids highlighting the seamless wrap and neat finish at the nape",
-      },
-      {
-        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_halo_braids_gallery_3.png",
-        alt: "Close-up detail of halo braid texture, tension, and scalp care around the hairline",
-      },
-    ],
     sections: [
       {
         heading: "What makes a halo braid different",
