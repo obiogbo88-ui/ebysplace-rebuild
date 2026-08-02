@@ -13,40 +13,67 @@ export type BlogPost = {
   imageUrl: string;
   imageAlt: string;
   featured?: boolean;
+  galleryImages?: Array<{ url: string; alt: string }>;
+  references?: string[];
   sections: BlogPostSection[];
 };
 
 export const blogPosts: BlogPost[] = [
   {
-    slug: "prepare-for-your-braid-appointment",
-    title: "How to prepare for your braid appointment",
-    category: "Appointment prep",
-    excerpt: "The simple checklist we recommend before you arrive so your braids install smoothly, comfortably, and on time.",
-    publishDate: "2026-07-10",
-    readTime: "4 min read",
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
-    imageAlt: "Hair wash and braid prep essentials laid out for an Eby’s Place appointment",
+    slug: "halo-braids-style-guide",
+    title:
+      "Halo braids: a polished protective style for elegant, low-fuss wear",
+    category: "Halo braids",
+    excerpt:
+      "Halo braids work beautifully when you want a refined protective style that photographs well, feels secure, and still looks soft enough for everyday wear.",
+    publishDate: "2026-08-02",
+    readTime: "6 min read",
+    imageUrl:
+      "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+    imageAlt:
+      "Elegant braided crown-inspired styling with neat parts and a polished finish",
     featured: true,
+    galleryImages: [
+      {
+        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+        alt: "Front view of a neat halo-inspired braid finish",
+      },
+      {
+        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
+        alt: "Detailed braid pattern showing clean sections and a smooth crown area",
+      },
+      {
+        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+        alt: "Protective braid styling shaped neatly around the head for a structured look",
+      },
+    ],
     sections: [
       {
-        heading: "Arrive with your style goals ready",
+        heading: "Why halo braids still feel timeless",
         paragraphs: [
-          "Bring one or two reference photos and know the finish you want: neat everyday braids, a fuller statement look, or a lightweight protective style. Clear inspiration shortens consultation time and helps us guide you toward the right size, length, and finish.",
-          "If you are unsure which option suits your scalp, schedule, or maintenance routine, we can help you choose at the chair.",
+          "Halo braids stand out because they create shape, elegance, and structure without relying on excessive bulk. The look frames the face beautifully, feels occasion-ready, and still fits clients who want a polished style for work, travel, church, celebrations, or a busy week where hair needs to stay neat.",
+          "When planned well, the style gives the impression of effort without demanding constant restyling. That balance is a big reason it remains a reliable choice for clients who want protective styling to feel both graceful and practical.",
         ],
       },
       {
-        heading: "Prep your hair and scalp gently",
+        heading: "Who halo braids suit best",
         paragraphs: [
-          "Detangle carefully before your appointment and avoid heavy product build-up. A clean, comfortable scalp supports a smoother install and helps your parts stay crisp for longer.",
-          "If you need prep support, choose a service add-on so wash, blow-dry, or braid prep is handled professionally before installation begins.",
+          "Halo braids are especially useful for clients who want a secure up-style, a lighter feel around the shoulders, or a finish that keeps the hair lifted away from the face. They are also a smart option when you want an event look that still protects your natural hair underneath.",
+          "The best result depends on braid size, tension balance, and how much fullness you want around the crown. A good consultation should cover scalp sensitivity, desired longevity, and whether you prefer a softer romantic finish or a more defined architectural shape.",
         ],
       },
       {
-        heading: "Plan for comfort after your visit",
+        heading: "What makes the style look premium",
         paragraphs: [
-          "Protective styling should still feel light and manageable once you leave. Have your scarf, bonnet, or aftercare ready at home so the style keeps its finish from day one.",
-          "If this is your first braided install in a while, allow a calmer evening afterward so your scalp can settle without extra tension from constant restyling.",
+          "The quality of halo braids is often decided by the details: clean parting, balanced braid placement, a smooth hairline, and an overall shape that looks intentional from every angle. If any of those elements are rushed, the style can quickly lose the elevated finish that makes it so striking.",
+          "At Eby’s Place, the goal is never just to create a braid shape. It is to deliver a result that looks polished in person, photographs well, and feels comfortable enough to wear with confidence from day one.",
+        ],
+      },
+      {
+        heading: "How to keep halo braids looking fresh",
+        paragraphs: [
+          "Night protection matters here just as much as installation quality. A satin wrap helps preserve the hairline, reduce friction around the crown, and stop the style from drying out or frizzing too quickly.",
+          "Keep product use light and purposeful. A small amount of scalp moisture and occasional edge care will usually do more for longevity than layering heavy products that attract build-up.",
         ],
       },
     ],
@@ -55,10 +82,12 @@ export const blogPosts: BlogPost[] = [
     slug: "make-knotless-braids-last-longer",
     title: "How to make knotless braids last longer",
     category: "Aftercare",
-    excerpt: "A realistic maintenance routine for keeping knotless braids fresh, tidy, and comfortable between appointments.",
+    excerpt:
+      "A realistic maintenance routine for keeping knotless braids fresh, tidy, and comfortable between appointments.",
     publishDate: "2026-07-18",
     readTime: "5 min read",
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+    imageUrl:
+      "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
     imageAlt: "Fresh knotless braids styled with a glossy, neat finish",
     featured: true,
     sections: [
@@ -89,10 +118,12 @@ export const blogPosts: BlogPost[] = [
     slug: "choose-the-right-protective-style",
     title: "Choosing the right protective style for your schedule",
     category: "Style guide",
-    excerpt: "The best protective style is not just about trend or length. It also has to match your routine, maintenance time, and comfort level.",
+    excerpt:
+      "The best protective style is not just about trend or length. It also has to match your routine, maintenance time, and comfort level.",
     publishDate: "2026-07-26",
     readTime: "4 min read",
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
+    imageUrl:
+      "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
     imageAlt: "Boho braids with soft curly ends styled for a premium finish",
     featured: true,
     sections: [
@@ -122,5 +153,5 @@ export const blogPosts: BlogPost[] = [
 ];
 
 export function getBlogPostBySlug(slug: string) {
-  return blogPosts.find((post) => post.slug === slug);
+  return blogPosts.find(post => post.slug === slug);
 }

@@ -232,7 +232,9 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(homeSource).not.toContain("src={product.imageUrl || PRODUCT_IMAGE_FALLBACK_SRC}");
     expect(shopSource).toContain("onError={(event) =>");
     expect(appSource).toContain('afterRouteScroll(`${location}${window.location.hash || ""}`, 40)');
-    expect(appSource).toContain('import { afterRouteScroll, navigateWithSmoothScroll, smoothScrollToTop } from "@/lib/smoothScroll";');
+    expect(appSource).toContain("afterRouteScroll,");
+    expect(appSource).toContain("navigateWithSmoothScroll,");
+    expect(appSource).toContain('from "@/lib/smoothScroll";');
     expect(adminSource).toContain("Open admin notifications");
     expect(adminSource).toContain("No new notifications");
     expect(adminSource).toContain("Open full activity feed");

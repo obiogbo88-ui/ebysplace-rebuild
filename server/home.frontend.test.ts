@@ -99,9 +99,10 @@ describe("Eby’s Place landing page visual refinements", () => {
   });
 
   it("adds public search forms and routes navigation searches to filtered shop results", () => {
-    expect(homeSource).toContain('role="search" aria-label="Product search"');
-    expect(homeSource).toContain('role="search" aria-label="Compact product search"');
-    expect(homeSource).toContain('role="search" aria-label="Mobile product search"');
+    expect(homeSource).toContain('role="search"');
+    expect(homeSource).toContain('aria-label="Product search"');
+    expect(homeSource).toContain('aria-label="Compact product search"');
+    expect(homeSource).toContain('aria-label="Mobile product search"');
     expect(homeSource).toContain('placeholder="Search products"');
     expect(homeSource).toContain('`/shop?search=${encodeURIComponent(query)}`');
     expect(homeSource).toContain('navigateWithSmoothScroll(target, setLocation)');
@@ -111,7 +112,7 @@ describe("Eby’s Place landing page visual refinements", () => {
       expect(homeSource).toContain('href: `/services?search=${encodeURIComponent(service.name)}`');
       expect(servicesSource).toContain('new URLSearchParams(window.location.search).get("search")');
       expect(servicesSource).toContain('Showing services matching');
-      expect(servicesSource).toContain('visibleServices.map(service => {');
+      expect(servicesSource).toContain("visibleServices.map");
     expect(homeSource).toContain('-mt-10 pb-[3.75rem] md:-mt-12 md:pb-20');
     expect(shopSource).toContain('new URLSearchParams(window.location.search).get("search")');
     expect(shopSource).toContain('function productMatchesSearch(product: ShopProduct, query: string)');
@@ -129,10 +130,11 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain('className="btn-gold min-h-10 shrink-0 whitespace-nowrap px-2.5 py-2 text-[0.62rem] uppercase tracking-[.12em] min-[390px]:px-3 min-[390px]:text-[0.67rem] sm:px-4 sm:py-2.5 sm:text-xs"');
     expect(homeSource).not.toContain('<div className="hidden sm:block">');
       expect(homeSource).toContain('navigateWithSmoothScroll("/shop", setLocation)');
-      expect(homeSource).toContain('Shop Now\n          </button>');
-      expect(homeSource).toContain('className="btn-gold px-3.5 py-2 text-[0.72rem] uppercase tracking-[.14em] 2xl:px-4 2xl:text-xs" onClick={() => navigateWithSmoothScroll("/booking", setLocation)}');
-      expect(homeSource).toContain('className="btn-gold px-3.5 py-2 text-[0.72rem] uppercase tracking-[.14em] 2xl:px-4 2xl:text-xs" onClick={() => navigateWithSmoothScroll("/shop", setLocation)}');
-      expect(homeSource).toContain('const desktopNavLinks = navLinks.filter((item) => item.href !== "/booking" && item.href !== "/shop");');
+      expect(homeSource).toContain("Shop Now");
+      expect(homeSource).toContain('className="btn-gold px-3.5 py-2 text-[0.72rem] uppercase tracking-[.14em] 2xl:px-4 2xl:text-xs"');
+      expect(homeSource).toContain('navigateWithSmoothScroll("/booking", setLocation)');
+      expect(homeSource).toContain('navigateWithSmoothScroll("/shop", setLocation)');
+      expect(homeSource).toContain("const desktopNavLinks = navLinks.filter(");
     expect(homeSource).not.toContain("h-24 w-[16rem] object-contain mix-blend-multiply sm:h-28 sm:w-[22rem] lg:h-24 lg:w-[18rem] xl:w-[20rem]");
     expect(homeSource).not.toContain("h-52 w-auto object-contain drop-shadow-[0_10px_24px_rgba(112,78,28,.22)]");
     expect(homeSource).not.toContain("h-36 w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-40");
@@ -155,10 +157,12 @@ describe("Eby’s Place landing page visual refinements", () => {
     const removedCompatibilityFolder = ["legacy", "storage"].join("-");
     expect(combinedMediaSource).not.toContain(obsoleteStorageFolder);
     expect(combinedMediaSource).not.toContain(removedCompatibilityFolder);
-    expect(homeSource).toContain('sizes={PRODUCT_THUMBNAIL_SIZES}\n                        loading="lazy"\n                        decoding="async"');
+    expect(homeSource).toContain("sizes={PRODUCT_THUMBNAIL_SIZES}");
+    expect(homeSource).toContain('loading="lazy"');
+    expect(homeSource).toContain('decoding="async"');
     expect(homeSource).toContain('alt="Eby’s Place story portrait"');
     expect(homeSource).toContain("ABOUT_PORTRAIT_FALLBACK_SRC");
-    expect(homeSource).toContain("onError={(event) =>");
+    expect(homeSource).toContain("onError={event => {");
     expect(servicesSource).toContain('loading="lazy"\n                        decoding="async"');
     expect(gallerySource).toContain('loading="lazy" decoding="async"');
     expect(gallerySource).toContain('loading="eager" decoding="async"');
@@ -188,12 +192,12 @@ describe("Eby’s Place landing page visual refinements", () => {
 
   it("uses the requested three homepage card write-ups without changing the card structure", () => {
     expect(homeSource).toContain("No pain. No pulling. Just flawless braids.");
-    expect(homeSource).toContain("Premium braiding designed to protect your scalp, last beautifully,");
+    expect(homeSource).toContain("Premium braiding designed to protect your scalp, last");
     expect(homeSource).toContain("Professional from booking to finish.");
-    expect(homeSource).toContain("Clear services, simple deposits, customer reviews, gallery updates,");
+    expect(homeSource).toContain("Clear services, simple deposits, customer reviews,");
     expect(homeSource).toContain("The future of braiding is here.");
-    expect(homeSource).toContain("AI hairstyle previews, ecommerce, live content, customer reviews,");
-    expect(homeSource.match(/className=\"lux-card\"/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(homeSource).toContain("AI hairstyle previews, ecommerce, live content,");
+    expect(homeSource.match(/lux-card/g)?.length).toBeGreaterThanOrEqual(3);
     expect(homeSource).not.toContain("Professional structure");
     expect(homeSource).not.toContain("Modern automation");
   });
@@ -223,7 +227,8 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("rounded-full");
     expect(homeSource).toContain("portraitImageUrl");
     expect(homeSource).toContain("Eberechi Ogbo | Founder & Service Lead");
-    expect(homeSource).toContain("aboutSection.portraitDescription || \"Eberechi Ogbo | Founder & Service Lead\"");
+    expect(homeSource).toContain("aboutSection.portraitDescription ||");
+    expect(homeSource).toContain("Eberechi Ogbo | Founder & Service Lead");
     expect(homeSource).toContain("mx-auto mt-4 max-w-[13rem] text-sm font-bold leading-6 text-[#5b3a12]");
     expect(homeSource).toContain("object-[center_18%]");
     expect(homeSource).not.toContain("low-tension styling");
@@ -378,7 +383,9 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain("/policies/returns");
     expect(homeSource).toContain("Returns Policy");
     expect(appSource).toContain('afterRouteScroll(`${location}${window.location.hash || ""}`, 40)');
-    expect(appSource).toContain('import { afterRouteScroll, navigateWithSmoothScroll, smoothScrollToTop } from "@/lib/smoothScroll";');
+    expect(appSource).toContain("afterRouteScroll,");
+    expect(appSource).toContain("navigateWithSmoothScroll,");
+    expect(appSource).toContain('from "@/lib/smoothScroll";');
     expect(appSource).toContain("/policies/privacy");
     expect(appSource).toContain("/policies/shopping");
     expect(appSource).toContain("/policies/returns");

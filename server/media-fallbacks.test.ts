@@ -28,7 +28,7 @@ describe("public media fallbacks", () => {
     expect(shopSource).toContain("PRODUCT_IMAGE_FALLBACK_SRC");
     expect(shopSource).toContain("onError={(event) =>");
     expect(homeSource).toContain("ABOUT_PORTRAIT_FALLBACK_SRC");
-    expect(homeSource).toContain("onError={(event) =>");
+    expect(homeSource).toContain("onError={event => {");
     expect(homeSource).toContain("getServiceImageSrc");
     expect(servicesSource).toContain("getServiceImageSrc");
     expect(bookingSource).toContain("getServiceImageSrc");
