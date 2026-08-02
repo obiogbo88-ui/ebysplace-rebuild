@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
+import { getServiceImageFallback, getServiceImageSrc } from "@/lib/serviceImageFallback";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import heic2any from "heic2any";
 import {
   Bell,
   CalendarDays,
@@ -92,31 +92,75 @@ function sanitizeUploadBaseName(fileName: string) {
   return (fileName.replace(/\.[^.]+$/, "").replace(/[^a-z0-9.-]/gi, "-").toLowerCase() || "upload").slice(0, MAX_UPLOAD_BASENAME_LENGTH);
 }
 
+function mimeFromExtension(ext: string): string {
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "heic") return "image/heic";
+  if (ext === "heif") return "image/heif";
+  return "";
+}
+
 function isHeicLikeFile(file: File) {
   const extension = uploadFileExtension(file);
   const mime = (file.type || "").toLowerCase();
   return extension === "heic" || extension === "heif" || mime === "image/heic" || mime === "image/heif";
 }
 
+async function compressAdminImage(file: File, maxPx = 2400, quality = 0.92): Promise<File> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Could not read the selected image."));
+      img.src = objectUrl;
+    });
+    const scale = Math.min(1, maxPx / Math.max(image.width, image.height, 1));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Your browser could not prepare this image for upload.");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(image, 0, 0, width, height);
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not compress image for upload."))), "image/jpeg", quality),
+    );
+    const baseName = sanitizeUploadBaseName(file.name);
+    return new File([blob], `${baseName}.jpg`, { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 async function normalizeAdminUploadFile(file: File) {
   const extension = uploadFileExtension(file);
-  const mime = (file.type || "").toLowerCase();
+  const mime = ((file.type || mimeFromExtension(extension)) || "").toLowerCase();
   if (!ADMIN_ALLOWED_EXTENSIONS.has(extension) || !ADMIN_ALLOWED_MIME_TYPES.has(mime)) {
     throw new Error("Allowed image formats: jpg, jpeg, png, webp, heic, heif.");
   }
-  if (!isHeicLikeFile(file)) return file;
 
-  let conversionResult: Blob | Blob[];
-  try {
-    conversionResult = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
-  } catch {
-    throw new Error("HEIC/HEIF conversion failed. Please try a different image or use Safari/Chrome on a recent iPhone.");
+  let workingFile = file;
+  if (isHeicLikeFile(file)) {
+    const { default: heic2any } = await import("heic2any");
+    let conversionResult: Blob | Blob[];
+    try {
+      conversionResult = await (heic2any as (o: { blob: Blob; toType: string; quality?: number }) => Promise<Blob | Blob[]>)({ blob: file, toType: "image/jpeg", quality: 0.9 });
+    } catch {
+      throw new Error("HEIC/HEIF conversion failed. Please try a different image or use Safari/Chrome on a recent iPhone.");
+    }
+    const normalizedBlob = Array.isArray(conversionResult) ? conversionResult[0] : conversionResult;
+    if (!(normalizedBlob instanceof Blob)) {
+      throw new Error("Could not convert HEIC/HEIF image. Please try another photo.");
+    }
+    workingFile = new File([normalizedBlob], `${sanitizeUploadBaseName(file.name)}.jpg`, { type: "image/jpeg" });
   }
-  const normalizedBlob = Array.isArray(conversionResult) ? conversionResult[0] : conversionResult;
-  if (!(normalizedBlob instanceof Blob)) {
-    throw new Error("Could not convert HEIC/HEIF image. Please try another photo.");
-  }
-  return new File([normalizedBlob], `${sanitizeUploadBaseName(file.name)}.jpg`, { type: "image/jpeg" });
+
+  return compressAdminImage(workingFile);
 }
 
 const galleryCategories = ["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"] as const;
@@ -1171,7 +1215,18 @@ export default function Admin() {
               <div className="rounded-2xl border border-white/10 p-4" key={service.id ?? service.slug ?? service.name}>
                   <div className="grid gap-4 md:grid-cols-[128px_1fr]">
                     <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]">
-                      {service.imageUrl ? <img src={service.imageUrl} alt={service.name} /> : <div className="flex h-full items-center justify-center text-xs text-white/35">No image</div>}
+                      {getServiceImageSrc(service) ? (
+                        <img
+                          src={getServiceImageSrc(service)!}
+                          alt={service.name}
+                          loading="lazy"
+                          decoding="async"
+                          onError={(event) => {
+                            const fallback = getServiceImageFallback(service);
+                            if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+                          }}
+                        />
+                      ) : <div className="flex h-full items-center justify-center text-xs text-white/35">No image</div>}
                     </div>
                     <div>
                       <div className="flex justify-between gap-3"><span>{service.name}<small className="block text-white/45">{service.category} · {service.duration}</small></span><b>£{service.priceFrom}</b></div>

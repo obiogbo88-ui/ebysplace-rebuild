@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { CalendarDays, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
+import { getServiceImageFallback, getServiceImageSrc } from "@/lib/serviceImageFallback";
 import { SiteFooter, SiteHeader } from "./Home";
 
 const tabs = ["All", "Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"] as const;
@@ -116,18 +117,23 @@ export default function Services() {
             <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-7">
               {visibleServices.map(service => {
                 const isBookable = service.isBookable !== "false";
+                const serviceImageSrc = getServiceImageSrc(service);
                 return (
                 <article
                   className="lux-card flex flex-col overflow-hidden p-0"
                   key={service.id ?? service.slug}
                 >
-                  {service.imageUrl ? (
+                  {serviceImageSrc ? (
                     <div className="media-portrait media-service overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
                       <img
-                        src={service.imageUrl}
+                        src={serviceImageSrc}
                         alt={`${service.name} hairstyle by Eby’s Place`}
                         loading="lazy"
                         decoding="async"
+                        onError={(event) => {
+                          const fallback = getServiceImageFallback(service);
+                          if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+                        }}
                       />
                     </div>
                   ) : null}

@@ -21,11 +21,19 @@ describe("public media fallbacks", () => {
   it("guards product and About image elements with onError fallbacks", () => {
     const shopSource = readFileSync(join(root, "client/src/pages/Shop.tsx"), "utf8");
     const homeSource = readFileSync(join(root, "client/src/pages/Home.tsx"), "utf8");
+    const servicesSource = readFileSync(join(root, "client/src/pages/Services.tsx"), "utf8");
+    const bookingSource = readFileSync(join(root, "client/src/pages/Booking.tsx"), "utf8");
+    const adminSource = readFileSync(join(root, "client/src/pages/Admin.tsx"), "utf8");
 
     expect(shopSource).toContain("PRODUCT_IMAGE_FALLBACK_SRC");
     expect(shopSource).toContain("onError={(event) =>");
     expect(homeSource).toContain("ABOUT_PORTRAIT_FALLBACK_SRC");
-    expect(homeSource).toContain("onError={(event) =>");
+    expect(homeSource).toContain("onError={event => {");
+    expect(homeSource).toContain("getServiceImageSrc");
+    expect(servicesSource).toContain("getServiceImageSrc");
+    expect(bookingSource).toContain("getServiceImageSrc");
+    expect(adminSource).toContain("getServiceImageSrc");
+    expect(adminSource).toContain("getServiceImageFallback");
   });
 
   it("lazy-loads every product image surface to reduce initial page weight", () => {
