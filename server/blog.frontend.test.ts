@@ -33,14 +33,12 @@ describe("blog section frontend wiring", () => {
     expect(homeSource).toContain("Read article");
   });
 
-  it("ships an original halo braids article with responsive image support", () => {
+  it("removes the halo braids article while keeping blog page rendering support", () => {
     const blogPageSource = source("client/src/pages/Blog.tsx");
     const blogContentSource = source("client/src/lib/blogContent.ts");
 
-    expect(blogContentSource).toContain('slug: "halo-braids-style-guide"');
-    expect(blogContentSource).toContain(
-      "Halo braids: a polished protective style for elegant, low-fuss wear"
-    );
+    expect(blogContentSource).not.toContain('slug: "halo-braids-style-guide"');
+    expect(blogContentSource).toContain('slug: "make-knotless-braids-last-longer"');
     expect(blogContentSource).toContain("galleryImages");
     expect(blogPageSource).toContain("Style gallery");
     expect(blogPageSource).toContain("sm:grid-cols-2 lg:grid-cols-3");
