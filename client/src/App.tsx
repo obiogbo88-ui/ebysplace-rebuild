@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { getBlogPostBySlug } from "@/lib/blogContent";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import { canonicalUrl } from "@/lib/canonicalUrl";
@@ -22,6 +23,7 @@ const Shop = lazy(() => import("./pages/Shop"));
 const TryOn = lazy(() => import("./pages/TryOn"));
 const Braiders = lazy(() => import("./pages/Braiders"));
 const Gallery = lazy(() => import("./pages/Gallery"));
+const Blog = lazy(() => import("./pages/Blog"));
 const Reviews = lazy(() => import("./pages/Reviews"));
 const BookingSuccess = lazy(() => import("./pages/BookingSuccess"));
 const Admin = lazy(() => import("./pages/Admin"));
@@ -78,6 +80,9 @@ const sharedLinkPathAliases: Record<string, string> = {
   "/review": "/reviews",
   "/testimonial": "/reviews",
   "/testimonials": "/reviews",
+  "/blogs": "/blog",
+  "/articles": "/blog",
+  "/journal": "/blog",
   "/privacy": "/policies/privacy",
   "/privacy-policy": "/policies/privacy",
   "/shopping": "/policies/shopping",
@@ -147,9 +152,13 @@ function normalizeSharedLinkPath(pathname: string) {
 
   if (lowerCasePath.startsWith("/product-category/") || lowerCasePath.startsWith("/category/")) return "/shop";
   if (lowerCasePath.startsWith("/service/")) return "/services";
+  if (lowerCasePath.startsWith("/journal/")) return `/blog/${lowerCasePath.replace(/^\/journal\/+/, "")}`;
+  if (lowerCasePath.startsWith("/articles/")) return `/blog/${lowerCasePath.replace(/^\/articles\/+/, "")}`;
+  if (lowerCasePath.startsWith("/article/")) return `/blog/${lowerCasePath.replace(/^\/article\/+/, "")}`;
 
   if (canonicalStaticPaths.has(lowerCasePath)) return lowerCasePath;
   if (lowerCasePath.startsWith("/shop/")) return lowerCasePath;
+  if (lowerCasePath.startsWith("/blog/")) return lowerCasePath;
 
   return cleanedSharedPath;
 }
@@ -184,6 +193,10 @@ const seoByPath: Record<string, { title: string; description: string }> = {
   "/gallery": {
     title: "Braids Gallery | Eby’s Place",
     description: "View Eby’s Place braid inspiration, protective style examples, knotless braids, locs, twists, kids styles, and luxury scalp-conscious finishes.",
+  },
+  "/blog": {
+    title: "Braid Care Blog | Eby’s Place",
+    description: "Read the Eby’s Place braid journal for appointment prep, aftercare, and protective styling guidance.",
   },
   "/reviews": {
     title: "Client Reviews | Eby’s Place",
@@ -239,11 +252,18 @@ function DynamicSeoMetadata() {
     if (typeof document === "undefined") return;
     const pathname = location.split(/[?#]/)[0] || "/";
     const canonicalPath = pathname.startsWith("/shop/") ? pathname : normalizeSharedLinkPath(pathname);
+    const blogSlug = pathname.startsWith("/blog/") ? pathname.replace(/^\/blog\/+/, "").split("/")[0] || "" : "";
+    const blogPost = blogSlug ? getBlogPostBySlug(blogSlug) : undefined;
     const seo = pathname.startsWith("/shop/")
       ? {
           title: "Product Details | Eby’s Place Shop",
           description: "View Eby’s Place braid care products, accessories, and aftercare essentials for protective styles.",
         }
+      : pathname.startsWith("/blog/")
+        ? {
+            title: blogPost?.title ? `${blogPost.title} | Eby’s Place Blog` : "Braid Journal Article | Eby’s Place",
+            description: blogPost?.excerpt || "Read braid care, appointment prep, and protective style guidance from Eby’s Place.",
+          }
       : seoByPath[canonicalPath] || defaultSeo;
     const canonicalHref = canonicalUrl(canonicalPath);
 
@@ -423,6 +443,8 @@ function Router() {
         <Route path="/ai-try-on" component={TryOn} />
         <Route path="/braiders-near-me" component={Braiders} />
         <Route path="/gallery" component={Gallery} />
+        <Route path="/blog/:slug" component={Blog} />
+        <Route path="/blog" component={Blog} />
         <Route path="/reviews" component={Reviews} />
         <Route path="/admin/login" component={AdminLogin} />
         <Route path="/admin/reset-password" component={AdminResetPassword} />
