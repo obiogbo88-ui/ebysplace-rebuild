@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll, smoothScrollToTop } from "@/lib/smoothScroll";
 import { getActivitySessionId, getBrowserInfo, getCurrentPageUrl } from "@/lib/activityTracking";
-import { getServiceImageFallback } from "@/lib/serviceImageFallback";
+import { getServiceImageFallback, getServiceImageSrc } from "@/lib/serviceImageFallback";
 import {
   CalendarDays,
   Heart,
@@ -441,10 +441,10 @@ export default function Home() {
             <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
               {(styles as any[]).map((s, index) => (
                 <article className="lux-card flex flex-col overflow-hidden p-0" key={`${s.id ?? s.slug ?? s.name}-${index}`}>
-                  {s.imageUrl ? (
+                  {getServiceImageSrc(s) ? (
                     <div className="media-portrait overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
                       <img
-                        src={s.imageUrl}
+                        src={getServiceImageSrc(s)!}
                         alt={`${s.name} hairstyle by Eby’s Place`}
                         sizes={PRODUCT_THUMBNAIL_SIZES}
                         loading="lazy"

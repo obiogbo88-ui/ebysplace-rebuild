@@ -34,9 +34,20 @@ function slugifyServiceName(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
-export function getServiceImageFallback(service: { slug?: string | null; name?: string | null; fallbackImageUrl?: string | null }) {
+type ServiceImageReference = {
+  imageUrl?: string | null;
+  slug?: string | null;
+  name?: string | null;
+  fallbackImageUrl?: string | null;
+};
+
+export function getServiceImageFallback(service: ServiceImageReference) {
   if (service.fallbackImageUrl) return service.fallbackImageUrl;
   if (service.slug && SERVICE_IMAGE_FALLBACKS[service.slug]) return SERVICE_IMAGE_FALLBACKS[service.slug];
   if (service.name) return SERVICE_IMAGE_FALLBACKS[slugifyServiceName(service.name)] || null;
   return null;
+}
+
+export function getServiceImageSrc(service: ServiceImageReference) {
+  return service.imageUrl || getServiceImageFallback(service);
 }

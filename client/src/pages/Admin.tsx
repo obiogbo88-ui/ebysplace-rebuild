@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
+import { getServiceImageFallback, getServiceImageSrc } from "@/lib/serviceImageFallback";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
@@ -1214,7 +1215,18 @@ export default function Admin() {
               <div className="rounded-2xl border border-white/10 p-4" key={service.id ?? service.slug ?? service.name}>
                   <div className="grid gap-4 md:grid-cols-[128px_1fr]">
                     <div className="media-portrait overflow-hidden rounded-2xl border border-primary/20 bg-[#171009]">
-                      {service.imageUrl ? <img src={service.imageUrl} alt={service.name} /> : <div className="flex h-full items-center justify-center text-xs text-white/35">No image</div>}
+                      {getServiceImageSrc(service) ? (
+                        <img
+                          src={getServiceImageSrc(service)!}
+                          alt={service.name}
+                          loading="lazy"
+                          decoding="async"
+                          onError={(event) => {
+                            const fallback = getServiceImageFallback(service);
+                            if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+                          }}
+                        />
+                      ) : <div className="flex h-full items-center justify-center text-xs text-white/35">No image</div>}
                     </div>
                     <div>
                       <div className="flex justify-between gap-3"><span>{service.name}<small className="block text-white/45">{service.category} · {service.duration}</small></span><b>£{service.priceFrom}</b></div>

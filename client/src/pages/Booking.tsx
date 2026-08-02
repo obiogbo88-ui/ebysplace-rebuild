@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { smoothScrollToElement } from "@/lib/smoothScroll";
 import { getActivitySessionId, getBrowserInfo, getCurrentPageUrl } from "@/lib/activityTracking";
-import { getServiceImageFallback } from "@/lib/serviceImageFallback";
+import { getServiceImageFallback, getServiceImageSrc } from "@/lib/serviceImageFallback";
 import { SiteFooter, SiteHeader } from "./Home";
 import { ChevronLeft } from "lucide-react";
 
@@ -415,10 +415,10 @@ export default function Booking() {
                       onClick={() => { set("serviceName", service.name); goToStep(1); }}
                       className={`overflow-hidden rounded-3xl border p-0 text-left transition hover:-translate-y-0.5 ${form.serviceName === service.name ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/60"}`}
                     >
-                      {service.imageUrl ? (
+                      {getServiceImageSrc(service) ? (
                         <div className="h-40 overflow-hidden rounded-t-3xl bg-[#f5ead7]">
                           <img
-                            src={service.imageUrl}
+                            src={getServiceImageSrc(service)!}
                             alt={`${service.name} braid style by Eby's Place`}
                             className="h-full w-full object-cover"
                             loading="lazy"
