@@ -20,65 +20,6 @@ export type BlogPost = {
 
 export const blogPosts: BlogPost[] = [
   {
-    slug: "halo-braids-style-guide",
-    title:
-      "Halo braids: a polished protective style for elegant, low-fuss wear",
-    category: "Halo braids",
-    excerpt:
-      "Halo braids work beautifully when you want a refined protective style that photographs well, feels secure, and still looks soft enough for everyday wear.",
-    publishDate: "2026-08-02",
-    readTime: "6 min read",
-    imageUrl:
-      "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
-    imageAlt:
-      "Elegant braided crown-inspired styling with neat parts and a polished finish",
-    featured: true,
-    galleryImages: [
-      {
-        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
-        alt: "Front view of a neat halo-inspired braid finish",
-      },
-      {
-        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
-        alt: "Detailed braid pattern showing clean sections and a smooth crown area",
-      },
-      {
-        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
-        alt: "Protective braid styling shaped neatly around the head for a structured look",
-      },
-    ],
-    sections: [
-      {
-        heading: "Why halo braids still feel timeless",
-        paragraphs: [
-          "Halo braids stand out because they create shape, elegance, and structure without relying on excessive bulk. The look frames the face beautifully, feels occasion-ready, and still fits clients who want a polished style for work, travel, church, celebrations, or a busy week where hair needs to stay neat.",
-          "When planned well, the style gives the impression of effort without demanding constant restyling. That balance is a big reason it remains a reliable choice for clients who want protective styling to feel both graceful and practical.",
-        ],
-      },
-      {
-        heading: "Who halo braids suit best",
-        paragraphs: [
-          "Halo braids are especially useful for clients who want a secure up-style, a lighter feel around the shoulders, or a finish that keeps the hair lifted away from the face. They are also a smart option when you want an event look that still protects your natural hair underneath.",
-          "The best result depends on braid size, tension balance, and how much fullness you want around the crown. A good consultation should cover scalp sensitivity, desired longevity, and whether you prefer a softer romantic finish or a more defined architectural shape.",
-        ],
-      },
-      {
-        heading: "What makes the style look premium",
-        paragraphs: [
-          "The quality of halo braids is often decided by the details: clean parting, balanced braid placement, a smooth hairline, and an overall shape that looks intentional from every angle. If any of those elements are rushed, the style can quickly lose the elevated finish that makes it so striking.",
-          "At Eby’s Place, the goal is never just to create a braid shape. It is to deliver a result that looks polished in person, photographs well, and feels comfortable enough to wear with confidence from day one.",
-        ],
-      },
-      {
-        heading: "How to keep halo braids looking fresh",
-        paragraphs: [
-          "Night protection matters here just as much as installation quality. A satin wrap helps preserve the hairline, reduce friction around the crown, and stop the style from drying out or frizzing too quickly.",
-          "Keep product use light and purposeful. A small amount of scalp moisture and occasional edge care will usually do more for longevity than layering heavy products that attract build-up.",
-        ],
-      },
-    ],
-  },
-  {
     slug: "make-knotless-braids-last-longer",
     title: "How to make knotless braids last longer",
     category: "Aftercare",
@@ -87,8 +28,8 @@ export const blogPosts: BlogPost[] = [
     publishDate: "2026-07-18",
     readTime: "5 min read",
     imageUrl:
-      "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
-    imageAlt: "Fresh knotless braids styled with a glossy, neat finish",
+      "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
+    imageAlt: "Hair wash and preparation for protective braiding aftercare",
     featured: true,
     sections: [
       {
@@ -123,8 +64,8 @@ export const blogPosts: BlogPost[] = [
     publishDate: "2026-07-26",
     readTime: "4 min read",
     imageUrl:
-      "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
-    imageAlt: "Boho braids with soft curly ends styled for a premium finish",
+      "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
+    imageAlt: "Tribal braids showcasing a curated protective style finish",
     featured: true,
     sections: [
       {
