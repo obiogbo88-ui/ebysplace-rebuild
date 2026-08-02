@@ -20,7 +20,7 @@ const categoryIntro: Record<ServiceCategory, string> = {
   "Kids Styles":
     "Gentle children’s braid, cornrow, and twist appointments for boys and girls of all ages and all backgrounds — comfort, patience, and neat finishing at the centre. Lower pricing for our youngest clients.",
   "Men Styles":
-    "Cornrows, box braids, twists, Fulani braids, and locs for men — clean, precise, and bookable through the same simple flow.",
+    "Cornrows, box braids, twists, and locs for men — clean, precise, and bookable through the same simple flow.",
   "Add-ons":
     "Preparation, finishing, accessories, edge styling, and takedown services to complete the appointment journey.",
 };

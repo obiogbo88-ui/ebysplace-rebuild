@@ -20,6 +20,77 @@ export type BlogPost = {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: "halobraid-robotics-future-of-braiding",
+    title: "HaloBraid: The Robotic Braiding Device Changing the Salon Industry",
+    category: "Industry news",
+    excerpt:
+      "A Harvard-born braid assist device is rewriting the economics of the braiding salon — faster appointments, less physical strain, and a smarter path to scale.",
+    publishDate: "2026-08-02",
+    readTime: "6 min read",
+    imageUrl:
+      "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+    imageAlt: "Professional braiding salon appointment — the foundation HaloBraid is transforming",
+    featured: true,
+    galleryImages: [
+      {
+        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+        alt: "HaloBraid robotic device in action — precise cornrow finishing at speed",
+      },
+      {
+        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+        alt: "HaloBraid braid assist completing box braids with consistent tension",
+      },
+      {
+        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+        alt: "HaloBraid device supporting a protective loc installation session",
+      },
+    ],
+    sections: [
+      {
+        heading: "What is HaloBraid?",
+        paragraphs: [
+          "HaloBraid is the first professional braid assist device designed specifically for salon stylists. Co-founded by Yinka Ogunbiyi — a Harvard-trained biomechanical engineer — and David Afolabi, it was built to address one of the most persistent challenges in the textured hair industry: the physical toll and time cost of traditional hand braiding.",
+          "The device blends robotics and machine learning to take over the repetitive, physically demanding stage of a braid after the stylist has set the pattern and tension by hand. The result is up to five times faster completion without sacrificing the quality or creative control that clients expect from a premium stylist.",
+        ],
+      },
+      {
+        heading: "Why it matters for stylists",
+        paragraphs: [
+          "Braiding is one of the most labour-intensive services in personal care. A full set of box braids or knotless braids can take six to eight hours, which limits how many clients a stylist can serve in a day and contributes to serious hand, wrist, and shoulder injuries over a career.",
+          "HaloBraid directly addresses both problems. By automating the repetitive motion, it allows stylists to serve more clients per day, reduce physical strain, and maintain the kind of consistent finish that builds a loyal client base. The device does not replace the stylist — it amplifies what they can do.",
+        ],
+      },
+      {
+        heading: "How it works in practice",
+        paragraphs: [
+          "The stylist begins each braid using their own technique and preferred tension. HaloBraid then takes over the repeating segment of the braid, advancing with precise, consistent movement until the full length is complete. The stylist remains in control of the start, the style, and any creative variation — the device simply removes the mechanical repetition.",
+          "The machine uses sensors and machine learning to maintain even tension throughout, helping deliver a cleaner, more uniform finish than prolonged hand braiding at the end of a long working day. Early testing has been carried out on thousands of braids, with results consistently matching professional hand-braided quality.",
+        ],
+      },
+      {
+        heading: "The investment and industry recognition",
+        paragraphs: [
+          "HaloBraid won the 2025 President's Innovation Challenge at Harvard, one of the most prestigious student entrepreneurship competitions in the United States, taking home $75,000 in funding. The win confirmed not only the technical quality of the product but the scale of the market opportunity it addresses.",
+          "In 2026, Halo secured $7 million in venture capital, with backing from Alexis Ohanian's fund Seven Seven Six among others. That funding is accelerating product development, salon pilot programmes, and the commercial launch expected in late 2026. Salons and stylists interested in early access can join the waitlist at halobraid.com.",
+        ],
+      },
+      {
+        heading: "What this means for the protective styles industry",
+        paragraphs: [
+          "The global market for textured hair services has grown significantly, but the supply side has not kept pace. There are not enough trained stylists to meet demand, and those who are practising are working at the physical limits of what hand braiding allows. HaloBraid offers a meaningful path to closing that gap.",
+          "For established salons, the device creates the potential to double appointment capacity without additional staff or extended hours. For newer stylists, it removes the physical barrier to building a full client list in the early years of a career. For clients, it means shorter waiting times and a more consistent result across every appointment.",
+          "At Eby's Place, we follow innovations like HaloBraid closely because our commitment has always been to combine precision, comfort, and care. Tools that support stylists without compromising the craft align exactly with that standard. We look forward to seeing how this technology develops and what it offers the wider protective styles community.",
+        ],
+      },
+    ],
+    references: [
+      "HaloBraid — halobraid.com",
+      "TechCrunch: HaloBraid raises $7M from Seven Seven Six to end the six-hour hair salon appointment (June 2026)",
+      "Harvard Business School President's Innovation Challenge — 2025 winner",
+      "PR Newswire: Halo announces $7M in funding to launch HaloBraid, the first braid assist device for professional stylists (2026)",
+    ],
+  },
+  {
     slug: "make-knotless-braids-last-longer",
     title: "How to make knotless braids last longer",
     category: "Aftercare",
