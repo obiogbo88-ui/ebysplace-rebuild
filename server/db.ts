@@ -699,7 +699,7 @@ export const seedServices = [
     badge: "Men's Style",
     isFeatured: "false" as const,
     sortOrder: 21,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_men_cornrows_braids_7a3f1b2e-4c8d9e0f12.png",
   },
   {
     name: "Men Box Braids",
@@ -711,7 +711,7 @@ export const seedServices = [
     badge: "Men's Style",
     isFeatured: "false" as const,
     sortOrder: 22,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_men_box_braids_model_3b9c2d1a-6e4f5a7b89.png",
   },
   {
     name: "Men Twists",
@@ -723,7 +723,7 @@ export const seedServices = [
     badge: "Men's Style",
     isFeatured: "false" as const,
     sortOrder: 23,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_men_twists_model_5d1e8f3c-2a7b4c6d90.png",
   },
   {
     name: "Fulani Braids for Men",
@@ -747,7 +747,7 @@ export const seedServices = [
     badge: "Men's Style",
     isFeatured: "false" as const,
     sortOrder: 25,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_locs_men_model_9f2a5c4b-1d3e7f8a06.png",
   },
   {
     name: "Hair Wash & Prep",

@@ -20,6 +20,60 @@ export type BlogPost = {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: "halo-braids-style-guide",
+    title: "Halo braids: a polished protective style for elegant, low-fuss wear",
+    category: "Style guide",
+    excerpt:
+      "A complete guide to halo braids — how the style is built, who it suits, and why it remains one of the most versatile protective looks available.",
+    publishDate: "2026-08-02",
+    readTime: "5 min read",
+    imageUrl:
+      "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_halobraid_robot.png",
+    imageAlt: "Halobraid robot mascot representing the AI-assisted halo braid style guide",
+    featured: true,
+    galleryImages: [
+      {
+        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_halo_braids_gallery_1.png",
+        alt: "Front view of a completed halo braid style showing the crown wrap and clean parting",
+      },
+      {
+        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_halo_braids_gallery_2.png",
+        alt: "Side profile of halo braids highlighting the seamless wrap and neat finish at the nape",
+      },
+      {
+        url: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_halo_braids_gallery_3.png",
+        alt: "Close-up detail of halo braid texture, tension, and scalp care around the hairline",
+      },
+    ],
+    sections: [
+      {
+        heading: "What makes a halo braid different",
+        paragraphs: [
+          "A halo braid wraps around the head in a continuous crown, sitting at or just above the hairline. Unlike box braids or cornrows, the structure is a single flowing braid that creates a regal, unbroken shape from every angle.",
+          "The style reads as formal without feeling stiff, which makes it popular for weddings, events, graduation days, and professional settings where a polished but protective option is needed.",
+        ],
+      },
+      {
+        heading: "Who is it suited for",
+        paragraphs: [
+          "Halo braids work across most hair textures and lengths. Longer natural hair gives the braid more substance and a fuller crown, but extensions can be incorporated to add volume and length for finer or shorter hair.",
+          "The style sits away from the scalp without applying high tension, making it a comfortable choice for those who find tighter braid techniques uncomfortable.",
+        ],
+      },
+      {
+        heading: "Keeping it looking fresh",
+        paragraphs: [
+          "Wrap the entire braid in a satin scarf or bonnet at night to prevent frizz and maintain the smooth outer finish. Light edge product applied carefully around the hairline keeps the look sharp without building up quickly.",
+          "Avoid heavy oils directly on the braid surface. A light scalp spray between partings keeps the style comfortable and extends its wear.",
+        ],
+      },
+    ],
+    references: [
+      "Halo braids are a variation of Dutch or French braid technique wrapped around the head in a crown formation.",
+      "Extension hair can be used to increase volume and length at the stylist's discretion during the appointment.",
+    ],
+  },
+  {
     slug: "make-knotless-braids-last-longer",
     title: "How to make knotless braids last longer",
     category: "Aftercare",
