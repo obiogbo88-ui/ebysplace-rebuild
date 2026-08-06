@@ -335,6 +335,17 @@ export function SiteFooter() {
         <p className="serif max-w-5xl text-5xl font-bold uppercase leading-none tracking-[-0.05em] text-[#24170d] sm:text-7xl md:text-8xl">
           Beauty in every strand
         </p>
+        <p className="mt-6 text-xs font-medium tracking-[0.05em] text-[#4f3720]/60">
+          Built by{" "}
+          <a
+            href="https://veyadigital.tech"
+            target="_blank"
+            rel="noopener"
+            className="underline decoration-[#b9933e]/70 underline-offset-4 hover:text-[#8a641e]"
+          >
+            Veya Digital
+          </a>
+        </p>
       </div>
     </footer>
   );
