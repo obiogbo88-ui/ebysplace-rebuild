@@ -27,7 +27,7 @@ describe("blog section frontend wiring", () => {
     const homeSource = source("client/src/pages/Home.tsx");
 
     expect(homeSource).toContain('{ href: "/blog", label: "Blog" }');
-    expect(homeSource).toContain('<Link href="/blog">Blog</Link>');
+    expect(homeSource).toContain('<Link className="w-fit transition hover:text-[#8a641e]" href="/blog">Blog</Link>');
     expect(homeSource).toContain("Latest from the braid journal");
     expect(homeSource).toContain("Browse all posts");
     expect(homeSource).toContain("Read article");

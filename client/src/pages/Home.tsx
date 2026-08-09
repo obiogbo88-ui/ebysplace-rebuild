@@ -197,15 +197,15 @@ export function SiteHeader() {
           </button>
           <button
             type="button"
-            className="rounded-full border border-[#b8892f] bg-[#0b0b0b] p-2.5 text-[#f8de82] shadow-[0_12px_28px_rgba(17,17,17,.34)] ring-1 ring-[#f3d478]/30 transition hover:bg-[#1a1a1a] sm:p-3"
+            className="rounded-full border border-primary/45 bg-[#111111] p-2.5 text-primary shadow-[0_12px_28px_rgba(17,17,17,.28)] ring-1 ring-primary/25 transition hover:bg-primary hover:text-[#111111] hover:ring-primary/45 sm:p-3"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(value => !value)}
           >
             {menuOpen ? (
-              <X className="h-5 w-5 stroke-[#d4af37] [stroke-width:2.6]" />
+              <X className="h-5 w-5 [stroke-width:2.6]" />
             ) : (
-              <Menu className="h-5 w-5 stroke-[#d4af37] [stroke-width:2.6]" />
+              <Menu className="h-5 w-5 [stroke-width:2.6]" />
             )}
           </button>
         </div>
@@ -259,90 +259,101 @@ export function SiteHeader() {
 export function SiteFooter() {
   const [, setLocation] = useLocation();
   return (
-    <footer className="border-t border-[#d8bd74]/45 bg-[#f5ead7] py-12 text-[#2a1a0b]">
-      <div className="container grid gap-8 md:grid-cols-5">
+    <footer className="border-t border-primary/25 bg-[#f5ead7] pb-10 pt-16 text-[#2a1a0b]">
+      <div className="container grid gap-10 md:grid-cols-[1.3fr_1fr_1fr_1fr_1fr] md:gap-8">
         <div>
-          <div className="flex items-center gap-4">
-            <img
-              src={HEADER_LOGO_SRC}
-              alt="Eby’s Place"
-              className="h-16 w-auto max-w-[10rem] object-contain object-left mix-blend-multiply drop-shadow-[0_8px_18px_rgba(112,78,28,.18)] sm:h-20 sm:max-w-[12rem]"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-          <p className="mt-3 text-sm font-medium text-[#4f3720]">
+          <img
+            src={HEADER_LOGO_SRC}
+            alt="Eby’s Place"
+            className="h-16 w-auto max-w-[10rem] object-contain object-left mix-blend-multiply drop-shadow-[0_8px_18px_rgba(112,78,28,.18)] sm:h-20 sm:max-w-[12rem]"
+            loading="lazy"
+            decoding="async"
+          />
+          <p className="mt-4 max-w-[16rem] text-sm leading-relaxed text-[#4f3720]">
             Luxury pain-free braiding in Somerset, UK.
           </p>
         </div>
         <div>
-          <h4 className="font-bold text-primary">Visit</h4>
-          <p className="mt-3 text-sm font-medium text-[#4f3720]">
+          <h4 className="text-xs font-bold uppercase tracking-[.16em] text-primary">
+            Visit
+          </h4>
+          <p className="mt-4 text-sm leading-relaxed text-[#4f3720]">
             Book protective styles, shop aftercare, try AI previews, and connect
             to the Kouvia braider platform.
           </p>
         </div>
         <div>
-          <h4 className="font-bold text-primary">Quick Links</h4>
-          <div className="mt-3 grid gap-2 text-sm font-semibold text-[#4f3720]">
-            <Link href="/services">Services & Pricing</Link>
+          <h4 className="text-xs font-bold uppercase tracking-[.16em] text-primary">
+            Quick Links
+          </h4>
+          <div className="mt-4 grid gap-3 text-sm font-medium text-[#4f3720]">
+            <Link className="w-fit transition hover:text-[#8a641e]" href="/services">Services & Pricing</Link>
             <button
               type="button"
-              className="text-left"
+              className="w-fit text-left transition hover:text-[#8a641e]"
               onClick={() => navigateWithSmoothScroll("/booking", setLocation)}
             >
               Book Appointment
             </button>
             <button
               type="button"
-              className="text-left"
+              className="w-fit text-left transition hover:text-[#8a641e]"
               onClick={() => navigateWithSmoothScroll("/shop", setLocation)}
             >
               Shop
             </button>
-            <Link href="/ai-try-on">AI Try-On</Link>
-            <Link href="/braiders-near-me">Braiders Near Me</Link>
-            <Link href="/blog">Blog</Link>
+            <Link className="w-fit transition hover:text-[#8a641e]" href="/ai-try-on">AI Try-On</Link>
+            <Link className="w-fit transition hover:text-[#8a641e]" href="/braiders-near-me">Braiders Near Me</Link>
+            <Link className="w-fit transition hover:text-[#8a641e]" href="/blog">Blog</Link>
           </div>
         </div>
         <div>
-          <h4 className="font-bold text-primary">Policies</h4>
-          <div className="mt-3 grid gap-2 text-sm font-semibold text-[#4f3720]">
-            <Link href="/policies/privacy">Privacy Policy</Link>
-            <Link href="/policies/shopping">Shopping Policy</Link>
-            <Link href="/policies/returns">Returns Policy</Link>
-            <Link href="/policies/terms">Terms of Use</Link>
+          <h4 className="text-xs font-bold uppercase tracking-[.16em] text-primary">
+            Policies
+          </h4>
+          <div className="mt-4 grid gap-3 text-sm font-medium text-[#4f3720]">
+            <Link className="w-fit transition hover:text-[#8a641e]" href="/policies/privacy">Privacy Policy</Link>
+            <Link className="w-fit transition hover:text-[#8a641e]" href="/policies/shopping">Shopping Policy</Link>
+            <Link className="w-fit transition hover:text-[#8a641e]" href="/policies/returns">Returns Policy</Link>
+            <Link className="w-fit transition hover:text-[#8a641e]" href="/policies/terms">Terms of Use</Link>
           </div>
         </div>
         <div>
-          <h4 className="font-bold text-primary">Contact</h4>
-          <p className="mt-3 text-sm font-semibold text-[#4f3720]">
+          <h4 className="text-xs font-bold uppercase tracking-[.16em] text-primary">
+            Contact
+          </h4>
+          <p className="mt-4 text-sm font-semibold">
             <a
-              className="underline decoration-[#b9933e]/70 underline-offset-4 hover:text-[#8a641e]"
+              className="underline decoration-primary/60 underline-offset-4 transition hover:text-[#8a641e]"
               href="mailto:info@ebysplace.com"
             >
               info@ebysplace.com
             </a>
           </p>
-          <h4 className="mt-5 font-bold text-primary">Luxury Care Promise</h4>
-          <p className="mt-3 text-sm font-medium text-[#4f3720]">
+          <h4 className="mt-6 text-xs font-bold uppercase tracking-[.16em] text-primary">
+            Luxury Care Promise
+          </h4>
+          <p className="mt-4 text-sm leading-relaxed text-[#4f3720]">
             Zero tension. Maximum longevity. Total comfort for clients who want
             beautiful braids without scalp trauma.
           </p>
         </div>
       </div>
-      <div className="container mt-12 border-t border-[#d8bd74]/40 pt-8">
-        <p className="serif max-w-5xl text-5xl font-bold uppercase leading-none tracking-[-0.05em] text-[#24170d] sm:text-7xl md:text-8xl">
+      <div className="container mt-14 border-t border-primary/20 pt-10">
+        <p className="serif max-w-5xl text-5xl font-bold uppercase leading-[0.92] tracking-[-0.05em] text-[#24170d] sm:text-7xl md:text-8xl">
           Beauty in every strand
         </p>
-        <p className="mt-6 flex items-center gap-1.5 text-xs font-medium tracking-[0.05em] text-[#4f3720]/60">
-          Built by{" "}
+        <div className="mt-8 flex flex-col gap-3 border-t border-primary/15 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs font-medium tracking-[0.03em] text-[#4f3720]/60">
+            © {new Date().getFullYear()} Eby’s Place. All rights reserved.
+          </p>
           <a
             href="https://veyadigital.tech"
             target="_blank"
             rel="noopener"
-            className="inline-flex items-center gap-1.5 hover:text-[#8a641e]"
+            className="inline-flex items-center gap-1.5 text-xs font-medium tracking-[0.05em] text-[#4f3720]/60 transition hover:text-[#8a641e]"
           >
+            Built by
             <span
               aria-hidden="true"
               className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
@@ -352,7 +363,7 @@ export function SiteFooter() {
             </span>
             Veya Digital
           </a>
-        </p>
+        </div>
       </div>
     </footer>
   );
@@ -528,9 +539,12 @@ export default function Home() {
               decoding="async"
               fetchPriority="high"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.34)_45%,rgba(247,238,222,.08)),linear-gradient(180deg,rgba(247,238,222,.06),rgba(20,12,5,.72))]" />
-            <div className="container relative z-10 py-20 md:py-28 lg:pt-36 lg:pb-24">
-              <div className="max-w-3xl py-5 [text-shadow:0_3px_22px_rgba(0,0,0,.88)] sm:py-8 md:py-10">
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.38)_45%,rgba(247,238,222,.1)),linear-gradient(180deg,rgba(247,238,222,.08),rgba(20,12,5,.76))]" />
+            <div className="container relative z-10 py-24 md:py-32 lg:pb-28 lg:pt-40">
+              <p className="pill w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs">
+                Somerset, UK &middot; Est. braid studio
+              </p>
+              <div className="mt-6 max-w-3xl [text-shadow:0_3px_22px_rgba(0,0,0,.88)]">
                 <ul
                   className="hero-slogan-list max-w-[20rem] list-none space-y-0 p-0 lg:max-w-[30rem]"
                   aria-label="Eby’s Place pain-free promise"
@@ -540,7 +554,7 @@ export default function Home() {
                   <li>Zero trauma.</li>
                   <li>Just perfection.</li>
                 </ul>
-                <h1 className="serif mt-7 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl">
+                <h1 className="serif mt-8 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl">
                   Luxury Pain-Free Braiding in <br className="sm:hidden" />
                   <span className="gold-text">Somerset, UK</span>
                 </h1>
@@ -551,7 +565,7 @@ export default function Home() {
                   who want beautiful, long-lasting protective styling without
                   sacrificing comfort, confidence, or scalp health.
                 </p>
-                <div className="mt-9 flex flex-wrap gap-4">
+                <div className="mt-10 flex flex-wrap gap-4">
                   <button
                     type="button"
                     className="btn-gold"

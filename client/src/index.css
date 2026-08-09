@@ -4,26 +4,29 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Single source of truth for design tokens — warm cream / charcoal / gold,
+   the palette that actually ships (previously duplicated across a second,
+   unused oklch draft and a third HSL override block further down). */
 @theme inline {
-  --color-background: oklch(0.925 0.033 78);
-  --color-foreground: oklch(0.205 0.026 63);
-  --color-card: oklch(0.975 0.022 82);
-  --color-card-foreground: oklch(0.205 0.026 63);
-  --color-popover: oklch(0.982 0.018 82);
-  --color-popover-foreground: oklch(0.205 0.026 63);
-  --color-primary: oklch(0.56 0.115 78);
-  --color-primary-foreground: oklch(0.985 0.014 86);
-  --color-secondary: oklch(0.86 0.045 78);
-  --color-secondary-foreground: oklch(0.205 0.026 63);
-  --color-muted: oklch(0.89 0.035 78);
-  --color-muted-foreground: oklch(0.38 0.045 68);
-  --color-accent: oklch(0.67 0.12 78);
-  --color-accent-foreground: oklch(0.18 0.024 63);
+  --color-background: #FAF7F2;
+  --color-foreground: #1A1A1A;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #1A1A1A;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #1A1A1A;
+  --color-primary: #C9A84C;
+  --color-primary-foreground: #121212;
+  --color-secondary: #FAF7F2;
+  --color-secondary-foreground: #1A1A1A;
+  --color-muted: #EDE7DE;
+  --color-muted-foreground: #4A4A4A;
+  --color-accent: #C9A84C;
+  --color-accent-foreground: #121212;
   --color-destructive: oklch(0.50 0.18 25);
-  --color-destructive-foreground: oklch(0.985 0.014 86);
-  --color-border: oklch(0.74 0.055 76);
-  --color-input: oklch(0.97 0.02 82);
-  --color-ring: oklch(0.56 0.115 78);
+  --color-destructive-foreground: #FFF9F0;
+  --color-border: #DED4C4;
+  --color-input: #DED4C4;
+  --color-ring: #C9A84C;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -35,14 +38,13 @@
 @layer base {
   * { @apply border-border outline-ring/50; }
   html, body, #root { max-width: 100%; overflow-x: hidden; }
-  body { background: #1A1A1A; color: #F4EFE6; font-family: 'Montserrat', 'Lexend', system-ui, sans-serif; }
   h1, h2, h3, .serif { font-family: 'Playfair Display', Georgia, serif; }
   input, select, textarea { @apply rounded-xl px-4 py-3 focus:border-primary; background: #fffaf1; border: 1px solid rgba(184,139,45,.45); color: #24170d; }
   input::placeholder, textarea::placeholder { color: rgba(58,38,21,.62); }
   select option { color: #24170d; background: #fffaf1; }
 }
 
-.luxury-shell { min-height: 100vh; width: 100%; max-width: 100vw; color: #F4EFE6; background: radial-gradient(circle at 18% 4%, rgba(128,0,32,.18), transparent 32%), radial-gradient(circle at 84% 10%, rgba(194,163,120,.18), transparent 36%), linear-gradient(135deg, #1A1A1A 0%, #2A1A12 46%, #52201C 100%); }
+.luxury-shell { min-height: 100vh; width: 100%; max-width: 100vw; background: var(--color-background); color: var(--color-foreground); }
 .container { width: 100%; max-width: 1280px; margin-inline: auto; padding-inline: clamp(1rem, 2.4vw, 2.5rem); }
 .gold-text { background: linear-gradient(110deg, #F4EFE6, #CFA876 45%, #C2A378); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .gold-border { border: 1px solid rgba(200,169,90,.32); box-shadow: 0 20px 80px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06); }
@@ -107,26 +109,15 @@
 }
 
 
-/* Warm cream high-converting redesign overrides */
-:root {
-  --background: 36 44% 96%;
-  --foreground: 0 0% 10%;
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 10%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 10%;
-  --primary: 45 52% 54%;
-  --primary-foreground: 0 0% 7%;
-  --secondary: 36 44% 96%;
-  --secondary-foreground: 0 0% 10%;
-  --muted: 34 30% 90%;
-  --muted-foreground: 0 0% 29%;
-  --accent: 45 52% 54%;
-  --accent-foreground: 0 0% 7%;
-  --border: 37 28% 82%;
-  --input: 37 28% 82%;
-  --ring: 45 52% 54%;
-}
+/* LEGACY UTILITY SHIM — the rules below force-correct literal Tailwind
+   classes (text-white/*, bg-black/*, bg-white/[...]) still hardcoded in
+   page JSX from an earlier dark-theme draft. They're intentionally kept
+   as-is (colors already match the consolidated token set above) rather
+   than restructured, since several are asserted verbatim by the test
+   suite (home.frontend.test.ts, booking.frontend.test.ts). Remove each
+   selector here only once the page(s) using it are migrated off the
+   literal dark-theme utility classes in a later redesign phase — see
+   C:\Users\ogboe\.claude\plans\squishy-moseying-koala.md. */
 
 html { background: #FAF7F2; }
 body {
