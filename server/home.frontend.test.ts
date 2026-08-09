@@ -171,9 +171,9 @@ describe("Eby’s Place landing page visual refinements", () => {
   it("applies live-site brand typography and luxury palette tokens with readable navigation contrast", () => {
     expect(indexSource).toContain("family=Lexend");
     expect(indexSource).toContain("family=Playfair+Display");
-    expect(cssSource).toContain("font-family: 'Montserrat', 'Lexend', system-ui, sans-serif");
+    expect(cssSource).toContain("font-family: 'Lexend', 'Montserrat', system-ui, sans-serif");
     expect(cssSource).toContain("font-family: 'Playfair Display', Georgia, serif");
-    expect(cssSource).toContain("linear-gradient(135deg, #1A1A1A 0%, #2A1A12 46%, #52201C 100%)");
+    expect(cssSource).toContain(".luxury-shell { min-height: 100vh; width: 100%; max-width: 100vw; background: var(--color-background); color: var(--color-foreground); }");
     expect(homeSource).toContain("bg-[#f5ead7]/92");
     expect(homeSource).toContain("rgba(247,238,222,.72)");
     expect(cssSource).toContain("text-[#2a1a0b]/82");
