@@ -27,13 +27,21 @@
   --color-border: #DED4C4;
   --color-input: #DED4C4;
   --color-ring: #C9A84C;
+  --color-sidebar: #FFFFFF;
+  --color-sidebar-foreground: #1A1A1A;
+  --color-sidebar-border: #DED4C4;
+  --color-sidebar-accent: #EDE7DE;
+  --color-sidebar-accent-foreground: #1A1A1A;
+  --color-sidebar-ring: #C9A84C;
+  --color-sidebar-primary: #C9A84C;
+  --color-sidebar-primary-foreground: #121212;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-:root { --radius: 1.1rem; color-scheme: light; }
+:root { --radius: 1.1rem; color-scheme: light; --gold: var(--color-primary); }
 
 @layer base {
   * { @apply border-border outline-ring/50; }

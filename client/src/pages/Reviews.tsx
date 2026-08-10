@@ -104,7 +104,7 @@ export default function Reviews() {
                 </form>
               )}
 
-              <div className="mt-8 rounded-[1.25rem] border border-primary/20 bg-black/15 p-4 sm:p-5">
+              <div className="mt-8 rounded-[1.25rem] border border-primary/20 bg-black/20 p-4 sm:p-5">
                 <h2 className="serif text-2xl font-bold">Share this review page</h2>
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <a className="btn-dark justify-center px-4 py-3 text-sm" href={`https://wa.me/?text=${encodeURIComponent(`${shareText} ${reviewUrl}`)}`} target="_blank" rel="noopener noreferrer">

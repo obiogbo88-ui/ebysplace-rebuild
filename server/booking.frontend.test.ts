@@ -14,12 +14,11 @@ const cssSource = readFileSync(
 
 describe("Eby’s Place staged booking frontend", () => {
   it("advances from style selection into appointment timing", () => {
-    expect(bookingSource).toContain("Choose style");
-    expect(bookingSource).toContain("Date & time");
+    expect(bookingSource).toContain('{ id: 0, label: "Choose Service" }');
+    expect(bookingSource).toContain('{ id: 1, label: "Date & Time" }');
     expect(bookingSource).toContain("Your details");
-    expect(bookingSource).toContain("Deposit");
-    expect(bookingSource).toContain("setStep(1)");
-    expect(bookingSource).toContain("Selecting a style automatically moves you to appointment timing.");
+    expect(bookingSource).toContain("Pay £20 Deposit");
+    expect(bookingSource).toContain('set("serviceName", service.name); goToStep(1);');
   });
 
   it("requires date and core client details before opening Stripe deposit checkout while keeping postcode optional", () => {
@@ -29,7 +28,7 @@ describe("Eby’s Place staged booking frontend", () => {
     expect(bookingSource).not.toContain("form.addressLine1 && form.city && form.county && form.postcode");
     expect(bookingSource).toContain("Postcode (optional)");
     expect(bookingSource).not.toContain("<input required value={form.postcode}");
-    expect(bookingSource).toContain("Continue to deposit");
+    expect(bookingSource).toContain("continueToAddons");
     expect(bookingSource).toContain("Pay £20 Deposit");
     expect(bookingSource).toContain("createDepositCheckout.useMutation");
     expect(bookingSource).toContain("window.open(session.checkoutUrl");

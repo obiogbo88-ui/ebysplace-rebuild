@@ -604,18 +604,18 @@ export default function Shop() {
         </div>
 
         {!selectedProduct ? (
-          <section className="mt-8 grid gap-4 rounded-3xl border border-primary/30 bg-black/25 p-5 text-white lg:grid-cols-[1.1fr_1fr_1fr]">
-            <label className="grid gap-2 text-sm font-semibold">
+          <section className="mt-8 grid gap-5 rounded-3xl border border-primary/25 bg-white p-5 shadow-[0_18px_50px_rgba(26,26,26,.06)] lg:grid-cols-[1.1fr_1fr_1fr]">
+            <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-primary">
               Department
-              <select className="rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-white" value={activeDepartment} onChange={(event) => setActiveDepartment(event.target.value)}>
+              <select className="rounded-xl border border-primary/25 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-[#1A1A1A]" value={activeDepartment} onChange={(event) => setActiveDepartment(event.target.value)}>
                 {departmentOptions.map((department) => (
                   <option key={department} value={department}>{department}</option>
                 ))}
               </select>
             </label>
-            <label className="grid gap-2 text-sm font-semibold">
+            <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-primary">
               Sort by
-              <select className="rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-white" value={sortBy} onChange={(event) => setSortBy(event.target.value as "featured" | "price_low_high" | "price_high_low" | "rating" | "name")}>
+              <select className="rounded-xl border border-primary/25 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-[#1A1A1A]" value={sortBy} onChange={(event) => setSortBy(event.target.value as "featured" | "price_low_high" | "price_high_low" | "rating" | "name")}>
                 <option value="featured">Featured</option>
                 <option value="price_low_high">Price: Low to High</option>
                 <option value="price_high_low">Price: High to Low</option>
@@ -625,16 +625,16 @@ export default function Shop() {
             </label>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               <div className="grid grid-cols-2 gap-2">
-                <label className="grid gap-2 text-sm font-semibold">
+                <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-primary">
                   Min £
-                  <input type="number" min={0} inputMode="decimal" className="w-full rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-white" value={minimumPrice} onChange={(event) => setMinimumPrice(event.target.value)} />
+                  <input type="number" min={0} inputMode="decimal" className="w-full rounded-xl border border-primary/25 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-[#1A1A1A]" value={minimumPrice} onChange={(event) => setMinimumPrice(event.target.value)} />
                 </label>
-                <label className="grid gap-2 text-sm font-semibold">
+                <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-primary">
                   Max £
-                  <input type="number" min={0} inputMode="decimal" className="w-full rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-white" value={maximumPrice} onChange={(event) => setMaximumPrice(event.target.value)} />
+                  <input type="number" min={0} inputMode="decimal" className="w-full rounded-xl border border-primary/25 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-[#1A1A1A]" value={maximumPrice} onChange={(event) => setMaximumPrice(event.target.value)} />
                 </label>
               </div>
-              <label className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-sm font-semibold">
+              <label className="inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-white px-3 py-2 text-sm font-semibold text-[#1A1A1A]">
                 <input type="checkbox" checked={primeFastOnly} onChange={(event) => setPrimeFastOnly(event.target.checked)} />
                 Fast-delivery eligible only
               </label>
@@ -643,7 +643,7 @@ export default function Shop() {
         ) : null}
 
         {selectedProduct ? (
-          <div className="mt-8 rounded-3xl border border-primary/30 bg-black/25 p-5 text-white" role="status" aria-live="polite">
+          <div className="mt-8 rounded-3xl border border-primary/30 bg-black/30 p-5 text-white" role="status" aria-live="polite">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/85">Product page</p>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="break-words text-lg font-semibold">Viewing: <span className="text-primary">{selectedProduct.name}</span></p>
@@ -651,7 +651,7 @@ export default function Shop() {
             </div>
           </div>
         ) : searchQuery ? (
-          <div className="mt-8 rounded-3xl border border-primary/30 bg-black/25 p-5 text-white" role="status" aria-live="polite">
+          <div className="mt-8 rounded-3xl border border-primary/30 bg-black/30 p-5 text-white" role="status" aria-live="polite">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/85">Product search</p>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-lg font-semibold">
@@ -663,7 +663,7 @@ export default function Shop() {
         ) : null}
 
         {checkoutReturn ? (
-          <div className={`mt-8 rounded-3xl border p-5 ${checkoutReturn.status === "success" ? "border-primary/35 bg-primary/10 text-primary" : "border-white/15 bg-white/[0.05] text-white/78"}`} role="status">
+          <div className={`mt-8 rounded-3xl border p-5 ${checkoutReturn.status === "success" ? "border-primary/35 bg-primary/10 text-primary" : "border-white/15 bg-white/[0.06] text-white/78"}`} role="status">
             <p className="font-semibold">{checkoutReturn.status === "success" ? "Payment successful" : "Checkout cancelled"}</p>
             <p className="mt-2 text-sm leading-6">
               {checkoutReturn.status === "success"
