@@ -18,6 +18,7 @@ import {
   shouldTrackPublicActivity,
 } from "@/lib/activityTracking";
 import ErrorBoundary from "./components/ErrorBoundary";
+import ChatAssistant from "./components/ChatAssistant";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
 const Home = lazy(() => import("./pages/Home"));
@@ -610,6 +611,7 @@ function App() {
           <BackToTopButton />
           <FloatingWhatsAppButton />
           <MobileStickyBookingCta />
+          <ChatAssistant />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
