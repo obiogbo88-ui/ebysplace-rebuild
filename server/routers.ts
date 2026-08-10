@@ -23,6 +23,12 @@ const productCategory = z.enum(["Accessories", "Aftercare", "Hair Attachments"])
 const galleryCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"]);
 const activityStatus = z.enum(["success", "failed", "pending", "info"]);
 
+const TRY_ON_CREDIT_BUNDLES = {
+  single: { credits: 1, price: 1.49, label: "1 extra Try-On" },
+  small: { credits: 3, price: 2.99, label: "3 extra Try-Ons" },
+  large: { credits: 6, price: 4.99, label: "6 extra Try-Ons" },
+} as const;
+
 const bookingAddOnInput = z.object({
   id: z.string().min(2),
   name: z.string().min(2),
@@ -657,6 +663,14 @@ export const appRouter = router({
       const uploaded = await storagePut(`try-on/uploads/${Date.now()}-${safeName}.${extension}`, buffer, mimeType);
       return { url: uploaded.url, key: uploaded.key, mimeType };
     }),
+    tryOnBalance: publicProcedure.input(z.object({
+      email: z.string().email(),
+      phone: z.string().optional(),
+    })).query(async ({ input }) => {
+      const account = await db.getTryOnAccount(input.email, input.phone);
+      if (!account) return { freeTrialAvailable: true, creditsRemaining: 0 };
+      return { freeTrialAvailable: account.freeTrialUsed === "false", creditsRemaining: account.creditsRemaining };
+    }),
     generateTryOn: publicProcedure.input(z.object({
       styleName: z.string().min(2),
       originalImageUrl: z.string().min(5),
@@ -664,11 +678,23 @@ export const appRouter = router({
       mimeType: z.string().optional(),
       gender: z.enum(["woman", "man", "child"]).optional(),
       ageGroup: z.enum(["child", "teen", "adult", "mature"]).optional(),
+      email: z.string().email(),
+      phone: z.string().optional(),
     })).mutation(async ({ input }) => {
+      const access = await db.consumeTryOnTrialOrCredit(input.email, input.phone);
+      if (!access.allowed) {
+        throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Your free Try-On has been used. Purchase more credits to continue." });
+      }
       const record = await db.createTryOnGeneration({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, status: "pending" });
       try {
         const selectedStyle = input.styleName;
-        const ebysPlaceTryOnPromptTemplate = "Eby’s Place AI hairstyle try-on: apply hairstyle {{STYLE_NAME}} only to the customer’s hair area in the uploaded image. Preserve the customer’s exact face and identity with zero changes. Do not change or retouch the face, skin, facial features, expression, age, body, clothing, pose, camera angle, lighting, or background. Keep the person exactly the same and generate a realistic result where only the hairstyle is changed to {{STYLE_NAME}}.";
+        const ebysPlaceTryOnPromptTemplate =
+          "You are performing a photorealistic hairstyle try-on edit, not a full portrait regeneration. " +
+          "The uploaded photo is the ground truth reference. " +
+          "IDENTITY LOCK (do not alter, even slightly): the person's exact face shape, facial structure, skin tone and texture, eyes (colour, shape, spacing), eyebrows, nose, mouth, lips, jawline, ears, freckles or marks, age, gender presentation, and facial expression. " +
+          "Do not smooth, beautify, slim, or retouch the skin. Do not shift head angle, pose, camera framing, body position, clothing, jewellery, or the background. Do not change lighting direction, colour temperature, or exposure. " +
+          "HAIR EDIT ONLY: replace the current hairstyle with {{STYLE_NAME}}, matching this style's realistic texture, density, parting, and length. Blend the new hairline naturally into the forehead and temples with no visible seams or pasted-on look. Light the new hair consistently with the photo's existing light source, including natural strand-level highlights and shading. If {{STYLE_NAME}} implies a colour change, apply it only to the hair, never to eyebrows or skin. " +
+          "OUTPUT: a single photorealistic image, same resolution, framing, and aspect ratio as the input photo, indistinguishable from a real photograph except for the hairstyle change.";
         const prompt = ebysPlaceTryOnPromptTemplate.replaceAll("{{STYLE_NAME}}", selectedStyle);
         const storageKey = input.originalImageUrl.startsWith("/")
           ? (input.originalImageKey ?? decodeURIComponent(input.originalImageUrl.replace("/", "")))
@@ -687,12 +713,55 @@ export const appRouter = router({
             input.ageGroup ? `Age group: ${input.ageGroup}` : undefined,
           ].filter(Boolean).join("\n")
         );
-        return { id: record.id, generatedImageUrl: result.url, status: "completed" as const, customerNotification: "Your Eby’s Place AI Try-On preview is ready." };
+        return { id: record.id, generatedImageUrl: result.url, status: "completed" as const, creditsRemaining: access.creditsRemaining, customerNotification: "Your Eby’s Place AI Try-On preview is ready." };
       } catch (error) {
         const message = error instanceof Error ? error.message : "The AI could not read that photo clearly. Please upload a bright front-facing JPEG, PNG, WebP, or iPhone HEIC portrait where the face and hair are visible.";
         await db.updateTryOnGeneration(record.id, { status: "failed", errorMessage: message });
+        if (access.reason === "credit") {
+          await db.refundTryOnCredit(input.email, input.phone).catch(() => {});
+        }
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
       }
+    }),
+    purchaseTryOnCredits: publicProcedure.input(z.object({
+      email: z.string().email(),
+      phone: z.string().optional(),
+      bundle: z.enum(["single", "small", "large"]),
+    })).mutation(async ({ input, ctx }) => {
+      const bundle = TRY_ON_CREDIT_BUNDLES[input.bundle];
+      const stripe = getStripe();
+      const origin = getOrigin(ctx.req);
+      let session: Stripe.Checkout.Session;
+      try {
+        session = await stripe.checkout.sessions.create({
+          mode: "payment",
+          customer_email: input.email,
+          payment_intent_data: { receipt_email: input.email, description: `Eby’s Place AI Try-On — ${bundle.label}`, statement_descriptor_suffix: "EBYSPLACE" },
+          custom_text: { submit: { message: "You are paying Eby’s Place securely. Your AI Try-On credits are added automatically once payment completes." } },
+          line_items: [{
+            price_data: {
+              currency: "gbp",
+              unit_amount: Math.round(bundle.price * 100),
+              product_data: { name: `Eby’s Place AI Try-On — ${bundle.label}`, description: "AI hairstyle try-on credits" },
+            },
+            quantity: 1,
+          }],
+          success_url: `${origin}/ai-try-on?tryon_credits=success`,
+          cancel_url: `${origin}/ai-try-on?tryon_credits=cancelled`,
+          metadata: {
+            purchase_type: "tryon_credits",
+            bundle: input.bundle,
+            credits: String(bundle.credits),
+            customer_email: input.email,
+            customer_phone: input.phone ?? "",
+          },
+        });
+      } catch (error) {
+        logStripeCheckoutFailure("Try-On credits checkout session creation failed", error);
+        throw paymentUnavailableError();
+      }
+      if (!session.url) throw paymentUnavailableError();
+      return { checkoutUrl: session.url };
     }),
     track: publicProcedure.input(z.object({
       eventName: z.string().min(2),

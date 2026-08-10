@@ -273,6 +273,16 @@ export const tryOnGenerations = pgTable("tryOnGenerations", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
+export const tryOnAccounts = pgTable("tryOnAccounts", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 80 }),
+  freeTrialUsed: trueFalseEnum("freeTrialUsed").default("false").notNull(),
+  creditsRemaining: integer("creditsRemaining").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Service = typeof services.$inferSelect;

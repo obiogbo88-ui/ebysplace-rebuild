@@ -188,6 +188,19 @@ export function registerStripeWebhook(app: Application) {
             ].filter(Boolean).join("\n"),
           }).catch((error) => console.warn("[StripeWebhook] Owner order notification failed", error));
         }
+        if (session.metadata?.purchase_type === "tryon_credits" && session.id) {
+          const customerEmail = session.metadata?.customer_email || session.customer_email || "";
+          const customerPhone = session.metadata?.customer_phone || undefined;
+          const credits = Number(session.metadata?.credits || 0);
+          if (customerEmail && credits > 0) {
+            await db.creditTryOnPurchase(customerEmail, customerPhone, credits);
+            await sendOwnerSmsAndWhatsAppSafely(
+              `Eby's Place AI Try-On credits purchased: ${credits} credit${credits === 1 ? "" : "s"} for ${customerEmail}.`
+            ).catch((error) => console.warn("[StripeWebhook] Owner Try-On credits notification failed", error));
+          } else {
+            console.warn("[StripeWebhook] Try-On credits session missing email or credits", { sessionId: session.id, customerEmail, credits });
+          }
+        }
       }
       if (event.type === "payment_intent.succeeded") {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
