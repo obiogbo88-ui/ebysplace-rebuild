@@ -199,7 +199,6 @@ export default function Booking() {
     return params.get("payment") === "cancelled" ? { status: "cancelled" as const, bookingId: params.get("booking") } : null;
   }, []);
   const selectedSlotBlocked = bookingBlockedSlots.some((slot: any) => slot.date === form.appointmentDate && (!slot.time || slot.time === form.appointmentTime));
-  // Regression anchors: Choose style, Date & time, Your details, Deposit, setStep(1), Selecting a style automatically moves you to appointment timing., canContinueFromDate, Continue to deposit.
   const set = (key: string, value: string) => setForm(current => ({ ...current, [key]: value }));
 
   useEffect(() => {
