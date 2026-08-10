@@ -69,6 +69,7 @@
 .media-portrait video { width: 100%; height: 100%; object-fit: cover; }
 .media-portrait.media-service { aspect-ratio: 4 / 5.2; }
 .media-portrait.media-service img { object-fit: contain; object-position: center top; background: linear-gradient(180deg, #f8f1e2 0%, #efe2c7 100%); }
+.media-portrait.media-gallery img { object-position: center top; }
 .hero-video-reference { min-height: calc(100vh - 5rem); }
 .hero-slogan-list { font-family: 'Playfair Display', Georgia, serif; line-height: .86; letter-spacing: -.035em; }
 .hero-slogan-list li { font-size: clamp(3rem, 7vw, 6rem); font-weight: 700; color: #fff8ed; text-shadow: 0 6px 26px rgba(0,0,0,.72); }
