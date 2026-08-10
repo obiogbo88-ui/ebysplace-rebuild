@@ -306,6 +306,35 @@ export async function sendBookingReminderEmailSafely(booking: any) {
   }).catch((error) => ({ status: "failed" as const, errorMessage: error instanceof Error ? error.message : String(error) }));
 }
 
+/**
+ * Owner-only reminder for a shop order stuck at "pending_payment" — the
+ * customer opened Stripe checkout but never completed it. Subject is a
+ * fixed string so db.getAbandonedOrdersNeedingReminder can dedup.
+ */
+export async function sendOrderAbandonedReminderEmailSafely(order: any) {
+  const config = getSmtpConfig();
+  const reference = orderReference(order);
+  const hoursSinceCreated = Math.max(0, Math.round((Date.now() - new Date(order.createdAt).getTime()) / 3_600_000));
+  const body = [
+    "A shop checkout was started but never paid.",
+    `Order reference: ${reference}`,
+    `Customer name: ${order.customerName}`,
+    `Customer phone: ${order.customerPhone ?? "Not provided"}`,
+    `Customer email: ${order.customerEmail}`,
+    Number.isFinite(Number(order.checkoutTotalCharged)) ? `Cart total: ${money(order.checkoutTotalCharged)}` : undefined,
+    `Checkout started: ${hoursSinceCreated} hours ago`,
+    "No payment was taken. You may want to follow up with the customer.",
+  ].filter(Boolean).join("\n");
+  return sendAndLogEmail({
+    entityType: "order",
+    entityId: order.id,
+    audience: "owner",
+    to: config.ownerEmail,
+    subject: db.ORDER_ABANDONED_REMINDER_SUBJECT,
+    body,
+  }).catch((error) => ({ status: "failed" as const, errorMessage: error instanceof Error ? error.message : String(error) }));
+}
+
 export async function resendEmailNotificationLog(logId: number) {
   const log = await db.getEmailNotificationLogById(logId);
   if (!log) throw new Error("Email notification log not found.");

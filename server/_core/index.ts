@@ -5,7 +5,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerStripeWebhook } from "../stripeWebhook";
 import { registerActivityCollector } from "../activityCollector";
-import { registerBookingReminderCron } from "../bookingReminders";
+import { registerDailyAutomationsCron } from "../dailyAutomations";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { setupVite } from "./vite";
@@ -39,7 +39,7 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerActivityCollector(app);
-  registerBookingReminderCron(app);
+  registerDailyAutomationsCron(app);
   app.use("/api/trpc", (_req, res, next) => {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     res.setHeader("Pragma", "no-cache");

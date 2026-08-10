@@ -9,7 +9,7 @@
   },
   "crons": [
     {
-      "path": "/api/cron/booking-reminders",
+      "path": "/api/cron/daily-reminders",
       "schedule": "0 9 * * *"
     }
   ],

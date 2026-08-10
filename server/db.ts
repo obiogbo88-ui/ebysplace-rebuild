@@ -2135,6 +2135,56 @@ export async function getOrderItemsByOrderId(orderId: number) {
   return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
 }
 
+/** Current stock snapshot for a set of product ids — used by the post-purchase low-stock alert. */
+export async function getProductsById(ids: number[]) {
+  const db = await getDb();
+  if (!db || !ids.length) return [];
+  return db.select().from(products).where(inArray(products.id, ids));
+}
+
+/**
+ * Confirmed bookings whose appointment is tomorrow — used by the daily
+ * day-before customer reminder. Naturally deduped: a given booking's
+ * appointmentDate only matches "tomorrow" on the one day before it, so
+ * running this once a day never re-finds the same booking twice.
+ */
+export async function getConfirmedBookingsForTomorrow() {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureBookingLocationColumns();
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return db
+    .select()
+    .from(bookings)
+    .where(and(eq(bookings.status, "confirmed"), eq(bookings.appointmentDate, tomorrow)));
+}
+
+export const ORDER_ABANDONED_REMINDER_SUBJECT = "Abandoned shop checkout reminder";
+
+/**
+ * Orders stuck at status="pending_payment" (Stripe checkout session was
+ * created but never completed) past the given threshold, excluding any
+ * already reminded. Used by the daily abandoned-checkout reminder.
+ */
+export async function getAbandonedOrdersNeedingReminder(hoursThreshold: number) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureOrderLocationColumns();
+  const cutoff = new Date(Date.now() - hoursThreshold * 60 * 60 * 1000);
+  const staleOrders = await db
+    .select()
+    .from(orders)
+    .where(and(eq(orders.status, "pending_payment"), lt(orders.createdAt, cutoff)));
+  if (!staleOrders.length) return [];
+  await ensureEmailNotificationLogTable();
+  const alreadyReminded = await db
+    .select({ entityId: emailNotificationLogs.entityId })
+    .from(emailNotificationLogs)
+    .where(and(eq(emailNotificationLogs.entityType, "order"), eq(emailNotificationLogs.subject, ORDER_ABANDONED_REMINDER_SUBJECT)));
+  const remindedIds = new Set(alreadyReminded.map((row) => row.entityId));
+  return staleOrders.filter((order) => !remindedIds.has(order.id));
+}
+
 async function ensureEmailNotificationLogTable() {
   if (!_pool) return;
   try {

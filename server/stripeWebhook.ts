@@ -5,6 +5,7 @@ import * as db from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendCustomerEmailSafely, sendShopOrderPaidEmailSafely, sendCustomerSmsSafely, sendCustomerWhatsAppSafely, sendOwnerSmsAndWhatsAppSafely } from "./customerNotifications";
 import { sendBookingPaymentEmailsSafely, sendOrderPaymentEmailsSafely } from "./smtpEmailNotifications";
+import { checkAndAlertLowStockAfterPurchase } from "./stockAlerts";
 import { normalizeSecretKey } from "./_core/envSecrets";
 
 const STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
@@ -144,6 +145,9 @@ export function registerStripeWebhook(app: Application) {
           const orderItems = order?.id ? await db.getOrderItemsByOrderId(order.id) : [];
           if (order) {
             void sendOrderPaymentEmailsSafely(order, orderItems, session).catch((error) => console.warn("[StripeWebhook] SMTP order email workflow failed", error));
+          }
+          if (orderItems.length) {
+            void checkAndAlertLowStockAfterPurchase(orderItems).catch((error) => console.warn("[StripeWebhook] Low-stock alert check failed", error));
           }
           const itemsSummary = orderItems.length
             ? orderItems.map((item) => `${item.quantity} × ${item.variantName ? `${item.productName} — ${item.variantName}` : item.productName} (£${(Number(item.unitPrice) * Number(item.quantity)).toFixed(2)})`).join("\n")
