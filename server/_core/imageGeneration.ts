@@ -44,15 +44,22 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
   }
 
   const originals = options.originalImages || [];
+  const model = trimEnvValue(process.env.OPENAI_IMAGE_MODEL) || "gpt-image-1";
   const endpoint = originals.length > 0 ? "https://api.openai.com/v1/images/edits" : "https://api.openai.com/v1/images/generations";
   const form = new FormData();
-  form.set("model", trimEnvValue(process.env.OPENAI_IMAGE_MODEL) || "gpt-image-1");
+  form.set("model", model);
   form.set("prompt", options.prompt);
   form.set("size", trimEnvValue(process.env.OPENAI_IMAGE_SIZE) || "1024x1024");
+  form.set("quality", trimEnvValue(process.env.OPENAI_IMAGE_QUALITY) || "high");
 
   if (originals.length > 0) {
     const files = await Promise.all(originals.map((image, index) => fetchImageAsFile(image, index)));
     for (const file of files) form.append("image", file);
+    // input_fidelity="high" is the documented fix for edits drifting away from the
+    // source photo's face/identity — only supported on gpt-image-1 (not 1.5+).
+    if (model === "gpt-image-1") {
+      form.set("input_fidelity", trimEnvValue(process.env.OPENAI_IMAGE_INPUT_FIDELITY) || "high");
+    }
   }
 
   const response = await fetch(endpoint, {
