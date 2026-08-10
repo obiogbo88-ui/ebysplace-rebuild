@@ -30,7 +30,9 @@ export default function ChatAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
+  const leadCapturedRef = useRef(false);
   const chat = trpc.public.chatAssistant.useMutation();
+  const chatLead = trpc.public.chatLead.useMutation();
 
   useEffect(() => {
     if (!listRef.current) return;
@@ -70,12 +72,23 @@ export default function ChatAssistant() {
     void send(input);
   }
 
+  function closeChat() {
+    setOpen(false);
+    const hasBookingHandoff = messages.some((message) => message.bookService);
+    if (!leadCapturedRef.current && messages.length > 0 && !hasBookingHandoff) {
+      leadCapturedRef.current = true;
+      chatLead.mutate({
+        messages: messages.map((message) => ({ role: message.role, content: message.content })),
+      });
+    }
+  }
+
   return (
     <>
       <button
         type="button"
         aria-label={open ? "Close chat with Eby" : "Chat with Eby"}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => (open ? closeChat() : setOpen(true))}
         className="fixed bottom-24 left-4 z-[80] flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#C9A84C] bg-[#111111] text-[#C9A84C] shadow-[0_18px_42px_rgba(17,17,17,.28)] transition duration-200 hover:-translate-y-1 hover:bg-[#C9A84C] hover:text-[#111111] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C9A84C] md:bottom-6 md:left-6 md:h-16 md:w-16"
       >
         {open ? (
@@ -132,7 +145,7 @@ export default function ChatAssistant() {
                       type="button"
                       className="btn-gold w-full py-2 text-xs"
                       onClick={() => {
-                        setOpen(false);
+                        closeChat();
                         navigateWithSmoothScroll(
                           `/booking?service=${encodeURIComponent(message.bookService as string)}`,
                           setLocation

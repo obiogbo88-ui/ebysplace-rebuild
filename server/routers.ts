@@ -405,6 +405,40 @@ export const appRouter = router({
       const reply = await askEby(input.messages);
       return { reply };
     }),
+    chatLead: publicProcedure.input(z.object({
+      messages: z.array(z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(4000),
+      })).min(1).max(40),
+    })).mutation(async ({ input, ctx }) => {
+      const lastUserMessage = [...input.messages].reverse().find((message) => message.role === "user");
+      const summary = input.messages
+        .slice(-6)
+        .map((message) => `${message.role === "user" ? "Visitor" : "Eby"}: ${message.content}`)
+        .join("\n");
+
+      await db.logActivity({
+        request: ctx.req,
+        activityType: "chat_lead",
+        activityCategory: "chat_assistant",
+        description: lastUserMessage ? `Eby chat ended without booking: "${lastUserMessage.content.slice(0, 200)}"` : "Eby chat ended without booking",
+        pageUrl: "/",
+        status: "info",
+        relatedEntityType: "chat",
+        metadata: { transcript: summary },
+        sourceApp: "ebysplace",
+      }).catch((error) => {
+        console.warn("[ChatAssistant] Failed to log chat lead", error);
+      });
+
+      await sendOwnerSmsAndWhatsAppSafely(
+        `New Eby chat lead (no booking yet):\n${summary}`
+      ).catch((error) => {
+        console.warn("[ChatAssistant] Failed to notify owner of chat lead", error);
+      });
+
+      return { success: true } as const;
+    }),
     newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(async ({ input }) => {
       const result = await db.subscribeNewsletter(input.email, input.productAlerts);
       await db.logActivity({
