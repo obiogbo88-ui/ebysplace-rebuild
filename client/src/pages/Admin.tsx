@@ -737,7 +737,7 @@ export default function Admin() {
               </button>
             ))}
           </div>
-          <div className="mt-6 grid gap-5 md:grid-cols-3 xl:grid-cols-8">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Bookings" value={summary.data?.bookings ?? 0} icon={CalendarDays} />
             <Stat label="Orders" value={summary.data?.orders ?? 0} icon={ShoppingBag} />
             <Stat label="Pending reviews" value={summary.data?.pendingReviews ?? 0} icon={MessageSquare} />
