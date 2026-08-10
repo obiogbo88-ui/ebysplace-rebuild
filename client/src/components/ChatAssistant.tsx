@@ -7,9 +7,11 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   bookService?: string;
+  isFallback?: boolean;
 };
 
 const BOOK_MARKER = /\s*\[\[BOOK:([^\]]+)\]\]\s*$/;
+const WHATSAPP_URL = "https://wa.me/447864585110?text=Hi%20Eby%27s%20Place%2C%20I%20would%20like%20to%20make%20an%20enquiry.";
 
 const STARTER_PROMPTS = [
   "What styles do you offer?",
@@ -62,6 +64,7 @@ export default function ChatAssistant() {
         {
           role: "assistant",
           content: "Sorry, I couldn't reply just now. Please try again, or message us on WhatsApp.",
+          isFallback: true,
         },
       ]);
     }
@@ -89,7 +92,7 @@ export default function ChatAssistant() {
         type="button"
         aria-label={open ? "Close chat with Eby" : "Chat with Eby"}
         onClick={() => (open ? closeChat() : setOpen(true))}
-        className="fixed bottom-24 left-4 z-[80] flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#C9A84C] bg-[#111111] text-[#C9A84C] shadow-[0_18px_42px_rgba(17,17,17,.28)] transition duration-200 hover:-translate-y-1 hover:bg-[#C9A84C] hover:text-[#111111] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C9A84C] md:bottom-6 md:left-6 md:h-16 md:w-16"
+        className="btn-gold !p-0 fixed bottom-24 left-4 z-[80] flex h-14 w-14 items-center justify-center shadow-[0_18px_42px_rgba(17,17,17,.28)] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C9A84C] md:bottom-6 md:left-6 md:h-16 md:w-16"
       >
         {open ? (
           <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6 md:h-7 md:w-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -154,6 +157,16 @@ export default function ChatAssistant() {
                     >
                       Book {message.bookService}
                     </button>
+                  )}
+                  {message.isFallback && (
+                    <a
+                      href={WHATSAPP_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-gold block w-full py-2 text-center text-xs"
+                    >
+                      Message us on WhatsApp
+                    </a>
                   )}
                 </div>
               </div>

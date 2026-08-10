@@ -62,6 +62,10 @@ const gallerySource = readFileSync(
   resolve(process.cwd(), "client/src/pages/Gallery.tsx"),
   "utf8"
 );
+const chatAssistantSource = readFileSync(
+  resolve(process.cwd(), "client/src/components/ChatAssistant.tsx"),
+  "utf8"
+);
 
 describe("Eby’s Place landing page visual refinements", () => {
   it("keeps the hero photo free of brand-card overlays and places the pain-free promise as a styled list", () => {
@@ -202,15 +206,12 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("Modern automation");
   });
 
-  it("keeps the sitewide floating WhatsApp shortcut off the homepage and removes the duplicate green homepage logo", () => {
-    expect(appSource).toContain("function FloatingWhatsAppButton()");
-    expect(appSource).toContain("https://wa.me/447864585110?text=Hi%20Eby%27s%20Place%2C%20I%20would%20like%20to%20make%20an%20enquiry.");
-    expect(appSource).toContain("Message Eby’s Place on WhatsApp");
-    expect(appSource).toContain('const isHome = location === "/";');
-    expect(appSource).toContain("if (isAdmin || isHome) return null;");
-    expect(appSource).toContain("bottom-24 right-4");
-    expect(appSource).toContain("md:bottom-6 md:right-6");
-    expect(appSource).toContain("<FloatingWhatsAppButton />");
+  it("removes the standalone floating WhatsApp button, offering WhatsApp only as an Eby chat fallback, and removes the duplicate green homepage logo", () => {
+    expect(appSource).not.toContain("function FloatingWhatsAppButton()");
+    expect(appSource).not.toContain("<FloatingWhatsAppButton />");
+    expect(chatAssistantSource).toContain("https://wa.me/447864585110?text=Hi%20Eby%27s%20Place%2C%20I%20would%20like%20to%20make%20an%20enquiry.");
+    expect(chatAssistantSource).toContain("Message us on WhatsApp");
+    expect(chatAssistantSource).toContain("message.isFallback");
     expect(homeSource).not.toContain("bg-[#25D366]");
     expect(homeSource).not.toContain("Chat with Eby’s Place on WhatsApp");
     expect(homeSource).toContain("Beauty in every strand");
