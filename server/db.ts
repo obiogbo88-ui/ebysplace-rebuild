@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, lt, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { normalizeEnvUrl, normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
@@ -1240,6 +1240,32 @@ export async function getBookingById(id: number) {
   await ensureBookingLocationColumns();
   const rows = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
   return rows[0] ?? null;
+}
+
+export const BOOKING_REMINDER_SUBJECT = "Unconfirmed booking reminder";
+
+/**
+ * Bookings that have sat unconfirmed (deposit unpaid) past the given
+ * threshold and haven't already had a reminder email logged for them.
+ * Used by the daily booking-reminder cron.
+ */
+export async function getUnconfirmedBookingsNeedingReminder(hoursThreshold: number) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureBookingLocationColumns();
+  const cutoff = new Date(Date.now() - hoursThreshold * 60 * 60 * 1000);
+  const staleBookings = await db
+    .select()
+    .from(bookings)
+    .where(and(eq(bookings.status, "pending"), lt(bookings.createdAt, cutoff)));
+  if (!staleBookings.length) return [];
+  await ensureEmailNotificationLogTable();
+  const alreadyReminded = await db
+    .select({ entityId: emailNotificationLogs.entityId })
+    .from(emailNotificationLogs)
+    .where(and(eq(emailNotificationLogs.entityType, "booking"), eq(emailNotificationLogs.subject, BOOKING_REMINDER_SUBJECT)));
+  const remindedIds = new Set(alreadyReminded.map((row) => row.entityId));
+  return staleBookings.filter((booking) => !remindedIds.has(booking.id));
 }
 
 export async function subscribeNewsletter(email: string, productAlerts = false) {
