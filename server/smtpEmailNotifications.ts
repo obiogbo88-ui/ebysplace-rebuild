@@ -276,6 +276,36 @@ export async function sendOrderPaymentEmailsSafely(order: any, items: any[], ses
   return Promise.all(payloads.map((payload) => sendAndLogEmail(payload).catch((error) => ({ status: "failed" as const, errorMessage: error instanceof Error ? error.message : String(error) }))));
 }
 
+/**
+ * Owner-only reminder for a booking that's sat pending (deposit unpaid) past
+ * the reminder threshold. Subject is a fixed string so db.getUnconfirmedBookingsNeedingReminder
+ * can use it to avoid reminding about the same booking twice.
+ */
+export async function sendBookingReminderEmailSafely(booking: any) {
+  const config = getSmtpConfig();
+  const reference = bookingReference(booking);
+  const hoursSinceCreated = Math.max(0, Math.round((Date.now() - new Date(booking.createdAt).getTime()) / 3_600_000));
+  const body = [
+    "A booking is still unconfirmed — no deposit has been paid yet.",
+    `Booking reference: ${reference}`,
+    `Customer name: ${booking.clientName}`,
+    `Customer phone: ${booking.clientPhone}`,
+    `Customer email: ${booking.clientEmail}`,
+    `Service requested: ${booking.serviceName}`,
+    `Requested date/time: ${booking.appointmentDate} at ${booking.appointmentTime}`,
+    `Submitted: ${hoursSinceCreated} hours ago`,
+    "You may want to follow up with the customer or check whether their payment attempt failed.",
+  ].join("\n");
+  return sendAndLogEmail({
+    entityType: "booking",
+    entityId: booking.id,
+    audience: "owner",
+    to: config.ownerEmail,
+    subject: db.BOOKING_REMINDER_SUBJECT,
+    body,
+  }).catch((error) => ({ status: "failed" as const, errorMessage: error instanceof Error ? error.message : String(error) }));
+}
+
 export async function resendEmailNotificationLog(logId: number) {
   const log = await db.getEmailNotificationLogById(logId);
   if (!log) throw new Error("Email notification log not found.");
