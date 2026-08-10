@@ -33,7 +33,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-:root { --radius: 1.1rem; color-scheme: light; }
+:root { --radius: 1.1rem; color-scheme: light; --gold: var(--color-primary); }
 
 @layer base {
   * { @apply border-border outline-ring/50; }

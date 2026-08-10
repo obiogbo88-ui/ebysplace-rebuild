@@ -175,7 +175,7 @@ export default function Braiders() {
             </div>
           </div>
 
-          <aside className="lux-card bg-black/35">
+          <aside className="lux-card bg-black/30">
             <p className="pill w-fit">For professionals</p>
             <h2 className="serif mt-4 text-3xl font-bold">Join Kouvia as a braider.</h2>
             <p className="mt-4 text-white/65">Registered braiders will be able to manage services, availability, ratings, and subscription visibility through the Kouvia booking platform.</p>
@@ -226,7 +226,7 @@ export default function Braiders() {
           {filteredBraiders.length ? (
             <div className="grid gap-5 md:grid-cols-2">
               {filteredBraiders.map((braider) => (
-                <article key={braider.name} className="lux-card bg-black/28 transition hover:-translate-y-1 hover:border-[var(--gold)]/40">
+                <article key={braider.name} className="lux-card bg-black/30 transition hover:-translate-y-1 hover:border-[var(--gold)]/40">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <p className="pill w-fit">{braider.badge}</p>

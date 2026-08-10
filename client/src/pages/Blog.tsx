@@ -165,7 +165,7 @@ export default function Blog({ params }: BlogPageProps) {
                     {post.references.map(reference => (
                       <li
                         key={reference}
-                        className="rounded-2xl border border-primary/15 bg-black/10 px-4 py-3"
+                        className="rounded-2xl border border-primary/15 bg-black/20 px-4 py-3"
                       >
                         {reference}
                       </li>
