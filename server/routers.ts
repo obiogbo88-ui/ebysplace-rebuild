@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { z } from "zod";
 import { storageGetSignedUrl, storagePut, storageRemove } from "./storage";
 import { generateImage } from "./_core/imageGeneration";
+import { askEby } from "./_core/chatAssistant";
 import { systemRouter } from "./_core/systemRouter";
 import { normalizeSecretKey } from "./_core/envSecrets";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
@@ -395,6 +396,15 @@ export const appRouter = router({
     productReviewSummaries: publicProcedure.query(() => db.listProductReviewSummaries()),
     productReviews: publicProcedure.input(z.object({ productId: z.number().int().positive() })).query(({ input }) => db.listApprovedProductReviews(input.productId)),
     gallery: publicProcedure.input(z.object({ category: z.string().optional() }).optional()).query(({ input }) => db.listGallery(input?.category)),
+    chatAssistant: publicProcedure.input(z.object({
+      messages: z.array(z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(4000),
+      })).min(1).max(40),
+    })).mutation(async ({ input }) => {
+      const reply = await askEby(input.messages);
+      return { reply };
+    }),
     newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(async ({ input }) => {
       const result = await db.subscribeNewsletter(input.email, input.productAlerts);
       await db.logActivity({

@@ -463,30 +463,65 @@ function HomepageGalleryPreview() {
   const { data: galleryItems = [] } = trpc.public.gallery.useQuery({
     category: "All",
   });
+  const [selected, setSelected] = useState<any | null>(null);
   const preview = (galleryItems as any[]).slice(0, 6);
   if (preview.length === 0) return null;
   return (
-    <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {preview.map((image: any, index: number) => (
+    <>
+      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {preview.map((image: any, index: number) => (
+          <button
+            type="button"
+            className="lux-card overflow-hidden p-0 text-left"
+            key={`${image.id ?? image.title ?? "gallery"}-${index}`}
+            onClick={() => setSelected(image)}
+          >
+            <div className="media-portrait media-gallery overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
+              <img
+                src={image.imageUrl}
+                alt={image.altText || image.title}
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <div className="p-4">
+              <span className="pill inline-block text-xs">{image.category}</span>
+              <p className="mt-2 font-bold text-[#24170d]">{image.title}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+      {selected && (
         <div
-          className="lux-card overflow-hidden p-0"
-          key={`${image.id ?? image.title ?? "gallery"}-${index}`}
+          className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setSelected(null)}
         >
-          <div className="media-portrait overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
+          <div
+            className="max-h-[92vh] max-w-4xl overflow-auto rounded-[2rem] border border-primary/30 bg-card p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <img
-              src={image.imageUrl}
-              alt={image.altText || image.title}
-              loading="lazy"
+              className="max-h-[70vh] w-full rounded-2xl object-contain"
+              src={selected.imageUrl}
+              alt={selected.altText || selected.title}
+              loading="eager"
               decoding="async"
             />
-          </div>
-          <div className="p-4">
-            <span className="pill inline-block text-xs">{image.category}</span>
-            <p className="mt-2 font-bold text-[#24170d]">{image.title}</p>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="pill w-fit text-xs">{selected.category}</p>
+                <h2 className="serif mt-2 text-3xl font-bold text-primary">{selected.title}</h2>
+              </div>
+              <button className="btn-gold" onClick={() => setSelected(null)}>
+                Close preview
+              </button>
+            </div>
           </div>
         </div>
-      ))}
-    </div>
+      )}
+    </>
   );
 }
 
