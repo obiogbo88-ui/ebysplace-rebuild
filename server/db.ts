@@ -18,6 +18,7 @@ import {
   products,
   reviews,
   services,
+  tryOnAccounts,
   tryOnGenerations,
   users,
   websiteSections,
@@ -1409,6 +1410,23 @@ async function ensureOrderLocationColumns() {
   await makePgColumnNullable("orders", "postcode");
 }
 
+async function ensureTryOnAccountsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "tryOnAccounts" (
+      "id" SERIAL PRIMARY KEY,
+      "email" VARCHAR(320) NOT NULL,
+      "phone" VARCHAR(80),
+      "freeTrialUsed" TEXT NOT NULL DEFAULT 'false',
+      "creditsRemaining" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure tryOnAccounts table", err);
+  }
+}
+
 async function ensureReviewsTable() {
   if (!_pool) return;
   try {
@@ -2415,6 +2433,84 @@ export async function updateTryOnGeneration(id: number, input: { generatedImageU
     relatedEntityType: "try_on",
     relatedEntityId: id,
     metadata: input.errorMessage ? { errorMessage: input.errorMessage } : undefined,
+  });
+}
+
+function normalizeTryOnIdentity(email: string, phone?: string | null) {
+  return {
+    email: email.trim().toLowerCase(),
+    phone: phone?.trim() || null,
+  };
+}
+
+export async function getTryOnAccount(email: string, phone?: string | null) {
+  await ensureTryOnAccountsTable();
+  const db = await getDb();
+  if (!db) return null;
+  const { email: normalizedEmail, phone: normalizedPhone } = normalizeTryOnIdentity(email, phone);
+  const conditions = normalizedPhone
+    ? or(eq(tryOnAccounts.email, normalizedEmail), eq(tryOnAccounts.phone, normalizedPhone))
+    : eq(tryOnAccounts.email, normalizedEmail);
+  const rows = await db.select().from(tryOnAccounts).where(conditions).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function consumeTryOnTrialOrCredit(email: string, phone?: string | null): Promise<
+  | { allowed: true; reason: "trial" | "credit"; creditsRemaining: number }
+  | { allowed: false; reason: "no_credits"; creditsRemaining: 0 }
+> {
+  const db = await getDb();
+  const { email: normalizedEmail, phone: normalizedPhone } = normalizeTryOnIdentity(email, phone);
+  if (!db) return { allowed: true, reason: "trial", creditsRemaining: 0 };
+
+  const account = await getTryOnAccount(normalizedEmail, normalizedPhone);
+
+  if (!account) {
+    await db.insert(tryOnAccounts).values({ email: normalizedEmail, phone: normalizedPhone, freeTrialUsed: "true", creditsRemaining: 0 });
+    return { allowed: true, reason: "trial", creditsRemaining: 0 };
+  }
+
+  if (account.freeTrialUsed === "false") {
+    await db.update(tryOnAccounts).set({ freeTrialUsed: "true", updatedAt: new Date() }).where(eq(tryOnAccounts.id, account.id));
+    return { allowed: true, reason: "trial", creditsRemaining: account.creditsRemaining };
+  }
+
+  if (account.creditsRemaining > 0) {
+    const nextCredits = account.creditsRemaining - 1;
+    await db.update(tryOnAccounts).set({ creditsRemaining: nextCredits, updatedAt: new Date() }).where(eq(tryOnAccounts.id, account.id));
+    return { allowed: true, reason: "credit", creditsRemaining: nextCredits };
+  }
+
+  return { allowed: false, reason: "no_credits", creditsRemaining: 0 };
+}
+
+export async function refundTryOnCredit(email: string, phone?: string | null) {
+  const db = await getDb();
+  if (!db) return;
+  const account = await getTryOnAccount(email, phone);
+  if (!account) return;
+  await db.update(tryOnAccounts).set({ creditsRemaining: account.creditsRemaining + 1, updatedAt: new Date() }).where(eq(tryOnAccounts.id, account.id));
+}
+
+export async function creditTryOnPurchase(email: string, phone: string | undefined | null, credits: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { email: normalizedEmail, phone: normalizedPhone } = normalizeTryOnIdentity(email, phone);
+  const account = await getTryOnAccount(normalizedEmail, normalizedPhone);
+  if (!account) {
+    await db.insert(tryOnAccounts).values({ email: normalizedEmail, phone: normalizedPhone, freeTrialUsed: "true", creditsRemaining: credits });
+  } else {
+    await db.update(tryOnAccounts).set({ creditsRemaining: account.creditsRemaining + credits, updatedAt: new Date() }).where(eq(tryOnAccounts.id, account.id));
+  }
+  await logActivity({
+    activityType: "tryon_credits_purchased",
+    activityCategory: "ai_try_on",
+    description: `Purchased ${credits} AI Try-On credit${credits === 1 ? "" : "s"} for ${normalizedEmail}`,
+    status: "success",
+    pageUrl: "/ai-try-on",
+    relatedEntityType: "try_on_account",
+    userEmail: normalizedEmail,
+    metadata: { credits },
   });
 }
 

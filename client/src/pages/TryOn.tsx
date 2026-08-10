@@ -73,94 +73,32 @@ async function convertHeicToJpeg(file: File) {
 
 const MAX_TRY_ON_FILE_SIZE_MB = 20;
 const TRY_ON_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,image/*";
-const TRY_ON_ATTEMPT_LIMIT = 3;
-const TRY_ON_USAGE_WINDOW_MS = 24 * 60 * 60 * 1000;
-const TRY_ON_ATTEMPT_KEY = "ebysplace_tryon_attempts";
+const TRY_ON_CONTACT_KEY = "ebysplace_tryon_contact";
 
-type TryOnUsageState = {
-  attemptsUsed: number;
-  windowStartedAt: number | null;
-  resetAtMs: number | null;
-};
+const TRY_ON_CREDIT_BUNDLES: Array<{ id: "single" | "small" | "large"; label: string; price: string }> = [
+  { id: "single", label: "1 extra Try-On", price: "£1.49" },
+  { id: "small", label: "3 extra Try-Ons", price: "£2.99" },
+  { id: "large", label: "6 extra Try-Ons", price: "£4.99" },
+];
 
-function emptyTryOnUsageState(): TryOnUsageState {
-  return {
-    attemptsUsed: 0,
-    windowStartedAt: null,
-    resetAtMs: null,
-  };
-}
-
-function normalizeTryOnUsageState(value: unknown) {
-  if (typeof value === "number" || typeof value === "string") {
-    const legacyAttempts = Number(value);
-    if (!Number.isFinite(legacyAttempts) || legacyAttempts <= 0) return emptyTryOnUsageState();
-    const windowStartedAt = Date.now();
-    return {
-      attemptsUsed: Math.min(TRY_ON_ATTEMPT_LIMIT, Math.floor(legacyAttempts)),
-      windowStartedAt,
-      resetAtMs: windowStartedAt + TRY_ON_USAGE_WINDOW_MS,
-    };
-  }
-  if (!value || typeof value !== "object") return emptyTryOnUsageState();
-  const rawAttempts = Number((value as { attemptsUsed?: unknown }).attemptsUsed);
-  const rawWindowStartedAt = Number((value as { windowStartedAt?: unknown }).windowStartedAt);
-  const attemptsUsed = Number.isFinite(rawAttempts) && rawAttempts > 0 ? Math.min(TRY_ON_ATTEMPT_LIMIT, Math.floor(rawAttempts)) : 0;
-  const windowStartedAt = Number.isFinite(rawWindowStartedAt) && rawWindowStartedAt > 0 ? rawWindowStartedAt : null;
-  if (!attemptsUsed || !windowStartedAt) return emptyTryOnUsageState();
-  const resetAtMs = windowStartedAt + TRY_ON_USAGE_WINDOW_MS;
-  if (resetAtMs <= Date.now()) return emptyTryOnUsageState();
-  return { attemptsUsed, windowStartedAt, resetAtMs };
-}
-
-function persistTryOnUsageState(value: TryOnUsageState) {
-  if (typeof window === "undefined") return;
-  if (!value.attemptsUsed || !value.windowStartedAt) {
-    window.localStorage.removeItem(TRY_ON_ATTEMPT_KEY);
-    return;
-  }
-  window.localStorage.setItem(TRY_ON_ATTEMPT_KEY, JSON.stringify({
-    attemptsUsed: value.attemptsUsed,
-    windowStartedAt: value.windowStartedAt,
-  }));
-}
-
-function readTryOnUsageState() {
-  if (typeof window === "undefined") return emptyTryOnUsageState();
+function readStoredContact(): { email: string; phone: string } {
+  if (typeof window === "undefined") return { email: "", phone: "" };
   try {
-    const stored = window.localStorage.getItem(TRY_ON_ATTEMPT_KEY);
-    const normalized = normalizeTryOnUsageState(stored ? JSON.parse(stored) : null);
-    persistTryOnUsageState(normalized);
-    return normalized;
+    const raw = window.localStorage.getItem(TRY_ON_CONTACT_KEY);
+    if (!raw) return { email: "", phone: "" };
+    const parsed = JSON.parse(raw);
+    return {
+      email: typeof parsed.email === "string" ? parsed.email : "",
+      phone: typeof parsed.phone === "string" ? parsed.phone : "",
+    };
   } catch {
-    persistTryOnUsageState(emptyTryOnUsageState());
-    return emptyTryOnUsageState();
+    return { email: "", phone: "" };
   }
 }
 
-function consumeTryOnAttempt() {
-  const current = readTryOnUsageState();
-  const windowStartedAt = current.windowStartedAt ?? Date.now();
-  const next: TryOnUsageState = {
-    attemptsUsed: Math.min(TRY_ON_ATTEMPT_LIMIT, current.attemptsUsed + 1),
-    windowStartedAt,
-    resetAtMs: windowStartedAt + TRY_ON_USAGE_WINDOW_MS,
-  };
-  persistTryOnUsageState(next);
-  return next;
-}
-
-function formatTryOnResetCountdown(msRemaining: number) {
-  const totalMinutes = Math.max(1, Math.ceil(msRemaining / 60000));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours >= 24) {
-    const days = Math.floor(hours / 24);
-    const leftoverHours = hours % 24;
-    return leftoverHours ? `${days}d ${leftoverHours}h` : `${days}d`;
-  }
-  if (hours > 0) return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
-  return `${minutes}m`;
+function persistStoredContact(email: string, phone: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(TRY_ON_CONTACT_KEY, JSON.stringify({ email, phone }));
 }
 
 function loadImage(src: string) {
@@ -238,24 +176,61 @@ function friendlyTryOnError(error: unknown) {
 export default function TryOn() {
   const upload = trpc.public.uploadTryOnPhoto.useMutation();
   const generate = trpc.public.generateTryOn.useMutation();
+  const purchaseCredits = trpc.public.purchaseTryOnCredits.useMutation();
   const logActivity = trpc.public.logActivity.useMutation();
-  const [usageState, setUsageState] = useState<TryOnUsageState>(() => readTryOnUsageState());
   const [photo, setPhoto] = useState<UploadedPhoto>();
   const [storedPhoto, setStoredPhoto] = useState<StoredPhoto>();
   const [style, setStyle] = useState(styles[0]);
   const [error, setError] = useState<string>();
   const [isPreparing, setIsPreparing] = useState(false);
+  const [contact, setContact] = useState(() => readStoredContact());
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [purchaseNotice, setPurchaseNotice] = useState<string>();
+
+  const balance = trpc.public.tryOnBalance.useQuery(
+    { email: contact.email, phone: contact.phone || undefined },
+    { enabled: Boolean(contact.email) }
+  );
 
   const isBusy = isPreparing || upload.isPending || generate.isPending;
-  const attemptsUsed = usageState.attemptsUsed;
-  const attemptsRemaining = Math.max(0, TRY_ON_ATTEMPT_LIMIT - attemptsUsed);
-  const resetCountdown = usageState.resetAtMs ? formatTryOnResetCountdown(Math.max(0, usageState.resetAtMs - Date.now())) : null;
 
   useEffect(() => {
-    if (!usageState.resetAtMs || attemptsUsed < TRY_ON_ATTEMPT_LIMIT) return;
-    const timer = window.setInterval(() => setUsageState(readTryOnUsageState()), 60000);
-    return () => window.clearInterval(timer);
-  }, [attemptsUsed, usageState.resetAtMs]);
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("tryon_credits");
+    if (status === "success") {
+      setPurchaseNotice("Payment received — your AI Try-On credits have been added.");
+    } else if (status === "cancelled") {
+      setPurchaseNotice("Credit purchase was cancelled. No payment was taken.");
+    }
+    if (status) {
+      params.delete("tryon_credits");
+      const nextSearch = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`);
+    }
+  }, []);
+
+  function updateContact(next: Partial<{ email: string; phone: string }>) {
+    setContact((current) => {
+      const updated = { ...current, ...next };
+      persistStoredContact(updated.email, updated.phone);
+      return updated;
+    });
+  }
+
+  async function buyCredits(bundle: "single" | "small" | "large") {
+    if (!contact.email) {
+      setError("Please enter your email above before purchasing Try-On credits.");
+      return;
+    }
+    try {
+      const result = await purchaseCredits.mutateAsync({ email: contact.email, phone: contact.phone || undefined, bundle });
+      window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not start checkout. Please try again.";
+      toast.error("Checkout could not start", { description: message, classNames: aiTryOnToastClassNames });
+    }
+  }
 
   async function onFile(file: File | undefined, source: UploadedPhoto["source"]) {
     if (!file) return;
@@ -313,24 +288,18 @@ export default function TryOn() {
   }
 
   async function run() {
-    const currentUsage = readTryOnUsageState();
-    setUsageState(currentUsage);
-
     if (!photo) {
       setError("Please upload a clear portrait photo before generating a preview.");
       return;
     }
 
-    if (currentUsage.attemptsUsed >= TRY_ON_ATTEMPT_LIMIT) {
-      const message = currentUsage.resetAtMs
-        ? `You have used your 3 free AI try-on attempts on this device. Please try again in ${formatTryOnResetCountdown(Math.max(0, currentUsage.resetAtMs - Date.now()))}.`
-        : "You have used your 3 free AI try-on attempts on this device. Please try again after 24 hours.";
-      setError(message);
-      toast.error(message, { classNames: aiTryOnToastClassNames });
+    if (!contact.email) {
+      setError("Please enter your email above so we can track your free Try-On and any credits you purchase.");
       return;
     }
 
     setError(undefined);
+    setPaywallOpen(false);
     try {
       logActivity.mutate({
         sessionId: getActivitySessionId(),
@@ -354,8 +323,10 @@ export default function TryOn() {
         mimeType: uploaded.mimeType,
         gender: "woman" as const,
         ageGroup: "adult" as const,
+        email: contact.email,
+        phone: contact.phone || undefined,
       });
-      setUsageState(consumeTryOnAttempt());
+      void balance.refetch();
       toast.success("AI Try-On preview generated", {
         description: result.customerNotification ?? "Your hairstyle preview is ready below.",
         classNames: aiTryOnToastClassNames,
@@ -371,6 +342,12 @@ export default function TryOn() {
         relatedEntityId: result.id,
       });
     } catch (err) {
+      const rawMessage = err instanceof Error ? err.message : "";
+      if (rawMessage.includes("Purchase more credits")) {
+        setPaywallOpen(true);
+        void balance.refetch();
+        return;
+      }
       const message = friendlyTryOnError(err);
       setError(message);
       logActivity.mutate({
@@ -446,6 +423,38 @@ export default function TryOn() {
               Step 1: use phone camera, photo gallery, or desktop file upload. Step 2: preview it below. Step 3: generate your hairstyle preview when you are happy with the image.
             </p>
 
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]" htmlFor="try-on-email">
+                  Email
+                </label>
+                <input
+                  id="try-on-email"
+                  type="email"
+                  required
+                  className="mt-3 w-full rounded-full border border-[#d8b66b]/50 bg-white px-5 py-3 text-[#2f2418] outline-none ring-[#c8a552]/25 focus:ring-4"
+                  value={contact.email}
+                  onChange={(event) => updateContact({ email: event.target.value })}
+                  placeholder="you@example.com"
+                  disabled={isBusy}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]" htmlFor="try-on-phone">
+                  Phone (optional)
+                </label>
+                <input
+                  id="try-on-phone"
+                  type="tel"
+                  className="mt-3 w-full rounded-full border border-[#d8b66b]/50 bg-white px-5 py-3 text-[#2f2418] outline-none ring-[#c8a552]/25 focus:ring-4"
+                  value={contact.phone}
+                  onChange={(event) => updateContact({ phone: event.target.value })}
+                  placeholder="07…"
+                  disabled={isBusy}
+                />
+              </div>
+            </div>
+
             <label className="mt-6 block text-sm font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]" htmlFor="try-on-style">
               Choose style
             </label>
@@ -461,17 +470,47 @@ export default function TryOn() {
               ))}
             </select>
 
-            <button className="btn-gold mt-6 w-full" onClick={run} disabled={!photo || isBusy}>
+            <button className="btn-gold mt-6 w-full" onClick={run} disabled={!photo || !contact.email || isBusy}>
               {isBusy ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Wand2 className="mr-2 h-5 w-5" />}
               {isPreparing ? "Preparing photo…" : upload.isPending ? "Uploading photo…" : generate.isPending ? "Generating preview…" : "Generate hairstyle preview"}
             </button>
-            <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
-              {attemptsRemaining > 0 ? (
-                <>You have <strong className="text-[#2f2418]">{attemptsRemaining}</strong> of {TRY_ON_ATTEMPT_LIMIT} AI Try-On attempts remaining on this device.</>
-              ) : (
-                <>You have used all {TRY_ON_ATTEMPT_LIMIT} attempts on this device. {resetCountdown ? `Your tries refresh in about ${resetCountdown}.` : "Your tries refresh after 24 hours."}</>
-              )}
-            </p>
+            {purchaseNotice && (
+              <p className="mt-4 rounded-2xl bg-[#eaf6ec] px-4 py-3 text-sm font-semibold text-[#1f5f2d]">
+                {purchaseNotice}
+              </p>
+            )}
+            {contact.email && balance.data && (
+              <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
+                {balance.data.freeTrialAvailable ? (
+                  "You have 1 free AI Try-On available."
+                ) : balance.data.creditsRemaining > 0 ? (
+                  <>You have <strong className="text-[#2f2418]">{balance.data.creditsRemaining}</strong> Try-On credit{balance.data.creditsRemaining === 1 ? "" : "s"} remaining.</>
+                ) : (
+                  "Your free Try-On has been used. Purchase more credits below to continue."
+                )}
+              </p>
+            )}
+            {paywallOpen && (
+              <div className="mt-4 rounded-2xl border-2 border-[#c8a552] bg-[#fffaf0] px-5 py-4">
+                <p className="font-semibold text-[#2f2418]">Your free Try-On has been used</p>
+                <p className="mt-1 text-sm text-[#5f5142]">Purchase more credits to keep trying styles — each credit is one more AI hairstyle preview.</p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  {TRY_ON_CREDIT_BUNDLES.map((bundle) => (
+                    <button
+                      key={bundle.id}
+                      type="button"
+                      className="btn-dark py-3 text-sm"
+                      disabled={purchaseCredits.isPending}
+                      onClick={() => void buyCredits(bundle.id)}
+                    >
+                      {bundle.label}
+                      <br />
+                      <span className="font-bold text-[#2f2418]">{bundle.price}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {photo && (
               <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">

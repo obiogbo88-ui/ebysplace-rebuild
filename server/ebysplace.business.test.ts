@@ -627,9 +627,10 @@ describe("Eby’s Place platform business rules", () => {
       originalImageUrl: "/try-on/uploads/test-customer-photo.jpg",
       originalImageKey: "try-on/uploads/test-customer-photo.jpg",
       mimeType: "image/jpeg",
+      email: "customer@example.com",
     });
 
-    expect(result).toEqual({ id: 77, generatedImageUrl: "/try-on/generated/result.jpg", status: "completed", customerNotification: "Your Eby’s Place AI Try-On preview is ready." });
+    expect(result).toEqual({ id: 77, generatedImageUrl: "/try-on/generated/result.jpg", status: "completed", creditsRemaining: 0, customerNotification: "Your Eby’s Place AI Try-On preview is ready." });
     expect(result.customerNotification).toContain("Eby’s Place");
     expect(result.customerNotification).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     expect(storageGetSignedUrlMock).toHaveBeenCalledWith("try-on/uploads/test-customer-photo.jpg");
@@ -637,10 +638,10 @@ describe("Eby’s Place platform business rules", () => {
       originalImages: [{ url: "https://signed-storage.example.test/try-on/uploads/test-customer-photo.jpg", mimeType: "image/jpeg" }],
     }));
     const generateImageCall = generateImageMock.mock.calls[0]?.[0];
-    expect(generateImageCall?.prompt).toContain("Eby’s Place AI hairstyle try-on");
-    expect(generateImageCall?.prompt).toContain("apply hairstyle Knotless Braids only to the customer’s hair area");
-    expect(generateImageCall?.prompt).toContain("Preserve the customer’s exact face and identity with zero changes.");
-    expect(generateImageCall?.prompt).toContain("Do not change or retouch the face, skin, facial features, expression, age, body, clothing, pose, camera angle, lighting, or background.");
+    expect(generateImageCall?.prompt).toContain("photorealistic hairstyle try-on edit");
+    expect(generateImageCall?.prompt).toContain("replace the current hairstyle with Knotless Braids");
+    expect(generateImageCall?.prompt).toContain("IDENTITY LOCK (do not alter, even slightly): the person's exact face shape, facial structure, skin tone and texture");
+    expect(generateImageCall?.prompt).toContain("Do not smooth, beautify, slim, or retouch the skin.");
     expect(generateImageCall?.prompt).not.toContain("{{STYLE_NAME}}");
     createSpy.mockRestore();
     updateSpy.mockRestore();
