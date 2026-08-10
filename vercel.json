@@ -4,7 +4,8 @@
   "outputDirectory": "public",
   "functions": {
     "api/index.js": {
-      "includeFiles": "public/**"
+      "includeFiles": "public/**",
+      "maxDuration": 90
     }
   },
   "crons": [

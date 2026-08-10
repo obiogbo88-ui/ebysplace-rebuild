@@ -472,8 +472,13 @@ export default function TryOn() {
 
             <button className="btn-gold mt-6 w-full" onClick={run} disabled={!photo || !contact.email || isBusy}>
               {isBusy ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Wand2 className="mr-2 h-5 w-5" />}
-              {isPreparing ? "Preparing photo…" : upload.isPending ? "Uploading photo…" : generate.isPending ? "Generating preview…" : "Generate hairstyle preview"}
+              {isPreparing ? "Preparing photo…" : upload.isPending ? "Uploading photo…" : generate.isPending ? "Generating your preview…" : "Generate hairstyle preview"}
             </button>
+            {generate.isPending && (
+              <p className="mt-3 text-center text-xs text-[#6e604f]">
+                This can take up to a minute for the best quality — please don't close this tab.
+              </p>
+            )}
             {purchaseNotice && (
               <p className="mt-4 rounded-2xl bg-[#eaf6ec] px-4 py-3 text-sm font-semibold text-[#1f5f2d]">
                 {purchaseNotice}

@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { z } from "zod";
 import { storageGetSignedUrl, storagePut, storageRemove } from "./storage";
 import { generateImage } from "./_core/imageGeneration";
+import { buildTryOnPrompt } from "./_core/tryOnPrompt";
 import { askEby } from "./_core/chatAssistant";
 import { systemRouter } from "./_core/systemRouter";
 import { normalizeSecretKey } from "./_core/envSecrets";
@@ -731,15 +732,7 @@ export const appRouter = router({
       }
       const record = await db.createTryOnGeneration({ styleName: input.styleName, originalImageUrl: input.originalImageUrl, status: "pending" });
       try {
-        const selectedStyle = input.styleName;
-        const ebysPlaceTryOnPromptTemplate =
-          "You are performing a photorealistic hairstyle try-on edit, not a full portrait regeneration. " +
-          "The uploaded photo is the ground truth reference. " +
-          "IDENTITY LOCK (do not alter, even slightly): the person's exact face shape, facial structure, skin tone and texture, eyes (colour, shape, spacing), eyebrows, nose, mouth, lips, jawline, ears, freckles or marks, age, gender presentation, and facial expression. " +
-          "Do not smooth, beautify, slim, or retouch the skin. Do not shift head angle, pose, camera framing, body position, clothing, jewellery, or the background. Do not change lighting direction, colour temperature, or exposure. " +
-          "HAIR EDIT ONLY: replace the current hairstyle with {{STYLE_NAME}}, matching this style's realistic texture, density, parting, and length. Blend the new hairline naturally into the forehead and temples with no visible seams or pasted-on look. Light the new hair consistently with the photo's existing light source, including natural strand-level highlights and shading. If {{STYLE_NAME}} implies a colour change, apply it only to the hair, never to eyebrows or skin. " +
-          "OUTPUT: a single photorealistic image, same resolution, framing, and aspect ratio as the input photo, indistinguishable from a real photograph except for the hairstyle change.";
-        const prompt = ebysPlaceTryOnPromptTemplate.replaceAll("{{STYLE_NAME}}", selectedStyle);
+        const prompt = buildTryOnPrompt(input.styleName);
         const storageKey = input.originalImageUrl.startsWith("/")
           ? (input.originalImageKey ?? decodeURIComponent(input.originalImageUrl.replace("/", "")))
           : null;
