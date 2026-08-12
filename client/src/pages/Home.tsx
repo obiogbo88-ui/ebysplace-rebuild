@@ -354,14 +354,16 @@ export function SiteFooter() {
             className="inline-flex items-center gap-1.5 text-xs font-medium tracking-[0.05em] text-[#4f3720]/60 transition hover:text-[#8a641e]"
           >
             Built by
-            <span
-              aria-hidden="true"
-              className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
-              style={{ background: "#d1ff2d" }}
-            >
-              <img src="/veya-mark.svg" alt="" className="h-[62%] w-[62%]" />
+            <span className="inline-flex items-center gap-[3px]">
+              <span
+                aria-hidden="true"
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
+                style={{ background: "#d8ff36" }}
+              >
+                <img src="/veya-mark.svg" alt="" className="h-[62%] w-[62%]" />
+              </span>
+              <img src="/veya-wordmark.png" alt="Veya Digital" className="h-4 w-auto" />
             </span>
-            Veya Digital
           </a>
         </div>
       </div>
