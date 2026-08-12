@@ -259,7 +259,7 @@ export function SiteHeader() {
 export function SiteFooter() {
   const [, setLocation] = useLocation();
   return (
-    <footer className="border-t border-primary/25 bg-[#f5ead7] pb-10 pt-16 text-[#2a1a0b]">
+    <footer id="site-footer" className="border-t border-primary/25 bg-[#f5ead7] pb-10 pt-16 text-[#2a1a0b]">
       <div className="container grid gap-10 md:grid-cols-[1.3fr_1fr_1fr_1fr_1fr] md:gap-8">
         <div>
           <img

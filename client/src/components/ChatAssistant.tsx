@@ -47,7 +47,7 @@ export default function ChatAssistant() {
     let mo: MutationObserver | null = null;
 
     function observeFooter() {
-      const footer = document.querySelector("footer");
+      const footer = document.querySelector("footer#site-footer");
       if (!footer) return false;
       io = new IntersectionObserver(([entry]) => setNearFooter(entry.isIntersecting));
       io.observe(footer);
