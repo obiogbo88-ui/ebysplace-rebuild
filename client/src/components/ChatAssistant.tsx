@@ -120,7 +120,7 @@ export default function ChatAssistant() {
         aria-label={open ? "Close chat with Eby" : "Chat with Eby"}
         onClick={() => (open ? closeChat() : setOpen(true))}
         className={`btn-gold !p-0 fixed bottom-24 left-4 z-[80] flex h-14 w-14 items-center justify-center shadow-[0_18px_42px_rgba(17,17,17,.28)] transition-all duration-300 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C9A84C] md:bottom-6 md:left-6 md:h-16 md:w-16 ${
-          nearFooter && !open ? "pointer-events-none translate-y-3 opacity-0" : ""
+          nearFooter && !open ? "pointer-events-none !translate-y-3 !opacity-0" : ""
         }`}
       >
         {open ? (
