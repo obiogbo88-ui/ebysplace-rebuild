@@ -33,6 +33,7 @@ export default function ChatAssistant() {
   const [input, setInput] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
   const leadCapturedRef = useRef(false);
+  const [nearFooter, setNearFooter] = useState(false);
   const chat = trpc.public.chatAssistant.useMutation();
   const chatLead = trpc.public.chatLead.useMutation();
 
@@ -40,6 +41,32 @@ export default function ChatAssistant() {
     if (!listRef.current) return;
     listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages, chat.isPending]);
+
+  useEffect(() => {
+    let io: IntersectionObserver | null = null;
+    let mo: MutationObserver | null = null;
+
+    function observeFooter() {
+      const footer = document.querySelector("footer");
+      if (!footer) return false;
+      io = new IntersectionObserver(([entry]) => setNearFooter(entry.isIntersecting));
+      io.observe(footer);
+      return true;
+    }
+
+    if (!observeFooter()) {
+      mo = new MutationObserver(() => {
+        if (observeFooter()) mo?.disconnect();
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+    }
+
+    return () => {
+      io?.disconnect();
+      mo?.disconnect();
+      setNearFooter(false);
+    };
+  }, [location]);
 
   if (isAdmin) return null;
 
@@ -92,7 +119,9 @@ export default function ChatAssistant() {
         type="button"
         aria-label={open ? "Close chat with Eby" : "Chat with Eby"}
         onClick={() => (open ? closeChat() : setOpen(true))}
-        className="btn-gold !p-0 fixed bottom-24 left-4 z-[80] flex h-14 w-14 items-center justify-center shadow-[0_18px_42px_rgba(17,17,17,.28)] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C9A84C] md:bottom-6 md:left-6 md:h-16 md:w-16"
+        className={`btn-gold !p-0 fixed bottom-24 left-4 z-[80] flex h-14 w-14 items-center justify-center shadow-[0_18px_42px_rgba(17,17,17,.28)] transition-all duration-300 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C9A84C] md:bottom-6 md:left-6 md:h-16 md:w-16 ${
+          nearFooter && !open ? "pointer-events-none translate-y-3 opacity-0" : ""
+        }`}
       >
         {open ? (
           <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6 md:h-7 md:w-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
