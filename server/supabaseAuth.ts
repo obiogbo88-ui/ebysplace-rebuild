@@ -84,6 +84,12 @@ async function sendAdminPasswordResetEmail(email: string, resetLink: string) {
     auth: { user: config.user, pass: config.pass },
   });
 
+  // Do not add a `raw` option here without re-reading GHSA advisory for
+  // nodemailer's "Message-level raw option bypasses disableFileAccess/
+  // disableUrlAccess" bug (fixed only in nodemailer >=9.0.1; this repo
+  // deliberately stays on 8.x since nothing here uses `raw`). Sticking to
+  // the structured from/to/subject/text/html fields is what keeps that
+  // vulnerability unreachable -- introducing `raw` reopens it.
   await transporter.sendMail({
     from: config.from,
     to: email,
