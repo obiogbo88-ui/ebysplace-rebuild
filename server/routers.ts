@@ -13,6 +13,7 @@ import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { getNotificationDiagnostics, sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely } from "./customerNotifications";
 import { resendEmailNotificationLog } from "./smtpEmailNotifications";
+import { isResendConfigured, sendBrandedEmail } from "./resendEmail";
 import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
 import * as db from "./db";
 
@@ -949,6 +950,46 @@ export const appRouter = router({
         throw adminMutationFailure("Home service surcharge update", error);
       }
     }),
+    resendStatus: adminProcedure.query(() => ({ configured: isResendConfigured() })),
+    sendCustomerReply: adminProcedure
+      .input(z.object({
+        to: z.string().email(),
+        cc: z.string().email().optional(),
+        subject: z.string().min(3).max(255),
+        paragraphs: z.array(z.string().min(1).max(2000)).min(1).max(12),
+        ctaLabel: z.string().min(2).max(40).optional(),
+        ctaUrl: z.string().url().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const cta = input.ctaLabel && input.ctaUrl ? { label: input.ctaLabel, url: input.ctaUrl } : undefined;
+        const result = await sendBrandedEmail({
+          to: input.to,
+          cc: input.cc,
+          subject: input.subject,
+          paragraphs: input.paragraphs,
+          cta,
+        });
+        await logAdminActivity(ctx, {
+          activityType: result.sent ? "admin_customer_reply_sent" : "admin_customer_reply_failed",
+          description: result.sent
+            ? `Admin sent a customer reply to ${input.to}`
+            : `Admin customer reply to ${input.to} failed`,
+          relatedEntityType: "email",
+          status: result.sent ? "success" : "failed",
+          metadata: {
+            to: input.to,
+            cc: input.cc ?? null,
+            subject: input.subject,
+            provider: "resend",
+            messageId: result.messageId ?? null,
+            errorMessage: result.errorMessage ?? null,
+          },
+        });
+        if (!result.sent) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.errorMessage || "The reply could not be sent." });
+        }
+        return { success: true, messageId: result.messageId };
+      }),
     sendReviewRequest: adminProcedure.input(z.object({ bookingId: z.number() })).mutation(async ({ input }) => {
       const booking = await db.getBookingById(input.bookingId);
       if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });
