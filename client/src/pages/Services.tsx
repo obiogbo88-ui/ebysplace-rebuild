@@ -13,7 +13,7 @@ const categoryIntro: Record<ServiceCategory, string> = {
   All:
     "Browse every published Eby’s Place service in one place, then narrow by category when you already know the style family you want.",
   Braids:
-    "Knotless, box, goddess, Fulani, cornrows, stitch, lemonade, boho, and tribal braids created with Eby’s Place pain-free philosophy.",
+    "Knotless, box, goddess, Fulani, cornrows, stitch, lemonade, boho knotless, and tribal braids created with Eby’s Place pain-free philosophy.",
   Twists:
     "Soft rope and passion twist services designed for lightweight movement, protection, and comfort.",
   Locs: "Loc-inspired protective options, from faux and butterfly locs through to starter loc support.",
