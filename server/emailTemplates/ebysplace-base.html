@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="color-scheme" content="light" />
+<meta name="supported-color-schemes" content="light" />
+<title>{{SUBJECT}}</title>
+<!--[if mso]>
+<noscript>
+<xml>
+<o:OfficeDocumentSettings>
+<o:PixelsPerInch>96</o:PixelsPerInch>
+</o:OfficeDocumentSettings>
+</xml>
+</noscript>
+<style>
+  table { border-collapse: collapse; }
+  td, a { font-family: Arial, sans-serif; }
+</style>
+<![endif]-->
+<style>
+  /*
+    This email is light-only by design (Eby's Place cream/gold identity).
+    Every surface below is pinned with THREE redundant techniques so no
+    client's automatic dark-mode re-theming can override it:
+      1. an HTML bgcolor="" attribute (oldest, most reliably respected — Outlook desktop)
+      2. an inline style="background-color:...` (most webmail sanitizers keep inline styles)
+      3. a CSS class rule repeated under `@media (prefers-color-scheme: dark)` and the
+         `[data-ogsc]` hook Gmail's dark mode stamps onto elements it re-themes.
+    The logo itself is dark artwork on a transparent PNG — it has no backing colour of
+    its own, so the cream "logo-plate" behind it is what actually keeps it visible.
+  */
+  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+  body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; background-color: #ECE4D2; }
+
+  .bg-outer { background-color: #ECE4D2 !important; }
+  .bg-card, .logo-plate, .email-header, .email-body, .email-footer { background-color: #FAF7F2 !important; }
+  .ink { color: #1A1A1A !important; }
+  .muted { color: #6b5f4d !important; }
+  .hairline { border-color: #DED4C4 !important; }
+  .gold-btn { background-color: #C9A84C !important; }
+  a.gold-link, a.inline-link { color: #8a641e !important; }
+  .gold-meta { color: #8a641e !important; }
+
+  @media (prefers-color-scheme: dark) {
+    body, .bg-outer { background-color: #ECE4D2 !important; }
+    .bg-card, .logo-plate, .email-header, .email-body, .email-footer { background-color: #FAF7F2 !important; }
+    .ink, .email-body p, .sign-name, .sign-role { color: #1A1A1A !important; }
+    .muted, .footer-contact, .footer-tagline { color: #6b5f4d !important; }
+    .hairline { border-color: #DED4C4 !important; }
+    .gold-btn, a.cta { background-color: #C9A84C !important; color: #FFFBF2 !important; }
+    a.gold-link, a.inline-link { color: #8a641e !important; }
+    .gold-meta { color: #8a641e !important; }
+  }
+
+  [data-ogsc] body, [data-ogsc] .bg-outer { background-color: #ECE4D2 !important; }
+  [data-ogsc] .bg-card, [data-ogsc] .logo-plate, [data-ogsc] .email-header,
+  [data-ogsc] .email-body, [data-ogsc] .email-footer { background-color: #FAF7F2 !important; }
+  [data-ogsc] .ink { color: #1A1A1A !important; }
+  [data-ogsc] .gold-btn, [data-ogsc] a.cta { background-color: #C9A84C !important; color: #FFFBF2 !important; }
+  [data-ogsc] .gold-meta { color: #8a641e !important; }
+
+  @media screen and (max-width: 600px) {
+    .email-container { width: 100% !important; }
+    .email-body, .email-footer { padding-left: 26px !important; padding-right: 26px !important; }
+    .stack { display: block !important; width: 100% !important; text-align: center !important; padding-bottom: 6px; }
+  }
+</style>
+</head>
+<body class="bg-outer ink" style="margin:0;padding:0;background-color:#ECE4D2;">
+<center role="article" aria-roledescription="email" style="width:100%;background-color:#ECE4D2;">
+<!--[if mso]>
+<table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td>
+<![endif]-->
+<table role="presentation" class="email-container" width="100%" style="max-width:600px;margin:0 auto;" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:20px 12px;">
+
+  <table role="presentation" width="100%" class="bg-card hairline" cellpadding="0" cellspacing="0" border="0" bgcolor="#FAF7F2" style="background-color:#FAF7F2;border:1px solid #DED4C4;border-radius:4px;">
+
+    <!-- header / logo, on its own explicitly-pinned cream plate -->
+    <tr>
+      <td class="email-header logo-plate hairline" bgcolor="#FAF7F2" align="center" style="background-color:#FAF7F2;padding:34px 24px 22px;border-bottom:1px solid #DED4C4;">
+        <img src="https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png"
+             alt="Eby's Place — Beauty in every strand"
+             width="220" height="118"
+             style="display:block;margin:0 auto;width:220px;max-width:60%;height:auto;border:0;outline:none;text-decoration:none;" />
+      </td>
+    </tr>
+
+    <!-- body -->
+    <tr>
+      <td class="email-body ink" bgcolor="#FAF7F2" style="background-color:#FAF7F2;padding:38px 44px 8px;font-family:Arial,'Segoe UI',sans-serif;font-size:15.5px;line-height:1.72;color:#1A1A1A;">
+        {{BODY_HTML}}
+
+        <p style="margin:8px 0 36px;">
+          <span class="ink sign-name" style="display:block;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:20px;color:#1A1A1A;margin-bottom:2px;">Eby's Place</span>
+          <span class="muted sign-role" style="color:#6b5f4d;font-size:14px;">Founder &amp; Service Lead</span>
+        </p>
+      </td>
+    </tr>
+
+    <!-- footer -->
+    <tr>
+      <td class="email-footer hairline" bgcolor="#FAF7F2" style="background-color:#FAF7F2;padding:22px 44px 30px;border-top:1px solid #DED4C4;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td class="stack footer-tagline muted" align="left" style="font-family:Arial,sans-serif;font-size:10.5px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:#8a7256;">Beauty in every strand</td>
+            <td class="stack footer-contact muted" align="right" style="font-size:13px;color:#6b5f4d;"><a href="mailto:info@ebysplace.com" class="gold-link" style="color:#8a641e;text-decoration:none;">info@ebysplace.com</a></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+  </table>
+
+</td></tr>
+</table>
+<!--[if mso]>
+</td></tr></table>
+<![endif]-->
+</center>
+</body>
+</html>

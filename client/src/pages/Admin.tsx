@@ -233,6 +233,15 @@ function adminNotificationTitle(item: any) {
   return "Admin notification";
 }
 
+const EMPTY_REPLY = {
+  to: "",
+  cc: "info@ebysplace.com",
+  subject: "",
+  body: "",
+  ctaLabel: "Browse Styles & Book",
+  ctaUrl: "https://www.ebysplace.com/services",
+};
+
 export default function Admin() {
   const { user } = useAuth();
   const summary = trpc.admin.summary.useQuery(undefined, { retry: false });
@@ -309,6 +318,11 @@ export default function Admin() {
   const unblockAvailabilitySlot = trpc.admin.unblockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot unblocked"); } });
   const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => { scrollAdminFeedback("bookings"); toast.success("Review request sent"); } });
   const resendEmail = trpc.admin.resendEmailNotification.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("email-notifications"); toast.success("Email notification resend attempted"); }, onError: (error: any) => toast.error(error.message) });
+  const resendStatus = trpc.admin.resendStatus.useQuery(undefined, { retry: false });
+  const sendCustomerReply = trpc.admin.sendCustomerReply.useMutation({
+    onSuccess: () => { setReplyForm({ ...EMPTY_REPLY }); scrollAdminFeedback("customer-replies"); toast.success("Reply sent"); },
+    onError: (error: any) => toast.error(error.message),
+  });
   const updateInstagram = trpc.admin.updateInstagramSettings.useMutation({ onSuccess: () => { scrollAdminFeedback("instagram"); toast.success("Instagram feed settings saved"); } });
   const updateHomeServiceSurcharge = trpc.admin.updateHomeServiceSurcharge.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("content"); toast.success("Home service surcharge saved"); }, onError: (error: any) => toast.error(error.message) });
   const updateBooking = trpc.admin.updateBookingStatus.useMutation(opts);
@@ -454,6 +468,7 @@ export default function Admin() {
     },
     onError: (error: any) => { setDeletingGalleryId(null); toast.error(error.message); },
   });
+  const [replyForm, setReplyForm] = useState({ ...EMPTY_REPLY });
   const [availabilitySlot, setAvailabilitySlot] = useState({ date: "", time: "", reason: "Unavailable" });
   const [instagramSettings, setInstagramSettings] = useState({ handle: "@ebysplace", feedUrl: "https://www.instagram.com/ebysplace/", enabled: true, note: "Latest Eby’s Place Instagram posts appear here once the production feed is connected." });
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
@@ -952,6 +967,68 @@ export default function Admin() {
               </div>
             )) : <p className="text-white/55">No shop orders yet.</p>}
           </div>
+          </AdminPanel>
+
+          <AdminPanel id="customer-replies" eyebrow="Resend · ebysplace.com" title="Reply to a customer" description="Send a branded one-off reply to a customer enquiry. Delivered through Resend from info@ebysplace.com and recorded in the activity log." icon={Mail} open={isPanelOpen("customer-replies")} onToggle={() => togglePanel("customer-replies")}>
+            {resendStatus.data && !resendStatus.data.configured ? (
+              <p className="mt-4 rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm text-amber-100">
+                RESEND_API_KEY is not available in this environment, so sending is disabled here. It is configured for Production only.
+              </p>
+            ) : null}
+            <div className="mt-5 grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-2 text-sm">
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/55">Customer email</span>
+                  <input type="email" value={replyForm.to} placeholder="customer@example.com" onChange={(event) => setReplyForm({ ...replyForm, to: event.target.value })} />
+                </label>
+                <label className="grid gap-2 text-sm">
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/55">Cc (for your records)</span>
+                  <input type="email" value={replyForm.cc} onChange={(event) => setReplyForm({ ...replyForm, cc: event.target.value })} />
+                </label>
+              </div>
+              <label className="grid gap-2 text-sm">
+                <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/55">Subject</span>
+                <input value={replyForm.subject} placeholder="Re: Your enquiry" onChange={(event) => setReplyForm({ ...replyForm, subject: event.target.value })} />
+              </label>
+              <label className="grid gap-2 text-sm">
+                <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/55">Message</span>
+                <textarea className="min-h-[200px]" value={replyForm.body} placeholder={"Hi Tanya,\n\nThank you so much for getting in touch.\n\nLeave a blank line between paragraphs."} onChange={(event) => setReplyForm({ ...replyForm, body: event.target.value })} />
+                <span className="text-xs text-white/45">Blank lines separate paragraphs. The Eby&rsquo;s Place logo, signature, and footer are added automatically.</span>
+              </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-2 text-sm">
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/55">Button label (optional)</span>
+                  <input value={replyForm.ctaLabel} onChange={(event) => setReplyForm({ ...replyForm, ctaLabel: event.target.value })} />
+                </label>
+                <label className="grid gap-2 text-sm">
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/55">Button link (optional)</span>
+                  <input value={replyForm.ctaUrl} onChange={(event) => setReplyForm({ ...replyForm, ctaUrl: event.target.value })} />
+                </label>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  className="btn-gold py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                  type="button"
+                  disabled={sendCustomerReply.isPending || !replyForm.to.trim() || replyForm.subject.trim().length < 3 || !replyForm.body.trim()}
+                  onClick={() => {
+                    const paragraphs = replyForm.body.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
+                    if (!paragraphs.length) { toast.error("Add a message before sending"); return; }
+                    const hasCta = Boolean(replyForm.ctaLabel.trim() && replyForm.ctaUrl.trim());
+                    sendCustomerReply.mutate({
+                      to: replyForm.to.trim(),
+                      cc: replyForm.cc.trim() || undefined,
+                      subject: replyForm.subject.trim(),
+                      paragraphs,
+                      ctaLabel: hasCta ? replyForm.ctaLabel.trim() : undefined,
+                      ctaUrl: hasCta ? replyForm.ctaUrl.trim() : undefined,
+                    });
+                  }}
+                >
+                  {sendCustomerReply.isPending ? "Sending..." : "Send reply"}
+                </button>
+                <button className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/70" type="button" onClick={() => setReplyForm({ ...EMPTY_REPLY })}>Clear</button>
+              </div>
+            </div>
           </AdminPanel>
 
           <AdminPanel id="email-notifications" eyebrow="Zoho EU SMTP" title="Email notifications" description="Review booking and shop confirmation delivery status, including customer and owner messages sent through smtp.zoho.eu." icon={Mail} open={isPanelOpen("email-notifications")} onToggle={() => togglePanel("email-notifications")}>
