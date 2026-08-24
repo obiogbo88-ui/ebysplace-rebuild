@@ -212,7 +212,7 @@ const seoByPath: Record<string, { title: string; description: string }> = {
   "/services": {
     title: "Luxury Pain-Free Braiding Services | Eby’s Place",
     description:
-      "Explore Eby’s Place braiding services, including knotless braids, box braids, goddess braids, locs, twists, kids styles, men’s styles, beads, accessories, and gentle add-ons.",
+      "Explore Eby’s Place braiding services, including knotless braids, boho knotless braids, box braids, goddess braids, locs, twists, kids styles, men’s styles, beads, accessories, and gentle add-ons.",
   },
   "/booking": {
     title: "Book Appointment | Eby’s Place",
