@@ -1061,9 +1061,11 @@ export const appRouter = router({
         url: z.string().url().optional(),
         channels: z.object({ webPush: z.boolean(), email: z.boolean(), sms: z.boolean(), whatsapp: z.boolean() }),
         audience: z.enum(["subscribers", "all_clients"]).default("subscribers"),
+        extraPhones: z.array(z.string().min(8).max(20)).max(20).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const textMessage = `${input.title}\n${input.body}${input.url ? `\n${input.url}` : ""}`;
+        const withExtraPhones = (phones: string[]) => Array.from(new Set([...phones, ...(input.extraPhones ?? [])]));
         const [webPushResult, emailResult, smsResult, whatsappResult] = await Promise.all([
           input.channels.webPush ? sendPushToAllSubscribers({ title: input.title, body: input.body, url: input.url }) : Promise.resolve(null),
           input.channels.email
@@ -1076,10 +1078,10 @@ export const appRouter = router({
               )
             : Promise.resolve(null),
           input.channels.sms
-            ? (input.audience === "all_clients" ? db.listAllClientPhones() : db.listSmsSubscriptions().then((subscribers) => subscribers.map((s) => s.phone))).then((phones) => sendSmsToPhones(phones, textMessage))
+            ? (input.audience === "all_clients" ? db.listAllClientPhones() : db.listSmsSubscriptions().then((subscribers) => subscribers.map((s) => s.phone))).then((phones) => sendSmsToPhones(withExtraPhones(phones), textMessage))
             : Promise.resolve(null),
           input.channels.whatsapp
-            ? (input.audience === "all_clients" ? db.listAllClientPhones() : db.listSmsSubscriptions().then((subscribers) => subscribers.map((s) => s.phone))).then((phones) => sendWhatsAppToPhones(phones, textMessage))
+            ? (input.audience === "all_clients" ? db.listAllClientPhones() : db.listSmsSubscriptions().then((subscribers) => subscribers.map((s) => s.phone))).then((phones) => sendWhatsAppToPhones(withExtraPhones(phones), textMessage))
             : Promise.resolve(null),
         ]);
 
@@ -1094,6 +1096,7 @@ export const appRouter = router({
             body: input.body,
             url: input.url ?? null,
             audience: input.audience,
+            extraPhoneCount: input.extraPhones?.length ?? 0,
             webPush: webPushResult,
             email: emailResult,
             sms: smsResult,
