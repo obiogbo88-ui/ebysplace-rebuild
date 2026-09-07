@@ -505,7 +505,7 @@ export default function Admin() {
   const [replyForm, setReplyForm] = useState({ ...EMPTY_REPLY });
   const [availabilitySlot, setAvailabilitySlot] = useState({ date: "", time: "", reason: "Unavailable" });
   const [instagramSettings, setInstagramSettings] = useState({ handle: "@ebysplace", feedUrl: "https://www.instagram.com/ebysplace/", enabled: true, note: "Latest Eby’s Place Instagram posts appear here once the production feed is connected." });
-  const [announcementForm, setAnnouncementForm] = useState({ title: "", body: "", url: "", channels: { webPush: true, email: false, sms: false, whatsapp: false }, audience: "subscribers" as "subscribers" | "all_clients" });
+  const [announcementForm, setAnnouncementForm] = useState({ title: "", body: "", url: "", channels: { webPush: true, email: false, sms: false, whatsapp: false }, audience: "subscribers" as "subscribers" | "all_clients", extraPhones: "" });
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [newService, setNewService] = useState({ name: "", slug: "", category: "Braids", description: "", duration: "", priceFrom: "", badge: "", imageUrl: "", isBookable: "true", isFeatured: "false", sortOrder: 0 });
@@ -1163,7 +1163,8 @@ export default function Admin() {
                 className="mt-4 grid gap-3 rounded-2xl border border-primary/20 bg-black/20 p-4"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  sendAnnouncement.mutate({ title: announcementForm.title, body: announcementForm.body, url: announcementForm.url || undefined, channels: announcementForm.channels, audience: announcementForm.audience });
+                  const extraPhones = announcementForm.extraPhones.split(",").map((p) => p.trim()).filter(Boolean);
+                  sendAnnouncement.mutate({ title: announcementForm.title, body: announcementForm.body, url: announcementForm.url || undefined, channels: announcementForm.channels, audience: announcementForm.audience, extraPhones: extraPhones.length ? extraPhones : undefined });
                 }}
               >
                 <input required maxLength={80} placeholder="Title (e.g. New style openings this week)" value={announcementForm.title} onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })} />
@@ -1175,6 +1176,9 @@ export default function Admin() {
                   <label className="flex items-center gap-2"><input type="checkbox" checked={announcementForm.channels.sms} onChange={(event) => setAnnouncementForm({ ...announcementForm, channels: { ...announcementForm.channels, sms: event.target.checked } })} /> SMS</label>
                   <label className="flex items-center gap-2"><input type="checkbox" checked={announcementForm.channels.whatsapp} onChange={(event) => setAnnouncementForm({ ...announcementForm, channels: { ...announcementForm.channels, whatsapp: event.target.checked } })} /> WhatsApp</label>
                 </div>
+                {(announcementForm.channels.sms || announcementForm.channels.whatsapp) ? (
+                  <input placeholder="Also send SMS/WhatsApp to these numbers (comma-separated, e.g. the owner's own number)" value={announcementForm.extraPhones} onChange={(event) => setAnnouncementForm({ ...announcementForm, extraPhones: event.target.value })} />
+                ) : null}
                 <button className="btn-gold w-fit py-2 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={sendAnnouncement.isPending || !(announcementForm.channels.webPush || announcementForm.channels.email || announcementForm.channels.sms || announcementForm.channels.whatsapp)}>
                   {sendAnnouncement.isPending ? "Sending..." : "Send announcement"}
                 </button>
