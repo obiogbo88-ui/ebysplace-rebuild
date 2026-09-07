@@ -257,6 +257,20 @@ export const smsSubscriptions = pgTable("smsSubscriptions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/**
+ * Separate from pushSubscriptions (the public homepage opt-in) so owner
+ * alerts — new bookings, orders, reviews, stock warnings — never get pushed
+ * to a customer's browser by mistake.
+ */
+export const ownerPushSubscriptions = pgTable("ownerPushSubscriptions", {
+  id: serial("id").primaryKey(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("userAgent"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const emailNotificationLogs = pgTable("emailNotificationLogs", {
   id: serial("id").primaryKey(),
   entityType: emailNotificationEntityEnum("entityType").notNull(),

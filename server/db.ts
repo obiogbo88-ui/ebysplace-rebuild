@@ -13,6 +13,7 @@ import {
   newsletterSubscribers,
   orderItems,
   orders,
+  ownerPushSubscriptions,
   productReviews,
   productVariants,
   products,
@@ -2221,6 +2222,22 @@ async function ensurePushSubscriptionsTable() {
   }
 }
 
+async function ensureOwnerPushSubscriptionsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "ownerPushSubscriptions" (
+      "id" SERIAL PRIMARY KEY,
+      "endpoint" TEXT NOT NULL UNIQUE,
+      "p256dh" TEXT NOT NULL,
+      "auth" TEXT NOT NULL,
+      "userAgent" TEXT,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure ownerPushSubscriptions table", err);
+  }
+}
+
 async function ensureSmsSubscriptionsTable() {
   if (!_pool) return;
   try {
@@ -2367,6 +2384,17 @@ export async function updateEmailNotificationLog(id: number, input: {
   return { id, ...input };
 }
 
+/**
+ * Total activityLogs rows for a session, used to detect a brand-new visitor
+ * (their very first tracked event) without a second dedicated table.
+ */
+export async function countActivityLogsBySession(sessionId: string) {
+  const db = await getDb();
+  if (!db || !sessionId) return 0;
+  const rows = await db.select({ count: sql<number>`count(*)` }).from(activityLogs).where(eq(activityLogs.sessionId, sessionId));
+  return Number(rows[0]?.count ?? 0);
+}
+
 export async function listEmailNotificationLogs(limit = 80) {
   const db = await getDb();
   if (!db) return [];
@@ -2454,6 +2482,32 @@ export async function listPushSubscriptions() {
   if (!db) return [];
   await ensurePushSubscriptionsTable();
   return db.select().from(pushSubscriptions).orderBy(desc(pushSubscriptions.createdAt));
+}
+
+export async function saveOwnerPushSubscription(input: { endpoint: string; p256dh: string; auth: string; userAgent?: string }) {
+  const db = await getDb();
+  if (!db) return null;
+  await ensureOwnerPushSubscriptionsTable();
+  const [row] = await db
+    .insert(ownerPushSubscriptions)
+    .values({ endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent })
+    .onConflictDoUpdate({ target: ownerPushSubscriptions.endpoint, set: { p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent } })
+    .returning();
+  return row ?? null;
+}
+
+export async function deleteOwnerPushSubscriptionByEndpoint(endpoint: string) {
+  const db = await getDb();
+  if (!db) return;
+  await ensureOwnerPushSubscriptionsTable();
+  await db.delete(ownerPushSubscriptions).where(eq(ownerPushSubscriptions.endpoint, endpoint));
+}
+
+export async function listOwnerPushSubscriptions() {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureOwnerPushSubscriptionsTable();
+  return db.select().from(ownerPushSubscriptions).orderBy(desc(ownerPushSubscriptions.createdAt));
 }
 
 export async function saveSmsSubscription(phone: string) {

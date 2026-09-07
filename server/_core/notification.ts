@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { notifyOwnerByTwilioSafely } from "../customerNotifications";
+import { sendPushToOwner } from "../webPush";
 
 export type NotificationPayload = {
   title: string;
@@ -48,13 +49,16 @@ const validatePayload = (input: NotificationPayload): NotificationPayload => {
 };
 
 /**
- * Dispatches an Eby’s Place owner notification through Twilio SMS and WhatsApp
- * when the corresponding production environment variables are configured.
- * The helper is intentionally non-blocking for business flows: delivery failures
- * are logged and surfaced as `false`, while payload validation still throws.
+ * Dispatches an Eby’s Place owner notification through Twilio SMS, WhatsApp,
+ * and browser push, whichever are configured. The helper is intentionally
+ * non-blocking for business flows: delivery failures are logged and
+ * surfaced as `false`, while payload validation still throws.
  */
 export async function notifyOwner(payload: NotificationPayload): Promise<boolean> {
   const { title, content } = validatePayload(payload);
-  const result = await notifyOwnerByTwilioSafely({ title, content });
-  return Boolean(result.sms.sent || result.whatsapp.sent);
+  const [twilioResult, pushResult] = await Promise.all([
+    notifyOwnerByTwilioSafely({ title, content }),
+    sendPushToOwner({ title, body: content }).catch(() => ({ sent: false, deliveredCount: 0 })),
+  ]);
+  return Boolean(twilioResult.sms.sent || twilioResult.whatsapp.sent || pushResult.deliveredCount > 0);
 }
