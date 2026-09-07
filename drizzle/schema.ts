@@ -242,6 +242,21 @@ export const activityLogs = pgTable("activityLogs", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
+export const pushSubscriptions = pgTable("pushSubscriptions", {
+  id: serial("id").primaryKey(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("userAgent"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const smsSubscriptions = pgTable("smsSubscriptions", {
+  id: serial("id").primaryKey(),
+  phone: varchar("phone", { length: 32 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const emailNotificationLogs = pgTable("emailNotificationLogs", {
   id: serial("id").primaryKey(),
   entityType: emailNotificationEntityEnum("entityType").notNull(),

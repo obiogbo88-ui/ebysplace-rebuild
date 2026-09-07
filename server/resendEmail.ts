@@ -168,3 +168,42 @@ export async function sendBrandedEmail(email: BrandedEmail, fetchImpl: typeof fe
 
   return { sent: true, messageId: payload?.id };
 }
+
+export type BroadcastResult = {
+  sent: boolean;
+  recipientCount: number;
+  deliveredCount: number;
+  failedCount: number;
+  errorMessage?: string;
+};
+
+/**
+ * Sends one individual email per recipient rather than a single email with
+ * everyone in bcc/cc — per the standing rule against grouping external
+ * recipients together in one message.
+ */
+export async function sendBroadcastEmail(
+  recipients: string[],
+  content: Pick<BrandedEmail, "subject" | "paragraphs" | "cta">,
+  fetchImpl: typeof fetch = fetch,
+): Promise<BroadcastResult> {
+  const config = getResendConfig();
+  if (!config.usable) {
+    return { sent: false, recipientCount: 0, deliveredCount: 0, failedCount: 0, errorMessage: "RESEND_API_KEY is not configured in this environment." };
+  }
+  if (!recipients.length) {
+    return { sent: true, recipientCount: 0, deliveredCount: 0, failedCount: 0 };
+  }
+
+  let delivered = 0;
+  let failed = 0;
+  await Promise.all(
+    recipients.map(async (to) => {
+      const result = await sendBrandedEmail({ to, ...content }, fetchImpl);
+      if (result.sent) delivered += 1;
+      else failed += 1;
+    }),
+  );
+
+  return { sent: true, recipientCount: recipients.length, deliveredCount: delivered, failedCount: failed };
+}

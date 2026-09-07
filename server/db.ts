@@ -16,7 +16,9 @@ import {
   productReviews,
   productVariants,
   products,
+  pushSubscriptions,
   reviews,
+  smsSubscriptions,
   services,
   tryOnAccounts,
   tryOnGenerations,
@@ -2203,6 +2205,35 @@ export async function getAbandonedOrdersNeedingReminder(hoursThreshold: number) 
   return staleOrders.filter((order) => !remindedIds.has(order.id));
 }
 
+async function ensurePushSubscriptionsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "pushSubscriptions" (
+      "id" SERIAL PRIMARY KEY,
+      "endpoint" TEXT NOT NULL UNIQUE,
+      "p256dh" TEXT NOT NULL,
+      "auth" TEXT NOT NULL,
+      "userAgent" TEXT,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure pushSubscriptions table", err);
+  }
+}
+
+async function ensureSmsSubscriptionsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "smsSubscriptions" (
+      "id" SERIAL PRIMARY KEY,
+      "phone" VARCHAR(32) NOT NULL UNIQUE,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure smsSubscriptions table", err);
+  }
+}
+
 async function ensureEmailNotificationLogTable() {
   if (!_pool) return;
   try {
@@ -2351,10 +2382,100 @@ export async function getEmailNotificationLogById(id: number) {
   return rows[0] ?? null;
 }
 
+/**
+ * Every distinct email that has ever booked an appointment or placed a shop
+ * order — the real client base, separate from the newsletter/push/SMS
+ * opt-in lists (which only cover people who explicitly signed up for
+ * updates).
+ */
+export async function listAllClientEmails() {
+  const db = await getDb();
+  if (!db) return [];
+  const [bookingRows, orderRows] = await Promise.all([
+    db.selectDistinct({ email: bookings.clientEmail }).from(bookings),
+    db.selectDistinct({ email: orders.customerEmail }).from(orders),
+  ]);
+  const emails = new Set<string>();
+  for (const row of [...bookingRows, ...orderRows]) {
+    const email = row.email?.trim().toLowerCase();
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) emails.add(email);
+  }
+  return Array.from(emails);
+}
+
+/**
+ * Every distinct phone number that has ever booked an appointment or placed
+ * a shop order — for SMS/WhatsApp, separate from the smsSubscriptions
+ * opt-in list. Left as entered at checkout/booking (not E164-normalised
+ * here); sendCustomerSmsSafely/sendCustomerWhatsAppSafely normalise per send.
+ */
+export async function listAllClientPhones() {
+  const db = await getDb();
+  if (!db) return [];
+  const [bookingRows, orderRows] = await Promise.all([
+    db.selectDistinct({ phone: bookings.clientPhone }).from(bookings),
+    db.selectDistinct({ phone: orders.customerPhone }).from(orders),
+  ]);
+  const phones = new Set<string>();
+  for (const row of [...bookingRows, ...orderRows]) {
+    const phone = row.phone?.trim();
+    if (phone) phones.add(phone);
+  }
+  return Array.from(phones);
+}
+
 export async function listNewsletterSubscribers(limit = 500) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(newsletterSubscribers).orderBy(desc(newsletterSubscribers.createdAt)).limit(limit);
+}
+
+export async function savePushSubscription(input: { endpoint: string; p256dh: string; auth: string; userAgent?: string }) {
+  const db = await getDb();
+  if (!db) return null;
+  await ensurePushSubscriptionsTable();
+  const [row] = await db
+    .insert(pushSubscriptions)
+    .values({ endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent })
+    .onConflictDoUpdate({ target: pushSubscriptions.endpoint, set: { p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent } })
+    .returning();
+  return row ?? null;
+}
+
+export async function deletePushSubscriptionByEndpoint(endpoint: string) {
+  const db = await getDb();
+  if (!db) return;
+  await ensurePushSubscriptionsTable();
+  await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+}
+
+export async function listPushSubscriptions() {
+  const db = await getDb();
+  if (!db) return [];
+  await ensurePushSubscriptionsTable();
+  return db.select().from(pushSubscriptions).orderBy(desc(pushSubscriptions.createdAt));
+}
+
+export async function saveSmsSubscription(phone: string) {
+  const db = await getDb();
+  if (!db) return null;
+  await ensureSmsSubscriptionsTable();
+  const [row] = await db.insert(smsSubscriptions).values({ phone }).onConflictDoNothing({ target: smsSubscriptions.phone }).returning();
+  return row ?? null;
+}
+
+export async function deleteSmsSubscriptionByPhone(phone: string) {
+  const db = await getDb();
+  if (!db) return;
+  await ensureSmsSubscriptionsTable();
+  await db.delete(smsSubscriptions).where(eq(smsSubscriptions.phone, phone));
+}
+
+export async function listSmsSubscriptions() {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureSmsSubscriptionsTable();
+  return db.select().from(smsSubscriptions).orderBy(desc(smsSubscriptions.createdAt));
 }
 
 export async function recordAnalytics(
