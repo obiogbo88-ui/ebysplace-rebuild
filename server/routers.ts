@@ -14,7 +14,7 @@ import { notifyOwner } from "./_core/notification";
 import { getNotificationDiagnostics, sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely } from "./customerNotifications";
 import { resendEmailNotificationLog } from "./smtpEmailNotifications";
 import { isResendConfigured, sendBrandedEmail, sendBroadcastEmail } from "./resendEmail";
-import { isWebPushConfigured, sendPushToAllSubscribers } from "./webPush";
+import { isWebPushConfigured, sendPushToAllSubscribers, sendPushToOwner } from "./webPush";
 import { isSmsConfigured, isWhatsAppConfigured, sendSmsToPhones, sendWhatsAppToPhones } from "./sms";
 import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
 import * as db from "./db";
@@ -840,7 +840,7 @@ export const appRouter = router({
         }
         return { success: true, skipped: true, reason: trackGate.reason };
       }
-      return db.recordAnalytics(input.eventName, trackGate.pagePath, input.metadata, {
+      const result = await db.recordAnalytics(input.eventName, trackGate.pagePath, input.metadata, {
         request: ctx.req,
         user: ctx.user ? { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } : null,
         sessionId: input.sessionId,
@@ -852,6 +852,20 @@ export const appRouter = router({
         relatedEntityId: input.relatedEntityId,
         sourceApp: input.sourceApp,
       });
+      // Ping the owner's device once per brand-new visitor (their first ever
+      // tracked event on this browser) — push only, never SMS/WhatsApp, since
+      // those cost money per message and every page view would be far too
+      // noisy and expensive to alert on individually.
+      if (!result.skipped && input.eventName === "page_visit" && input.sessionId) {
+        db.countActivityLogsBySession(input.sessionId)
+          .then((count) => {
+            if (count === 1) {
+              return sendPushToOwner({ title: "New visitor on your site", body: `Someone just landed on ${trackGate.pagePath}` });
+            }
+          })
+          .catch((error) => console.warn("[Tracking] Could not notify owner of new visitor", error));
+      }
+      return result;
     }),
     logActivity: publicProcedure.input(z.object({
       sessionId: z.string().max(128).optional(),
@@ -1009,6 +1023,18 @@ export const appRouter = router({
         }
         return { success: true, messageId: result.messageId };
       }),
+    ownerPushStatus: adminProcedure.query(async () => ({
+      configured: isWebPushConfigured(),
+      deviceCount: (await db.listOwnerPushSubscriptions()).length,
+    })),
+    subscribeOwnerPush: adminProcedure.input(z.object({
+      endpoint: z.string().url(),
+      keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
+      userAgent: z.string().max(512).optional(),
+    })).mutation(async ({ input }) => {
+      await db.saveOwnerPushSubscription({ endpoint: input.endpoint, p256dh: input.keys.p256dh, auth: input.keys.auth, userAgent: input.userAgent });
+      return { subscribed: true } as const;
+    }),
     announcementStatus: adminProcedure.query(async () => {
       const [pushSubscriberCount, newsletterSubscriberCount, smsSubscriberCount, allClientEmailCount, allClientPhoneCount] = await Promise.all([
         db.listPushSubscriptions().then((rows) => rows.length),

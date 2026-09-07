@@ -4,6 +4,7 @@ import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScr
 import { getServiceImageFallback, getServiceImageSrc } from "@/lib/serviceImageFallback";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getExistingPushSubscription, isPushSupported, pushSubscriptionToInput, subscribeToPush } from "@/lib/webPush";
 import {
   Bell,
   CalendarDays,
@@ -251,6 +252,23 @@ export default function Admin() {
   const insights = trpc.admin.insights.useQuery(undefined, { retry: false });
   const emailLogs = trpc.admin.listEmailNotificationLogs.useQuery(undefined, { retry: false });
   const newsletterSubscribers = trpc.admin.listNewsletterSubscribers.useQuery(undefined, { retry: false });
+  const ownerPushStatus = trpc.admin.ownerPushStatus.useQuery(undefined, { retry: false });
+  const subscribeOwnerPush = trpc.admin.subscribeOwnerPush.useMutation({
+    onSuccess: () => { ownerPushStatus.refetch(); toast.success("Notifications enabled on this device."); },
+  });
+  const [ownerNotifStatus, setOwnerNotifStatus] = useState<"idle" | "denied" | "unsupported" | "error">("idle");
+  const handleEnableOwnerNotifications = async () => {
+    if (!isPushSupported()) { setOwnerNotifStatus("unsupported"); return; }
+    try {
+      const existing = await getExistingPushSubscription();
+      const subscription = existing || (await subscribeToPush());
+      if (!subscription) { setOwnerNotifStatus("denied"); return; }
+      await subscribeOwnerPush.mutateAsync(pushSubscriptionToInput(subscription));
+    } catch (error) {
+      console.warn("[OwnerPush] Could not enable notifications", error);
+      setOwnerNotifStatus("error");
+    }
+  };
   const announcementStatus = trpc.admin.announcementStatus.useQuery(undefined, { retry: false });
   const sendAnnouncement = trpc.admin.sendAnnouncement.useMutation({
     onSuccess: (result) => {
@@ -760,7 +778,19 @@ export default function Admin() {
               <h2 className="serif mt-3 text-3xl font-bold text-primary">Eby’s Place command centre</h2>
               <p className="mt-2 text-sm text-white/65">Use these protected shortcuts to open each owner area on demand. Dense records stay hidden until clicked, keeping daily management calm, branded, and easy to scan.</p>
             </div>
-            <button className="btn-gold w-fit py-2 text-sm" type="button" onClick={refresh}>Refresh overview data</button>
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <button className="btn-gold w-fit py-2 text-sm" type="button" onClick={refresh}>Refresh overview data</button>
+              {ownerPushStatus.data?.deviceCount ? (
+                <p className="text-xs text-white/55">Notifications enabled on {ownerPushStatus.data.deviceCount} device{ownerPushStatus.data.deviceCount === 1 ? "" : "s"}.</p>
+              ) : (
+                <button className="text-xs font-semibold text-white/70 underline decoration-white/30 underline-offset-4 hover:text-white" type="button" onClick={handleEnableOwnerNotifications} disabled={subscribeOwnerPush.isPending}>
+                  {subscribeOwnerPush.isPending ? "Enabling..." : "Enable notifications for this device"}
+                </button>
+              )}
+              {ownerNotifStatus === "unsupported" && <p className="text-xs text-white/45">Not supported in this browser.</p>}
+              {ownerNotifStatus === "denied" && <p className="text-xs text-white/45">Blocked — allow notifications in your browser's site settings.</p>}
+              {ownerNotifStatus === "error" && <p className="text-xs text-white/45">Something went wrong — please try again.</p>}
+            </div>
           </div>
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {adminOverviewActions.map((action) => (

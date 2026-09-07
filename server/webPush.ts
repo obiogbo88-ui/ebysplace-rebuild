@@ -1,10 +1,14 @@
 /**
- * Browser push notifications to visitors who opted in on the site.
+ * Browser push notifications. Two separate audiences, kept in separate
+ * tables so an owner alert (new booking, new visitor) can never end up on a
+ * customer's phone by mistake:
+ *  - pushSubscriptions: public homepage opt-in, for customer announcements.
+ *  - ownerPushSubscriptions: the owner's own device(s), for business alerts.
  *
  * Free (no per-message cost, unlike SMS) but only reaches whoever previously
- * granted notification permission and subscribed — never the full customer
- * list. Uses the standard Web Push protocol via VAPID, so no third-party
- * account is required beyond the keypair generated for this project.
+ * granted notification permission and subscribed. Uses the standard Web
+ * Push protocol via VAPID, so no third-party account is required beyond the
+ * keypair generated for this project.
  */
 import webpush from "web-push";
 import * as db from "./db";
@@ -36,19 +40,24 @@ export type PushSendResult = {
   errorMessage?: string;
 };
 
+type StoredSubscription = { endpoint: string; p256dh: string; auth: string };
+
 /**
- * Sends to every stored subscription. A 404/410 from the push service means
- * the browser unsubscribed or the subscription expired — those are deleted
- * rather than retried, since they will never succeed again.
+ * A 404/410 from the push service means the browser unsubscribed or the
+ * subscription expired — those are deleted rather than retried, since they
+ * will never succeed again.
  */
-export async function sendPushToAllSubscribers(payload: PushPayload): Promise<PushSendResult> {
+async function sendToSubscriptions(
+  subscriptions: StoredSubscription[],
+  payload: PushPayload,
+  onExpired: (endpoint: string) => Promise<void>,
+): Promise<PushSendResult> {
   const config = getVapidConfig();
   if (!config.usable) {
     return { sent: false, recipientCount: 0, deliveredCount: 0, failedCount: 0, errorMessage: "VAPID keys are not configured in this environment." };
   }
   webpush.setVapidDetails(config.subject, config.publicKey, config.privateKey);
 
-  const subscriptions = await db.listPushSubscriptions();
   if (!subscriptions.length) {
     return { sent: true, recipientCount: 0, deliveredCount: 0, failedCount: 0 };
   }
@@ -68,7 +77,7 @@ export async function sendPushToAllSubscribers(payload: PushPayload): Promise<Pu
         failed += 1;
         const statusCode = error?.statusCode;
         if (statusCode === 404 || statusCode === 410) {
-          await db.deletePushSubscriptionByEndpoint(subscription.endpoint);
+          await onExpired(subscription.endpoint);
         } else {
           console.warn("[WebPush] Failed to deliver notification", { endpoint: subscription.endpoint, statusCode, message: error?.message });
         }
@@ -77,4 +86,14 @@ export async function sendPushToAllSubscribers(payload: PushPayload): Promise<Pu
   );
 
   return { sent: true, recipientCount: subscriptions.length, deliveredCount: delivered, failedCount: failed };
+}
+
+export async function sendPushToAllSubscribers(payload: PushPayload): Promise<PushSendResult> {
+  const subscriptions = await db.listPushSubscriptions();
+  return sendToSubscriptions(subscriptions, payload, db.deletePushSubscriptionByEndpoint);
+}
+
+export async function sendPushToOwner(payload: PushPayload): Promise<PushSendResult> {
+  const subscriptions = await db.listOwnerPushSubscriptions();
+  return sendToSubscriptions(subscriptions, payload, db.deleteOwnerPushSubscriptionByEndpoint);
 }
