@@ -259,6 +259,7 @@ export default function Admin() {
       if (result.webPush) parts.push(`Web push: ${result.webPush.deliveredCount}/${result.webPush.recipientCount}`);
       if (result.email) parts.push(`Email: ${result.email.deliveredCount}/${result.email.recipientCount}`);
       if (result.sms) parts.push(`SMS: ${result.sms.deliveredCount}/${result.sms.recipientCount}`);
+      if (result.whatsapp) parts.push(`WhatsApp: ${result.whatsapp.deliveredCount}/${result.whatsapp.recipientCount}`);
       toast.success(parts.length ? parts.join(" · ") : "Nothing was sent — pick at least one channel.");
     },
     onError: (error: any) => toast.error(error.message),
@@ -486,7 +487,7 @@ export default function Admin() {
   const [replyForm, setReplyForm] = useState({ ...EMPTY_REPLY });
   const [availabilitySlot, setAvailabilitySlot] = useState({ date: "", time: "", reason: "Unavailable" });
   const [instagramSettings, setInstagramSettings] = useState({ handle: "@ebysplace", feedUrl: "https://www.instagram.com/ebysplace/", enabled: true, note: "Latest Eby’s Place Instagram posts appear here once the production feed is connected." });
-  const [announcementForm, setAnnouncementForm] = useState({ title: "", body: "", url: "", channels: { webPush: true, email: false, sms: false }, emailAudience: "newsletter" as "newsletter" | "all_clients" });
+  const [announcementForm, setAnnouncementForm] = useState({ title: "", body: "", url: "", channels: { webPush: true, email: false, sms: false, whatsapp: false }, audience: "subscribers" as "subscribers" | "all_clients" });
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [newService, setNewService] = useState({ name: "", slug: "", category: "Braids", description: "", duration: "", priceFrom: "", badge: "", imageUrl: "", isBookable: "true", isFeatured: "false", sortOrder: 0 });
@@ -1113,18 +1114,26 @@ export default function Admin() {
             </div>
           </AdminPanel>
 
-          <AdminPanel id="announcements" eyebrow="Multi-channel" title="Send an announcement" description="Send the same message to opted-in web push subscribers, newsletter subscribers by email, and SMS opt-ins, all from one place." icon={Bell} open={isPanelOpen("announcements")} onToggle={() => togglePanel("announcements")}>
+          <AdminPanel id="announcements" eyebrow="Multi-channel" title="Send an announcement" description="Send the same message across web push, email, SMS, and WhatsApp, to either your opt-in subscribers or every client who has booked or ordered." icon={Bell} open={isPanelOpen("announcements")} onToggle={() => togglePanel("announcements")}>
             <div className="mt-5">
-              <div className="grid gap-2 text-sm text-white/65 sm:grid-cols-3">
-                <p>Web push subscribers: <b className="text-primary">{announcementStatus.data?.webPush.subscriberCount ?? "..."}</b>{announcementStatus.data && !announcementStatus.data.webPush.configured ? <span className="block text-xs text-white/45">VAPID keys not configured yet</span> : null}</p>
-                <p>Email subscribers: <b className="text-primary">{announcementStatus.data?.email.subscriberCount ?? "..."}</b> · All clients: <b className="text-primary">{announcementStatus.data?.email.allClientCount ?? "..."}</b>{announcementStatus.data && !announcementStatus.data.email.configured ? <span className="block text-xs text-white/45">Resend not configured yet</span> : null}</p>
-                <p>SMS opt-ins: <b className="text-primary">{announcementStatus.data?.sms.subscriberCount ?? "..."}</b>{announcementStatus.data && !announcementStatus.data.sms.configured ? <span className="block text-xs text-white/45">Twilio not configured yet</span> : null}</p>
+              <label className="flex flex-col gap-1 text-sm text-white/70">
+                Audience
+                <select value={announcementForm.audience} onChange={(event) => setAnnouncementForm({ ...announcementForm, audience: event.target.value as "subscribers" | "all_clients" })}>
+                  <option value="subscribers">Opt-in subscribers only</option>
+                  <option value="all_clients">Everyone who's booked or ordered</option>
+                </select>
+              </label>
+              <div className="mt-3 grid gap-2 text-sm text-white/65 sm:grid-cols-2">
+                <p>Web push subscribers: <b className="text-primary">{announcementStatus.data?.webPush.subscriberCount ?? "..."}</b> (opt-in only — browser push has no "all clients" reach){announcementStatus.data && !announcementStatus.data.webPush.configured ? <span className="block text-xs text-white/45">VAPID keys not configured yet</span> : null}</p>
+                <p>Email: <b className="text-primary">{announcementForm.audience === "all_clients" ? announcementStatus.data?.email.allClientCount : announcementStatus.data?.email.subscriberCount ?? "..."}</b> recipients{announcementStatus.data && !announcementStatus.data.email.configured ? <span className="block text-xs text-white/45">Resend not configured yet</span> : null}</p>
+                <p>SMS: <b className="text-primary">{announcementForm.audience === "all_clients" ? announcementStatus.data?.sms.allClientCount : announcementStatus.data?.sms.subscriberCount ?? "..."}</b> recipients{announcementStatus.data && !announcementStatus.data.sms.configured ? <span className="block text-xs text-white/45">Twilio SMS not configured, or trial account (verified numbers only)</span> : null}</p>
+                <p>WhatsApp: <b className="text-primary">{announcementForm.audience === "all_clients" ? announcementStatus.data?.whatsapp.allClientCount : announcementStatus.data?.whatsapp.subscriberCount ?? "..."}</b> recipients{announcementStatus.data && !announcementStatus.data.whatsapp.configured ? <span className="block text-xs text-white/45">Sandbox mode — only reaches numbers that have joined</span> : null}</p>
               </div>
               <form
                 className="mt-4 grid gap-3 rounded-2xl border border-primary/20 bg-black/20 p-4"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  sendAnnouncement.mutate({ title: announcementForm.title, body: announcementForm.body, url: announcementForm.url || undefined, channels: announcementForm.channels, emailAudience: announcementForm.emailAudience });
+                  sendAnnouncement.mutate({ title: announcementForm.title, body: announcementForm.body, url: announcementForm.url || undefined, channels: announcementForm.channels, audience: announcementForm.audience });
                 }}
               >
                 <input required maxLength={80} placeholder="Title (e.g. New style openings this week)" value={announcementForm.title} onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })} />
@@ -1133,15 +1142,10 @@ export default function Admin() {
                 <div className="flex flex-wrap items-center gap-4 text-sm text-white/70">
                   <label className="flex items-center gap-2"><input type="checkbox" checked={announcementForm.channels.webPush} onChange={(event) => setAnnouncementForm({ ...announcementForm, channels: { ...announcementForm.channels, webPush: event.target.checked } })} /> Web push</label>
                   <label className="flex items-center gap-2"><input type="checkbox" checked={announcementForm.channels.email} onChange={(event) => setAnnouncementForm({ ...announcementForm, channels: { ...announcementForm.channels, email: event.target.checked } })} /> Email</label>
-                  {announcementForm.channels.email ? (
-                    <select value={announcementForm.emailAudience} onChange={(event) => setAnnouncementForm({ ...announcementForm, emailAudience: event.target.value as "newsletter" | "all_clients" })}>
-                      <option value="newsletter">Newsletter subscribers only</option>
-                      <option value="all_clients">Everyone who's booked or ordered</option>
-                    </select>
-                  ) : null}
                   <label className="flex items-center gap-2"><input type="checkbox" checked={announcementForm.channels.sms} onChange={(event) => setAnnouncementForm({ ...announcementForm, channels: { ...announcementForm.channels, sms: event.target.checked } })} /> SMS</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={announcementForm.channels.whatsapp} onChange={(event) => setAnnouncementForm({ ...announcementForm, channels: { ...announcementForm.channels, whatsapp: event.target.checked } })} /> WhatsApp</label>
                 </div>
-                <button className="btn-gold w-fit py-2 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={sendAnnouncement.isPending || !(announcementForm.channels.webPush || announcementForm.channels.email || announcementForm.channels.sms)}>
+                <button className="btn-gold w-fit py-2 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={sendAnnouncement.isPending || !(announcementForm.channels.webPush || announcementForm.channels.email || announcementForm.channels.sms || announcementForm.channels.whatsapp)}>
                   {sendAnnouncement.isPending ? "Sending..." : "Send announcement"}
                 </button>
               </form>

@@ -15,7 +15,7 @@ import { getNotificationDiagnostics, sendCustomerEmailSafely, sendCustomerSmsSaf
 import { resendEmailNotificationLog } from "./smtpEmailNotifications";
 import { isResendConfigured, sendBrandedEmail, sendBroadcastEmail } from "./resendEmail";
 import { isWebPushConfigured, sendPushToAllSubscribers } from "./webPush";
-import { isSmsConfigured, sendSmsToAllSubscribers } from "./sms";
+import { isSmsConfigured, isWhatsAppConfigured, sendSmsToPhones, sendWhatsAppToPhones } from "./sms";
 import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
 import * as db from "./db";
 
@@ -1010,16 +1010,18 @@ export const appRouter = router({
         return { success: true, messageId: result.messageId };
       }),
     announcementStatus: adminProcedure.query(async () => {
-      const [pushSubscriberCount, newsletterSubscriberCount, smsSubscriberCount, allClientCount] = await Promise.all([
+      const [pushSubscriberCount, newsletterSubscriberCount, smsSubscriberCount, allClientEmailCount, allClientPhoneCount] = await Promise.all([
         db.listPushSubscriptions().then((rows) => rows.length),
         db.listNewsletterSubscribers().then((rows) => rows.length),
         db.listSmsSubscriptions().then((rows) => rows.length),
         db.listAllClientEmails().then((rows) => rows.length),
+        db.listAllClientPhones().then((rows) => rows.length),
       ]);
       return {
         webPush: { configured: isWebPushConfigured(), subscriberCount: pushSubscriberCount },
-        email: { configured: isResendConfigured(), subscriberCount: newsletterSubscriberCount, allClientCount },
-        sms: { configured: isSmsConfigured(), subscriberCount: smsSubscriberCount },
+        email: { configured: isResendConfigured(), subscriberCount: newsletterSubscriberCount, allClientCount: allClientEmailCount },
+        sms: { configured: isSmsConfigured(), subscriberCount: smsSubscriberCount, allClientCount: allClientPhoneCount },
+        whatsapp: { configured: isWhatsAppConfigured(), subscriberCount: smsSubscriberCount, allClientCount: allClientPhoneCount },
       };
     }),
     sendAnnouncement: adminProcedure
@@ -1027,14 +1029,15 @@ export const appRouter = router({
         title: z.string().min(2).max(80),
         body: z.string().min(2).max(200),
         url: z.string().url().optional(),
-        channels: z.object({ webPush: z.boolean(), email: z.boolean(), sms: z.boolean() }),
-        emailAudience: z.enum(["newsletter", "all_clients"]).default("newsletter"),
+        channels: z.object({ webPush: z.boolean(), email: z.boolean(), sms: z.boolean(), whatsapp: z.boolean() }),
+        audience: z.enum(["subscribers", "all_clients"]).default("subscribers"),
       }))
       .mutation(async ({ input, ctx }) => {
-        const [webPushResult, emailResult, smsResult] = await Promise.all([
+        const textMessage = `${input.title}\n${input.body}${input.url ? `\n${input.url}` : ""}`;
+        const [webPushResult, emailResult, smsResult, whatsappResult] = await Promise.all([
           input.channels.webPush ? sendPushToAllSubscribers({ title: input.title, body: input.body, url: input.url }) : Promise.resolve(null),
           input.channels.email
-            ? (input.emailAudience === "all_clients" ? db.listAllClientEmails() : db.listNewsletterSubscribers().then((subscribers) => subscribers.map((s) => s.email))).then((recipients) =>
+            ? (input.audience === "all_clients" ? db.listAllClientEmails() : db.listNewsletterSubscribers().then((subscribers) => subscribers.map((s) => s.email))).then((recipients) =>
                 sendBroadcastEmail(recipients, {
                   subject: input.title,
                   paragraphs: [input.body],
@@ -1042,10 +1045,15 @@ export const appRouter = router({
                 }),
               )
             : Promise.resolve(null),
-          input.channels.sms ? sendSmsToAllSubscribers(`${input.title}\n${input.body}${input.url ? `\n${input.url}` : ""}`) : Promise.resolve(null),
+          input.channels.sms
+            ? (input.audience === "all_clients" ? db.listAllClientPhones() : db.listSmsSubscriptions().then((subscribers) => subscribers.map((s) => s.phone))).then((phones) => sendSmsToPhones(phones, textMessage))
+            : Promise.resolve(null),
+          input.channels.whatsapp
+            ? (input.audience === "all_clients" ? db.listAllClientPhones() : db.listSmsSubscriptions().then((subscribers) => subscribers.map((s) => s.phone))).then((phones) => sendWhatsAppToPhones(phones, textMessage))
+            : Promise.resolve(null),
         ]);
 
-        const attemptedButFailed = [webPushResult, emailResult, smsResult].filter((r) => r && !r.sent);
+        const attemptedButFailed = [webPushResult, emailResult, smsResult, whatsappResult].filter((r) => r && !r.sent);
         await logAdminActivity(ctx, {
           activityType: attemptedButFailed.length ? "admin_announcement_partial_failure" : "admin_announcement_sent",
           description: `Admin sent an announcement: "${input.title}"`,
@@ -1055,17 +1063,18 @@ export const appRouter = router({
             title: input.title,
             body: input.body,
             url: input.url ?? null,
-            emailAudience: input.channels.email ? input.emailAudience : null,
+            audience: input.audience,
             webPush: webPushResult,
             email: emailResult,
             sms: smsResult,
+            whatsapp: whatsappResult,
           },
         });
 
         if (attemptedButFailed.length) {
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: attemptedButFailed.map((r) => r!.errorMessage).join(" · ") });
         }
-        return { webPush: webPushResult, email: emailResult, sms: smsResult };
+        return { webPush: webPushResult, email: emailResult, sms: smsResult, whatsapp: whatsappResult };
       }),
     sendReviewRequest: adminProcedure.input(z.object({ bookingId: z.number() })).mutation(async ({ input }) => {
       const booking = await db.getBookingById(input.bookingId);

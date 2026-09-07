@@ -2403,6 +2403,27 @@ export async function listAllClientEmails() {
   return Array.from(emails);
 }
 
+/**
+ * Every distinct phone number that has ever booked an appointment or placed
+ * a shop order — for SMS/WhatsApp, separate from the smsSubscriptions
+ * opt-in list. Left as entered at checkout/booking (not E164-normalised
+ * here); sendCustomerSmsSafely/sendCustomerWhatsAppSafely normalise per send.
+ */
+export async function listAllClientPhones() {
+  const db = await getDb();
+  if (!db) return [];
+  const [bookingRows, orderRows] = await Promise.all([
+    db.selectDistinct({ phone: bookings.clientPhone }).from(bookings),
+    db.selectDistinct({ phone: orders.customerPhone }).from(orders),
+  ]);
+  const phones = new Set<string>();
+  for (const row of [...bookingRows, ...orderRows]) {
+    const phone = row.phone?.trim();
+    if (phone) phones.add(phone);
+  }
+  return Array.from(phones);
+}
+
 export async function listNewsletterSubscribers(limit = 500) {
   const db = await getDb();
   if (!db) return [];
