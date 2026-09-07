@@ -170,6 +170,7 @@ const adminOverviewActions = [
   { label: "Bookings", sectionId: "bookings", description: "Review and update appointment statuses." },
   { label: "Orders", sectionId: "orders", description: "Open protected shop order fulfilment." },
   { label: "Email Notifications", sectionId: "email-notifications", description: "View email delivery status and resend failed notifications." },
+  { label: "Newsletter Subscribers", sectionId: "newsletter-subscribers", description: "See everyone who joined the Eby's Place list." },
   { label: "Products", sectionId: "products", description: "Manage shop stock, colours, prices, and SEO." },
   { label: "Services", sectionId: "services", description: "Update public braid service details." },
   { label: "Gallery", sectionId: "gallery", description: "Add or organise gallery images." },
@@ -248,6 +249,7 @@ export default function Admin() {
   const lists = trpc.admin.lists.useQuery(undefined, { retry: false });
   const insights = trpc.admin.insights.useQuery(undefined, { retry: false });
   const emailLogs = trpc.admin.listEmailNotificationLogs.useQuery(undefined, { retry: false });
+  const newsletterSubscribers = trpc.admin.listNewsletterSubscribers.useQuery(undefined, { retry: false });
   const notificationFeed = trpc.admin.listActivityLogs.useQuery({
     limit: 12,
   }, { retry: false, refetchInterval: 15000 });
@@ -488,6 +490,7 @@ export default function Admin() {
   const pendingProductReviewRows = productReviewRows.filter((review) => review.status === "pending");
   const moderatedProductReviewRows = productReviewRows.filter((review) => review.status !== "pending");
   const emailNotificationRows = emailLogs.data || data.emailNotifications || [];
+  const newsletterSubscriberRows = newsletterSubscribers.data || [];
   const activityRows = activityLogs.data || data.activityLogs || [];
   const notificationRows = (notificationFeed.data || []).filter(isImportantAdminNotification).slice(0, 6);
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
@@ -1059,6 +1062,40 @@ export default function Admin() {
                   </div>
                 );
               }) : <p className="text-white/55">No Zoho SMTP email notification logs yet. New paid bookings and shop orders will appear here after Stripe checkout completion.</p>}
+            </div>
+          </AdminPanel>
+
+          <AdminPanel id="newsletter-subscribers" eyebrow="Join the list" title="Newsletter subscribers" description="Everyone who has joined the Eby's Place list from the website, newest first." icon={Users} open={isPanelOpen("newsletter-subscribers")} onToggle={() => togglePanel("newsletter-subscribers")}>
+            <div className="mt-5">
+              {newsletterSubscribers.isLoading ? <p className="text-sm text-white/55">Loading subscribers...</p> : null}
+              {newsletterSubscribers.error ? <p className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">Could not load subscribers: {newsletterSubscribers.error.message}</p> : null}
+              {!newsletterSubscribers.isLoading && !newsletterSubscribers.error ? (
+                newsletterSubscriberRows.length ? (
+                  <>
+                    <p className="text-sm text-white/65">Total subscribers: <b className="text-primary">{newsletterSubscriberRows.length}</b></p>
+                    <div className="mt-3 overflow-x-auto rounded-2xl border border-white/10">
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-white/45">
+                            <th className="px-4 py-3">Email</th>
+                            <th className="px-4 py-3">Product alerts</th>
+                            <th className="px-4 py-3">Joined</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {newsletterSubscriberRows.map((subscriber: any) => (
+                            <tr className="border-b border-white/5 last:border-0" key={subscriber.id}>
+                              <td className="break-all px-4 py-3 text-white/85">{subscriber.email}</td>
+                              <td className="px-4 py-3">{subscriber.productAlerts === "true" ? <span className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-primary">Yes</span> : <span className="text-xs text-white/45">No</span>}</td>
+                              <td className="px-4 py-3 text-xs text-white/55">{subscriber.createdAt ? new Date(subscriber.createdAt).toLocaleString() : "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : <p className="text-white/55">No one has joined the Eby's Place list yet. New signups from the homepage form will appear here.</p>
+              ) : null}
             </div>
           </AdminPanel>
 
