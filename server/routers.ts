@@ -1010,14 +1010,15 @@ export const appRouter = router({
         return { success: true, messageId: result.messageId };
       }),
     announcementStatus: adminProcedure.query(async () => {
-      const [pushSubscriberCount, newsletterSubscriberCount, smsSubscriberCount] = await Promise.all([
+      const [pushSubscriberCount, newsletterSubscriberCount, smsSubscriberCount, allClientCount] = await Promise.all([
         db.listPushSubscriptions().then((rows) => rows.length),
         db.listNewsletterSubscribers().then((rows) => rows.length),
         db.listSmsSubscriptions().then((rows) => rows.length),
+        db.listAllClientEmails().then((rows) => rows.length),
       ]);
       return {
         webPush: { configured: isWebPushConfigured(), subscriberCount: pushSubscriberCount },
-        email: { configured: isResendConfigured(), subscriberCount: newsletterSubscriberCount },
+        email: { configured: isResendConfigured(), subscriberCount: newsletterSubscriberCount, allClientCount },
         sms: { configured: isSmsConfigured(), subscriberCount: smsSubscriberCount },
       };
     }),
@@ -1027,13 +1028,14 @@ export const appRouter = router({
         body: z.string().min(2).max(200),
         url: z.string().url().optional(),
         channels: z.object({ webPush: z.boolean(), email: z.boolean(), sms: z.boolean() }),
+        emailAudience: z.enum(["newsletter", "all_clients"]).default("newsletter"),
       }))
       .mutation(async ({ input, ctx }) => {
         const [webPushResult, emailResult, smsResult] = await Promise.all([
           input.channels.webPush ? sendPushToAllSubscribers({ title: input.title, body: input.body, url: input.url }) : Promise.resolve(null),
           input.channels.email
-            ? db.listNewsletterSubscribers().then((subscribers) =>
-                sendBroadcastEmail(subscribers.map((s) => s.email), {
+            ? (input.emailAudience === "all_clients" ? db.listAllClientEmails() : db.listNewsletterSubscribers().then((subscribers) => subscribers.map((s) => s.email))).then((recipients) =>
+                sendBroadcastEmail(recipients, {
                   subject: input.title,
                   paragraphs: [input.body],
                   cta: input.url ? { label: "View more", url: input.url } : undefined,
@@ -1053,6 +1055,7 @@ export const appRouter = router({
             title: input.title,
             body: input.body,
             url: input.url ?? null,
+            emailAudience: input.channels.email ? input.emailAudience : null,
             webPush: webPushResult,
             email: emailResult,
             sms: smsResult,

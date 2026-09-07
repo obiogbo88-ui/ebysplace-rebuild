@@ -2382,6 +2382,27 @@ export async function getEmailNotificationLogById(id: number) {
   return rows[0] ?? null;
 }
 
+/**
+ * Every distinct email that has ever booked an appointment or placed a shop
+ * order — the real client base, separate from the newsletter/push/SMS
+ * opt-in lists (which only cover people who explicitly signed up for
+ * updates).
+ */
+export async function listAllClientEmails() {
+  const db = await getDb();
+  if (!db) return [];
+  const [bookingRows, orderRows] = await Promise.all([
+    db.selectDistinct({ email: bookings.clientEmail }).from(bookings),
+    db.selectDistinct({ email: orders.customerEmail }).from(orders),
+  ]);
+  const emails = new Set<string>();
+  for (const row of [...bookingRows, ...orderRows]) {
+    const email = row.email?.trim().toLowerCase();
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) emails.add(email);
+  }
+  return Array.from(emails);
+}
+
 export async function listNewsletterSubscribers(limit = 500) {
   const db = await getDb();
   if (!db) return [];
