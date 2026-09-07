@@ -2351,6 +2351,12 @@ export async function getEmailNotificationLogById(id: number) {
   return rows[0] ?? null;
 }
 
+export async function listNewsletterSubscribers(limit = 500) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(newsletterSubscribers).orderBy(desc(newsletterSubscribers.createdAt)).limit(limit);
+}
+
 export async function recordAnalytics(
   eventName: string,
   pagePath: string,

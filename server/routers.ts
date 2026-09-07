@@ -902,6 +902,7 @@ export const appRouter = router({
     summary: adminProcedure.query(() => db.adminSummary()),
     lists: adminProcedure.query(() => db.adminLists()),
     listEmailNotificationLogs: adminProcedure.query(() => db.listEmailNotificationLogs()),
+    listNewsletterSubscribers: adminProcedure.query(() => db.listNewsletterSubscribers()),
     listActivityLogs: adminProcedure.input(z.object({
       query: z.string().optional(),
       datePreset: z.enum(["today", "yesterday", "last_7_days", "last_30_days"]).optional(),
