@@ -171,6 +171,7 @@ const adminOverviewActions = [
   { label: "Orders", sectionId: "orders", description: "Open protected shop order fulfilment." },
   { label: "Email Notifications", sectionId: "email-notifications", description: "View email delivery status and resend failed notifications." },
   { label: "Newsletter Subscribers", sectionId: "newsletter-subscribers", description: "See everyone who joined the Eby's Place list." },
+  { label: "Send Announcement", sectionId: "announcements", description: "Broadcast to web push, email, and SMS subscribers at once." },
   { label: "Products", sectionId: "products", description: "Manage shop stock, colours, prices, and SEO." },
   { label: "Services", sectionId: "services", description: "Update public braid service details." },
   { label: "Gallery", sectionId: "gallery", description: "Add or organise gallery images." },
@@ -250,6 +251,18 @@ export default function Admin() {
   const insights = trpc.admin.insights.useQuery(undefined, { retry: false });
   const emailLogs = trpc.admin.listEmailNotificationLogs.useQuery(undefined, { retry: false });
   const newsletterSubscribers = trpc.admin.listNewsletterSubscribers.useQuery(undefined, { retry: false });
+  const announcementStatus = trpc.admin.announcementStatus.useQuery(undefined, { retry: false });
+  const sendAnnouncement = trpc.admin.sendAnnouncement.useMutation({
+    onSuccess: (result) => {
+      setAnnouncementForm((prev) => ({ ...prev, title: "", body: "", url: "" }));
+      const parts: string[] = [];
+      if (result.webPush) parts.push(`Web push: ${result.webPush.deliveredCount}/${result.webPush.recipientCount}`);
+      if (result.email) parts.push(`Email: ${result.email.deliveredCount}/${result.email.recipientCount}`);
+      if (result.sms) parts.push(`SMS: ${result.sms.deliveredCount}/${result.sms.recipientCount}`);
+      toast.success(parts.length ? parts.join(" · ") : "Nothing was sent — pick at least one channel.");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
   const notificationFeed = trpc.admin.listActivityLogs.useQuery({
     limit: 12,
   }, { retry: false, refetchInterval: 15000 });
@@ -473,6 +486,7 @@ export default function Admin() {
   const [replyForm, setReplyForm] = useState({ ...EMPTY_REPLY });
   const [availabilitySlot, setAvailabilitySlot] = useState({ date: "", time: "", reason: "Unavailable" });
   const [instagramSettings, setInstagramSettings] = useState({ handle: "@ebysplace", feedUrl: "https://www.instagram.com/ebysplace/", enabled: true, note: "Latest Eby’s Place Instagram posts appear here once the production feed is connected." });
+  const [announcementForm, setAnnouncementForm] = useState({ title: "", body: "", url: "", channels: { webPush: true, email: false, sms: false } });
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [newService, setNewService] = useState({ name: "", slug: "", category: "Braids", description: "", duration: "", priceFrom: "", badge: "", imageUrl: "", isBookable: "true", isFeatured: "false", sortOrder: 0 });
@@ -1096,6 +1110,35 @@ export default function Admin() {
                   </>
                 ) : <p className="text-white/55">No one has joined the Eby's Place list yet. New signups from the homepage form will appear here.</p>
               ) : null}
+            </div>
+          </AdminPanel>
+
+          <AdminPanel id="announcements" eyebrow="Multi-channel" title="Send an announcement" description="Send the same message to opted-in web push subscribers, newsletter subscribers by email, and SMS opt-ins, all from one place." icon={Bell} open={isPanelOpen("announcements")} onToggle={() => togglePanel("announcements")}>
+            <div className="mt-5">
+              <div className="grid gap-2 text-sm text-white/65 sm:grid-cols-3">
+                <p>Web push subscribers: <b className="text-primary">{announcementStatus.data?.webPush.subscriberCount ?? "..."}</b>{announcementStatus.data && !announcementStatus.data.webPush.configured ? <span className="block text-xs text-white/45">VAPID keys not configured yet</span> : null}</p>
+                <p>Email subscribers: <b className="text-primary">{announcementStatus.data?.email.subscriberCount ?? "..."}</b>{announcementStatus.data && !announcementStatus.data.email.configured ? <span className="block text-xs text-white/45">Resend not configured yet</span> : null}</p>
+                <p>SMS opt-ins: <b className="text-primary">{announcementStatus.data?.sms.subscriberCount ?? "..."}</b>{announcementStatus.data && !announcementStatus.data.sms.configured ? <span className="block text-xs text-white/45">Twilio not configured yet</span> : null}</p>
+              </div>
+              <form
+                className="mt-4 grid gap-3 rounded-2xl border border-primary/20 bg-black/20 p-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  sendAnnouncement.mutate({ title: announcementForm.title, body: announcementForm.body, url: announcementForm.url || undefined, channels: announcementForm.channels });
+                }}
+              >
+                <input required maxLength={80} placeholder="Title (e.g. New style openings this week)" value={announcementForm.title} onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })} />
+                <textarea required maxLength={200} placeholder="Message" value={announcementForm.body} onChange={(event) => setAnnouncementForm({ ...announcementForm, body: event.target.value })} />
+                <input type="url" placeholder="Link to open when tapped (optional)" value={announcementForm.url} onChange={(event) => setAnnouncementForm({ ...announcementForm, url: event.target.value })} />
+                <div className="flex flex-wrap gap-4 text-sm text-white/70">
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={announcementForm.channels.webPush} onChange={(event) => setAnnouncementForm({ ...announcementForm, channels: { ...announcementForm.channels, webPush: event.target.checked } })} /> Web push</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={announcementForm.channels.email} onChange={(event) => setAnnouncementForm({ ...announcementForm, channels: { ...announcementForm.channels, email: event.target.checked } })} /> Email</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={announcementForm.channels.sms} onChange={(event) => setAnnouncementForm({ ...announcementForm, channels: { ...announcementForm.channels, sms: event.target.checked } })} /> SMS</label>
+                </div>
+                <button className="btn-gold w-fit py-2 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={sendAnnouncement.isPending || !(announcementForm.channels.webPush || announcementForm.channels.email || announcementForm.channels.sms)}>
+                  {sendAnnouncement.isPending ? "Sending..." : "Send announcement"}
+                </button>
+              </form>
             </div>
           </AdminPanel>
 

@@ -13,7 +13,9 @@ import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { getNotificationDiagnostics, sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely } from "./customerNotifications";
 import { resendEmailNotificationLog } from "./smtpEmailNotifications";
-import { isResendConfigured, sendBrandedEmail } from "./resendEmail";
+import { isResendConfigured, sendBrandedEmail, sendBroadcastEmail } from "./resendEmail";
+import { isWebPushConfigured, sendPushToAllSubscribers } from "./webPush";
+import { isSmsConfigured, sendSmsToAllSubscribers } from "./sms";
 import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
 import * as db from "./db";
 
@@ -466,6 +468,22 @@ export const appRouter = router({
         ),
       ]);
       return { ...result, customerNotification: "You’re subscribed to Eby’s Place updates." };
+    }),
+    subscribePush: publicProcedure.input(z.object({
+      endpoint: z.string().url(),
+      keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
+      userAgent: z.string().max(512).optional(),
+    })).mutation(async ({ input }) => {
+      await db.savePushSubscription({ endpoint: input.endpoint, p256dh: input.keys.p256dh, auth: input.keys.auth, userAgent: input.userAgent });
+      return { subscribed: true } as const;
+    }),
+    unsubscribePush: publicProcedure.input(z.object({ endpoint: z.string().url() })).mutation(async ({ input }) => {
+      await db.deletePushSubscriptionByEndpoint(input.endpoint);
+      return { unsubscribed: true } as const;
+    }),
+    subscribeSms: publicProcedure.input(z.object({ phone: z.string().min(8).max(20) })).mutation(async ({ input }) => {
+      await db.saveSmsSubscription(input.phone);
+      return { subscribed: true } as const;
     }),
     submitReview: publicProcedure.input(z.object({ customerName: z.string().min(2), rating: z.number().min(1).max(5), reviewText: z.string().min(10) })).mutation(async ({ input }) => {
       const review = await db.submitReview(input);
@@ -990,6 +1008,61 @@ export const appRouter = router({
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.errorMessage || "The reply could not be sent." });
         }
         return { success: true, messageId: result.messageId };
+      }),
+    announcementStatus: adminProcedure.query(async () => {
+      const [pushSubscriberCount, newsletterSubscriberCount, smsSubscriberCount] = await Promise.all([
+        db.listPushSubscriptions().then((rows) => rows.length),
+        db.listNewsletterSubscribers().then((rows) => rows.length),
+        db.listSmsSubscriptions().then((rows) => rows.length),
+      ]);
+      return {
+        webPush: { configured: isWebPushConfigured(), subscriberCount: pushSubscriberCount },
+        email: { configured: isResendConfigured(), subscriberCount: newsletterSubscriberCount },
+        sms: { configured: isSmsConfigured(), subscriberCount: smsSubscriberCount },
+      };
+    }),
+    sendAnnouncement: adminProcedure
+      .input(z.object({
+        title: z.string().min(2).max(80),
+        body: z.string().min(2).max(200),
+        url: z.string().url().optional(),
+        channels: z.object({ webPush: z.boolean(), email: z.boolean(), sms: z.boolean() }),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const [webPushResult, emailResult, smsResult] = await Promise.all([
+          input.channels.webPush ? sendPushToAllSubscribers({ title: input.title, body: input.body, url: input.url }) : Promise.resolve(null),
+          input.channels.email
+            ? db.listNewsletterSubscribers().then((subscribers) =>
+                sendBroadcastEmail(subscribers.map((s) => s.email), {
+                  subject: input.title,
+                  paragraphs: [input.body],
+                  cta: input.url ? { label: "View more", url: input.url } : undefined,
+                }),
+              )
+            : Promise.resolve(null),
+          input.channels.sms ? sendSmsToAllSubscribers(`${input.title}\n${input.body}${input.url ? `\n${input.url}` : ""}`) : Promise.resolve(null),
+        ]);
+
+        const attemptedButFailed = [webPushResult, emailResult, smsResult].filter((r) => r && !r.sent);
+        await logAdminActivity(ctx, {
+          activityType: attemptedButFailed.length ? "admin_announcement_partial_failure" : "admin_announcement_sent",
+          description: `Admin sent an announcement: "${input.title}"`,
+          relatedEntityType: "announcement",
+          status: attemptedButFailed.length ? "failed" : "success",
+          metadata: {
+            title: input.title,
+            body: input.body,
+            url: input.url ?? null,
+            webPush: webPushResult,
+            email: emailResult,
+            sms: smsResult,
+          },
+        });
+
+        if (attemptedButFailed.length) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: attemptedButFailed.map((r) => r!.errorMessage).join(" · ") });
+        }
+        return { webPush: webPushResult, email: emailResult, sms: smsResult };
       }),
     sendReviewRequest: adminProcedure.input(z.object({ bookingId: z.number() })).mutation(async ({ input }) => {
       const booking = await db.getBookingById(input.bookingId);

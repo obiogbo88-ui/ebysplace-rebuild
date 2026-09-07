@@ -16,7 +16,9 @@ import {
   productReviews,
   productVariants,
   products,
+  pushSubscriptions,
   reviews,
+  smsSubscriptions,
   services,
   tryOnAccounts,
   tryOnGenerations,
@@ -2203,6 +2205,35 @@ export async function getAbandonedOrdersNeedingReminder(hoursThreshold: number) 
   return staleOrders.filter((order) => !remindedIds.has(order.id));
 }
 
+async function ensurePushSubscriptionsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "pushSubscriptions" (
+      "id" SERIAL PRIMARY KEY,
+      "endpoint" TEXT NOT NULL UNIQUE,
+      "p256dh" TEXT NOT NULL,
+      "auth" TEXT NOT NULL,
+      "userAgent" TEXT,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure pushSubscriptions table", err);
+  }
+}
+
+async function ensureSmsSubscriptionsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "smsSubscriptions" (
+      "id" SERIAL PRIMARY KEY,
+      "phone" VARCHAR(32) NOT NULL UNIQUE,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure smsSubscriptions table", err);
+  }
+}
+
 async function ensureEmailNotificationLogTable() {
   if (!_pool) return;
   try {
@@ -2355,6 +2386,54 @@ export async function listNewsletterSubscribers(limit = 500) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(newsletterSubscribers).orderBy(desc(newsletterSubscribers.createdAt)).limit(limit);
+}
+
+export async function savePushSubscription(input: { endpoint: string; p256dh: string; auth: string; userAgent?: string }) {
+  const db = await getDb();
+  if (!db) return null;
+  await ensurePushSubscriptionsTable();
+  const [row] = await db
+    .insert(pushSubscriptions)
+    .values({ endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent })
+    .onConflictDoUpdate({ target: pushSubscriptions.endpoint, set: { p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent } })
+    .returning();
+  return row ?? null;
+}
+
+export async function deletePushSubscriptionByEndpoint(endpoint: string) {
+  const db = await getDb();
+  if (!db) return;
+  await ensurePushSubscriptionsTable();
+  await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+}
+
+export async function listPushSubscriptions() {
+  const db = await getDb();
+  if (!db) return [];
+  await ensurePushSubscriptionsTable();
+  return db.select().from(pushSubscriptions).orderBy(desc(pushSubscriptions.createdAt));
+}
+
+export async function saveSmsSubscription(phone: string) {
+  const db = await getDb();
+  if (!db) return null;
+  await ensureSmsSubscriptionsTable();
+  const [row] = await db.insert(smsSubscriptions).values({ phone }).onConflictDoNothing({ target: smsSubscriptions.phone }).returning();
+  return row ?? null;
+}
+
+export async function deleteSmsSubscriptionByPhone(phone: string) {
+  const db = await getDb();
+  if (!db) return;
+  await ensureSmsSubscriptionsTable();
+  await db.delete(smsSubscriptions).where(eq(smsSubscriptions.phone, phone));
+}
+
+export async function listSmsSubscriptions() {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureSmsSubscriptionsTable();
+  return db.select().from(smsSubscriptions).orderBy(desc(smsSubscriptions.createdAt));
 }
 
 export async function recordAnalytics(
