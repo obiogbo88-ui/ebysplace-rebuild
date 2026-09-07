@@ -856,14 +856,18 @@ export const appRouter = router({
       // tracked event on this browser) — push only, never SMS/WhatsApp, since
       // those cost money per message and every page view would be far too
       // noisy and expensive to alert on individually.
+      // Awaited (not fire-and-forget): this is a serverless function, and an
+      // un-awaited promise can be frozen mid-flight the moment the response
+      // is sent, before it ever actually calls the push service.
       if (!result.skipped && input.eventName === "page_visit" && input.sessionId) {
-        db.countActivityLogsBySession(input.sessionId)
-          .then((count) => {
-            if (count === 1) {
-              return sendPushToOwner({ title: "New visitor on your site", body: `Someone just landed on ${trackGate.pagePath}` });
-            }
-          })
-          .catch((error) => console.warn("[Tracking] Could not notify owner of new visitor", error));
+        try {
+          const count = await db.countActivityLogsBySession(input.sessionId);
+          if (count === 1) {
+            await sendPushToOwner({ title: "New visitor on your site", body: `Someone just landed on ${trackGate.pagePath}` });
+          }
+        } catch (error) {
+          console.warn("[Tracking] Could not notify owner of new visitor", error);
+        }
       }
       return result;
     }),
