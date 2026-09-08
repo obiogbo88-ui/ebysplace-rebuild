@@ -11,7 +11,7 @@ import {
   getCurrentPageUrl,
 } from "@/lib/activityTracking";
 import {
-  getServiceImageFallback,
+  createServiceImageErrorHandler,
   getServiceImageSrc,
 } from "@/lib/serviceImageFallback";
 import {
@@ -484,6 +484,10 @@ function HomepageGalleryPreview() {
                 alt={image.altText || image.title}
                 loading="lazy"
                 decoding="async"
+                onError={event => {
+                  const container = event.currentTarget.closest(".media-gallery") as HTMLElement | null;
+                  if (container) container.style.display = "none";
+                }}
               />
             </div>
             <div className="p-4">
@@ -575,6 +579,9 @@ export default function Home() {
               loading="eager"
               decoding="async"
               fetchPriority="high"
+              onError={event => {
+                event.currentTarget.style.display = "none";
+              }}
             />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.38)_45%,rgba(247,238,222,.1)),linear-gradient(180deg,rgba(247,238,222,.08),rgba(20,12,5,.76))]" />
             <div className="container relative z-10 py-24 md:py-32 lg:pb-28 lg:pt-40">
@@ -691,11 +698,7 @@ export default function Home() {
                         sizes={PRODUCT_THUMBNAIL_SIZES}
                         loading="lazy"
                         decoding="async"
-                        onError={event => {
-                          const fallback = getServiceImageFallback(s);
-                          if (fallback && event.currentTarget.src !== fallback)
-                            event.currentTarget.src = fallback;
-                        }}
+                        onError={createServiceImageErrorHandler(s)}
                       />
                     </div>
                   ) : null}
@@ -784,6 +787,7 @@ export default function Home() {
                           )
                             event.currentTarget.src =
                               PRODUCT_IMAGE_FALLBACK_SRC;
+                          else event.currentTarget.style.display = "none";
                         }}
                       />
                     ) : (
@@ -849,6 +853,7 @@ export default function Home() {
                           event.currentTarget.src !== PRODUCT_IMAGE_FALLBACK_SRC
                         )
                           event.currentTarget.src = PRODUCT_IMAGE_FALLBACK_SRC;
+                        else event.currentTarget.style.display = "none";
                       }}
                     />
                   </div>
@@ -1025,6 +1030,7 @@ export default function Home() {
                           ABOUT_PORTRAIT_FALLBACK_SRC
                         )
                           event.currentTarget.src = ABOUT_PORTRAIT_FALLBACK_SRC;
+                        else event.currentTarget.style.display = "none";
                       }}
                     />
                   </div>
