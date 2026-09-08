@@ -257,6 +257,18 @@ export const smsSubscriptions = pgTable("smsSubscriptions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const cookieConsents = pgTable("cookieConsents", {
+  id: serial("id").primaryKey(),
+  sessionId: varchar("sessionId", { length: 128 }),
+  visitorId: varchar("visitorId", { length: 64 }),
+  necessary: trueFalseEnum("necessary").default("true").notNull(),
+  analytics: trueFalseEnum("analytics").default("false").notNull(),
+  marketing: trueFalseEnum("marketing").default("false").notNull(),
+  pagePath: varchar("pagePath", { length: 500 }),
+  userAgent: text("userAgent"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 /**
  * Separate from pushSubscriptions (the public homepage opt-in) so owner
  * alerts — new bookings, orders, reviews, stock warnings — never get pushed

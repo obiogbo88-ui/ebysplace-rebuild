@@ -7,6 +7,7 @@ import {
   analyticsEvents,
   activityLogs,
   bookings,
+  cookieConsents,
   emailNotificationLogs,
   galleryImages,
   InsertUser,
@@ -2251,6 +2252,25 @@ async function ensureSmsSubscriptionsTable() {
   }
 }
 
+async function ensureCookieConsentsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "cookieConsents" (
+      "id" SERIAL PRIMARY KEY,
+      "sessionId" VARCHAR(128),
+      "visitorId" VARCHAR(64),
+      "necessary" TEXT NOT NULL DEFAULT 'true',
+      "analytics" TEXT NOT NULL DEFAULT 'false',
+      "marketing" TEXT NOT NULL DEFAULT 'false',
+      "pagePath" VARCHAR(500),
+      "userAgent" TEXT,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure cookieConsents table", err);
+  }
+}
+
 async function ensureEmailNotificationLogTable() {
   if (!_pool) return;
   try {
@@ -2530,6 +2550,77 @@ export async function listSmsSubscriptions() {
   if (!db) return [];
   await ensureSmsSubscriptionsTable();
   return db.select().from(smsSubscriptions).orderBy(desc(smsSubscriptions.createdAt));
+}
+
+export async function saveCookieConsent(input: {
+  sessionId?: string | null;
+  visitorId?: string | null;
+  analytics: boolean;
+  marketing: boolean;
+  pagePath?: string | null;
+  userAgent?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  await ensureCookieConsentsTable();
+  const [row] = await db.insert(cookieConsents).values({
+    sessionId: truncateText(input.sessionId, 128),
+    visitorId: truncateText(input.visitorId, 64),
+    necessary: "true",
+    analytics: input.analytics ? "true" : "false",
+    marketing: input.marketing ? "true" : "false",
+    pagePath: truncateText(input.pagePath, 500),
+    userAgent: truncateText(input.userAgent, 500),
+  }).returning();
+  return row ?? null;
+}
+
+export async function listCookieConsents(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureCookieConsentsTable();
+  return db.select().from(cookieConsents).orderBy(desc(cookieConsents.createdAt)).limit(limit);
+}
+
+export async function getCookieConsentSummary() {
+  const db = await getDb();
+  if (!db) return { total: 0, acceptedAnalytics: 0, acceptedMarketing: 0, rejectedAll: 0 };
+  await ensureCookieConsentsTable();
+  const rows = await db.select({
+    total: sql<number>`count(*)`,
+    acceptedAnalytics: sql<number>`count(*) filter (where ${cookieConsents.analytics} = 'true')`,
+    acceptedMarketing: sql<number>`count(*) filter (where ${cookieConsents.marketing} = 'true')`,
+    rejectedAll: sql<number>`count(*) filter (where ${cookieConsents.analytics} = 'false' and ${cookieConsents.marketing} = 'false')`,
+  }).from(cookieConsents);
+  const row = rows[0];
+  return {
+    total: Number(row?.total ?? 0),
+    acceptedAnalytics: Number(row?.acceptedAnalytics ?? 0),
+    acceptedMarketing: Number(row?.acceptedMarketing ?? 0),
+    rejectedAll: Number(row?.rejectedAll ?? 0),
+  };
+}
+
+export async function getVisitorCookieStats() {
+  const db = await getDb();
+  if (!db) return { totalTrackedPageViews: 0, distinctVisitorCookies: 0, returningVisitorPageViews: 0, newVisitorPageViews: 0 };
+  await ensureActivityLogsTable();
+  const rows = await db.select({
+    totalTrackedPageViews: sql<number>`count(*)`,
+    distinctVisitorCookies: sql<number>`count(distinct (${activityLogs.metadata}->>'visitorId'))`,
+    returningVisitorPageViews: sql<number>`count(*) filter (where ${activityLogs.metadata}->>'isReturningVisitor' = 'true')`,
+    newVisitorPageViews: sql<number>`count(*) filter (where ${activityLogs.metadata}->>'isReturningVisitor' = 'false')`,
+  }).from(activityLogs).where(and(
+    eq(activityLogs.activityType, "website_visit"),
+    sql`${activityLogs.metadata}->>'visitorId' IS NOT NULL`,
+  ));
+  const row = rows[0];
+  return {
+    totalTrackedPageViews: Number(row?.totalTrackedPageViews ?? 0),
+    distinctVisitorCookies: Number(row?.distinctVisitorCookies ?? 0),
+    returningVisitorPageViews: Number(row?.returningVisitorPageViews ?? 0),
+    newVisitorPageViews: Number(row?.newVisitorPageViews ?? 0),
+  };
 }
 
 export async function recordAnalytics(
