@@ -20,6 +20,12 @@ import {
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatAssistant from "./components/ChatAssistant";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import {
+  getExistingPushSubscription,
+  isPushSupported,
+  pushSubscriptionToInput,
+  subscribeToPush,
+} from "@/lib/webPush";
 
 const Home = lazy(() => import("./pages/Home"));
 const Services = lazy(() => import("./pages/Services"));
@@ -534,6 +540,60 @@ function BookingAliasRedirect() {
   return <Redirect to={target} replace />;
 }
 
+const PUSH_AUTO_PROMPT_STORAGE_KEY = "ebysplace:push-auto-prompt-shown";
+
+/**
+ * Replaces the old homepage "enable notifications" button: instead of
+ * requiring a click, this asks for browser push permission automatically
+ * the first time a visitor interacts with the site (a real user gesture is
+ * required by the browser — it can't fire on page load). It only asks once
+ * per browser (tracked in localStorage) and never re-prompts once the
+ * visitor has granted or denied permission.
+ */
+function AutoPushOptIn() {
+  const [location] = useLocation();
+  const subscribePush = trpc.public.subscribePush.useMutation();
+  const isAdmin = location.startsWith("/admin");
+
+  useEffect(() => {
+    if (isAdmin || typeof window === "undefined" || !isPushSupported()) return;
+    if (Notification.permission !== "default") return;
+    try {
+      if (window.localStorage.getItem(PUSH_AUTO_PROMPT_STORAGE_KEY) === "1")
+        return;
+    } catch {
+      // localStorage unavailable — fall through and prompt anyway.
+    }
+
+    const requestOnce = async () => {
+      window.removeEventListener("pointerdown", requestOnce);
+      window.removeEventListener("keydown", requestOnce);
+      try {
+        window.localStorage.setItem(PUSH_AUTO_PROMPT_STORAGE_KEY, "1");
+      } catch {
+        // Ignore storage failures — worst case we ask again next visit.
+      }
+      try {
+        const existing = await getExistingPushSubscription();
+        const subscription = existing || (await subscribeToPush());
+        if (subscription)
+          await subscribePush.mutateAsync(pushSubscriptionToInput(subscription));
+      } catch (error) {
+        console.warn("[WebPush] Auto opt-in failed", error);
+      }
+    };
+
+    window.addEventListener("pointerdown", requestOnce, { once: true });
+    window.addEventListener("keydown", requestOnce, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", requestOnce);
+      window.removeEventListener("keydown", requestOnce);
+    };
+  }, [isAdmin]);
+
+  return null;
+}
+
 function Router() {
   return (
     <Suspense fallback={<RouteLoading />}>
@@ -577,6 +637,7 @@ function App() {
           <Toaster richColors closeButton duration={7000} />
           <SharedLinkPathNormalizer />
           <DynamicSeoMetadata />
+          <AutoPushOptIn />
           <ScrollToTop />
           <Router />
           <BackToTopButton />
