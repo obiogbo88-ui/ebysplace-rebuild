@@ -973,6 +973,13 @@ export default function Home() {
                 Sign up
               </button>
             </form>
+            <p className="text-xs font-medium text-white/45 md:col-span-2">
+              By signing up, you agree to our{" "}
+              <Link className="underline decoration-white/30 underline-offset-4 hover:text-white" href="/policies/privacy">
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </div>
         </section>
 
