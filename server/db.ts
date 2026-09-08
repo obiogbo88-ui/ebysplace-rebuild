@@ -36,7 +36,8 @@ let _seeded = false;
 let _seedingPromise: Promise<void> | null = null;
 let _unsupportedDatabaseUrlWarned = false;
 let _missingDatabaseUrlWarned = false;
-let _databaseConnectionFailed = false;
+let _databaseConnectionFailedAtMs: number | null = null;
+const DATABASE_RETRY_BACKOFF_MS = 5_000;
 let _lastDatabaseUrlFingerprint: string | null = null;
 
 function isPostgresConnectionString(connectionString: string) {
@@ -81,7 +82,7 @@ export async function getDb() {
   const fingerprint = databaseUrlFingerprint(connectionString);
   if (_lastDatabaseUrlFingerprint !== fingerprint) {
     _lastDatabaseUrlFingerprint = fingerprint;
-    _databaseConnectionFailed = false;
+    _databaseConnectionFailedAtMs = null;
     console.log("[Database] DATABASE_URL detected for PostgreSQL initialisation", {
       fingerprint,
       isPostgres: isPostgresConnectionString(connectionString),
@@ -98,7 +99,14 @@ export async function getDb() {
     }
     return null;
   }
-  if (_databaseConnectionFailed) return null;
+  // A prior connection attempt can fail transiently (e.g. the Supabase pooler
+  // briefly hitting its session-mode client cap under concurrent serverless
+  // invocations) and self-heal moments later. Only skip retrying within a
+  // short backoff window — never latch this permanently, or one bad moment
+  // poisons every request this warm instance serves afterwards, silently
+  // falling back to stale seed data (including seed image URLs) for the rest
+  // of its life.
+  if (_databaseConnectionFailedAtMs !== null && Date.now() - _databaseConnectionFailedAtMs < DATABASE_RETRY_BACKOFF_MS) return null;
   if (!_db) {
     try {
       _pool = new Pool({
@@ -110,13 +118,14 @@ export async function getDb() {
       });
       await _pool.query("SELECT 1");
       _db = drizzle(_pool);
+      _databaseConnectionFailedAtMs = null;
       console.error("[Database] PostgreSQL connection initialised", { fingerprint });
     } catch (error) {
       console.error("[Database] Failed to initialise PostgreSQL connection; falling back to seed data for public reads.", { fingerprint, error });
       await _pool?.end().catch((closeError) => console.error("[Database] Failed to close broken PostgreSQL pool", closeError));
       _pool = null;
       _db = null;
-      _databaseConnectionFailed = true;
+      _databaseConnectionFailedAtMs = Date.now();
     }
   }
   return _db;
@@ -430,22 +439,26 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
+// These used to point at "ebysplace_service_*" files at the bucket root.
+// Those objects were relocated under a "manus-storage/" prefix at some point
+// and are now 404s at the paths below — see the "services/*" uploads instead,
+// which are the current admin-curated photos and what these now point to.
 export const imageBySlug: Record<string, string> = {
-  "knotless-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
-  "box-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
-  "goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
-  "fulani-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
-  "cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+  "knotless-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780485392787-knotless-braids-1000287170_d39f6d6a.jpg",
+  "box-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780488974029-box-braids-box-braid-by-ebys-place_dad6680b.jpg",
+  "goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780490107616-goddess-braids-goddess-braid-by-ebysplace_04edadf7.jpg",
+  "fulani-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1785706279507-fulani-braids-fulani-braids-by-ebys-place_7a0556dc.jpg",
+  "cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780860772549-cornrows-mens-cornrow-at-ebysplace_371d862a.jpg",
   "stitch-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_stitch_braids_562f3424-edda69b630.png",
-  "lemonade-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
-  "boho-goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
+  "lemonade-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780489878516-lemonade-braids-lemonade-braid-by-ebysplace_3637a926.jpg",
+  "boho-goddess-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1781628724885-boho-braids-boho-braids-by-ebysplace_bfd33320.jpg",
   "tribal-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_tribal_braids_f0ce8622-90e4a26bf0.png",
-  "senegalese-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
-  "passion-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
-  "faux-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
-  "butterfly-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
-  "starter-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
-  "kids-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+  "senegalese-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1785706312948-senegalese-twists-senegalese-twist-by-ebys-plaace_1cea93e3.jpg",
+  "passion-twists": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1785706389348-passion-twists-passion-twist-by-ebys-place_40223b6b.jpg",
+  "faux-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1781629405215-faux-locs-faux-locs-by-ebysplace_19d44a09.jpg",
+  "butterfly-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1781630201149-butterfly-locs-butterfly-locs-by-ebys-place_ca5db6e7.jpg",
+  "starter-locs": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780861744058-starter-locs-mens-starter-locs_e7d58062.jpg",
+  "kids-braids": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1781630816392-kids-braids-kids-braids_4a38f678.jpg",
   "kids-cornrows": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_cornrows_e12e1096-6893e96fa8.png",
   "hair-wash-prep": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_hair_wash_prep_ccec3da2-22210fa889.png",
   "beads-accessories": "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_beads_accessories_05425a55-585b8bc439.png",
@@ -464,7 +477,7 @@ export const seedServices = [
     badge: "Signature",
     isFeatured: "true" as const,
     sortOrder: 1,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780485392787-knotless-braids-1000287170_d39f6d6a.jpg",
   },
   {
     name: "Box Braids",
@@ -476,7 +489,7 @@ export const seedServices = [
     badge: "Classic",
     isFeatured: "true" as const,
     sortOrder: 2,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_box_braids_c219e578-5ddc057b3d.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780488974029-box-braids-box-braid-by-ebys-place_dad6680b.jpg",
   },
   {
     name: "Goddess Braids",
@@ -488,7 +501,7 @@ export const seedServices = [
     badge: "Luxury",
     isFeatured: "false" as const,
     sortOrder: 3,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_goddess_braids_da92cf33-2c24c12340.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780490107616-goddess-braids-goddess-braid-by-ebysplace_04edadf7.jpg",
   },
   {
     name: "Fulani Braids",
@@ -500,7 +513,7 @@ export const seedServices = [
     badge: "Statement",
     isFeatured: "false" as const,
     sortOrder: 4,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1785706279507-fulani-braids-fulani-braids-by-ebys-place_7a0556dc.jpg",
   },
   {
     name: "Cornrows",
@@ -512,7 +525,7 @@ export const seedServices = [
     badge: "Neat Finish",
     isFeatured: "false" as const,
     sortOrder: 5,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_cornrows_2b5007dd-7637e158cc.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780860772549-cornrows-mens-cornrow-at-ebysplace_371d862a.jpg",
   },
   {
     name: "Stitch Braids",
@@ -536,7 +549,7 @@ export const seedServices = [
     badge: "Popular",
     isFeatured: "true" as const,
     sortOrder: 7,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_lemonade_braids_71001277-04350dddc8.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780489878516-lemonade-braids-lemonade-braid-by-ebysplace_3637a926.jpg",
   },
   {
     name: "Boho Braids",
@@ -548,7 +561,7 @@ export const seedServices = [
     badge: "Popular",
     isFeatured: "true" as const,
     sortOrder: 8,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_boho_braids_ee8557bc-0b74da3a99.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1781628724885-boho-braids-boho-braids-by-ebysplace_bfd33320.jpg",
   },
   {
     name: "Tribal Braids",
@@ -572,7 +585,7 @@ export const seedServices = [
     badge: "Protective",
     isFeatured: "true" as const,
     sortOrder: 10,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_senegalese_twists_d58a9d66-1fa4e6b79d.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1785706312948-senegalese-twists-senegalese-twist-by-ebys-plaace_1cea93e3.jpg",
   },
   {
     name: "Passion Twists",
@@ -584,7 +597,7 @@ export const seedServices = [
     badge: "Soft Texture",
     isFeatured: "false" as const,
     sortOrder: 11,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1785706389348-passion-twists-passion-twist-by-ebys-place_40223b6b.jpg",
   },
   {
     name: "Faux Locs",
@@ -596,7 +609,7 @@ export const seedServices = [
     badge: "Protective",
     isFeatured: "true" as const,
     sortOrder: 12,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_faux_locs_b738d17e-eb99412a43.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1781629405215-faux-locs-faux-locs-by-ebysplace_19d44a09.jpg",
   },
   {
     name: "Butterfly Locs",
@@ -608,7 +621,7 @@ export const seedServices = [
     badge: "Trending",
     isFeatured: "false" as const,
     sortOrder: 13,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_butterfly_locs_642d7503-3bb725b95f.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1781630201149-butterfly-locs-butterfly-locs-by-ebys-place_ca5db6e7.jpg",
   },
   {
     name: "Starter Locs",
@@ -620,7 +633,7 @@ export const seedServices = [
     badge: "Loc Journey",
     isFeatured: "false" as const,
     sortOrder: 14,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_starter_locs_3cfa3435-0f2729451d.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780861744058-starter-locs-mens-starter-locs_e7d58062.jpg",
   },
   {
     name: "Kids Braids",
@@ -632,7 +645,7 @@ export const seedServices = [
     badge: "Child Friendly",
     isFeatured: "false" as const,
     sortOrder: 15,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1781630816392-kids-braids-kids-braids_4a38f678.jpg",
   },
   {
     name: "Kids Cornrows",
@@ -656,7 +669,7 @@ export const seedServices = [
     badge: "Child Friendly",
     isFeatured: "false" as const,
     sortOrder: 17,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_kids_braids_066faa86-8d44891ba5.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1781631205850-kids-box-braids-kids-box-braids_e2317782.jpg",
   },
   {
     name: "Kids Knotless Braids",
@@ -668,7 +681,7 @@ export const seedServices = [
     badge: "Child Friendly",
     isFeatured: "false" as const,
     sortOrder: 18,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_ee7bcfb0-f944f71cb3.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1781630789368-kids-knotless-braids-kids-braids_33a7ffcd.jpg",
   },
   {
     name: "Kids Twists",
@@ -680,7 +693,7 @@ export const seedServices = [
     badge: "Child Friendly",
     isFeatured: "false" as const,
     sortOrder: 19,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_passion_twists_fb79128f-5a04dc2709.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1785707118528-kids-twists-kids-twist-by-ebysplace_33378b31.jpg",
   },
   {
     name: "Back to School Styles",
@@ -704,7 +717,7 @@ export const seedServices = [
     badge: "Men's Style",
     isFeatured: "false" as const,
     sortOrder: 21,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_men_cornrows_braids_7a3f1b2e-4c8d9e0f12.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780860772549-cornrows-mens-cornrow-at-ebysplace_371d862a.jpg",
   },
   {
     name: "Men Box Braids",
@@ -716,7 +729,7 @@ export const seedServices = [
     badge: "Men's Style",
     isFeatured: "false" as const,
     sortOrder: 22,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_men_box_braids_model_3b9c2d1a-6e4f5a7b89.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780488974029-box-braids-box-braid-by-ebys-place_dad6680b.jpg",
   },
   {
     name: "Men Twists",
@@ -728,7 +741,7 @@ export const seedServices = [
     badge: "Men's Style",
     isFeatured: "false" as const,
     sortOrder: 23,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_men_twists_model_5d1e8f3c-2a7b4c6d90.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1785706312948-senegalese-twists-senegalese-twist-by-ebys-plaace_1cea93e3.jpg",
   },
   {
     name: "Fulani Braids for Men",
@@ -740,7 +753,7 @@ export const seedServices = [
     badge: "Men's Style",
     isFeatured: "false" as const,
     sortOrder: 24,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_fulani_braids_0575047c-0358a6ffb9.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1785706279507-fulani-braids-fulani-braids-by-ebys-place_7a0556dc.jpg",
   },
   {
     name: "Locs for Men",
@@ -752,7 +765,7 @@ export const seedServices = [
     badge: "Men's Style",
     isFeatured: "false" as const,
     sortOrder: 25,
-    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_locs_men_model_9f2a5c4b-1d3e7f8a06.png",
+    imageUrl: "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/services/1780861744058-starter-locs-mens-starter-locs_e7d58062.jpg",
   },
   {
     name: "Hair Wash & Prep",

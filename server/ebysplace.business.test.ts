@@ -134,10 +134,10 @@ describe("Eby’s Place platform business rules", () => {
     const services = await db.listServices();
     expect(services).toHaveLength(29);
     for (const service of services) {
-      expect(service.imageUrl, `${service.name} needs a migrated Supabase service image`).toMatch(/^https:\/\/jcyoipbiplzrocrrhwkp\.supabase\.co\/storage\/v1\/object\/public\/ebysplace-media\/ebysplace_service_/);
+      expect(service.imageUrl, `${service.name} needs a migrated Supabase service image`).toMatch(/^https:\/\/jcyoipbiplzrocrrhwkp\.supabase\.co\/storage\/v1\/object\/public\/ebysplace-media\//);
     }
-    expect(services.find((service) => service.name === "Goddess Braids")?.imageUrl).toContain("goddess_braids");
-    expect(services.find((service) => service.name === "Box Braids")?.imageUrl).toContain("box_braids");
+    expect(services.find((service) => service.name === "Goddess Braids")?.imageUrl).toContain("goddess-braids");
+    expect(services.find((service) => service.name === "Box Braids")?.imageUrl).toContain("box-braids");
   });
 
   it("creates a booking draft that clearly requires the exact £20 non-refundable deposit", async () => {
