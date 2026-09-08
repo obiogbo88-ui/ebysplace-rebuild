@@ -163,6 +163,7 @@ function StepIndicator({ step, total }: { step: number; total: number }) {
 export default function Booking() {
   const [form, setForm] = useState(initial);
   const [step, setStep] = useState(0);
+  const [smsOptIn, setSmsOptIn] = useState(true);
   const [selectedAddOns, setSelectedAddOns] = useState<AddOnOption[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<BookingProductSelection[]>([]);
   const { data: services = [], isLoading: servicesLoading } = trpc.public.services.useQuery({});
@@ -188,6 +189,7 @@ export default function Booking() {
     [products]
   );
   const create = trpc.public.createBooking.useMutation();
+  const subscribeSms = trpc.public.subscribeSms.useMutation();
   const checkout = trpc.public.createDepositCheckout.useMutation();
   const logActivity = trpc.public.logActivity.useMutation();
   const availability = trpc.public.availability.useQuery();
@@ -311,6 +313,11 @@ export default function Booking() {
         addOns: selectedAddOns.map(({ id, name, price }) => ({ id, name, price })),
         bookingProducts: checkoutProducts,
       });
+      if (smsOptIn && form.clientPhone) {
+        subscribeSms.mutateAsync({ phone: form.clientPhone }).catch((error) => {
+          console.warn("[SMS] Could not auto-subscribe booking phone", error);
+        });
+      }
       toast.success(booking.customerNotification);
       toast.message("Opening Eby's Place secure payment", {
         description: "Your deposit, selected add-ons, and selected appointment products will be included in one secure payment.",
@@ -561,6 +568,15 @@ export default function Booking() {
                 <label className="font-semibold text-[#24170d]">
                   Phone Number
                   <input required value={form.clientPhone} onChange={event => set("clientPhone", event.target.value)} placeholder="+44 7700 000000" />
+                  <span className="mt-1 flex items-start gap-2 text-xs font-normal text-[#4a3014]/80">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-auto w-auto"
+                      checked={smsOptIn}
+                      onChange={event => setSmsOptIn(event.target.checked)}
+                    />
+                    Text me appointment updates and offers on this number (reply STOP anytime)
+                  </span>
                 </label>
                 {homeAddressRequired ? (
                   <>

@@ -388,8 +388,10 @@ export default function Shop() {
   const { data } = trpc.public.products.useQuery();
   const { data: reviewSummaries } = trpc.public.productReviewSummaries.useQuery();
   const order = trpc.public.createOrder.useMutation();
+  const subscribeSms = trpc.public.subscribeSms.useMutation();
   const logActivity = trpc.public.logActivity.useMutation();
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [smsOptIn, setSmsOptIn] = useState(true);
   const [activeDepartment, setActiveDepartment] = useState("All Departments");
   const [sortBy, setSortBy] = useState<"featured" | "price_low_high" | "price_high_low" | "rating" | "name">("featured");
   const [minimumPrice, setMinimumPrice] = useState("");
@@ -571,6 +573,11 @@ export default function Shop() {
         metadata: { itemCount: checkoutItems.length, total },
       });
       const result = await order.mutateAsync({ ...delivery, items: checkoutItems });
+      if (smsOptIn && delivery.customerPhone) {
+        subscribeSms.mutateAsync({ phone: delivery.customerPhone }).catch((error) => {
+          console.warn("[SMS] Could not auto-subscribe checkout phone", error);
+        });
+      }
       toast.success(result.customerNotification);
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
@@ -740,6 +747,17 @@ export default function Shop() {
               <input required placeholder="Name" value={delivery.customerName} onChange={(event) => setDelivery({ ...delivery, customerName: event.target.value })} />
               <input required type="email" placeholder="Email" value={delivery.customerEmail} onChange={(event) => setDelivery({ ...delivery, customerEmail: event.target.value })} />
               <input placeholder="Phone" value={delivery.customerPhone} onChange={(event) => setDelivery({ ...delivery, customerPhone: event.target.value })} />
+              {delivery.customerPhone ? (
+                <label className="flex items-start gap-2 text-xs font-normal text-white/70">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-auto w-auto"
+                    checked={smsOptIn}
+                    onChange={(event) => setSmsOptIn(event.target.checked)}
+                  />
+                  Text me order updates and offers on this number (reply STOP anytime)
+                </label>
+              ) : null}
               <input required placeholder="Delivery address" value={delivery.addressLine1} onChange={(event) => setDelivery({ ...delivery, addressLine1: event.target.value })} />
               <div className="grid gap-3 sm:grid-cols-2">
                 <input placeholder="Address line 2 (optional)" value={delivery.addressLine2} onChange={(event) => setDelivery({ ...delivery, addressLine2: event.target.value })} />

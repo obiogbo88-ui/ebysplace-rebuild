@@ -16,7 +16,6 @@ import {
 } from "@/lib/serviceImageFallback";
 import {
   ArrowRight,
-  Bell,
   CalendarDays,
   Heart,
   Menu,
@@ -28,12 +27,6 @@ import {
   X,
 } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
-import {
-  getExistingPushSubscription,
-  isPushSupported,
-  pushSubscriptionToInput,
-  subscribeToPush,
-} from "@/lib/webPush";
 
 const LOGO_SRC =
   "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
@@ -544,32 +537,7 @@ export default function Home() {
     onSuccess: () => smoothScrollToTop(40),
   });
   const logActivity = trpc.public.logActivity.useMutation();
-  const subscribePush = trpc.public.subscribePush.useMutation();
-  const subscribeSms = trpc.public.subscribeSms.useMutation();
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [notifStatus, setNotifStatus] = useState<"idle" | "subscribed" | "denied" | "unsupported" | "error">("idle");
-  const [smsStatus, setSmsStatus] = useState<"idle" | "subscribed" | "error">("idle");
-
-  const handleEnableNotifications = async () => {
-    if (!isPushSupported()) {
-      setNotifStatus("unsupported");
-      return;
-    }
-    try {
-      const existing = await getExistingPushSubscription();
-      const subscription = existing || (await subscribeToPush());
-      if (!subscription) {
-        setNotifStatus("denied");
-        return;
-      }
-      await subscribePush.mutateAsync(pushSubscriptionToInput(subscription));
-      setNotifStatus("subscribed");
-    } catch (error) {
-      console.warn("[WebPush] Could not enable notifications", error);
-      setNotifStatus("error");
-    }
-  };
   const aboutSection = (sections as any[]).find(
     section => section.sectionKey === "about_us"
   ) || {
@@ -1005,64 +973,6 @@ export default function Home() {
                 Sign up
               </button>
             </form>
-          </div>
-          <div className="mt-4 flex items-center gap-3 px-5 sm:px-6">
-            {notifStatus === "subscribed" ? (
-              <p className="text-sm font-medium text-white/62">
-                You’ll get notifications on this device.
-              </p>
-            ) : notifStatus === "unsupported" ? (
-              <p className="text-sm font-medium text-white/45">
-                Notifications aren’t supported in this browser.
-              </p>
-            ) : (
-              <button
-                type="button"
-                className="flex items-center gap-2 text-sm font-semibold text-white/70 underline decoration-white/30 underline-offset-4 hover:text-white"
-                onClick={handleEnableNotifications}
-                disabled={subscribePush.isPending}
-              >
-                <Bell className="h-4 w-4" />
-                {subscribePush.isPending ? "Enabling..." : "Enable notifications for style openings"}
-              </button>
-            )}
-            {notifStatus === "denied" && (
-              <p className="text-xs text-white/45">Notifications were blocked — you can allow them from your browser’s site settings.</p>
-            )}
-            {notifStatus === "error" && (
-              <p className="text-xs text-white/45">Something went wrong enabling notifications. Please try again.</p>
-            )}
-          </div>
-          <div className="mt-3 px-5 sm:px-6">
-            {smsStatus === "subscribed" ? (
-              <p className="text-sm font-medium text-white/62">You’ll get text alerts on that number.</p>
-            ) : (
-              <form
-                className="flex flex-wrap items-center gap-2"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  try {
-                    await subscribeSms.mutateAsync({ phone });
-                    setSmsStatus("subscribed");
-                    setPhone("");
-                  } catch {
-                    setSmsStatus("error");
-                  }
-                }}
-              >
-                <input
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="Phone number for text alerts (optional)"
-                  type="tel"
-                  className="max-w-xs"
-                />
-                <button className="text-sm font-semibold text-white/70 underline decoration-white/30 underline-offset-4 hover:text-white" type="submit" disabled={subscribeSms.isPending || !phone}>
-                  {subscribeSms.isPending ? "Adding..." : "Text me"}
-                </button>
-              </form>
-            )}
-            {smsStatus === "error" && <p className="mt-1 text-xs text-white/45">Something went wrong. Please check the number and try again.</p>}
           </div>
         </section>
 
