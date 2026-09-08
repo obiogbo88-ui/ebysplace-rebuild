@@ -19,6 +19,7 @@ import {
 } from "@/lib/activityTracking";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatAssistant from "./components/ChatAssistant";
+import CookieConsentBanner from "./components/CookieConsentBanner";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import {
   getExistingPushSubscription,
@@ -26,6 +27,7 @@ import {
   pushSubscriptionToInput,
   subscribeToPush,
 } from "@/lib/webPush";
+import { ensureVisitorCookie, getStoredConsent } from "@/lib/cookieConsent";
 
 const Home = lazy(() => import("./pages/Home"));
 const Services = lazy(() => import("./pages/Services"));
@@ -418,6 +420,8 @@ function DynamicSeoMetadata() {
       activityType: "website_visit",
     });
     if (shouldThrottleTrackingEvent(eventKey)) return;
+    const consent = getStoredConsent();
+    const visitorCookie = ensureVisitorCookie(Boolean(consent?.analytics));
     track.mutate({
       eventName: "page_visit",
       pagePath,
@@ -431,6 +435,8 @@ function DynamicSeoMetadata() {
           typeof document !== "undefined" ? document.referrer || null : null,
         browser: browserInfo.browser,
         deviceType: browserInfo.deviceType,
+        visitorId: visitorCookie?.visitorId ?? null,
+        isReturningVisitor: visitorCookie ? visitorCookie.isReturningVisitor : null,
       },
     });
   }, [location]);
@@ -643,6 +649,7 @@ function App() {
           <BackToTopButton />
           <MobileStickyBookingCta />
           <ChatAssistant />
+          <CookieConsentBanner />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

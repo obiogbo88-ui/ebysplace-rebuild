@@ -21,6 +21,7 @@ import {
   Mail,
   Trash2,
   CheckCheck,
+  Cookie,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -252,6 +253,9 @@ export default function Admin() {
   const insights = trpc.admin.insights.useQuery(undefined, { retry: false });
   const emailLogs = trpc.admin.listEmailNotificationLogs.useQuery(undefined, { retry: false });
   const newsletterSubscribers = trpc.admin.listNewsletterSubscribers.useQuery(undefined, { retry: false });
+  const cookieConsents = trpc.admin.listCookieConsents.useQuery(undefined, { retry: false });
+  const cookieConsentSummary = trpc.admin.cookieConsentSummary.useQuery(undefined, { retry: false });
+  const visitorCookieStats = trpc.admin.visitorCookieStats.useQuery(undefined, { retry: false });
   const ownerPushStatus = trpc.admin.ownerPushStatus.useQuery(undefined, { retry: false });
   const subscribeOwnerPush = trpc.admin.subscribeOwnerPush.useMutation({
     onSuccess: () => { ownerPushStatus.refetch(); toast.success("Notifications enabled on this device."); },
@@ -524,6 +528,7 @@ export default function Admin() {
   const moderatedProductReviewRows = productReviewRows.filter((review) => review.status !== "pending");
   const emailNotificationRows = emailLogs.data || data.emailNotifications || [];
   const newsletterSubscriberRows = newsletterSubscribers.data || [];
+  const cookieConsentRows = cookieConsents.data || [];
   const activityRows = activityLogs.data || data.activityLogs || [];
   const notificationRows = (notificationFeed.data || []).filter(isImportantAdminNotification).slice(0, 6);
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
@@ -1140,6 +1145,49 @@ export default function Admin() {
                     </div>
                   </>
                 ) : <p className="text-white/55">No one has joined the Eby's Place list yet. New signups from the homepage form will appear here.</p>
+              ) : null}
+            </div>
+          </AdminPanel>
+
+          <AdminPanel id="cookies" eyebrow="Consent & tracking" title="Cookie consent" description="See who has accepted or rejected analytics and marketing cookies, and how many visits are being tracked with a returning-visitor cookie." icon={Cookie} open={isPanelOpen("cookies")} onToggle={() => togglePanel("cookies")}>
+            <div className="mt-5">
+              <div className="grid gap-3 text-sm text-white/65 sm:grid-cols-2 lg:grid-cols-4">
+                <p className="rounded-2xl border border-white/10 bg-black/20 p-4">Consent decisions: <b className="block text-2xl text-primary">{cookieConsentSummary.data?.total ?? "..."}</b></p>
+                <p className="rounded-2xl border border-white/10 bg-black/20 p-4">Accepted analytics: <b className="block text-2xl text-primary">{cookieConsentSummary.data?.acceptedAnalytics ?? "..."}</b></p>
+                <p className="rounded-2xl border border-white/10 bg-black/20 p-4">Accepted marketing: <b className="block text-2xl text-primary">{cookieConsentSummary.data?.acceptedMarketing ?? "..."}</b></p>
+                <p className="rounded-2xl border border-white/10 bg-black/20 p-4">Rejected all: <b className="block text-2xl text-primary">{cookieConsentSummary.data?.rejectedAll ?? "..."}</b></p>
+              </div>
+              <div className="mt-4 grid gap-3 text-sm text-white/65 sm:grid-cols-2">
+                <p className="rounded-2xl border border-white/10 bg-black/20 p-4">Distinct visitor cookies: <b className="block text-2xl text-primary">{visitorCookieStats.data?.distinctVisitorCookies ?? "..."}</b></p>
+                <p className="rounded-2xl border border-white/10 bg-black/20 p-4">Returning-visitor page views: <b className="block text-2xl text-primary">{visitorCookieStats.data?.returningVisitorPageViews ?? "..."}</b> <span className="text-xs text-white/45">vs {visitorCookieStats.data?.newVisitorPageViews ?? "..."} new</span></p>
+              </div>
+              {cookieConsents.isLoading ? <p className="mt-4 text-sm text-white/55">Loading consent log...</p> : null}
+              {cookieConsents.error ? <p className="mt-4 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">Could not load consent log: {cookieConsents.error.message}</p> : null}
+              {!cookieConsents.isLoading && !cookieConsents.error ? (
+                cookieConsentRows.length ? (
+                  <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-white/45">
+                          <th className="px-4 py-3">Page</th>
+                          <th className="px-4 py-3">Analytics</th>
+                          <th className="px-4 py-3">Marketing</th>
+                          <th className="px-4 py-3">Decided</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cookieConsentRows.map((row: any) => (
+                          <tr className="border-b border-white/5 last:border-0" key={row.id}>
+                            <td className="break-all px-4 py-3 text-white/85">{row.pagePath || "—"}</td>
+                            <td className="px-4 py-3">{row.analytics === "true" ? <span className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-primary">Accepted</span> : <span className="text-xs text-white/45">Rejected</span>}</td>
+                            <td className="px-4 py-3">{row.marketing === "true" ? <span className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-primary">Accepted</span> : <span className="text-xs text-white/45">Rejected</span>}</td>
+                            <td className="px-4 py-3 text-xs text-white/55">{row.createdAt ? new Date(row.createdAt).toLocaleString() : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : <p className="mt-4 text-white/55">No cookie consent decisions logged yet. They'll appear here as visitors respond to the cookie banner.</p>
               ) : null}
             </div>
           </AdminPanel>

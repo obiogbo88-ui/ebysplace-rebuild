@@ -485,6 +485,17 @@ export const appRouter = router({
       await db.saveSmsSubscription(input.phone);
       return { subscribed: true } as const;
     }),
+    logCookieConsent: publicProcedure.input(z.object({
+      sessionId: z.string().max(128).optional(),
+      visitorId: z.string().max(64).optional(),
+      analytics: z.boolean(),
+      marketing: z.boolean(),
+      pagePath: z.string().max(500).optional(),
+      userAgent: z.string().max(500).optional(),
+    })).mutation(async ({ input }) => {
+      await db.saveCookieConsent(input);
+      return { success: true } as const;
+    }),
     submitReview: publicProcedure.input(z.object({ customerName: z.string().min(2), rating: z.number().min(1).max(5), reviewText: z.string().min(10) })).mutation(async ({ input }) => {
       const review = await db.submitReview(input);
       await notifyOwnerSafely(
@@ -939,6 +950,9 @@ export const appRouter = router({
     lists: adminProcedure.query(() => db.adminLists()),
     listEmailNotificationLogs: adminProcedure.query(() => db.listEmailNotificationLogs()),
     listNewsletterSubscribers: adminProcedure.query(() => db.listNewsletterSubscribers()),
+    listCookieConsents: adminProcedure.query(() => db.listCookieConsents()),
+    cookieConsentSummary: adminProcedure.query(() => db.getCookieConsentSummary()),
+    visitorCookieStats: adminProcedure.query(() => db.getVisitorCookieStats()),
     listActivityLogs: adminProcedure.input(z.object({
       query: z.string().optional(),
       datePreset: z.enum(["today", "yesterday", "last_7_days", "last_30_days"]).optional(),
