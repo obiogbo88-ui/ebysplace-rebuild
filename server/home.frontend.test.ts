@@ -127,10 +127,10 @@ describe("Eby’s Place landing page visual refinements", () => {
 
   it("uses the supplied stretched top logo and a reduced, aligned footer logo", () => {
     expect(homeSource).toContain('href="/"');
-    expect(homeSource).toContain("src={HEADER_LOGO_SRC}");
+    expect(homeSource).toContain("src={LOGO_SRC}");
     expect(homeSource).toContain('fetchPriority="high"');
     expect(homeSource).toContain('decoding="async"');
-    expect(homeSource).toContain("h-12 w-[8.25rem] object-contain object-left mix-blend-multiply min-[380px]:h-14 min-[380px]:w-[9.5rem] sm:h-20 sm:w-[14rem] lg:h-[4.5rem] lg:w-[15rem] xl:w-[16.5rem]");
+    expect(homeSource).toContain("h-12 w-[8.25rem] object-contain object-left min-[380px]:h-14 min-[380px]:w-[9.5rem] sm:h-20 sm:w-[14rem] lg:h-[4.5rem] lg:w-[15rem] xl:w-[16.5rem]");
     expect(homeSource).toContain('className="btn-gold min-h-10 shrink-0 whitespace-nowrap px-2.5 py-2 text-[0.62rem] uppercase tracking-[.12em] min-[390px]:px-3 min-[390px]:text-[0.67rem] sm:px-4 sm:py-2.5 sm:text-xs"');
     expect(homeSource).not.toContain('<div className="hidden sm:block">');
       expect(homeSource).toContain('navigateWithSmoothScroll("/shop", setLocation)');
@@ -144,8 +144,8 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("h-36 w-auto object-contain mix-blend-multiply drop-shadow-[0_12px_26px_rgba(112,78,28,.22)] sm:h-40");
     expect(homeSource).not.toContain("sm:h-56 lg:h-60");
     expect(homeSource).not.toContain("translate-y-8");
-    expect(homeSource).toContain("h-16 w-auto max-w-[10rem] object-contain object-left mix-blend-multiply drop-shadow-[0_8px_18px_rgba(112,78,28,.18)] sm:h-20 sm:max-w-[12rem]");
-    expect(homeSource).toContain("src={HEADER_LOGO_SRC}");
+    expect(homeSource).toContain("h-16 w-auto max-w-[10rem] object-contain object-left drop-shadow-[0_8px_18px_rgba(0,0,0,.4)] sm:h-20 sm:max-w-[12rem]");
+    expect(homeSource).toContain("src={LOGO_SRC}");
     expect(homeSource).toContain("alt=\"Eby’s Place\"");
     expect(homeSource).not.toContain("text-base font-extrabold uppercase tracking-[0.14em]");
     expect(homeSource).not.toContain("mt-1 max-w-[13rem]");
@@ -179,7 +179,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(cssSource).toContain("font-family: 'Playfair Display', Georgia, serif");
     expect(cssSource).toContain(".luxury-shell { min-height: 100vh; width: 100%; max-width: 100vw; background: var(--color-background); color: var(--color-foreground); }");
     expect(homeSource).toContain("bg-[#f5ead7]/92");
-    expect(homeSource).toContain("rgba(247,238,222,.72)");
+    expect(homeSource).toContain("rgba(11,11,11,.82)");
     expect(cssSource).toContain("text-[#2a1a0b]/82");
     expect(homeSource).toContain("text-white sm:text-lg");
     expect(cssSource).not.toContain(".section-pad .text-white\\/65");
