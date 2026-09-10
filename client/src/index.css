@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -304,6 +304,37 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
   color: #111111 !important;
   border-color: #111111 !important;
 }
+/* Dark-editorial redesign: the mobile sticky booking bar only ever renders
+   on public pages (MobileStickyBookingCta returns null on /admin), so it is
+   restyled directly here rather than through a `.luxury-shell` scope. */
+.mobile-sticky-booking {
+  background: rgba(11, 11, 11, 0.96) !important;
+  border-top: 1px solid rgba(180, 217, 74, 0.4) !important;
+}
+.mobile-sticky-booking .sticky-booking-cta-button {
+  background: #B4D94A !important;
+  color: #111111 !important;
+  border: 1px solid #B4D94A !important;
+}
+.mobile-sticky-booking .sticky-booking-cta-label,
+.mobile-sticky-booking .sticky-booking-cta-separator,
+.mobile-sticky-booking .sticky-booking-cta-accent {
+  color: #111111 !important;
+}
+.mobile-sticky-booking .sticky-booking-cta-button:hover,
+.mobile-sticky-booking .sticky-booking-cta-button:focus-visible {
+  background: #C6E86D !important;
+  color: #0B0B0B !important;
+  border-color: #C6E86D !important;
+}
+.mobile-sticky-booking .sticky-booking-cta-button:hover .sticky-booking-cta-label,
+.mobile-sticky-booking .sticky-booking-cta-button:hover .sticky-booking-cta-separator,
+.mobile-sticky-booking .sticky-booking-cta-button:hover .sticky-booking-cta-accent,
+.mobile-sticky-booking .sticky-booking-cta-button:focus-visible .sticky-booking-cta-label,
+.mobile-sticky-booking .sticky-booking-cta-button:focus-visible .sticky-booking-cta-separator,
+.mobile-sticky-booking .sticky-booking-cta-button:focus-visible .sticky-booking-cta-accent {
+  color: #0B0B0B !important;
+}
 .mobile-sticky-booking .sticky-booking-cta-button:hover .sticky-booking-cta-label,
 .mobile-sticky-booking .sticky-booking-cta-button:hover .sticky-booking-cta-separator,
 .mobile-sticky-booking .sticky-booking-cta-button:hover .sticky-booking-cta-accent,
@@ -315,12 +346,12 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
 }
 
 .back-to-top-btn {
-  background: #C8A83A;
+  background: #B4D94A;
   color: #111111;
 }
 .back-to-top-btn:hover,
 .back-to-top-btn:focus-visible {
-  background: #D4AF37;
+  background: #C6E86D;
   color: #0B0B0B;
 }
 
@@ -359,4 +390,470 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
 [data-sonner-toast] [data-button],
 [data-sonner-toast] button {
   color: inherit !important;
+}
+
+/* ==========================================================================
+   DARK EDITORIAL LUXURY REDESIGN — scoped entirely to `.luxury-shell`
+   ==========================================================================
+   Everything below applies ONLY inside `.luxury-shell` (every public-facing
+   page: Home, Services, Booking, Shop, TryOn, Braiders, Gallery, Blog,
+   Reviews, Policies, BookingSuccess). The Admin dashboard, AdminLogin, and
+   AdminResetPassword do NOT use `.luxury-shell` and share several of the
+   same base classes (.btn-gold, .btn-dark, .lux-card, .gold-text) — this
+   block is scoped so admin keeps its existing warm/cream look untouched.
+   Selectors here mirror the legacy shim above (same specificity strategy:
+   `.luxury-shell <selector>` always outranks the bare selector, and carries
+   `!important` to win against the bare shim rules that also use it) so nothing
+   needs to be deleted from the block above — this is a higher-specificity
+   layer on top of it. */
+
+.luxury-shell {
+  --color-background: #0B0B0B;
+  --color-foreground: #F4F1EA;
+  --color-card: #1A1A1A;
+  --color-card-foreground: #F4F1EA;
+  --color-popover: #1A1A1A;
+  --color-popover-foreground: #F4F1EA;
+  --color-primary: #B4D94A;
+  --color-primary-foreground: #111111;
+  --color-secondary: #1A1A1A;
+  --color-secondary-foreground: #F4F1EA;
+  --color-muted: #1A1A1A;
+  --color-muted-foreground: #B9B6AC;
+  --color-accent: #B4D94A;
+  --color-accent-foreground: #111111;
+  --color-border: #2A2A2A;
+  --color-input: #2A2A2A;
+  --color-ring: #B4D94A;
+  background-color: #0B0B0B;
+  color: #F4F1EA;
+}
+
+.luxury-shell h1,
+.luxury-shell h2,
+.luxury-shell h3,
+.luxury-shell h4,
+.luxury-shell h5,
+.luxury-shell h6,
+.luxury-shell .serif {
+  color: #F4F1EA;
+}
+
+.luxury-shell a { color: #B4D94A; }
+.luxury-shell a:hover { color: #CFEA7E; }
+
+.luxury-shell,
+.luxury-shell .bg-background,
+.luxury-shell main {
+  background-color: #0B0B0B;
+  color: #F4F1EA;
+}
+
+.luxury-shell section:nth-of-type(even),
+.luxury-shell section:nth-of-type(odd) {
+  background-color: transparent;
+}
+
+.luxury-shell footer {
+  background: #0B0B0B;
+  color: #F4F1EA;
+}
+
+.luxury-shell .site-header,
+.luxury-shell .lux-card,
+.luxury-shell .bg-card,
+.luxury-shell .card,
+.luxury-shell [data-radix-popper-content-wrapper] > *,
+.luxury-shell .rounded-\[2rem\],
+.luxury-shell .rounded-3xl {
+  color: #F4F1EA;
+}
+
+.luxury-shell .lux-card,
+.luxury-shell .bg-card,
+.luxury-shell .border-white\/10,
+.luxury-shell .border-white\/12,
+.luxury-shell .border-white\/15,
+.luxury-shell .border-white\/20 {
+  background: #1A1A1A !important;
+  border-color: #2A2A2A !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+}
+
+/* Generic dark-authored opacity utilities: the shim above force-corrects
+   these to light for the (pre-existing) warm theme. Re-flip them to their
+   natural meaning inside `.luxury-shell` now that the shell itself is dark. */
+.luxury-shell .text-white,
+.luxury-shell .text-white\/90,
+.luxury-shell .text-white\/85,
+.luxury-shell .text-white\/80,
+.luxury-shell .text-white\/78,
+.luxury-shell .text-white\/75,
+.luxury-shell .text-white\/72,
+.luxury-shell .text-white\/70,
+.luxury-shell .text-white\/68,
+.luxury-shell .text-white\/66,
+.luxury-shell .text-white\/65,
+.luxury-shell .text-white\/62,
+.luxury-shell .text-white\/60,
+.luxury-shell .text-white\/58,
+.luxury-shell .text-white\/55,
+.luxury-shell .text-white\/50,
+.luxury-shell .text-white\/45,
+.luxury-shell .text-white\/40,
+.luxury-shell .text-white\/35 {
+  color: #F4F1EA !important;
+}
+.luxury-shell .text-white\/90 { color: rgba(244, 241, 234, 0.9) !important; }
+.luxury-shell .text-white\/85 { color: rgba(244, 241, 234, 0.85) !important; }
+.luxury-shell .text-white\/80 { color: rgba(244, 241, 234, 0.8) !important; }
+.luxury-shell .text-white\/78 { color: rgba(244, 241, 234, 0.78) !important; }
+.luxury-shell .text-white\/75 { color: rgba(244, 241, 234, 0.75) !important; }
+.luxury-shell .text-white\/72 { color: rgba(244, 241, 234, 0.72) !important; }
+.luxury-shell .text-white\/70 { color: rgba(244, 241, 234, 0.7) !important; }
+.luxury-shell .text-white\/68 { color: rgba(244, 241, 234, 0.68) !important; }
+.luxury-shell .text-white\/66 { color: rgba(244, 241, 234, 0.66) !important; }
+.luxury-shell .text-white\/65 { color: rgba(244, 241, 234, 0.65) !important; }
+.luxury-shell .text-white\/62 { color: rgba(244, 241, 234, 0.7) !important; }
+.luxury-shell .text-white\/60 { color: rgba(244, 241, 234, 0.7) !important; }
+.luxury-shell .text-white\/58 { color: rgba(244, 241, 234, 0.72) !important; }
+.luxury-shell .text-white\/55 { color: rgba(244, 241, 234, 0.72) !important; }
+.luxury-shell .text-white\/50 { color: rgba(244, 241, 234, 0.75) !important; }
+.luxury-shell .text-white\/45 { color: rgba(244, 241, 234, 0.78) !important; }
+.luxury-shell .text-white\/40 { color: rgba(244, 241, 234, 0.8) !important; }
+.luxury-shell .text-white\/35 { color: rgba(244, 241, 234, 0.82) !important; }
+
+.luxury-shell .text-\[\#f5ead6\],
+.luxury-shell .text-\[\#ecd39d\],
+.luxury-shell .text-\[\#e7d7b2\],
+.luxury-shell .text-\[\#d8c7a4\] { color: #F4F1EA !important; }
+.luxury-shell .text-\[\#bda65d\],
+.luxury-shell .text-\[\#9f8b52\],
+.luxury-shell .text-\[\#75521c\],
+.luxury-shell .text-\[\#4f3720\] { color: #B4D94A !important; }
+.luxury-shell .text-primary,
+.luxury-shell .gold-text { color: #B4D94A !important; }
+
+.luxury-shell .bg-black\/20,
+.luxury-shell .bg-black\/30,
+.luxury-shell .bg-black\/40,
+.luxury-shell .bg-black\/50,
+.luxury-shell .bg-black\/60 {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+.luxury-shell .bg-white\/\[0\.04\],
+.luxury-shell .bg-white\/\[0\.045\],
+.luxury-shell .bg-white\/\[0\.06\],
+.luxury-shell .bg-white\/10,
+.luxury-shell .bg-white\/15 {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+/* Solid warm-white card/panel fills (booking option cards, policy panels,
+   try-on dropzones, mobile nav rows) -> charcoal card fills. The very low
+   opacity ones (bg-white/5, /8, /[0.03]) are left untouched: those were
+   already authored as dark-glass panels and already read correctly once
+   the page behind them is dark. */
+.luxury-shell .bg-white\/45,
+.luxury-shell .bg-white\/60,
+.luxury-shell .bg-white\/70,
+.luxury-shell .bg-white\/78,
+.luxury-shell .bg-white\/90,
+.luxury-shell .bg-white {
+  background-color: #1A1A1A !important;
+}
+.luxury-shell .hover\:bg-white\/70:hover {
+  background-color: #232323 !important;
+}
+.luxury-shell .focus\:border-\[\#b9933e\]:focus,
+.luxury-shell .hover\:border-\[\#9f7a25\]:hover,
+.luxury-shell .hover\:border-\[\#b9933e\]:hover {
+  border-color: rgba(180, 217, 74, 0.6) !important;
+}
+.luxury-shell .hover\:bg-\[\#fff7df\]:hover,
+.luxury-shell .hover\:bg-\[\#fff8df\]:hover {
+  background-color: rgba(180, 217, 74, 0.12) !important;
+}
+.luxury-shell .hover\:text-\[\#8a641e\]:hover {
+  color: #B4D94A !important;
+}
+.luxury-shell .placeholder\:text-\[\#1A1A1A\]\/35::placeholder {
+  color: rgba(244, 241, 234, 0.35) !important;
+}
+.luxury-shell .placeholder\:text-\[\#6f4b16\]\/60::placeholder {
+  color: rgba(244, 241, 234, 0.42) !important;
+}
+.luxury-shell .ring-\[\#c8a552\]\/25,
+.luxury-shell .ring-\[\#d8bd74\]\/35 {
+  --tw-ring-color: rgba(180, 217, 74, 0.35) !important;
+}
+/* Pre-existing gap in this project's Tailwind build: default-palette
+   text-{color}-{shade} utilities (text-red-900, text-blue-500, etc.) don't
+   generate a rule at all and silently inherit the ambient text color —
+   harmless on the old light theme (inherited near-black read fine on a pale
+   alert chip) but unreadable now that `.luxury-shell` inherits off-white.
+   These are the booking/checkout/order error banners (bg-red-50 chips) that
+   must stay legible, so their text and border colors are pinned directly. */
+.luxury-shell .text-red-900 { color: #7f1d1d !important; }
+.luxury-shell .text-red-800 { color: #991b1b !important; }
+.luxury-shell .border-red-400,
+.luxury-shell .border-red-500 { border-color: #dc2626 !important; }
+.luxury-shell .from-\[\#c8a95a\] { --tw-gradient-from: #B4D94A !important; }
+.luxury-shell .to-\[\#f5d98a\] { --tw-gradient-to: #D9F08F !important; }
+
+/* Tailwind v4's `@theme inline` bakes theme colors as LITERAL values into
+   every generated utility class rather than a runtime var() reference, so
+   redeclaring the custom properties on `.luxury-shell` (above) does NOT
+   reach classes like bg-primary/border-primary/bg-card/text-foreground —
+   only the handful of places already given an explicit override elsewhere
+   in this file. This block explicitly re-pins every semantic-token utility
+   actually used across the public pages so the whole site (not just the
+   spots already covered above) renders the dark/lime palette. Substring
+   attribute selectors are used for opacity-variant-heavy classes (Tailwind
+   generates a distinct class per opacity value, e.g. border-primary/25 is
+   a different class from border-primary/60) so no variant is missed. */
+.luxury-shell .bg-primary { background-color: #B4D94A !important; }
+.luxury-shell [class*="bg-primary/"] { background-color: rgba(180, 217, 74, 0.15) !important; }
+.luxury-shell [class*="border-primary"] { border-color: rgba(180, 217, 74, 0.4) !important; }
+.luxury-shell [class*="ring-primary"] { --tw-ring-color: rgba(180, 217, 74, 0.45) !important; }
+.luxury-shell [class*="text-primary/"] { color: rgba(180, 217, 74, 0.85) !important; }
+.luxury-shell .text-primary-foreground { color: #111111 !important; }
+.luxury-shell .bg-secondary { background-color: #1A1A1A !important; }
+.luxury-shell .text-secondary-foreground { color: #F4F1EA !important; }
+.luxury-shell .bg-muted { background-color: #1A1A1A !important; }
+.luxury-shell .text-muted-foreground { color: #B9B6AC !important; }
+.luxury-shell .bg-accent,
+.luxury-shell [class*="bg-accent/"] { background-color: #B4D94A !important; }
+.luxury-shell .text-accent-foreground { color: #111111 !important; }
+.luxury-shell [class*="bg-card"] { background-color: #1A1A1A !important; }
+.luxury-shell .text-card-foreground { color: #F4F1EA !important; }
+.luxury-shell .bg-popover { background-color: #1A1A1A !important; }
+.luxury-shell .text-popover-foreground { color: #F4F1EA !important; }
+.luxury-shell .border-border { border-color: #2A2A2A !important; }
+.luxury-shell .ring-ring { --tw-ring-color: #B4D94A !important; }
+.luxury-shell .text-foreground { color: #F4F1EA !important; }
+.luxury-shell [class*="bg-background/"] { background-color: rgba(11, 11, 11, 0.9) !important; }
+
+/* Literal warm-palette hex utilities hardcoded directly in page JSX (header,
+   footer, cards, search, about, policies, gallery, braiders, dialogs) —
+   mapped by role (light surface -> charcoal/near-black, dark warm text ->
+   off-white, mid-tone gold accent text -> lime, gold borders -> lime hairline)
+   rather than rewritten class-by-class in every file. */
+.luxury-shell .bg-\[\#FAF7F2\],
+.luxury-shell .bg-\[\#e8d5b0\],
+.luxury-shell .bg-\[\#efe0c7\],
+.luxury-shell .bg-\[\#f3e7d2\],
+.luxury-shell .bg-\[\#f6edda\],
+.luxury-shell .bg-\[\#f8efe0\],
+.luxury-shell .bg-\[\#f8f8f7\],
+.luxury-shell .bg-\[\#fff7df\],
+.luxury-shell .bg-\[\#fff8df\],
+.luxury-shell .bg-\[\#fffaf0\] { background-color: #1A1A1A !important; }
+.luxury-shell .bg-\[\#e8d5b0\]\/60 { background-color: rgba(180, 217, 74, 0.14) !important; }
+.luxury-shell .bg-\[\#efe0c7\]\/78 { background-color: #141414 !important; }
+.luxury-shell .bg-\[\#f0d889\]\/45 { background-color: rgba(180, 217, 74, 0.18) !important; }
+.luxury-shell .bg-\[\#fbf2e3\]\/94 { background-color: rgba(26, 26, 26, 0.94) !important; }
+.luxury-shell .bg-\[\#fffaf0\]\/90 { background-color: rgba(26, 26, 26, 0.9) !important; }
+.luxury-shell .bg-\[\#fffaf1\]\/82 { background-color: rgba(26, 26, 26, 0.82) !important; }
+.luxury-shell .bg-\[\#f5ead7\] { background-color: #0B0B0B !important; }
+.luxury-shell .bg-\[\#f5ead7\]\/92 { background-color: rgba(11, 11, 11, 0.92) !important; }
+.luxury-shell .bg-\[\#f5ead7\]\/98 { background-color: rgba(11, 11, 11, 0.98) !important; }
+.luxury-shell .bg-\[\#b88b2d\] { background-color: #B4D94A !important; }
+
+.luxury-shell .border-\[\#9f7a25\],
+.luxury-shell .border-\[\#b9933e\],
+.luxury-shell .border-\[\#c8a552\] { border-color: rgba(180, 217, 74, 0.45) !important; }
+.luxury-shell .border-\[\#c8a552\]\/60,
+.luxury-shell .border-\[\#d8bd74\]\/55,
+.luxury-shell .border-\[\#d8bd74\]\/70,
+.luxury-shell .border-\[\#d8bd74\]\/75,
+.luxury-shell .border-\[\#d2b164\]\/55 { border-color: rgba(180, 217, 74, 0.38) !important; }
+.luxury-shell .border-\[\#c8a95a\]\/18,
+.luxury-shell .border-\[\#c8a95a\]\/25,
+.luxury-shell .border-\[\#c8a95a\]\/35,
+.luxury-shell .border-\[\#d8b66b\]\/35,
+.luxury-shell .border-\[\#d8b66b\]\/40,
+.luxury-shell .border-\[\#d8b66b\]\/50,
+.luxury-shell .border-\[\#d8bd74\]\/35,
+.luxury-shell .border-\[\#d8bd74\]\/45 { border-color: rgba(180, 217, 74, 0.26) !important; }
+
+.luxury-shell .text-\[\#111111\],
+.luxury-shell .text-\[\#1A1A1A\],
+.luxury-shell .text-\[\#24170d\],
+.luxury-shell .text-\[\#2a1a0b\],
+.luxury-shell .text-\[\#2e1b10\],
+.luxury-shell .text-\[\#2f2418\],
+.luxury-shell .text-\[\#34322d\],
+.luxury-shell .text-\[\#3a2615\],
+.luxury-shell .text-\[\#4A4A4A\],
+.luxury-shell .text-\[\#4a3014\],
+.luxury-shell .text-\[\#5a3d1e\],
+.luxury-shell .text-\[\#5b3a12\],
+.luxury-shell .text-\[\#5f5142\],
+.luxury-shell .text-\[\#6e604f\],
+.luxury-shell .text-\[\#6f5f4b\],
+.luxury-shell .text-\[\#7b6547\],
+.luxury-shell .text-\[\#858481\] { color: #F4F1EA !important; }
+.luxury-shell .text-\[\#1A1A1A\]\/35 { color: rgba(244, 241, 234, 0.4) !important; }
+.luxury-shell .text-\[\#1A1A1A\]\/68 { color: rgba(244, 241, 234, 0.7) !important; }
+.luxury-shell .text-\[\#4a3014\]\/80 { color: rgba(244, 241, 234, 0.82) !important; }
+.luxury-shell .text-\[\#4f3720\]\/60 { color: rgba(244, 241, 234, 0.65) !important; }
+
+.luxury-shell .text-\[\#8a641e\],
+.luxury-shell .text-\[\#8a6a1f\],
+.luxury-shell .text-\[\#7a541e\],
+.luxury-shell .text-\[\#9f7a25\],
+.luxury-shell .text-\[\#6f4b16\],
+.luxury-shell .text-\[\#eed9ab\] { color: #B4D94A !important; }
+.luxury-shell .text-\[\#6f4b16\]\/50 { color: rgba(180, 217, 74, 0.55) !important; }
+.luxury-shell .text-\[\#6f4b16\]\/60 { color: rgba(180, 217, 74, 0.65) !important; }
+
+.luxury-shell input,
+.luxury-shell textarea,
+.luxury-shell select {
+  background: #1A1A1A !important;
+  color: #F4F1EA !important;
+  border-color: rgba(180, 217, 74, 0.32) !important;
+}
+.luxury-shell input::placeholder,
+.luxury-shell textarea::placeholder { color: rgba(244, 241, 234, 0.45) !important; }
+
+.luxury-shell .hero-video-reference .container h1,
+.luxury-shell .hero-video-reference .container p,
+.luxury-shell .hero-slogan-list,
+.luxury-shell .hero-slogan-list li {
+  color: #F4F1EA !important;
+}
+.luxury-shell .hero-slogan-list li:last-child { color: #B4D94A !important; }
+.luxury-shell .hero-video-reference .gold-text,
+.luxury-shell .gold-text {
+  color: #B4D94A !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* Buttons: lime pill fill w/ near-black text (AA-safe), fine-grain texture,
+   subtle lift on hover. Grain is a tiny inline SVG turbulence filter tiled
+   at 120px — no network request, no image asset. */
+.luxury-shell .btn-gold,
+.luxury-shell .btn-dark,
+.luxury-shell a[href^='/booking'].btn-gold,
+.luxury-shell button[type='submit'] {
+  background: #B4D94A !important;
+  color: #111111 !important;
+  border: 1px solid #B4D94A !important;
+  box-shadow: 0 18px 44px rgba(180, 217, 74, 0.18);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.luxury-shell .btn-gold::after,
+.luxury-shell .btn-dark::after,
+.luxury-shell button[type='submit']::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 120px 120px;
+}
+.luxury-shell .btn-gold:hover,
+.luxury-shell .btn-dark:hover,
+.luxury-shell button[type='submit']:hover {
+  background: #C6E86D !important;
+  color: #0B0B0B !important;
+  border-color: #C6E86D !important;
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+.luxury-shell .btn-dark {
+  background: transparent !important;
+  color: #F4F1EA !important;
+  border: 1px solid rgba(180, 217, 74, 0.5) !important;
+  box-shadow: none;
+}
+.luxury-shell .btn-dark:hover {
+  background: rgba(180, 217, 74, 0.12) !important;
+  color: #F4F1EA !important;
+  border-color: #B4D94A !important;
+  transform: translateY(-1px);
+}
+
+/* Badges / small ribbon tags: lime fill, near-black bold text, same grain. */
+.luxury-shell .pill {
+  background: #B4D94A !important;
+  border: 1px solid #B4D94A !important;
+  color: #111111 !important;
+  font-weight: 800;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.luxury-shell .pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.4;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 120px 120px;
+}
+.luxury-shell .pill-ribbon {
+  transform: rotate(-3deg);
+  display: inline-block;
+}
+
+.luxury-shell .nav-link { color: rgba(244, 241, 234, 0.82); }
+.luxury-shell .nav-link:hover { color: #B4D94A; }
+
+/* Section rhythm: generous vertical padding, hairline dividers between
+   full-bleed bands instead of the old alternating white/cream stripes. */
+.luxury-shell section:not(.hero-video-reference):not(.py-8) {
+  border-bottom: 1px solid #1A1A1A;
+}
+
+.luxury-shell .review-marquee-card {
+  background: #1A1A1A !important;
+  border: 1px solid #2A2A2A;
+}
+
+/* Full-bleed 3-image collage band: no gaps, uniform height, hard-edge crop. */
+.luxury-shell .collage-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  width: 100%;
+}
+.luxury-shell .collage-strip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+@media (max-width: 640px) {
+  .luxury-shell .collage-strip {
+    grid-auto-flow: column;
+    grid-auto-columns: 78%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+  .luxury-shell .collage-strip img { scroll-snap-align: start; }
+}
+
+/* Lime color-block "cutout" photo treatment: hard edge, no drop shadow. */
+.luxury-shell .lime-block {
+  background: #B4D94A !important;
+}
+
+@media (max-width: 767px) {
+  .luxury-shell .section-pad { padding-top: 3.5rem; padding-bottom: 3.5rem; }
 }

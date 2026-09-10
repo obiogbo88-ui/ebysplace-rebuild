@@ -101,9 +101,9 @@ export function SiteHeader() {
           aria-label="Eby’s Place home"
         >
           <img
-            src={HEADER_LOGO_SRC}
+            src={LOGO_SRC}
             alt="Eby’s Place"
-            className="h-12 w-[8.25rem] object-contain object-left mix-blend-multiply min-[380px]:h-14 min-[380px]:w-[9.5rem] sm:h-20 sm:w-[14rem] lg:h-[4.5rem] lg:w-[15rem] xl:w-[16.5rem]"
+            className="h-12 w-[8.25rem] object-contain object-left min-[380px]:h-14 min-[380px]:w-[9.5rem] sm:h-20 sm:w-[14rem] lg:h-[4.5rem] lg:w-[15rem] xl:w-[16.5rem]"
             loading="eager"
             decoding="async"
             fetchPriority="high"
@@ -263,9 +263,9 @@ export function SiteFooter() {
       <div className="container grid gap-10 md:grid-cols-[1.3fr_1fr_1fr_1fr_1fr] md:gap-8">
         <div>
           <img
-            src={HEADER_LOGO_SRC}
+            src={LOGO_SRC}
             alt="Eby’s Place"
-            className="h-16 w-auto max-w-[10rem] object-contain object-left mix-blend-multiply drop-shadow-[0_8px_18px_rgba(112,78,28,.18)] sm:h-20 sm:max-w-[12rem]"
+            className="h-16 w-auto max-w-[10rem] object-contain object-left drop-shadow-[0_8px_18px_rgba(0,0,0,.4)] sm:h-20 sm:max-w-[12rem]"
             loading="lazy"
             decoding="async"
           />
@@ -466,10 +466,28 @@ function HomepageGalleryPreview() {
     category: "All",
   });
   const [selected, setSelected] = useState<any | null>(null);
-  const preview = (galleryItems as any[]).slice(0, 6);
-  if (preview.length === 0) return null;
+  const allItems = galleryItems as any[];
+  const collage = allItems.slice(0, 3);
+  const preview = (allItems.length > 3 ? allItems.slice(3) : allItems).slice(0, 6);
+  if (preview.length === 0 && collage.length === 0) return null;
   return (
     <>
+      {collage.length === 3 ? (
+        <div className="collage-strip -mx-4 mt-10 overflow-hidden rounded-2xl sm:mx-0" style={{ aspectRatio: "3 / 1.15" }}>
+          {collage.map((image: any, index: number) => (
+            <img
+              key={`collage-${image.id ?? image.title ?? "gallery"}-${index}`}
+              src={image.imageUrl}
+              alt={image.altText || image.title}
+              loading="lazy"
+              decoding="async"
+              onError={event => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ))}
+        </div>
+      ) : null}
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {preview.map((image: any, index: number) => (
           <button
@@ -583,9 +601,9 @@ export default function Home() {
                 event.currentTarget.style.display = "none";
               }}
             />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.38)_45%,rgba(247,238,222,.1)),linear-gradient(180deg,rgba(247,238,222,.08),rgba(20,12,5,.76))]" />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,11,11,.82),rgba(11,11,11,.5)_45%,rgba(11,11,11,.18)),linear-gradient(180deg,rgba(11,11,11,.12),rgba(0,0,0,.88))]" />
             <div className="container relative z-10 py-24 md:py-32 lg:pb-28 lg:pt-40">
-              <p className="pill w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs">
+              <p className="pill pill-ribbon w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs">
                 Somerset, UK &middot; Est. braid studio
               </p>
               <div className="mt-6 max-w-3xl [text-shadow:0_3px_22px_rgba(0,0,0,.88)]">
@@ -668,6 +686,21 @@ export default function Home() {
                 powerful Eby’s Place platform.
               </p>
             </div>
+          </div>
+        </section>
+
+        <section className="lime-block">
+          <div className="mx-auto flex aspect-[21/9] w-full max-w-[1400px] items-center justify-center overflow-hidden py-8 sm:aspect-[2/1] md:aspect-[21/8]">
+            <img
+              className="h-full max-h-full w-auto max-w-full object-contain"
+              src={LANDING_HERO_IMAGE_SRC}
+              alt="Eby’s Place braid finishing detail"
+              loading="lazy"
+              decoding="async"
+              onError={event => {
+                event.currentTarget.closest("section")?.remove();
+              }}
+            />
           </div>
         </section>
 
@@ -1041,6 +1074,32 @@ export default function Home() {
                 </aside>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="relative isolate overflow-hidden">
+          <img
+            className="absolute inset-0 h-full w-full object-cover"
+            src={PRODUCT_IMAGE_FALLBACK_SRC}
+            alt="Eby’s Place finishing detail"
+            loading="lazy"
+            decoding="async"
+            onError={event => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,11,11,.55),rgba(11,11,11,.85))]" />
+          <div className="container relative z-10 flex flex-col items-start gap-6 py-24 md:py-32">
+            <h2 className="serif max-w-2xl text-4xl font-bold leading-tight text-[#F4F1EA] md:text-6xl">
+              Ready for braids that feel as good as they look?
+            </h2>
+            <button
+              type="button"
+              className="btn-gold"
+              onClick={() => navigateWithSmoothScroll("/booking", setLocation)}
+            >
+              <CalendarDays className="mr-2 h-5 w-5" /> Book Your Appointment
+            </button>
           </div>
         </section>
       </main>
