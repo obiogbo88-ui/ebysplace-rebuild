@@ -210,17 +210,17 @@ function normalizeSharedLinkPath(pathname: string) {
 }
 
 const defaultSeo = {
-  title: "Eby’s Place | Luxury Pain-Free Braiding in Somerset, UK",
+  title: "Eby’s Place | African Braids & Braiding in Somerset, UK",
   description:
-    "Eby’s Place offers luxury pain-free braiding in Somerset, UK: zero pain, zero trauma, just perfection, with bookings, £20 deposits, braid care products, reviews, gallery inspiration, AI hairstyle try-on, and Braiders Near Me SaaS matching.",
+    "Eby’s Place offers luxury African braiding near Bridgwater and across Somerset, UK: zero pain, zero trauma, just perfection, with bookings, £20 deposits, braid care products, reviews, gallery inspiration, AI hairstyle try-on, and Braiders Near Me SaaS matching.",
 };
 
 const seoByPath: Record<string, { title: string; description: string }> = {
   "/": defaultSeo,
   "/services": {
-    title: "Luxury Pain-Free Braiding Services | Eby’s Place",
+    title: "African Braids, Knotless Braids & Cornrows Somerset | Eby’s Place",
     description:
-      "Explore Eby’s Place braiding services, including knotless braids, boho knotless braids, box braids, goddess braids, locs, twists, kids styles, men’s styles, beads, accessories, and gentle add-ons.",
+      "Explore Eby’s Place African braiding services in Somerset, UK — knotless braids, boho knotless braids, box braids, goddess braids, cornrows, locs, twists, kids braids, men’s styles, beads, accessories, and gentle add-ons.",
   },
   "/booking": {
     title: "Book Appointment | Eby’s Place",
@@ -497,7 +497,7 @@ function BackToTopButton() {
       type="button"
       aria-label="Back to top"
       onClick={() => smoothScrollToTop(0)}
-      className="back-to-top-btn fixed bottom-40 right-4 z-[79] flex h-12 w-12 items-center justify-center rounded-full shadow-[0_8px_24px_rgba(17,17,17,.28)] transition duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#B4D94A] md:bottom-24 md:right-6 md:h-14 md:w-14"
+      className="back-to-top-btn fixed bottom-40 right-4 z-[79] flex h-12 w-12 items-center justify-center rounded-full shadow-[0_8px_24px_rgba(17,17,17,.28)] transition duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C9A84C] md:bottom-24 md:right-6 md:h-14 md:w-14"
     >
       <svg
         aria-hidden="true"
