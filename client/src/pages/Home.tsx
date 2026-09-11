@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { blogPosts } from "@/lib/blogContent";
 import { trpc } from "@/lib/trpc";
 import {
@@ -14,10 +15,12 @@ import {
   createServiceImageErrorHandler,
   getServiceImageSrc,
 } from "@/lib/serviceImageFallback";
+import { Reveal, ScaleOnScroll, staggerContainer, staggerItem } from "@/lib/motion";
 import {
   ArrowRight,
   CalendarDays,
   Heart,
+  Instagram,
   Menu,
   Search,
   ShieldCheck,
@@ -26,7 +29,7 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 const LOGO_SRC =
   "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
@@ -211,24 +214,44 @@ export function SiteHeader() {
         </div>
       </div>
 
-      {menuOpen ? (
-        <nav
-          className="border-t border-[#d8bd74]/45 bg-[#f5ead7]/98 px-5 py-5 shadow-[0_18px_45px_rgba(66,42,18,.14)] 2xl:hidden"
-          aria-label="Mobile navigation"
-        >
-          <div className="container grid gap-3 p-0">
+      <AnimatePresence>
+        {menuOpen ? (
+          <motion.nav
+            className="fixed inset-0 z-[60] flex flex-col overflow-y-auto bg-[#0B0B0B] px-6 py-6 2xl:hidden"
+            aria-label="Mobile navigation"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="flex items-center justify-between">
+              <img
+                src={LOGO_SRC}
+                alt="Eby’s Place"
+                className="h-12 w-auto object-contain"
+              />
+              <button
+                type="button"
+                className="rounded-full border border-primary/45 bg-primary p-2.5 text-[#111111] shadow-[0_12px_28px_rgba(0,0,0,.35)]"
+                aria-label="Close menu"
+                onClick={() => setMenuOpen(false)}
+              >
+                <X className="h-5 w-5 [stroke-width:2.6]" />
+              </button>
+            </div>
+
             <form
-              className="relative"
+              className="relative mt-8"
               role="search"
               aria-label="Mobile product search"
               onSubmit={handleProductSearch}
             >
               <Search
-                className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]"
+                className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-primary"
                 aria-hidden="true"
               />
               <input
-                className="h-12 w-full rounded-2xl border border-[#d8bd74]/45 bg-white/60 py-3 pl-11 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none focus:ring-2 focus:ring-[#d8bd74]/35"
+                className="h-12 w-full rounded-full border border-primary/30 bg-transparent py-3 pl-11 pr-4 text-sm font-semibold text-[#F4EFE6] placeholder:text-[#F4EFE6]/45 focus:border-primary focus:outline-none"
                 type="search"
                 value={productSearch}
                 onChange={event => setProductSearch(event.target.value)}
@@ -236,28 +259,53 @@ export function SiteHeader() {
                 aria-label="Search Eby’s Place products"
               />
             </form>
-            {navLinks.map(item => (
-              <Link
-                key={item.href}
-                className="rounded-2xl border border-[#d8bd74]/35 bg-white/45 px-4 py-3 text-sm font-semibold text-[#2a1a0b] transition hover:border-[#b9933e] hover:bg-white/70 hover:text-[#8a641e]"
-                href={item.href}
-                onClick={() => {
-                  if (item.href === "/braiders-near-me") trackBraidersClick();
-                  setMenuOpen(false);
-                }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </nav>
-      ) : null}
+
+            <nav className="mt-10 flex flex-1 flex-col justify-center gap-1">
+              {navLinks.map((item, index) => (
+                <motion.div
+                  key={item.href}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.5,
+                    delay: 0.08 * index,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                >
+                  <Link
+                    className="serif block border-b border-primary/10 py-3 text-4xl font-bold uppercase leading-tight tracking-tight text-[#F4EFE6] transition hover:text-primary sm:text-5xl"
+                    href={item.href}
+                    onClick={() => {
+                      if (item.href === "/braiders-near-me") trackBraidersClick();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    {item.label}
+                  </Link>
+                </motion.div>
+              ))}
+            </nav>
+
+            <button
+              type="button"
+              className="btn-gold mt-8 w-full justify-center py-4 text-sm uppercase tracking-[.16em]"
+              onClick={() => {
+                setMenuOpen(false);
+                navigateWithSmoothScroll("/booking", setLocation);
+              }}
+            >
+              Book Now
+            </button>
+          </motion.nav>
+        ) : null}
+      </AnimatePresence>
     </header>
   );
 }
 
 export function SiteFooter() {
   const [, setLocation] = useLocation();
+  const { data: instagram } = trpc.public.instagramSettings.useQuery();
   return (
     <footer id="site-footer" className="border-t border-primary/25 bg-[#f5ead7] pb-10 pt-16 text-[#2a1a0b]">
       <div className="container grid gap-10 md:grid-cols-[1.3fr_1fr_1fr_1fr_1fr] md:gap-8">
@@ -330,6 +378,18 @@ export function SiteFooter() {
               info@ebysplace.com
             </a>
           </p>
+          {instagram?.enabled && instagram.handle && instagram.feedUrl ? (
+            <p className="mt-3 text-sm font-semibold">
+              <a
+                className="inline-flex items-center gap-1.5 transition hover:text-[#8a641e]"
+                href={instagram.feedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Instagram className="h-4 w-4" /> {instagram.handle}
+              </a>
+            </p>
+          ) : null}
           <h4 className="mt-6 text-xs font-bold uppercase tracking-[.16em] text-primary">
             Luxury Care Promise
           </h4>
@@ -340,9 +400,11 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="container mt-14 border-t border-primary/20 pt-10">
-        <p className="serif max-w-5xl text-5xl font-bold uppercase leading-[0.92] tracking-[-0.05em] text-[#24170d] sm:text-7xl md:text-8xl">
-          Beauty in every strand
-        </p>
+        <Reveal className="max-w-5xl">
+          <p className="serif text-5xl font-bold uppercase leading-[0.92] tracking-[-0.05em] text-[#24170d] sm:text-7xl md:text-8xl">
+            Beauty in every strand
+          </p>
+        </Reveal>
         <div className="mt-8 flex flex-col gap-3 border-t border-primary/15 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs font-medium tracking-[0.03em] text-[#4f3720]/60">
             © {new Date().getFullYear()} Eby’s Place. All rights reserved.
@@ -461,6 +523,105 @@ function HomepageLiveSearch() {
   );
 }
 
+function FeaturedStyleSpotlight({ styles }: { styles: any[] }) {
+  const [, setLocation] = useLocation();
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (reduceMotion || paused || styles.length < 2) return;
+    const timer = setInterval(() => {
+      setIndex(current => (current + 1) % styles.length);
+    }, 5500);
+    return () => clearInterval(timer);
+  }, [reduceMotion, paused, styles.length]);
+
+  if (styles.length === 0) return null;
+  const style = styles[index % styles.length];
+  const imageSrc = getServiceImageSrc(style);
+
+  return (
+    <section
+      className="section-pad overflow-hidden"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="container">
+        <Reveal>
+          <p className="pill w-fit">Featured style</p>
+        </Reveal>
+        <div className="relative mt-8 grid items-center gap-8 lg:grid-cols-[1.1fr_1fr]">
+          <motion.div
+            key={style.id ?? style.slug ?? style.name}
+            initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="order-2 lg:order-1"
+          >
+            <h2 className="serif text-5xl font-bold leading-[1.05] md:text-7xl">
+              {style.name}
+            </h2>
+            <p className="mt-6 max-w-md text-base leading-8 text-white/70">
+              {style.description}
+            </p>
+            <div className="mt-6 flex items-center gap-4 text-sm text-white/60">
+              <span>{style.duration}</span>
+              <b className="text-primary">From £{style.priceFrom}</b>
+            </div>
+            <button
+              type="button"
+              className="btn-gold mt-8"
+              onClick={() =>
+                navigateWithSmoothScroll(
+                  `/booking?service=${encodeURIComponent(style.name)}`,
+                  setLocation
+                )
+              }
+            >
+              Book This Style
+            </button>
+          </motion.div>
+          <motion.div
+            key={`${style.id ?? style.slug ?? style.name}-image`}
+            initial={reduceMotion ? false : { opacity: 0, scale: 1.04 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="media-portrait order-1 overflow-hidden rounded-[1.6rem] bg-[#171009] lg:order-2"
+          >
+            {imageSrc ? (
+              <img
+                src={imageSrc}
+                alt={`${style.name} hairstyle by Eby’s Place`}
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full object-cover"
+                onError={createServiceImageErrorHandler(style)}
+              />
+            ) : null}
+          </motion.div>
+        </div>
+        {styles.length > 1 ? (
+          <div className="mt-6 flex gap-2">
+            {styles.map((item, dotIndex) => (
+              <button
+                key={item.id ?? item.slug ?? item.name}
+                type="button"
+                aria-label={`Show featured style ${dotIndex + 1} of ${styles.length}`}
+                aria-current={dotIndex === index}
+                onClick={() => setIndex(dotIndex)}
+                className={`h-1.5 rounded-full transition-all ${
+                  dotIndex === index ? "w-8 bg-primary" : "w-1.5 bg-primary/25"
+                }`}
+              />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 function HomepageGalleryPreview() {
   const { data: galleryItems = [] } = trpc.public.gallery.useQuery({
     category: "All",
@@ -555,6 +716,7 @@ export default function Home() {
   const { data: products = [] } = trpc.public.products.useQuery();
   const { data: sections = [] } = trpc.public.websiteSections.useQuery();
   const { data: reviews = [] } = trpc.public.reviews.useQuery();
+  const { data: instagram } = trpc.public.instagramSettings.useQuery();
   const newsletter = trpc.public.newsletter.useMutation({
     onSuccess: () => smoothScrollToTop(40),
   });
@@ -590,24 +752,42 @@ export default function Home() {
       <main>
         <section className="relative isolate overflow-hidden">
           <div className="hero-video-reference relative flex items-center lg:items-start">
-            <img
+            <motion.img
               className="absolute inset-0 h-full w-full object-cover object-[center_10%] md:object-[center_12%] lg:object-[center_14%]"
               src={LANDING_HERO_IMAGE_SRC}
               alt="Eby’s Place pain-free braiding hero style"
               loading="eager"
               decoding="async"
               fetchPriority="high"
+              initial={{ scale: 1.08, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
               onError={event => {
                 event.currentTarget.style.display = "none";
               }}
             />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,11,11,.82),rgba(11,11,11,.5)_45%,rgba(11,11,11,.18)),linear-gradient(180deg,rgba(11,11,11,.12),rgba(0,0,0,.88))]" />
-            <div className="container relative z-10 py-24 md:py-32 lg:pb-28 lg:pt-40">
-              <p className="pill pill-ribbon w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs">
+            <motion.div
+              className="container relative z-10 py-24 md:py-32 lg:pb-28 lg:pt-40"
+              variants={staggerContainer}
+              initial="hidden"
+              animate="show"
+            >
+              <motion.p
+                variants={staggerItem}
+                className="serif text-sm italic tracking-[.08em] text-primary sm:text-base"
+              >
+                Eby’s Place &middot; Beauty in every strand
+              </motion.p>
+              <motion.p
+                variants={staggerItem}
+                className="pill pill-ribbon mt-4 w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs"
+              >
                 Somerset, UK &middot; Est. braid studio
-              </p>
+              </motion.p>
               <div className="mt-6 max-w-3xl [text-shadow:0_3px_22px_rgba(0,0,0,.88)]">
-                <ul
+                <motion.ul
+                  variants={staggerItem}
                   className="hero-slogan-list max-w-[20rem] list-none space-y-0 p-0 lg:max-w-[30rem]"
                   aria-label="Eby’s Place pain-free promise"
                   data-placement="lower-left-side-away-from-model-face"
@@ -615,19 +795,25 @@ export default function Home() {
                   <li>Zero pain.</li>
                   <li>Zero trauma.</li>
                   <li>Just perfection.</li>
-                </ul>
-                <h1 className="serif mt-8 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl">
+                </motion.ul>
+                <motion.h1
+                  variants={staggerItem}
+                  className="serif mt-8 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl"
+                >
                   Luxury Pain-Free Braiding in <br className="sm:hidden" />
                   <span className="gold-text">Somerset, UK</span>
-                </h1>
-                <p className="mt-7 max-w-2xl text-base font-medium leading-8 text-white sm:text-lg">
+                </motion.h1>
+                <motion.p
+                  variants={staggerItem}
+                  className="mt-7 max-w-2xl text-base font-medium leading-8 text-white sm:text-lg"
+                >
                   You do not fear bad braids. You fear the pain after: the
                   headaches, the tight edges, the thinning hairlines, and the
                   uncomfortable first nights. Eby’s Place is built for clients
                   who want beautiful, long-lasting protective styling without
                   sacrificing comfort, confidence, or scalp health.
-                </p>
-                <div className="mt-10 flex flex-wrap gap-4">
+                </motion.p>
+                <motion.div variants={staggerItem} className="mt-10 flex flex-wrap gap-4">
                   <button
                     type="button"
                     className="btn-gold"
@@ -644,17 +830,19 @@ export default function Home() {
                   >
                     <Wand2 className="mr-2 h-5 w-5" /> Try a braid style
                   </Link>
-                </div>
+                </motion.div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
         <HomepageLiveSearch />
 
+        <FeaturedStyleSpotlight styles={styles as any[]} />
+
         <section className="section-pad bg-white/[0.045]">
           <div className="container grid gap-6 md:grid-cols-3">
-            <div className="lux-card">
+            <Reveal className="lux-card">
               <Heart className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
                 No pain. No pulling. Just flawless braids.
@@ -663,8 +851,8 @@ export default function Home() {
                 Premium braiding designed to protect your scalp, last
                 beautifully, and keep you comfortable from start to finish.
               </p>
-            </div>
-            <div className="lux-card">
+            </Reveal>
+            <Reveal className="lux-card" delay={0.1}>
               <ShieldCheck className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
                 Professional from booking to finish.
@@ -674,8 +862,8 @@ export default function Home() {
                 updates, delivery details, and full admin oversight — all built
                 for a smooth salon experience.
               </p>
-            </div>
-            <div className="lux-card">
+            </Reveal>
+            <Reveal className="lux-card" delay={0.2}>
               <Sparkles className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
                 The future of braiding is here.
@@ -685,22 +873,34 @@ export default function Home() {
                 reviews, analytics, and SaaS integration — all inside one
                 powerful Eby’s Place platform.
               </p>
-            </div>
+            </Reveal>
           </div>
         </section>
 
-        <section className="lime-block">
-          <div className="mx-auto flex aspect-[21/9] w-full max-w-[1400px] items-center justify-center overflow-hidden py-8 sm:aspect-[2/1] md:aspect-[21/8]">
-            <img
-              className="h-full max-h-full w-auto max-w-full object-contain"
-              src={LANDING_HERO_IMAGE_SRC}
-              alt="Eby’s Place braid finishing detail"
-              loading="lazy"
-              decoding="async"
-              onError={event => {
-                event.currentTarget.closest("section")?.remove();
-              }}
-            />
+        <section className="section-pad overflow-hidden">
+          <div className="container grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
+            <Reveal>
+              <p className="pill w-fit">Craft</p>
+              <h2 className="serif mt-5 text-5xl font-bold leading-[1.05] md:text-6xl">
+                The Art <br />
+                <span className="gold-text">of Braiding.</span>
+              </h2>
+              <p className="mt-6 max-w-md text-base leading-8 text-white/70">
+                Every style is more than a hairstyle. It is creativity,
+                identity and confidence — crafted strand by strand.
+              </p>
+            </Reveal>
+            <ScaleOnScroll className="overflow-hidden rounded-[1.6rem]">
+              <div className="media-portrait aspect-[4/5] overflow-hidden">
+                <img
+                  src={LANDING_HERO_IMAGE_SRC}
+                  alt="Eby’s Place braid finishing detail, close up"
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover object-[center_18%]"
+                />
+              </div>
+            </ScaleOnScroll>
           </div>
         </section>
 
@@ -914,6 +1114,17 @@ export default function Home() {
         </section>
 
         <section className="section-pad">
+          <div className="container max-w-4xl">
+            <Reveal>
+              <h2 className="serif text-4xl font-bold leading-[1.1] md:text-6xl">
+                More than a salon. <br />
+                <span className="gold-text">A place to feel beautiful.</span>
+              </h2>
+            </Reveal>
+          </div>
+        </section>
+
+        <section className="section-pad">
           <div className="container">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
@@ -934,19 +1145,27 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="py-8 overflow-hidden bg-[#efe0c7]/78 text-[#24170d] md:py-10">
+        <section className="section-pad overflow-hidden">
           <div className="container">
-            <button
-              type="button"
-              className="btn-gold w-fit px-5 py-3 text-sm"
-              onClick={() => navigateWithSmoothScroll("/reviews", setLocation)}
-              aria-label="Leave a review for Eby’s Place"
-            >
-              <span className="sr-only">Live testimonials </span>Leave a Review
-            </button>
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <Reveal>
+                <p className="pill w-fit">Testimonials</p>
+                <h2 className="serif mt-4 text-4xl font-bold leading-tight md:text-5xl">
+                  Loved, strand by strand.
+                </h2>
+              </Reveal>
+              <button
+                type="button"
+                className="btn-gold w-fit px-5 py-3 text-sm"
+                onClick={() => navigateWithSmoothScroll("/reviews", setLocation)}
+                aria-label="Leave a review for Eby’s Place"
+              >
+                Leave a Review
+              </button>
+            </div>
           </div>
           <div
-            className="review-marquee mt-5"
+            className="review-marquee mt-10"
             aria-label="Moving Eby’s Place customer reviews"
           >
             <div className="review-marquee-track">
@@ -959,10 +1178,10 @@ export default function Home() {
                   key={`${r.id ?? r.customerName}-${index}`}
                 >
                   <div className="text-primary">★★★★★</div>
-                  <p className="mt-4 text-sm font-semibold leading-7 text-[#3a2615]">
+                  <p className="serif mt-4 text-xl italic leading-8 text-[#3a2615]">
                     “{r.reviewText}”
                   </p>
-                  <footer className="mt-5 font-black text-[#24170d]">
+                  <footer className="mt-5 text-sm font-bold uppercase tracking-[.1em] text-[#24170d]">
                     {r.customerName}
                   </footer>
                 </blockquote>
@@ -1021,9 +1240,9 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="section-pad bg-[#f3e7d2] text-[#24170d]">
+        <section id="our-story" className="section-pad bg-[#f3e7d2] text-[#24170d] scroll-mt-28">
           <div className="container">
-            <div className="rounded-[2rem] border border-[#d2b164]/55 bg-[#fbf2e3]/94 p-5 shadow-[0_24px_70px_rgba(74,48,20,.16)] sm:p-7 lg:p-9">
+            <Reveal className="rounded-[2rem] border border-[#d2b164]/55 bg-[#fbf2e3]/94 p-5 shadow-[0_24px_70px_rgba(74,48,20,.16)] sm:p-7 lg:p-9">
               <div className="grid items-center gap-7 lg:grid-cols-[minmax(0,1fr)_13rem]">
                 <div className="min-w-0">
                   <p className="pill w-fit border-[#d8bd74]/70 bg-white text-[#5b3a12]">
@@ -1073,7 +1292,28 @@ export default function Home() {
                   </p>
                 </aside>
               </div>
-            </div>
+            </Reveal>
+          </div>
+        </section>
+
+        <section className="section-pad">
+          <div className="container max-w-2xl text-center">
+            <Reveal>
+              <p className="pill mx-auto w-fit">Follow along</p>
+              <h2 className="serif mt-5 text-3xl font-bold md:text-4xl">
+                Follow the Eby’s Place experience.
+              </h2>
+              {instagram?.enabled && instagram.handle && instagram.feedUrl ? (
+                <a
+                  href={instagram.feedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-dark mt-6 inline-flex items-center gap-2"
+                >
+                  <Instagram className="h-4 w-4" /> {instagram.handle}
+                </a>
+              ) : null}
+            </Reveal>
           </div>
         </section>
 
@@ -1090,9 +1330,14 @@ export default function Home() {
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,11,11,.55),rgba(11,11,11,.85))]" />
           <div className="container relative z-10 flex flex-col items-start gap-6 py-24 md:py-32">
-            <h2 className="serif max-w-2xl text-4xl font-bold leading-tight text-[#F4F1EA] md:text-6xl">
-              Ready for braids that feel as good as they look?
-            </h2>
+            <Reveal>
+              <h2 className="serif max-w-2xl text-4xl font-bold leading-tight text-[#F4EFE6] md:text-6xl">
+                Ready for your next look?
+              </h2>
+              <p className="mt-3 max-w-xl text-base text-white/70">
+                Your next style starts here.
+              </p>
+            </Reveal>
             <button
               type="button"
               className="btn-gold"

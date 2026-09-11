@@ -3,6 +3,7 @@ import { CalendarDays, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { createServiceImageErrorHandler, getServiceImageSrc } from "@/lib/serviceImageFallback";
+import { Reveal } from "@/lib/motion";
 import { SiteFooter, SiteHeader } from "./Home";
 
 const tabs = ["All", "Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"] as const;
@@ -43,23 +44,25 @@ export default function Services() {
     <div className="luxury-shell">
       <SiteHeader />
       <main className="container section-pad">
-        <p className="pill w-fit">Services & pricing</p>
-        <div className="mt-4 max-w-4xl">
-          <h1 className="serif text-4xl font-bold leading-tight sm:text-5xl md:text-7xl">
-            Full Eby’s Place{" "}
-            <span className="gold-text">braiding catalogue.</span>
-          </h1>
-          <p className="mt-5 max-w-3xl text-lg leading-8 text-white/68">
-            Choose from the full Somerset, UK service catalogue. Every booking
-            clearly presents the £20 non-refundable deposit before
-            checkout, and every style is framed around comfort, longevity, and
-            scalp respect.
-          </p>
-          <p className="mt-4 max-w-3xl text-sm font-semibold leading-6 text-[#5a3d1e]">
-            Prices are listed as starting prices because length, size, hair
-            density, and add-ons may affect the final appointment quote.
-          </p>
-        </div>
+        <Reveal>
+          <p className="pill w-fit">Services & pricing</p>
+          <div className="mt-4 max-w-4xl">
+            <h1 className="serif text-4xl font-bold leading-tight sm:text-5xl md:text-7xl">
+              Full Eby’s Place{" "}
+              <span className="gold-text">braiding catalogue.</span>
+            </h1>
+            <p className="mt-5 max-w-3xl text-lg leading-8 text-white/68">
+              Choose from the full Somerset, UK service catalogue. Every booking
+              clearly presents the £20 non-refundable deposit before
+              checkout, and every style is framed around comfort, longevity, and
+              scalp respect.
+            </p>
+            <p className="mt-4 max-w-3xl text-sm font-semibold leading-6 text-[#5a3d1e]">
+              Prices are listed as starting prices because length, size, hair
+              density, and add-ons may affect the final appointment quote.
+            </p>
+          </div>
+        </Reveal>
 
         <div
           className="mt-10 flex flex-wrap gap-3"
@@ -115,11 +118,12 @@ export default function Services() {
             </div>
           ) : (
             <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-7">
-              {visibleServices.map(service => {
+              {visibleServices.map((service, index) => {
                 const isBookable = service.isBookable !== "false";
                 const serviceImageSrc = getServiceImageSrc(service);
                 return (
-                <article
+                <Reveal
+                  delay={Math.min(index, 4) * 0.06}
                   className="lux-card flex flex-col overflow-hidden p-0"
                   key={service.id ?? service.slug}
                 >
@@ -167,7 +171,7 @@ export default function Services() {
                       </button>
                     )}
                   </div>
-                </article>
+                </Reveal>
               );
               })}
             </div>

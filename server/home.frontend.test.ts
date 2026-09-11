@@ -151,7 +151,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("mt-1 max-w-[13rem]");
     expect(homeSource).not.toContain("<span className=\"text-2xl font-extrabold uppercase tracking-[0.14em] text-[#2a1a0b]\">");
     expect(homeSource).not.toContain("[filter:brightness(.55)_sepia(1)_saturate(1.35)]");
-    expect(homeSource).toContain("hover:bg-white/70 hover:text-[#8a641e]");
+    expect(homeSource).toContain('className="serif block border-b border-primary/10 py-3 text-4xl font-bold uppercase leading-tight tracking-tight text-[#F4EFE6] transition hover:text-primary sm:text-5xl"');
   });
 
   it("keeps storage-backed images on clean public Supabase URLs and decodes gallery images without blocking layout", () => {
@@ -216,7 +216,10 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("Chat with Eby’s Place on WhatsApp");
     expect(homeSource).toContain("Beauty in every strand");
     expect(homeSource.lastIndexOf("Beauty in every strand")).toBeGreaterThan(homeSource.indexOf("export function SiteFooter"));
-    expect(homeSource.indexOf("Beauty in every strand")).toBe(homeSource.lastIndexOf("Beauty in every strand"));
+    // The cinematic redesign also features the tagline once, strategically, in
+    // the hero eyebrow — so it now appears exactly twice (hero + footer),
+    // not once.
+    expect(homeSource.split("Beauty in every strand").length - 1).toBe(2);
   });
 
   it("adds a backend-managed final About Us story section with an admin-controlled round portrait", () => {
@@ -247,12 +250,10 @@ describe("Eby’s Place landing page visual refinements", () => {
   });
 
   it("keeps only live testimonials and removes the extra admin-confidence heading space", () => {
-    expect(homeSource).toContain("Live testimonials");
+    expect(homeSource).toContain("Loved, strand by strand.");
     expect(homeSource).toContain("review-marquee-track");
-    expect(homeSource).toContain("review-marquee mt-5");
-    expect(homeSource).toContain("py-8 overflow-hidden bg-[#efe0c7]/78 text-[#24170d] md:py-10");
+    expect(homeSource).toContain("review-marquee mt-10");
     expect(homeSource).not.toContain("Customer confidence, moderated by admin.");
-    expect(homeSource).not.toContain("review-marquee mt-10");
   });
 
   it("brings attached customer reviews live without including owner replies", () => {
