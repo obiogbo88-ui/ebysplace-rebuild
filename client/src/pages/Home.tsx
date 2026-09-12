@@ -220,85 +220,85 @@ export function SiteHeader() {
             <AnimatePresence>
               {menuOpen ? (
                 <motion.nav
-            className="fixed inset-0 z-[100] flex flex-col overflow-y-auto bg-[#0B0B0B] px-6 py-6 2xl:hidden"
-            aria-label="Mobile navigation"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div className="flex items-center justify-between">
-              <img
-                src={LOGO_SRC}
-                alt="Eby’s Place"
-                className="h-12 w-auto object-contain"
-              />
-              <button
-                type="button"
-                className="rounded-full border border-primary/45 bg-primary p-2.5 text-[#111111] shadow-[0_12px_28px_rgba(0,0,0,.35)]"
-                aria-label="Close menu"
-                onClick={() => setMenuOpen(false)}
-              >
-                <X className="h-5 w-5 [stroke-width:2.6]" />
-              </button>
-            </div>
-
-            <form
-              className="relative mt-8"
-              role="search"
-              aria-label="Mobile product search"
-              onSubmit={handleProductSearch}
-            >
-              <Search
-                className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-primary"
-                aria-hidden="true"
-              />
-              <input
-                className="h-12 w-full rounded-full border border-primary/30 bg-transparent py-3 pl-11 pr-4 text-sm font-semibold text-[#F4EFE6] placeholder:text-[#F4EFE6]/45 focus:border-primary focus:outline-none"
-                type="search"
-                value={productSearch}
-                onChange={event => setProductSearch(event.target.value)}
-                placeholder="Search products"
-                aria-label="Search Eby’s Place products"
-              />
-            </form>
-
-            <nav className="mt-10 flex flex-1 flex-col justify-center gap-1">
-              {navLinks.map((item, index) => (
-                <motion.div
-                  key={item.href}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.5,
-                    delay: 0.08 * index,
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
+                  className="fixed inset-0 z-[100] flex flex-col overflow-y-auto bg-[#f5ead7] px-6 py-6 2xl:hidden"
+                  aria-label="Mobile navigation"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <Link
-                    className="serif block border-b border-primary/10 py-3 text-4xl font-bold uppercase leading-tight tracking-tight text-[#F4EFE6] transition hover:text-primary sm:text-5xl"
-                    href={item.href}
+                  <div className="flex items-center justify-between">
+                    <img
+                      src={HEADER_LOGO_SRC}
+                      alt="Eby’s Place"
+                      className="h-14 w-auto object-contain mix-blend-multiply"
+                    />
+                    <button
+                      type="button"
+                      className="rounded-full border border-primary/45 bg-primary p-2.5 text-[#111111] shadow-[0_12px_28px_rgba(66,42,18,.2)]"
+                      aria-label="Close menu"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <X className="h-5 w-5 [stroke-width:2.6]" />
+                    </button>
+                  </div>
+
+                  <form
+                    className="relative mt-8"
+                    role="search"
+                    aria-label="Mobile product search"
+                    onSubmit={handleProductSearch}
+                  >
+                    <Search
+                      className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a641e]"
+                      aria-hidden="true"
+                    />
+                    <input
+                      className="h-12 w-full rounded-full border border-[#d8bd74]/55 bg-white/60 py-3 pl-11 pr-4 text-sm font-semibold text-[#2a1a0b] placeholder:text-[#6f4b16]/60 focus:border-[#b9933e] focus:outline-none"
+                      type="search"
+                      value={productSearch}
+                      onChange={event => setProductSearch(event.target.value)}
+                      placeholder="Search products"
+                      aria-label="Search Eby’s Place products"
+                    />
+                  </form>
+
+                  <nav className="mt-10 flex flex-1 flex-col justify-center gap-1">
+                    {navLinks.map((item, index) => (
+                      <motion.div
+                        key={item.href}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          duration: 0.5,
+                          delay: 0.08 * index,
+                          ease: [0.16, 1, 0.3, 1],
+                        }}
+                      >
+                        <Link
+                          className="serif block border-b border-[#d8bd74]/35 py-3 text-4xl font-bold uppercase leading-tight tracking-tight text-[#2a1a0b] transition hover:text-[#8a641e] sm:text-5xl"
+                          href={item.href}
+                          onClick={() => {
+                            if (item.href === "/braiders-near-me") trackBraidersClick();
+                            setMenuOpen(false);
+                          }}
+                        >
+                          {item.label}
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </nav>
+
+                  <button
+                    type="button"
+                    className="btn-gold mt-8 w-full justify-center py-4 text-sm uppercase tracking-[.16em]"
                     onClick={() => {
-                      if (item.href === "/braiders-near-me") trackBraidersClick();
                       setMenuOpen(false);
+                      navigateWithSmoothScroll("/booking", setLocation);
                     }}
                   >
-                    {item.label}
-                  </Link>
-                </motion.div>
-              ))}
-            </nav>
-
-            <button
-              type="button"
-              className="btn-gold mt-8 w-full justify-center py-4 text-sm uppercase tracking-[.16em]"
-              onClick={() => {
-                setMenuOpen(false);
-                navigateWithSmoothScroll("/booking", setLocation);
-              }}
-            >
-              Book Now
-            </button>
+                    Book Now
+                  </button>
                 </motion.nav>
               ) : null}
             </AnimatePresence>,
@@ -539,7 +539,7 @@ function FeaturedStyleSpotlight({ styles }: { styles: any[] }) {
     if (reduceMotion || paused || styles.length < 2) return;
     const timer = setInterval(() => {
       setIndex(current => (current + 1) % styles.length);
-    }, 5500);
+    }, 3200);
     return () => clearInterval(timer);
   }, [reduceMotion, paused, styles.length]);
 
