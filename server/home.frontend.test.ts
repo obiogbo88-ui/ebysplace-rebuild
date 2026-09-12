@@ -153,7 +153,7 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("mt-1 max-w-[13rem]");
     expect(homeSource).not.toContain("<span className=\"text-2xl font-extrabold uppercase tracking-[0.14em] text-[#2a1a0b]\">");
     expect(homeSource).not.toContain("[filter:brightness(.55)_sepia(1)_saturate(1.35)]");
-    expect(homeSource).toContain('className="serif block border-b border-primary/10 py-3 text-4xl font-bold uppercase leading-tight tracking-tight text-[#F4EFE6] transition hover:text-primary sm:text-5xl"');
+    expect(homeSource).toContain('className="serif block border-b border-[#d8bd74]/35 py-3 text-4xl font-bold uppercase leading-tight tracking-tight text-[#2a1a0b] transition hover:text-[#8a641e] sm:text-5xl"');
   });
 
   it("keeps storage-backed images on clean public Supabase URLs and decodes gallery images without blocking layout", () => {
