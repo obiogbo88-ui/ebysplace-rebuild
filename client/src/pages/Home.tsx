@@ -781,13 +781,7 @@ export default function Home() {
             >
               <motion.p
                 variants={staggerItem}
-                className="serif text-sm italic tracking-[.08em] text-primary sm:text-base"
-              >
-                Eby’s Place &middot; Beauty in every strand
-              </motion.p>
-              <motion.p
-                variants={staggerItem}
-                className="pill pill-ribbon mt-4 w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs"
+                className="pill pill-ribbon w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs"
               >
                 Somerset, UK &middot; Est. braid studio
               </motion.p>
