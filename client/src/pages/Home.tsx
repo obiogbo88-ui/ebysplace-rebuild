@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { blogPosts } from "@/lib/blogContent";
 import { trpc } from "@/lib/trpc";
@@ -104,9 +105,9 @@ export function SiteHeader() {
           aria-label="Eby’s Place home"
         >
           <img
-            src={LOGO_SRC}
+            src={HEADER_LOGO_SRC}
             alt="Eby’s Place"
-            className="h-12 w-[8.25rem] object-contain object-left min-[380px]:h-14 min-[380px]:w-[9.5rem] sm:h-20 sm:w-[14rem] lg:h-[4.5rem] lg:w-[15rem] xl:w-[16.5rem]"
+            className="h-16 w-[10.5rem] object-contain object-left mix-blend-multiply min-[380px]:h-[4.5rem] min-[380px]:w-[11.75rem] sm:h-24 sm:w-[16.5rem] lg:h-[5.75rem] lg:w-[18rem] xl:w-[19.5rem]"
             loading="eager"
             decoding="async"
             fetchPriority="high"
@@ -214,10 +215,12 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {menuOpen ? (
-          <motion.nav
-            className="fixed inset-0 z-[60] flex flex-col overflow-y-auto bg-[#0B0B0B] px-6 py-6 2xl:hidden"
+      {typeof document !== "undefined"
+        ? createPortal(
+            <AnimatePresence>
+              {menuOpen ? (
+                <motion.nav
+            className="fixed inset-0 z-[100] flex flex-col overflow-y-auto bg-[#0B0B0B] px-6 py-6 2xl:hidden"
             aria-label="Mobile navigation"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -296,9 +299,12 @@ export function SiteHeader() {
             >
               Book Now
             </button>
-          </motion.nav>
-        ) : null}
-      </AnimatePresence>
+                </motion.nav>
+              ) : null}
+            </AnimatePresence>,
+            document.body
+          )
+        : null}
     </header>
   );
 }
@@ -311,9 +317,9 @@ export function SiteFooter() {
       <div className="container grid gap-10 md:grid-cols-[1.3fr_1fr_1fr_1fr_1fr] md:gap-8">
         <div>
           <img
-            src={LOGO_SRC}
+            src={HEADER_LOGO_SRC}
             alt="Eby’s Place"
-            className="h-16 w-auto max-w-[10rem] object-contain object-left drop-shadow-[0_8px_18px_rgba(0,0,0,.4)] sm:h-20 sm:max-w-[12rem]"
+            className="h-20 w-auto max-w-[12.5rem] object-contain object-left mix-blend-multiply drop-shadow-[0_8px_18px_rgba(112,78,28,.18)] sm:h-24 sm:max-w-[15rem]"
             loading="lazy"
             decoding="async"
           />
@@ -766,7 +772,7 @@ export default function Home() {
                 event.currentTarget.style.display = "none";
               }}
             />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,11,11,.82),rgba(11,11,11,.5)_45%,rgba(11,11,11,.18)),linear-gradient(180deg,rgba(11,11,11,.12),rgba(0,0,0,.88))]" />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.38)_45%,rgba(247,238,222,.1)),linear-gradient(180deg,rgba(247,238,222,.08),rgba(20,12,5,.76))]" />
             <motion.div
               className="container relative z-10 py-24 md:py-32 lg:pb-28 lg:pt-40"
               variants={staggerContainer}
@@ -775,13 +781,7 @@ export default function Home() {
             >
               <motion.p
                 variants={staggerItem}
-                className="serif text-sm italic tracking-[.08em] text-primary sm:text-base"
-              >
-                Eby’s Place &middot; Beauty in every strand
-              </motion.p>
-              <motion.p
-                variants={staggerItem}
-                className="pill pill-ribbon mt-4 w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs"
+                className="pill pill-ribbon w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs"
               >
                 Somerset, UK &middot; Est. braid studio
               </motion.p>

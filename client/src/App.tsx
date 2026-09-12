@@ -497,7 +497,7 @@ function BackToTopButton() {
       type="button"
       aria-label="Back to top"
       onClick={() => smoothScrollToTop(0)}
-      className="back-to-top-btn fixed bottom-40 right-4 z-[79] flex h-12 w-12 items-center justify-center rounded-full shadow-[0_8px_24px_rgba(17,17,17,.28)] transition duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C9A84C] md:bottom-24 md:right-6 md:h-14 md:w-14"
+      className="back-to-top-btn fixed bottom-40 right-4 z-[79] flex h-12 w-12 items-center justify-center rounded-full shadow-[0_8px_24px_rgba(17,17,17,.28)] transition duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[#C8A83A] md:bottom-24 md:right-6 md:h-14 md:w-14"
     >
       <svg
         aria-hidden="true"
