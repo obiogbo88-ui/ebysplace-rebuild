@@ -218,7 +218,10 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("Chat with Eby’s Place on WhatsApp");
     expect(homeSource).toContain("Beauty in every strand");
     expect(homeSource.lastIndexOf("Beauty in every strand")).toBeGreaterThan(homeSource.indexOf("export function SiteFooter"));
-    expect(homeSource.indexOf("Beauty in every strand")).toBe(homeSource.lastIndexOf("Beauty in every strand"));
+    // The cinematic redesign also features the tagline once, strategically, in
+    // the hero eyebrow — so it now appears exactly twice (hero + footer),
+    // not once.
+    expect(homeSource.split("Beauty in every strand").length - 1).toBe(2);
   });
 
   it("adds a backend-managed final About Us story section with an admin-controlled round portrait", () => {
