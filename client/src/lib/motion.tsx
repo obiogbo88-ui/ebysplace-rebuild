@@ -1,4 +1,4 @@
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   motion,
   useInView,
@@ -64,6 +64,89 @@ export const staggerItem = {
     transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] as const },
   },
 };
+
+/**
+ * Reveals a sequence of text lines one character at a time, like a typed
+ * caption, pausing briefly between lines. Reduces to the full text
+ * instantly under "prefers-reduced-motion". Returns the number of visible
+ * characters per line plus which line is currently mid-type, so callers
+ * can slice their own strings and keep full control of markup/classes.
+ */
+export function useTypewriter(
+  lines: string[],
+  {
+    speed = 34,
+    linePause = 420,
+    startDelay = 150,
+  }: { speed?: number; linePause?: number; startDelay?: number } = {},
+) {
+  const reduceMotion = useReducedMotion();
+  const lineLengths = useMemo(() => lines.map(l => l.length), [lines]);
+  const schedule = useMemo(() => {
+    const times: number[] = [];
+    let t = 0;
+    lineLengths.forEach((len, li) => {
+      for (let i = 0; i < len; i++) {
+        times.push(t);
+        t += speed;
+      }
+      if (li < lineLengths.length - 1) t += linePause;
+    });
+    return times;
+  }, [lineLengths, speed, linePause]);
+  const total = schedule.length;
+
+  const [typed, setTyped] = useState(reduceMotion ? total : 0);
+  const [done, setDone] = useState(reduceMotion);
+
+  useEffect(() => {
+    if (reduceMotion || total === 0) {
+      setTyped(total);
+      setDone(true);
+      return;
+    }
+    setDone(false);
+    let raf = 0;
+    let cancelled = false;
+    const startTime = performance.now() + startDelay;
+    const step = (now: number) => {
+      if (cancelled) return;
+      const elapsed = now - startTime;
+      if (elapsed < 0) {
+        raf = requestAnimationFrame(step);
+        return;
+      }
+      let count = 0;
+      while (count < total && schedule[count] <= elapsed) count++;
+      setTyped(count);
+      if (count < total) {
+        raf = requestAnimationFrame(step);
+      } else {
+        setDone(true);
+      }
+    };
+    raf = requestAnimationFrame(step);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [schedule, total, startDelay, reduceMotion]);
+
+  const typedLines = useMemo(() => {
+    let remaining = typed;
+    return lineLengths.map(len => {
+      const take = Math.max(0, Math.min(len, remaining));
+      remaining -= len;
+      return take;
+    });
+  }, [typed, lineLengths]);
+
+  const activeLineIndex = done
+    ? -1
+    : typedLines.findIndex((n, i) => n < lineLengths[i]);
+
+  return { typedLines, done, activeLineIndex };
+}
 
 /**
  * Scales an image from ~1.08 down to 1 as the section holding it crosses

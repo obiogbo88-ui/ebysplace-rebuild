@@ -76,6 +76,10 @@
 .hero-slogan-list li:last-child { color: #d9bd76; font-style: italic; font-weight: 600; letter-spacing: -.055em; }
 @media (max-width: 767px) { .hero-video-reference { min-height: calc(100svh - 5rem); } .hero-slogan-list li { font-size: clamp(2.7rem, 14vw, 4.5rem); } }
 
+.typing-cursor { display: inline-block; width: .06em; height: .85em; margin-left: .04em; background: currentColor; vertical-align: text-bottom; animation: ebys-typing-blink 0.85s step-end infinite; }
+@keyframes ebys-typing-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .typing-cursor { display: none; } }
+
 .lux-card .text-white,
 .lux-card .text-white\/45,
 .lux-card .text-white\/55,

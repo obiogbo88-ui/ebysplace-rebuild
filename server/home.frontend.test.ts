@@ -73,9 +73,10 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("rounded-[2rem] border border-[#f0d889]/55 bg-[#f7eede]/82");
     expect(homeSource).toContain("hero-slogan-list");
     expect(homeSource).toContain("data-placement=\"lower-left-side-away-from-model-face\"");
-    expect(homeSource).toContain("<li>Zero pain.</li>");
-    expect(homeSource).toContain("<li>Zero trauma.</li>");
-    expect(homeSource).toContain("<li>Just perfection.</li>");
+    expect(homeSource).toContain("HERO_CAPTION_LINES");
+    expect(homeSource).toContain("\"Zero pain.\"");
+    expect(homeSource).toContain("\"Zero trauma.\"");
+    expect(homeSource).toContain("\"Just perfection.\"");
     expect(cssSource).toContain(".hero-slogan-list li:last-child");
   });
 

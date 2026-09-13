@@ -16,7 +16,13 @@ import {
   createServiceImageErrorHandler,
   getServiceImageSrc,
 } from "@/lib/serviceImageFallback";
-import { Reveal, ScaleOnScroll, staggerContainer, staggerItem } from "@/lib/motion";
+import {
+  Reveal,
+  ScaleOnScroll,
+  staggerContainer,
+  staggerItem,
+  useTypewriter,
+} from "@/lib/motion";
 import {
   ArrowRight,
   CalendarDays,
@@ -36,6 +42,13 @@ const LOGO_SRC =
   "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
 const HEADER_LOGO_SRC =
   "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png";
+const HERO_CAPTION_LINES = [
+  "Zero pain.",
+  "Zero trauma.",
+  "Just perfection.",
+  "Luxury Pain-Free Braiding in",
+  "Somerset, UK",
+];
 const LANDING_HERO_IMAGE_SRC =
   "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_7dbbea62-45d4296622.png";
 const ABOUT_PORTRAIT_FALLBACK_SRC =
@@ -751,6 +764,8 @@ export default function Home() {
       : (products as any[])
   ).slice(0, 4);
   const featuredBlogPosts = blogPosts.filter(post => post.featured).slice(0, 3);
+  const { typedLines: heroTyped, activeLineIndex: heroActiveLine } =
+    useTypewriter(HERO_CAPTION_LINES, { startDelay: 650 });
 
   return (
     <div className="luxury-shell">
@@ -789,19 +804,41 @@ export default function Home() {
                 <motion.ul
                   variants={staggerItem}
                   className="hero-slogan-list max-w-[20rem] list-none space-y-0 p-0 lg:max-w-[30rem]"
-                  aria-label="Eby’s Place pain-free promise"
+                  aria-hidden="true"
                   data-placement="lower-left-side-away-from-model-face"
                 >
-                  <li>Zero pain.</li>
-                  <li>Zero trauma.</li>
-                  <li>Just perfection.</li>
+                  {HERO_CAPTION_LINES.slice(0, 3).map((line, i) => (
+                    <li key={line}>
+                      {line.slice(0, heroTyped[i])}
+                      {heroActiveLine === i && (
+                        <span className="typing-cursor" />
+                      )}
+                    </li>
+                  ))}
                 </motion.ul>
+                <span className="sr-only">
+                  Zero pain. Zero trauma. Just perfection.
+                </span>
                 <motion.h1
                   variants={staggerItem}
                   className="serif mt-8 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl"
+                  aria-label="Luxury Pain-Free Braiding in Somerset, UK"
                 >
-                  Luxury Pain-Free Braiding in <br className="sm:hidden" />
-                  <span className="gold-text">Somerset, UK</span>
+                  <span aria-hidden="true">
+                    {HERO_CAPTION_LINES[3].slice(0, heroTyped[3])}
+                    {heroActiveLine === 3 && <span className="typing-cursor" />}
+                    {heroTyped[3] === HERO_CAPTION_LINES[3].length && (
+                      <>
+                        <br className="sm:hidden" />
+                        <span className="gold-text">
+                          {HERO_CAPTION_LINES[4].slice(0, heroTyped[4])}
+                        </span>
+                        {heroActiveLine === 4 && (
+                          <span className="typing-cursor" />
+                        )}
+                      </>
+                    )}
+                  </span>
                 </motion.h1>
                 <motion.p
                   variants={staggerItem}
