@@ -2,6 +2,7 @@ import type { Application, Request, Response } from "express";
 import { runUnconfirmedBookingReminders } from "./bookingReminders";
 import { runAbandonedOrderReminders } from "./orderReminders";
 import { runDayBeforeAppointmentReminders } from "./appointmentReminders";
+import { cleanupOldRateLimitBuckets } from "./db";
 
 const CRON_PATH = "/api/cron/daily-reminders";
 
@@ -30,6 +31,7 @@ export function registerDailyAutomationsCron(app: Application) {
       runUnconfirmedBookingReminders(),
       runAbandonedOrderReminders(),
       runDayBeforeAppointmentReminders(),
+      cleanupOldRateLimitBuckets(),
     ]);
 
     const [bookingReminders, orderReminders, appointmentReminders] = results.map((result) =>
@@ -38,7 +40,7 @@ export function registerDailyAutomationsCron(app: Application) {
 
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        console.error("[DailyAutomations] Check failed", ["bookingReminders", "orderReminders", "appointmentReminders"][index], result.reason);
+        console.error("[DailyAutomations] Check failed", ["bookingReminders", "orderReminders", "appointmentReminders", "rateLimitCleanup"][index], result.reason);
       }
     });
 
