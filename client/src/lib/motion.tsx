@@ -106,19 +106,22 @@ export function useTypewriter(
       return;
     }
     setDone(false);
+    setTyped(0);
     let raf = 0;
     let cancelled = false;
+    let count = 0;
     const startTime = performance.now() + startDelay;
+    // Reveals at most one character per frame, even if a slow/dropped frame
+    // means we're behind schedule -- catching up by dumping several
+    // characters into a single frame reads as a stutter rather than a typed
+    // cadence, so we'd rather catch up gradually over the next few frames.
     const step = (now: number) => {
       if (cancelled) return;
       const elapsed = now - startTime;
-      if (elapsed < 0) {
-        raf = requestAnimationFrame(step);
-        return;
+      if (elapsed >= 0 && count < total && schedule[count] <= elapsed) {
+        count += 1;
+        setTyped(count);
       }
-      let count = 0;
-      while (count < total && schedule[count] <= elapsed) count++;
-      setTyped(count);
       if (count < total) {
         raf = requestAnimationFrame(step);
       } else {

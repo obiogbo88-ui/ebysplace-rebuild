@@ -561,11 +561,7 @@ function FeaturedStyleSpotlight({ styles }: { styles: any[] }) {
   const imageSrc = getServiceImageSrc(style);
 
   return (
-    <section
-      className="section-pad overflow-hidden"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
+    <section className="section-pad overflow-hidden">
       <div className="container">
         <Reveal>
           <p className="pill w-fit">Featured style</p>
@@ -607,6 +603,8 @@ function FeaturedStyleSpotlight({ styles }: { styles: any[] }) {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="media-portrait order-1 overflow-hidden rounded-[1.6rem] bg-[#171009] lg:order-2"
+            onMouseEnter={() => setPaused(true)}
+            onMouseLeave={() => setPaused(false)}
           >
             {imageSrc ? (
               <img
@@ -919,12 +917,13 @@ export default function Home() {
             <Reveal>
               <p className="pill w-fit">Craft</p>
               <h2 className="serif mt-5 text-5xl font-bold leading-[1.05] md:text-6xl">
-                The Art <br />
-                <span className="gold-text">of Braiding.</span>
+                The Art of <br />
+                <span className="gold-text">Pain-Free Braiding.</span>
               </h2>
               <p className="mt-6 max-w-md text-base leading-8 text-white/70">
-                Every style is more than a hairstyle. It is creativity,
-                identity and confidence — crafted strand by strand.
+                Every style is more than a hairstyle. It is comfort,
+                creativity, identity and confidence — crafted gently, strand
+                by strand.
               </p>
             </Reveal>
             <ScaleOnScroll className="overflow-hidden rounded-[1.6rem]">
@@ -1111,7 +1110,7 @@ export default function Home() {
                   href={`/blog/${post.slug}`}
                   className="lux-card group block overflow-hidden p-0 text-left transition hover:-translate-y-1 hover:border-primary/55 hover:shadow-[0_22px_55px_rgba(189,140,52,.24)]"
                 >
-                  <div className="media-portrait overflow-hidden rounded-t-[1.75rem] bg-[#171009]">
+                  <div className={`media-portrait overflow-hidden rounded-t-[1.75rem] bg-[#171009] ${post.imageFit === "contain" ? "media-contain" : ""}`}>
                     <img
                       src={post.imageUrl}
                       alt={post.imageAlt}
@@ -1368,10 +1367,16 @@ export default function Home() {
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,11,11,.55),rgba(11,11,11,.85))]" />
           <div className="container relative z-10 flex flex-col items-start gap-6 py-24 md:py-32">
             <Reveal>
-              <h2 className="serif max-w-2xl text-4xl font-bold leading-tight text-[#F4EFE6] md:text-6xl">
-                Ready for your next look?
+              <h2
+                className="serif max-w-2xl text-4xl font-bold leading-tight md:text-6xl"
+                style={{ color: "#F4EFE6" }}
+              >
+                Ready for your next <span className="gold-text">look?</span>
               </h2>
-              <p className="mt-3 max-w-xl text-base text-white/70">
+              <p
+                className="mt-3 max-w-xl text-base"
+                style={{ color: "rgba(244,239,230,0.78)" }}
+              >
                 Your next style starts here.
               </p>
             </Reveal>
