@@ -12,6 +12,13 @@ export type BlogPost = {
   readTime: string;
   imageUrl: string;
   imageAlt: string;
+  /**
+   * "contain" for thumbnails that carry their own baked-in text/branding
+   * (e.g. a video thumbnail) so nothing gets cropped off the edges; leave
+   * unset ("cover") for ordinary photography where edge-to-edge cropping
+   * looks fine.
+   */
+  imageFit?: "cover" | "contain";
   featured?: boolean;
   galleryImages?: Array<{ url: string; alt: string }>;
   references?: string[];
@@ -30,6 +37,7 @@ export const blogPosts: BlogPost[] = [
     imageUrl:
       "https://i.ytimg.com/vi/VshhekKnM10/maxresdefault.jpg",
     imageAlt: "HaloBraid robotic braid-assist device in a professional salon setting",
+    imageFit: "contain",
     featured: true,
     sections: [
       {

@@ -82,7 +82,7 @@ export default function Blog({ params }: BlogPageProps) {
                   <img
                     src={post.imageUrl}
                     alt={post.imageAlt}
-                    className="h-full w-full object-cover"
+                    className={`h-full w-full ${post.imageFit === "contain" ? "object-contain" : "object-cover"}`}
                     loading="eager"
                     decoding="async"
                     onError={event => {
@@ -220,7 +220,7 @@ export default function Blog({ params }: BlogPageProps) {
                       href={`/blog/${item.slug}`}
                       className="lux-card group block overflow-hidden p-0 text-left transition hover:-translate-y-1 hover:border-primary/55"
                     >
-                      <div className="media-portrait overflow-hidden rounded-t-[1.75rem] bg-[#171009]">
+                      <div className={`media-portrait overflow-hidden rounded-t-[1.75rem] bg-[#171009] ${item.imageFit === "contain" ? "media-contain" : ""}`}>
                         <img
                           src={item.imageUrl}
                           alt={item.imageAlt}
@@ -289,7 +289,7 @@ export default function Blog({ params }: BlogPageProps) {
                 href={`/blog/${post.slug}`}
                 className="lux-card group block overflow-hidden p-0 text-left transition hover:-translate-y-1 hover:border-primary/55 hover:shadow-[0_22px_55px_rgba(189,140,52,.24)]"
               >
-                <div className="media-portrait overflow-hidden rounded-t-[1.75rem] bg-[#171009]">
+                <div className={`media-portrait overflow-hidden rounded-t-[1.75rem] bg-[#171009] ${post.imageFit === "contain" ? "media-contain" : ""}`}>
                   <img
                     src={post.imageUrl}
                     alt={post.imageAlt}
