@@ -763,7 +763,7 @@ export default function Home() {
   ).slice(0, 4);
   const featuredBlogPosts = blogPosts.filter(post => post.featured).slice(0, 3);
   const { typedLines: heroTyped, activeLineIndex: heroActiveLine } =
-    useTypewriter(HERO_CAPTION_LINES, { startDelay: 0, speed: 95, linePause: 550 });
+    useTypewriter(HERO_CAPTION_LINES, { startDelay: 0, speed: 130, linePause: 700 });
 
   return (
     <div className="luxury-shell">
@@ -799,8 +799,7 @@ export default function Home() {
                 Somerset, UK &middot; Est. braid studio
               </motion.p>
               <div className="mt-6 max-w-3xl [text-shadow:0_3px_22px_rgba(0,0,0,.88)]">
-                <motion.ul
-                  variants={staggerItem}
+                <ul
                   className="hero-slogan-list max-w-[20rem] list-none space-y-0 p-0 lg:max-w-[30rem]"
                   aria-label="Zero pain. Zero trauma. Just perfection."
                   data-placement="lower-left-side-away-from-model-face"
@@ -813,9 +812,8 @@ export default function Home() {
                       )}
                     </li>
                   ))}
-                </motion.ul>
-                <motion.h1
-                  variants={staggerItem}
+                </ul>
+                <h1
                   className="serif mt-8 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl"
                   aria-label="Luxury Pain-Free Braiding in Somerset, UK"
                 >
@@ -835,7 +833,7 @@ export default function Home() {
                       </>
                     )}
                   </span>
-                </motion.h1>
+                </h1>
                 <motion.p
                   variants={staggerItem}
                   className="mt-7 max-w-2xl text-base font-medium leading-8 text-white sm:text-lg"
