@@ -763,7 +763,7 @@ export default function Home() {
   ).slice(0, 4);
   const featuredBlogPosts = blogPosts.filter(post => post.featured).slice(0, 3);
   const { typedLines: heroTyped, activeLineIndex: heroActiveLine } =
-    useTypewriter(HERO_CAPTION_LINES, { startDelay: 650 });
+    useTypewriter(HERO_CAPTION_LINES, { startDelay: 650, speed: 65, linePause: 650 });
 
   return (
     <div className="luxury-shell">
