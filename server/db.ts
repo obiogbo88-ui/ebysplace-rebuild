@@ -1749,6 +1749,63 @@ async function ensureActivityLogsTable() {
   }
 }
 
+async function ensureRateLimitTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "rateLimitBuckets" (
+      "bucketKey" VARCHAR(200) PRIMARY KEY,
+      "count" INTEGER NOT NULL DEFAULT 0,
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "rateLimitBuckets_updatedAt_idx" ON "rateLimitBuckets" ("updatedAt")`);
+  } catch (error) {
+    console.warn("[Database] Could not ensure rateLimitBuckets table", error);
+  }
+}
+
+function getClientRateLimitKey(req: Request | null | undefined) {
+  const forwarded = typeof req?.headers["x-forwarded-for"] === "string" ? req.headers["x-forwarded-for"].split(",")[0]?.trim() : null;
+  const rawIp = forwarded || req?.ip || null;
+  return anonymizeIpAddress(rawIp) || "unknown";
+}
+
+/**
+ * Durable, request-scoped rate limiter backed by Postgres so it holds across
+ * the stateless invocations of a serverless deployment (an in-memory Map
+ * resets on every cold start). Fixed-window per IP/24 subnet, matching the
+ * anonymization already used for activity logging.
+ */
+export async function checkRateLimit(scope: string, req: Request | null | undefined, limit: number, windowMs: number): Promise<{ allowed: boolean; retryAfterMs: number }> {
+  if (!_pool) return { allowed: true, retryAfterMs: 0 };
+  await ensureRateLimitTable();
+  const windowIndex = Math.floor(Date.now() / windowMs);
+  const bucketKey = `${scope}:${getClientRateLimitKey(req)}:${windowIndex}`;
+  try {
+    const result = await _pool.query<{ count: number }>(
+      `INSERT INTO "rateLimitBuckets" ("bucketKey", "count", "updatedAt")
+       VALUES ($1, 1, NOW())
+       ON CONFLICT ("bucketKey") DO UPDATE SET "count" = "rateLimitBuckets"."count" + 1, "updatedAt" = NOW()
+       RETURNING "count"`,
+      [bucketKey]
+    );
+    const count = result.rows[0]?.count ?? 1;
+    const windowEnd = (windowIndex + 1) * windowMs;
+    return { allowed: count <= limit, retryAfterMs: Math.max(0, windowEnd - Date.now()) };
+  } catch (error) {
+    console.warn(`[RateLimit] Failed to check rate limit for scope "${scope}"`, error);
+    return { allowed: true, retryAfterMs: 0 };
+  }
+}
+
+export async function cleanupOldRateLimitBuckets() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`DELETE FROM "rateLimitBuckets" WHERE "updatedAt" < NOW() - INTERVAL '1 day'`);
+  } catch (error) {
+    console.warn("[Database] Could not clean up rateLimitBuckets", error);
+  }
+}
+
 function normalizePathForTracking(value?: string | null) {
   const raw = (value || "/").trim();
   if (!raw) return "/";

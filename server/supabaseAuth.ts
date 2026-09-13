@@ -142,7 +142,7 @@ function getDisplayName(user: SupabaseAuthUser, fallbackEmail: string) {
   return typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : fallbackEmail.split("@")[0];
 }
 
-function getPreferredProductionOrigin() {
+export function getPreferredProductionOrigin() {
   const candidates = [
     process.env.EBYSPLACE_PUBLIC_URL,
     process.env.PUBLIC_SITE_URL,
@@ -168,16 +168,52 @@ function getPreferredProductionOrigin() {
   return "https://www.ebysplace.com";
 }
 
+export function getTrustedSiteHostnames() {
+  const hostnames = new Set(["ebysplace.com", "www.ebysplace.com"]);
+  const candidates = [
+    getPreferredProductionOrigin(),
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
+    process.env.EBYSPLACE_PUBLIC_URL,
+    process.env.PUBLIC_SITE_URL,
+    process.env.SITE_URL,
+    process.env.APP_URL,
+    process.env.VITE_APP_URL,
+  ];
+  for (const candidate of candidates) {
+    try {
+      hostnames.add(new URL(trimEnvValue(candidate)).hostname);
+    } catch {
+      // Ignore invalid/missing candidates.
+    }
+  }
+  return hostnames;
+}
+
+// Only ever redirects an admin password-reset link to a hostname this
+// deployment actually controls (production domain, this Vercel deployment's
+// own URL, or localhost in dev) -- never to whatever `origin` a caller
+// supplies, since that value comes straight from the (unauthenticated)
+// requestPasswordReset tRPC input and would otherwise let anyone steer the
+// post-verification redirect of a real admin's reset email to an
+// attacker-controlled domain.
 function getSafeResetRedirect(origin: string) {
+  const isProdRuntime = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+  const productionFallback = () => getPreferredProductionOrigin() + "/admin/reset-password";
   try {
     const parsed = new URL(origin);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("Unsupported protocol");
     const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
-    const shouldUseProductionOrigin = isLocalhost && (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production");
-    const safeOrigin = shouldUseProductionOrigin ? getPreferredProductionOrigin() : parsed.origin;
-    return safeOrigin + "/admin/reset-password";
+    if (isLocalhost) {
+      return isProdRuntime ? productionFallback() : parsed.origin + "/admin/reset-password";
+    }
+    if (!getTrustedSiteHostnames().has(parsed.hostname)) {
+      console.warn("[Auth] Rejected password reset origin outside the allowlist", { requestedOrigin: origin, hostname: parsed.hostname });
+      return productionFallback();
+    }
+    return parsed.origin + "/admin/reset-password";
   } catch {
-    return (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production" ? getPreferredProductionOrigin() : "http://localhost:3000") + "/admin/reset-password";
+    return isProdRuntime ? productionFallback() : "http://localhost:3000/admin/reset-password";
   }
 }
 

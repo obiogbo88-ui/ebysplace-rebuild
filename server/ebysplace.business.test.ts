@@ -54,7 +54,7 @@ vi.mock("stripe", () => ({
 function publicContext(): TrpcContext {
   return {
     user: null,
-    req: { protocol: "https", headers: { origin: "https://example.test" } } as TrpcContext["req"],
+    req: { protocol: "https", headers: { origin: "https://www.ebysplace.com" } } as TrpcContext["req"],
     res: { clearCookie: () => undefined } as unknown as TrpcContext["res"],
   };
 }
@@ -221,8 +221,8 @@ describe("Eby’s Place platform business rules", () => {
       client_reference_id: "42",
       payment_intent_data: expect.objectContaining({ receipt_email: "client@example.com", description: "Eby’s Place booking deposit for Goddess Braids", statement_descriptor_suffix: "EBYSPLACE" }),
       custom_text: { submit: { message: "You are paying Eby’s Place securely. Your booking deposit confirmation and receipt will use the email entered for checkout." } },
-      success_url: "https://example.test/booking/success?booking=42",
-      cancel_url: "https://example.test/booking?payment=cancelled&booking=42",
+      success_url: "https://www.ebysplace.com/booking/success?booking=42",
+      cancel_url: "https://www.ebysplace.com/booking?payment=cancelled&booking=42",
       allow_promotion_codes: true,
       metadata: expect.objectContaining({
         booking_id: "42",
@@ -398,8 +398,8 @@ describe("Eby’s Place platform business rules", () => {
       client_reference_id: "88",
       payment_intent_data: expect.objectContaining({ receipt_email: "shop-client@example.com", description: "Eby’s Place shop order", statement_descriptor_suffix: "EBYSPLACE" }),
       custom_text: { submit: { message: "You are paying Eby’s Place securely. Your shop order confirmation and receipt will use the email entered for checkout." } },
-      success_url: "https://example.test/shop?payment=success&order=88",
-      cancel_url: "https://example.test/shop?payment=cancelled&order=88",
+      success_url: "https://www.ebysplace.com/shop?payment=success&order=88",
+      cancel_url: "https://www.ebysplace.com/shop?payment=cancelled&order=88",
       allow_promotion_codes: true,
       metadata: expect.objectContaining({
         order_id: "88",

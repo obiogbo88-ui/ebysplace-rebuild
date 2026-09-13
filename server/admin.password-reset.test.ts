@@ -29,12 +29,12 @@ describe("admin password reset", () => {
     vi.stubGlobal("fetch", fetchMock);
     const { requestAdminPasswordReset } = await loadPasswordResetHelper();
 
-    const result = await requestAdminPasswordReset("ADMIN@example.com", "https://ebysplace.vercel.app/some/path");
+    const result = await requestAdminPasswordReset("ADMIN@example.com", "https://www.ebysplace.com/some/path");
 
     expect(result.success).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = vi.mocked(fetchMock).mock.calls[0];
-    expect(String(url)).toBe("https://project.supabase.co/auth/v1/recover?redirect_to=https%3A%2F%2Febysplace.vercel.app%2Fadmin%2Freset-password");
+    expect(String(url)).toBe("https://project.supabase.co/auth/v1/recover?redirect_to=https%3A%2F%2Fwww.ebysplace.com%2Fadmin%2Freset-password");
     expect(init?.method).toBe("POST");
     expect(JSON.parse(String(init?.body))).toEqual({ email: "admin@example.com" });
   });
@@ -44,13 +44,38 @@ describe("admin password reset", () => {
     vi.stubGlobal("fetch", fetchMock);
     const { requestAdminPasswordReset } = await loadPasswordResetHelper();
 
-    const result = await requestAdminPasswordReset("customer@example.com", "https://ebysplace.vercel.app");
+    const result = await requestAdminPasswordReset("customer@example.com", "https://www.ebysplace.com");
 
     expect(result).toEqual({
       success: true,
       message: "If this email is the configured Eby’s Place administrator, a password reset link has been sent.",
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not honour a caller-supplied origin outside the trusted allowlist (open-redirect guard)", async () => {
+    const fetchMock = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+      expect(JSON.parse(String(init?.body))).toEqual({
+        type: "recovery",
+        email: "admin@example.com",
+        options: { redirect_to: "https://www.ebysplace.com/admin/reset-password" },
+      });
+      return new Response(JSON.stringify({ action_link: "https://project.supabase.co/auth/v1/verify?token=abc&type=recovery" }), { status: 200 });
+    }) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+    process.env.SMTP_HOST = "smtp.example.com";
+    process.env.SMTP_PORT = "465";
+    process.env.SMTP_USER = "mailer@example.com";
+    process.env.SMTP_PASS = "smtp-password";
+    process.env.SMTP_FROM = "Eby's Place <mailer@example.com>";
+    vi.doMock("nodemailer", () => ({
+      default: { createTransport: vi.fn(() => ({ sendMail: vi.fn(async () => ({ messageId: "id" })) })) },
+    }));
+    const { requestAdminPasswordReset } = await loadPasswordResetHelper();
+
+    await requestAdminPasswordReset("ADMIN@example.com", "https://attacker-controlled.example/phish");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("uses generated Supabase recovery links sent through SMTP when SMTP is configured", async () => {
@@ -72,7 +97,7 @@ describe("admin password reset", () => {
       expect(JSON.parse(String(init?.body))).toEqual({
         type: "recovery",
         email: "admin@example.com",
-        options: { redirect_to: "https://ebysplace.vercel.app/admin/reset-password" },
+        options: { redirect_to: "https://www.ebysplace.com/admin/reset-password" },
       });
       return new Response(JSON.stringify({ action_link: "https://project.supabase.co/auth/v1/verify?token=abc&type=recovery" }), { status: 200 });
     }) as unknown as typeof fetch;
@@ -80,14 +105,14 @@ describe("admin password reset", () => {
 
     const { requestAdminPasswordReset } = await loadPasswordResetHelper();
 
-    const result = await requestAdminPasswordReset("ADMIN@example.com", "https://ebysplace.vercel.app/account");
+    const result = await requestAdminPasswordReset("ADMIN@example.com", "https://www.ebysplace.com/account");
 
     expect(result.success).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(sendMailMock).toHaveBeenCalledWith(expect.objectContaining({
       to: "admin@example.com",
       subject: "Reset your Eby’s Place admin password",
-      text: expect.stringContaining("https://project.supabase.co/auth/v1/verify?token=abc&type=recovery&redirect_to=https%3A%2F%2Febysplace.vercel.app%2Fadmin%2Freset-password"),
+      text: expect.stringContaining("https://project.supabase.co/auth/v1/verify?token=abc&type=recovery&redirect_to=https%3A%2F%2Fwww.ebysplace.com%2Fadmin%2Freset-password"),
     }));
   });
 
@@ -135,7 +160,7 @@ describe("admin password reset", () => {
     vi.stubGlobal("fetch", fetchMock);
     const { requestAdminPasswordReset } = await loadPasswordResetHelper();
 
-    await expect(requestAdminPasswordReset("admin@example.com", "https://ebysplace.vercel.app")).rejects.toMatchObject({
+    await expect(requestAdminPasswordReset("admin@example.com", "https://www.ebysplace.com")).rejects.toMatchObject({
       message: expect.stringContaining("SMTP"),
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);

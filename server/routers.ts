@@ -16,7 +16,7 @@ import { resendEmailNotificationLog } from "./smtpEmailNotifications";
 import { isResendConfigured, sendBrandedEmail, sendBroadcastEmail } from "./resendEmail";
 import { isWebPushConfigured, sendPushToAllSubscribers, sendPushToOwner } from "./webPush";
 import { isSmsConfigured, isWhatsAppConfigured, sendSmsToPhones, sendWhatsAppToPhones } from "./sms";
-import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken } from "./supabaseAuth";
+import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken, getPreferredProductionOrigin, getTrustedSiteHostnames } from "./supabaseAuth";
 import * as db from "./db";
 
 const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
@@ -188,9 +188,26 @@ function getLivePaymentMode() {
   return { stripeMode: "live" as const, publishableKeyConfigured: Boolean(getLiveStripePublishableKey().startsWith("pk_live_")) };
 }
 
+// Stripe checkout success/cancel URLs are built from this. The `Origin`
+// header is caller-supplied (trivial to spoof outside a real browser), so it
+// is only trusted when it matches a hostname this deployment actually
+// controls -- otherwise a request could redirect a customer post-payment to
+// an attacker-controlled domain. Payment/fund handling itself is unaffected;
+// this only guards the post-checkout redirect.
 function getOrigin(req: Request) {
   const origin = req.headers.origin;
-  return typeof origin === "string" ? origin : "http://localhost:3000";
+  if (typeof origin !== "string") return getPreferredProductionOrigin();
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return getPreferredProductionOrigin();
+    const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    const isProdRuntime = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+    if (isLocalhost) return isProdRuntime ? getPreferredProductionOrigin() : parsed.origin;
+    if (!getTrustedSiteHostnames().has(parsed.hostname)) return getPreferredProductionOrigin();
+    return parsed.origin;
+  } catch {
+    return getPreferredProductionOrigin();
+  }
 }
 
 function normalizeTrackingPath(pathOrUrl: string) {
@@ -308,6 +325,14 @@ function bookingExtrasTotal(input: { addOns?: Array<{ price: string }>; bookingP
   return addOnsTotal + productsTotal;
 }
 
+async function enforceRateLimit(req: Request | undefined, scope: string, limit: number, windowMs: number) {
+  const { allowed, retryAfterMs } = await db.checkRateLimit(scope, req, limit, windowMs);
+  if (!allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+    throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: `Too many requests. Please try again in ${retryAfterSeconds} seconds.` });
+  }
+}
+
 function decodeDataUrl(dataUrl: string) {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
   if (!match) throw new TRPCError({ code: "BAD_REQUEST", message: "Upload must be a base64 data URL." });
@@ -355,6 +380,7 @@ export const appRouter = router({
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string().min(8) }))
       .mutation(async ({ input, ctx }) => {
+        await enforceRateLimit(ctx.req, "auth.login", 8, 15 * 60_000);
         const result = await signInAdminWithPassword(input.email, input.password);
         await db.logActivity({
           request: ctx.req,
@@ -373,10 +399,16 @@ export const appRouter = router({
       }),
     requestPasswordReset: publicProcedure
       .input(z.object({ email: z.string().email(), origin: z.string().url() }))
-      .mutation(({ input }) => requestAdminPasswordReset(input.email, input.origin)),
+      .mutation(async ({ input, ctx }) => {
+        await enforceRateLimit(ctx.req, "auth.requestPasswordReset", 5, 60 * 60_000);
+        return requestAdminPasswordReset(input.email, input.origin);
+      }),
     updatePassword: publicProcedure
       .input(z.object({ accessToken: z.string().min(20), password: z.string().min(8) }))
-      .mutation(({ input }) => updateAdminPasswordWithRecoveryToken(input.accessToken, input.password)),
+      .mutation(async ({ input, ctx }) => {
+        await enforceRateLimit(ctx.req, "auth.updatePassword", 8, 15 * 60_000);
+        return updateAdminPasswordWithRecoveryToken(input.accessToken, input.password);
+      }),
     logout: publicProcedure.mutation(async ({ ctx }) => {
       await db.logActivity({
         request: ctx.req,
@@ -411,7 +443,8 @@ export const appRouter = router({
         role: z.enum(["user", "assistant"]),
         content: z.string().max(4000),
       })).min(1).max(40),
-    })).mutation(async ({ input }) => {
+    })).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.chatAssistant", 30, 10 * 60_000);
       const reply = await askEby(input.messages);
       return { reply };
     }),
@@ -421,6 +454,7 @@ export const appRouter = router({
         content: z.string().max(4000),
       })).min(1).max(40),
     })).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.chatLead", 10, 10 * 60_000);
       const lastUserMessage = [...input.messages].reverse().find((message) => message.role === "user");
       const summary = input.messages
         .slice(-6)
@@ -449,7 +483,8 @@ export const appRouter = router({
 
       return { success: true } as const;
     }),
-    newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(async ({ input }) => {
+    newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.newsletter", 10, 60 * 60_000);
       const result = await db.subscribeNewsletter(input.email, input.productAlerts);
       await db.logActivity({
         activityType: "newsletter_signup",
@@ -481,7 +516,8 @@ export const appRouter = router({
       await db.deletePushSubscriptionByEndpoint(input.endpoint);
       return { unsubscribed: true } as const;
     }),
-    subscribeSms: publicProcedure.input(z.object({ phone: z.string().min(8).max(20) })).mutation(async ({ input }) => {
+    subscribeSms: publicProcedure.input(z.object({ phone: z.string().min(8).max(20) })).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.subscribeSms", 10, 60 * 60_000);
       await db.saveSmsSubscription(input.phone);
       return { subscribed: true } as const;
     }),
@@ -496,7 +532,8 @@ export const appRouter = router({
       await db.saveCookieConsent(input);
       return { success: true } as const;
     }),
-    submitReview: publicProcedure.input(z.object({ customerName: z.string().min(2), rating: z.number().min(1).max(5), reviewText: z.string().min(10) })).mutation(async ({ input }) => {
+    submitReview: publicProcedure.input(z.object({ customerName: z.string().min(2), rating: z.number().min(1).max(5), reviewText: z.string().min(10) })).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.submitReview", 5, 60 * 60_000);
       const review = await db.submitReview(input);
       await notifyOwnerSafely(
         "New Eby’s Place review submitted",
@@ -510,7 +547,8 @@ export const appRouter = router({
       );
       return { ...review, customerNotification: "Thank you for reviewing Eby’s Place. Your review has been received and is pending approval." };
     }),
-    submitProductReview: publicProcedure.input(z.object({ productId: z.number().int().positive(), customerName: z.string().min(2), rating: z.number().min(1).max(5), reviewText: z.string().min(10) })).mutation(async ({ input }) => {
+    submitProductReview: publicProcedure.input(z.object({ productId: z.number().int().positive(), customerName: z.string().min(2), rating: z.number().min(1).max(5), reviewText: z.string().min(10) })).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.submitProductReview", 5, 60 * 60_000);
       const review = await db.submitProductReview(input);
       await notifyOwnerSafely(
         "New product review submitted",
@@ -524,7 +562,8 @@ export const appRouter = router({
       );
       return { ...review, customerNotification: "Thank you for your review. It has been received and is pending approval." };
     }),
-    createBooking: publicProcedure.input(bookingInput).mutation(async ({ input }) => {
+    createBooking: publicProcedure.input(bookingInput).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.createBooking", 10, 60 * 60_000);
       const { addOns, bookingProducts, ...bookingFields } = input;
       const serviceLocation = input.serviceLocation || "studio";
       const settings = await db.getAvailabilitySettings();
@@ -583,6 +622,7 @@ export const appRouter = router({
       addOns: z.array(bookingAddOnInput).default([]),
       bookingProducts: z.array(bookingProductInput).default([]),
     })).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.createDepositCheckout", 20, 60 * 60_000);
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
       const booking = await db.getBookingById(input.bookingId);
@@ -659,6 +699,7 @@ export const appRouter = router({
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),
     createOrder: publicProcedure.input(orderInput).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.createOrder", 20, 60 * 60_000);
       if (!input.addressLine1?.trim() || !input.city?.trim()) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Shop orders require delivery address line 1 and city. Postcode is optional." });
       }
@@ -724,7 +765,8 @@ export const appRouter = router({
       });
       return { orderId: order.id, checkoutUrl: session.url, status: "pending_payment", message: "Your secure Eby’s Place checkout is ready.", customerNotification: "Your Eby’s Place order checkout is ready. Please complete secure payment to confirm the order." };
     }),
-    uploadTryOnPhoto: publicProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("try-on-photo.jpg") })).mutation(async ({ input }) => {
+    uploadTryOnPhoto: publicProcedure.input(z.object({ dataUrl: z.string().min(50), fileName: z.string().default("try-on-photo.jpg") })).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.uploadTryOnPhoto", 20, 60 * 60_000);
       const { mimeType, buffer } = decodeDataUrl(input.dataUrl);
       const supportedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
       if (!supportedTypes.has(mimeType)) {
@@ -755,7 +797,8 @@ export const appRouter = router({
       ageGroup: z.enum(["child", "teen", "adult", "mature"]).optional(),
       email: z.string().email(),
       phone: z.string().optional(),
-    })).mutation(async ({ input }) => {
+    })).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.generateTryOn", 10, 60 * 60_000);
       const access = await db.consumeTryOnTrialOrCredit(input.email, input.phone);
       if (!access.allowed) {
         throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Your free Try-On has been used. Purchase more credits to continue." });
@@ -795,6 +838,7 @@ export const appRouter = router({
       phone: z.string().optional(),
       bundle: z.enum(["single", "small", "large"]),
     })).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.purchaseTryOnCredits", 20, 60 * 60_000);
       const bundle = TRY_ON_CREDIT_BUNDLES[input.bundle];
       const stripe = getStripe();
       const origin = getOrigin(ctx.req);
