@@ -727,6 +727,56 @@ function HomepageGalleryPreview() {
   );
 }
 
+/**
+ * Owns the typewriter's per-character state in its own component so each
+ * ~130ms tick re-renders only this small tree, not the whole (large)
+ * homepage -- ticking that state at the Home level was forcing a full-page
+ * re-render on every keystroke of the animation, which competed with
+ * everything else mounting/loading right after page load (images, fonts,
+ * the other sections' queries) and showed up as the animation stalling for
+ * a beat before continuing.
+ */
+function HeroCaption() {
+  const { typedLines: heroTyped, activeLineIndex: heroActiveLine } =
+    useTypewriter(HERO_CAPTION_LINES, { startDelay: 0, speed: 130, linePause: 700 });
+
+  return (
+    <>
+      <ul
+        className="hero-slogan-list max-w-[20rem] list-none space-y-0 p-0 lg:max-w-[30rem]"
+        aria-label="Zero pain. Zero trauma. Just perfection."
+        data-placement="lower-left-side-away-from-model-face"
+      >
+        {HERO_CAPTION_LINES.slice(0, 3).map((line, i) => (
+          <li key={line} aria-hidden="true">
+            {line.slice(0, heroTyped[i])}
+            {heroActiveLine === i && <span className="typing-cursor" />}
+          </li>
+        ))}
+      </ul>
+      <h1
+        className="serif mt-8 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl"
+        aria-label="Luxury Pain-Free Braiding in Somerset, UK"
+      >
+        <span aria-hidden="true">
+          {HERO_CAPTION_LINES[3].slice(0, heroTyped[3])}
+          {heroActiveLine === 3 && <span className="typing-cursor" />}
+          {heroTyped[3] === HERO_CAPTION_LINES[3].length && (
+            <>
+              {" "}
+              <br className="sm:hidden" />
+              <span className="gold-text">
+                {HERO_CAPTION_LINES[4].slice(0, heroTyped[4])}
+              </span>
+              {heroActiveLine === 4 && <span className="typing-cursor" />}
+            </>
+          )}
+        </span>
+      </h1>
+    </>
+  );
+}
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const { data: styles = [] } = trpc.public.featuredServices.useQuery();
@@ -762,8 +812,6 @@ export default function Home() {
       : (products as any[])
   ).slice(0, 4);
   const featuredBlogPosts = blogPosts.filter(post => post.featured).slice(0, 3);
-  const { typedLines: heroTyped, activeLineIndex: heroActiveLine } =
-    useTypewriter(HERO_CAPTION_LINES, { startDelay: 0, speed: 130, linePause: 700 });
 
   return (
     <div className="luxury-shell">
@@ -799,41 +847,7 @@ export default function Home() {
                 Somerset, UK &middot; Est. braid studio
               </motion.p>
               <div className="mt-6 max-w-3xl [text-shadow:0_3px_22px_rgba(0,0,0,.88)]">
-                <ul
-                  className="hero-slogan-list max-w-[20rem] list-none space-y-0 p-0 lg:max-w-[30rem]"
-                  aria-label="Zero pain. Zero trauma. Just perfection."
-                  data-placement="lower-left-side-away-from-model-face"
-                >
-                  {HERO_CAPTION_LINES.slice(0, 3).map((line, i) => (
-                    <li key={line} aria-hidden="true">
-                      {line.slice(0, heroTyped[i])}
-                      {heroActiveLine === i && (
-                        <span className="typing-cursor" />
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                <h1
-                  className="serif mt-8 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl"
-                  aria-label="Luxury Pain-Free Braiding in Somerset, UK"
-                >
-                  <span aria-hidden="true">
-                    {HERO_CAPTION_LINES[3].slice(0, heroTyped[3])}
-                    {heroActiveLine === 3 && <span className="typing-cursor" />}
-                    {heroTyped[3] === HERO_CAPTION_LINES[3].length && (
-                      <>
-                        {" "}
-                        <br className="sm:hidden" />
-                        <span className="gold-text">
-                          {HERO_CAPTION_LINES[4].slice(0, heroTyped[4])}
-                        </span>
-                        {heroActiveLine === 4 && (
-                          <span className="typing-cursor" />
-                        )}
-                      </>
-                    )}
-                  </span>
-                </h1>
+                <HeroCaption />
                 <motion.p
                   variants={staggerItem}
                   className="mt-7 max-w-2xl text-base font-medium leading-8 text-white sm:text-lg"
