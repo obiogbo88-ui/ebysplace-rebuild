@@ -802,11 +802,11 @@ export default function Home() {
                 <motion.ul
                   variants={staggerItem}
                   className="hero-slogan-list max-w-[20rem] list-none space-y-0 p-0 lg:max-w-[30rem]"
-                  aria-hidden="true"
+                  aria-label="Zero pain. Zero trauma. Just perfection."
                   data-placement="lower-left-side-away-from-model-face"
                 >
                   {HERO_CAPTION_LINES.slice(0, 3).map((line, i) => (
-                    <li key={line}>
+                    <li key={line} aria-hidden="true">
                       {line.slice(0, heroTyped[i])}
                       {heroActiveLine === i && (
                         <span className="typing-cursor" />
@@ -814,9 +814,6 @@ export default function Home() {
                     </li>
                   ))}
                 </motion.ul>
-                <span className="sr-only">
-                  Zero pain. Zero trauma. Just perfection.
-                </span>
                 <motion.h1
                   variants={staggerItem}
                   className="serif mt-8 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl"
@@ -827,6 +824,7 @@ export default function Home() {
                     {heroActiveLine === 3 && <span className="typing-cursor" />}
                     {heroTyped[3] === HERO_CAPTION_LINES[3].length && (
                       <>
+                        {" "}
                         <br className="sm:hidden" />
                         <span className="gold-text">
                           {HERO_CAPTION_LINES[4].slice(0, heroTyped[4])}
