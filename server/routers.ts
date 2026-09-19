@@ -10,6 +10,7 @@ import { askEby } from "./_core/chatAssistant";
 import { systemRouter } from "./_core/systemRouter";
 import { normalizeSecretKey } from "./_core/envSecrets";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
+import { collectTryOnPurchases } from "./tryOnPurchaseImport";
 import { notifyOwner } from "./_core/notification";
 import { getNotificationDiagnostics, sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely } from "./customerNotifications";
 import { resendEmailNotificationLog } from "./smtpEmailNotifications";
@@ -696,6 +697,16 @@ export const appRouter = router({
         typeof session.payment_intent === "string" ? session.payment_intent : null,
         { surchargeAmount: includeHomeServiceSurcharge ? homeServiceSurcharge : 0, checkoutTotal },
       );
+      await db.recordTransaction({
+        type: "booking_deposit",
+        amount: checkoutTotal,
+        customerName: input.clientName,
+        customerEmail: input.clientEmail,
+        description: `Booking deposit: ${input.serviceName}`,
+        referenceType: "booking",
+        referenceId: input.bookingId,
+        stripeCheckoutSessionId: session.id,
+      });
       return { checkoutUrl: session.url, bookingId: input.bookingId };
     }),
     createOrder: publicProcedure.input(orderInput).mutation(async ({ input, ctx }) => {
@@ -748,6 +759,16 @@ export const appRouter = router({
         typeof session.payment_intent === "string" ? session.payment_intent : null,
         { checkoutTotal: orderCheckoutTotal },
       );
+      await db.recordTransaction({
+        type: "shop_order",
+        amount: orderCheckoutTotal,
+        customerName: input.customerName,
+        customerEmail: input.customerEmail,
+        description: `Shop order #${order.id}`,
+        referenceType: "order",
+        referenceId: order.id,
+        stripeCheckoutSessionId: session.id,
+      });
       await notifyOwnerSafely(
         "New Eby’s Place shop order checkout started",
         [
@@ -872,6 +893,14 @@ export const appRouter = router({
         throw paymentUnavailableError();
       }
       if (!session.url) throw paymentUnavailableError();
+      await db.recordTransaction({
+        type: "tryon_credits",
+        amount: bundle.price,
+        customerEmail: input.email,
+        description: `AI Try-On credits: ${bundle.label}`,
+        referenceType: "tryon_bundle",
+        stripeCheckoutSessionId: session.id,
+      });
       return { checkoutUrl: session.url };
     }),
     track: publicProcedure.input(z.object({
@@ -1288,6 +1317,47 @@ export const appRouter = router({
       return { success: true };
     }),
     insights: adminProcedure.query(() => db.adminInsights()),
+    transactionSummary: adminProcedure.query(() => db.transactionSummary()),
+    importTryOnPurchasesFromStripe: adminProcedure.mutation(async ({ ctx }) => {
+      const stripe = getStripe();
+      const purchases = await collectTryOnPurchases(stripe.checkout.sessions.list({ limit: 100, status: "complete" }));
+      const result = await db.importTryOnPurchases(purchases);
+      if (result.imported > 0) {
+        await db.logActivity({
+          activityType: "admin_imported_tryon_purchases",
+          activityCategory: "admin_action",
+          description: `Imported ${result.imported} past AI Try-On credit purchase${result.imported === 1 ? "" : "s"} from Stripe (£${result.importedTotal.toFixed(2)})`,
+          status: "success",
+          pageUrl: "/admin",
+          userEmail: ctx.user?.email ?? undefined,
+          metadata: result,
+        }).catch(() => {});
+      }
+      return result;
+    }),
+    transactions: adminProcedure.input(z.object({
+      type: z.enum(db.TRANSACTION_TYPES).optional(),
+      status: z.enum(db.TRANSACTION_STATUSES).optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+    }).optional()).query(({ input }) => db.listTransactions(input ?? {})),
+    deleteIncompleteTransactions: adminProcedure.input(z.object({
+      olderThanHours: z.number().int().min(24).max(24 * 365).default(24),
+      dryRun: z.boolean().default(true),
+    })).mutation(async ({ input, ctx }) => {
+      const result = await db.deleteIncompleteTransactions(input);
+      if (!input.dryRun) {
+        await db.logActivity({
+          activityType: "admin_cleared_incomplete_transactions",
+          activityCategory: "admin_action",
+          description: `Admin cleared ${result.transactions} incomplete transactions, ${result.bookings} unpaid bookings and ${result.orders} unpaid orders older than ${result.olderThanHours}h`,
+          status: "success",
+          pageUrl: "/admin",
+          userEmail: ctx.user?.email ?? undefined,
+          metadata: result,
+        }).catch(() => {});
+      }
+      return result;
+    }),
     uploadServiceImage: adminProcedure.input(z.object({ serviceId: z.number(), serviceName: z.string().min(2), dataUrl: z.string().min(50), fileName: z.string().default("service-image.png") })).mutation(async ({ input }) => {
       try {
         const uploaded = await uploadDataUrlAsset({ dataUrl: input.dataUrl, fileName: `${input.serviceName}-${input.fileName}`, folder: "services" });

@@ -3099,8 +3099,8 @@ export async function adminInsights() {
     }
   };
   const [productSales, bookedServices, triedStyles, bookingRows, orderRows, reviewRows, analyticsRows, tryOnRows, subscriberRows] = await Promise.all([
-    safeInsightRows("product sales insight", [], () => db.select({ label: orderItems.productName, units: sql<number>`sum(${orderItems.quantity})`, revenue: sql<number>`sum(${orderItems.quantity} * ${orderItems.unitPrice})` }).from(orderItems).groupBy(orderItems.productName).orderBy(desc(sql`sum(${orderItems.quantity})`)).limit(8)),
-    safeInsightRows("booked services insight", [], () => db.select({ label: bookings.serviceName, total: sql<number>`count(*)` }).from(bookings).groupBy(bookings.serviceName).orderBy(desc(sql`count(*)`)).limit(8)),
+    safeInsightRows("product sales insight", [], () => db.select({ label: orderItems.productName, units: sql<number>`sum(${orderItems.quantity})`, revenue: sql<number>`sum(${orderItems.quantity} * ${orderItems.unitPrice})` }).from(orderItems).innerJoin(orders, eq(orders.id, orderItems.orderId)).where(inArray(orders.status, ["paid", "fulfilling", "shipped", "completed"])).groupBy(orderItems.productName).orderBy(desc(sql`sum(${orderItems.quantity})`)).limit(8)),
+    safeInsightRows("booked services insight", [], () => db.select({ label: bookings.serviceName, total: sql<number>`count(*)` }).from(bookings).where(eq(bookings.depositStatus, "paid")).groupBy(bookings.serviceName).orderBy(desc(sql`count(*)`)).limit(8)),
     safeInsightRows("try-on styles insight", [], () => db.select({ label: tryOnGenerations.styleName, total: sql<number>`count(*)` }).from(tryOnGenerations).groupBy(tryOnGenerations.styleName).orderBy(desc(sql`count(*)`)).limit(8)),
     safeInsightRows("recent bookings insight", [], () => db.select().from(bookings).orderBy(desc(bookings.createdAt)).limit(6)),
     safeInsightRows("recent orders insight", [], () => db.select().from(orders).orderBy(desc(orders.createdAt)).limit(6)),
@@ -3125,4 +3125,264 @@ export async function adminInsights() {
     bestTriedStyles: triedStyles.map((item) => ({ label: item.label, total: Number(item.total ?? 0) })),
     recentActivity,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Transactions ledger: one row per Stripe checkout, typed by what was bought.
+// ---------------------------------------------------------------------------
+export const TRANSACTION_TYPES = ["booking_deposit", "shop_order", "tryon_credits"] as const;
+export type TransactionType = (typeof TRANSACTION_TYPES)[number];
+export const TRANSACTION_STATUSES = ["pending", "completed", "failed", "cancelled", "refunded"] as const;
+export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
+
+let _transactionsReady = false;
+
+async function ensureTransactionsTable() {
+  if (!_pool || _transactionsReady) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "transactions" (
+      "id" SERIAL PRIMARY KEY,
+      "type" VARCHAR(30) NOT NULL,
+      "status" VARCHAR(20) NOT NULL DEFAULT 'pending',
+      "amount" NUMERIC(10,2) NOT NULL DEFAULT 0,
+      "currency" VARCHAR(3) NOT NULL DEFAULT 'gbp',
+      "customerName" VARCHAR(180),
+      "customerEmail" VARCHAR(320),
+      "description" VARCHAR(400),
+      "referenceType" VARCHAR(40),
+      "referenceId" INTEGER,
+      "stripeCheckoutSessionId" VARCHAR(255),
+      "stripePaymentIntentId" VARCHAR(255),
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "completedAt" TIMESTAMP
+    )`);
+    await _pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "transactions_session_uidx" ON "transactions" ("stripeCheckoutSessionId") WHERE "stripeCheckoutSessionId" IS NOT NULL`);
+    await _pool.query(`CREATE INDEX IF NOT EXISTS "transactions_type_status_idx" ON "transactions" ("type", "status")`);
+    _transactionsReady = true;
+    await backfillTransactions();
+  } catch (err) {
+    console.warn("[Database] Could not ensure transactions table", err);
+  }
+}
+
+// Copies checkouts that already exist on bookings/orders into the ledger. Idempotent (keyed on the Stripe session id).
+async function backfillTransactions() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`INSERT INTO "transactions" ("type","status","amount","customerName","customerEmail","description","referenceType","referenceId","stripeCheckoutSessionId","stripePaymentIntentId","createdAt","completedAt")
+      SELECT 'booking_deposit',
+        CASE b."depositStatus" WHEN 'paid' THEN 'completed' WHEN 'refunded' THEN 'refunded' WHEN 'failed' THEN 'failed' ELSE 'pending' END,
+        COALESCE(b."checkoutTotalCharged", 20),
+        b."clientName", b."clientEmail", 'Booking deposit: ' || b."serviceName", 'booking', b."id",
+        b."stripeCheckoutSessionId", b."stripePaymentIntentId", b."createdAt",
+        CASE WHEN b."depositStatus" IN ('paid','refunded') THEN b."updatedAt" END
+      FROM "bookings" b
+      WHERE b."stripeCheckoutSessionId" IS NOT NULL
+      ON CONFLICT DO NOTHING`);
+    await _pool.query(`INSERT INTO "transactions" ("type","status","amount","customerName","customerEmail","description","referenceType","referenceId","stripeCheckoutSessionId","stripePaymentIntentId","createdAt","completedAt")
+      SELECT 'shop_order',
+        CASE WHEN o."status" IN ('paid','fulfilling','shipped','completed') THEN 'completed' WHEN o."status" = 'cancelled' THEN 'cancelled' ELSE 'pending' END,
+        COALESCE(o."checkoutTotalCharged", (SELECT COALESCE(SUM(i."quantity" * i."unitPrice"), 0) FROM "orderItems" i WHERE i."orderId" = o."id")),
+        o."customerName", o."customerEmail", 'Shop order #' || o."id", 'order', o."id",
+        o."stripeCheckoutSessionId", o."stripePaymentIntentId", o."createdAt",
+        CASE WHEN o."status" IN ('paid','fulfilling','shipped','completed') THEN o."updatedAt" END
+      FROM "orders" o
+      WHERE o."stripeCheckoutSessionId" IS NOT NULL
+      ON CONFLICT DO NOTHING`);
+  } catch (err) {
+    console.warn("[Database] Could not backfill transactions", err);
+  }
+}
+
+export async function recordTransaction(input: {
+  type: TransactionType;
+  status?: TransactionStatus;
+  amount: number;
+  customerName?: string | null;
+  customerEmail?: string | null;
+  description?: string | null;
+  referenceType?: string | null;
+  referenceId?: number | null;
+  stripeCheckoutSessionId: string;
+  stripePaymentIntentId?: string | null;
+}) {
+  try {
+    await getDb();
+    if (!_pool) return;
+    await ensureTransactionsTable();
+    const status = input.status ?? "pending";
+    await _pool.query(
+      `INSERT INTO "transactions" ("type","status","amount","customerName","customerEmail","description","referenceType","referenceId","stripeCheckoutSessionId","stripePaymentIntentId","completedAt")
+       VALUES ($1,$2::varchar,$3,$4,$5,$6,$7,$8,$9,$10, CASE WHEN $2::varchar = 'completed' THEN NOW() END)
+       ON CONFLICT ("stripeCheckoutSessionId") WHERE "stripeCheckoutSessionId" IS NOT NULL DO NOTHING`,
+      [input.type, status, Number(input.amount).toFixed(2), input.customerName ?? null, input.customerEmail ?? null, input.description?.slice(0, 400) ?? null, input.referenceType ?? null, input.referenceId ?? null, input.stripeCheckoutSessionId, input.stripePaymentIntentId ?? null],
+    );
+  } catch (err) {
+    console.warn("[Transactions] Could not record transaction", err);
+  }
+}
+
+// Called by the Stripe webhook when a checkout is paid. Inserts the row if the checkout pre-dates the ledger.
+export async function completeTransaction(input: {
+  type: TransactionType;
+  stripeCheckoutSessionId: string;
+  amount: number;
+  stripePaymentIntentId?: string | null;
+  customerName?: string | null;
+  customerEmail?: string | null;
+  description?: string | null;
+  referenceType?: string | null;
+  referenceId?: number | null;
+}) {
+  try {
+    await getDb();
+    if (!_pool) return;
+    await ensureTransactionsTable();
+    await _pool.query(
+      `INSERT INTO "transactions" ("type","status","amount","customerName","customerEmail","description","referenceType","referenceId","stripeCheckoutSessionId","stripePaymentIntentId","completedAt")
+       VALUES ($1,'completed',$2,$3,$4,$5,$6,$7,$8,$9,NOW())
+       ON CONFLICT ("stripeCheckoutSessionId") WHERE "stripeCheckoutSessionId" IS NOT NULL
+       DO UPDATE SET "status" = 'completed', "amount" = EXCLUDED."amount", "completedAt" = COALESCE("transactions"."completedAt", NOW()),
+                     "stripePaymentIntentId" = COALESCE(EXCLUDED."stripePaymentIntentId", "transactions"."stripePaymentIntentId")`,
+      [input.type, Number(input.amount).toFixed(2), input.customerName ?? null, input.customerEmail ?? null, input.description?.slice(0, 400) ?? null, input.referenceType ?? null, input.referenceId ?? null, input.stripeCheckoutSessionId, input.stripePaymentIntentId ?? null],
+    );
+  } catch (err) {
+    console.warn("[Transactions] Could not complete transaction", err);
+  }
+}
+
+// Only ever moves a still-pending row (never overwrites a completed payment).
+export async function markTransactionUnfinished(stripeCheckoutSessionId: string, status: "cancelled" | "failed") {
+  try {
+    await getDb();
+    if (!_pool) return;
+    await ensureTransactionsTable();
+    await _pool.query(`UPDATE "transactions" SET "status" = $2 WHERE "stripeCheckoutSessionId" = $1 AND "status" = 'pending'`, [stripeCheckoutSessionId, status]);
+  } catch (err) {
+    console.warn("[Transactions] Could not update transaction status", err);
+  }
+}
+
+// Adds past paid Try-On credit purchases (taken from Stripe) to the ledger. Safe to re-run: existing sessions are skipped.
+export async function importTryOnPurchases(purchases: Array<{ stripeCheckoutSessionId: string; stripePaymentIntentId: string | null; amount: number; credits: number; customerEmail: string | null; paidAt: Date }>) {
+  const result = { found: purchases.length, imported: 0, alreadyRecorded: 0, importedTotal: 0 };
+  await getDb();
+  if (!_pool || !purchases.length) return result;
+  await ensureTransactionsTable();
+  for (const purchase of purchases) {
+    const inserted = await _pool.query(
+      `INSERT INTO "transactions" ("type","status","amount","customerEmail","description","referenceType","stripeCheckoutSessionId","stripePaymentIntentId","createdAt","completedAt")
+       VALUES ('tryon_credits','completed',$1,$2,$3,'tryon_bundle',$4,$5,$6,$6)
+       ON CONFLICT ("stripeCheckoutSessionId") WHERE "stripeCheckoutSessionId" IS NOT NULL DO NOTHING
+       RETURNING "id"`,
+      [purchase.amount.toFixed(2), purchase.customerEmail, `AI Try-On credits: ${purchase.credits} credit${purchase.credits === 1 ? "" : "s"}`, purchase.stripeCheckoutSessionId, purchase.stripePaymentIntentId, purchase.paidAt],
+    );
+    if (inserted.rowCount) {
+      result.imported += 1;
+      result.importedTotal += purchase.amount;
+    } else {
+      result.alreadyRecorded += 1;
+    }
+  }
+  return result;
+}
+
+export async function transactionSummary() {
+  const empty = {
+    completedTotal: 0,
+    completedCount: 0,
+    incompleteCount: 0,
+    byType: TRANSACTION_TYPES.map((type) => ({ type, completedTotal: 0, completedCount: 0, incompleteCount: 0 })),
+  };
+  try {
+    await getDb();
+    if (!_pool) return empty;
+    await ensureTransactionsTable();
+    const result = await _pool.query(
+      `SELECT "type",
+              COALESCE(SUM("amount") FILTER (WHERE "status" = 'completed'), 0) AS "completedTotal",
+              COUNT(*) FILTER (WHERE "status" = 'completed') AS "completedCount",
+              COUNT(*) FILTER (WHERE "status" IN ('pending','failed','cancelled')) AS "incompleteCount"
+       FROM "transactions" GROUP BY "type"`,
+    );
+    const byType = TRANSACTION_TYPES.map((type) => {
+      const row = result.rows.find((item) => item.type === type);
+      return { type, completedTotal: Number(row?.completedTotal ?? 0), completedCount: Number(row?.completedCount ?? 0), incompleteCount: Number(row?.incompleteCount ?? 0) };
+    });
+    return {
+      completedTotal: byType.reduce((sum, item) => sum + item.completedTotal, 0),
+      completedCount: byType.reduce((sum, item) => sum + item.completedCount, 0),
+      incompleteCount: byType.reduce((sum, item) => sum + item.incompleteCount, 0),
+      byType,
+    };
+  } catch (err) {
+    console.warn("[Transactions] Could not load summary", err);
+    return empty;
+  }
+}
+
+export async function listTransactions(filter: { type?: TransactionType; status?: TransactionStatus; limit?: number } = {}) {
+  try {
+    await getDb();
+    if (!_pool) return [];
+    await ensureTransactionsTable();
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (filter.type) { params.push(filter.type); where.push(`"type" = $${params.length}`); }
+    if (filter.status) { params.push(filter.status); where.push(`"status" = $${params.length}`); }
+    params.push(Math.min(Math.max(filter.limit ?? 50, 1), 200));
+    const result = await _pool.query(
+      `SELECT "id","type","status","amount","currency","customerName","customerEmail","description","referenceType","referenceId","createdAt","completedAt"
+       FROM "transactions" ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY "createdAt" DESC LIMIT $${params.length}`,
+      params,
+    );
+    return result.rows.map((row) => ({ ...row, amount: Number(row.amount) }));
+  } catch (err) {
+    console.warn("[Transactions] Could not list transactions", err);
+    return [];
+  }
+}
+
+// Removes abandoned checkouts older than `olderThanHours` (Stripe sessions expire after 24h, so that is the minimum).
+// Only touches records that were never paid: unpaid pending bookings and draft/pending_payment orders. Paid records are never deleted.
+export async function deleteIncompleteTransactions(options: { olderThanHours?: number; dryRun?: boolean } = {}) {
+  const hours = Math.max(24, Math.floor(options.olderThanHours ?? 24));
+  const dryRun = options.dryRun !== false;
+  const result = { dryRun, olderThanHours: hours, transactions: 0, bookings: 0, orders: 0 };
+  await getDb();
+  if (!_pool) return result;
+  await ensureTransactionsTable();
+  const client = await _pool.connect();
+  try {
+    await client.query("BEGIN");
+    const cutoff = `NOW() - ($1 || ' hours')::interval`;
+    const params = [String(hours)];
+    const bookingIds = (await client.query(
+      `SELECT "id" FROM "bookings" WHERE "status" = 'pending' AND "depositStatus" IN ('unpaid','checkout_started','failed') AND "createdAt" < ${cutoff}`, params,
+    )).rows.map((row) => Number(row.id));
+    const orderIds = (await client.query(
+      `SELECT "id" FROM "orders" WHERE "status" IN ('draft','pending_payment') AND "createdAt" < ${cutoff}`, params,
+    )).rows.map((row) => Number(row.id));
+    // Never touch a ledger row whose booking/order turns out to be paid (e.g. a missed webhook).
+    const unpaidTx = `"status" IN ('pending','failed','cancelled') AND "createdAt" < ${cutoff}
+      AND NOT ("referenceType" = 'booking' AND EXISTS (SELECT 1 FROM "bookings" b WHERE b."id" = "transactions"."referenceId" AND b."depositStatus" IN ('paid','refunded')))
+      AND NOT ("referenceType" = 'order' AND EXISTS (SELECT 1 FROM "orders" o WHERE o."id" = "transactions"."referenceId" AND o."status" IN ('paid','fulfilling','shipped','completed')))`;
+    const txCount = Number((await client.query(`SELECT COUNT(*) AS "count" FROM "transactions" WHERE ${unpaidTx}`, params)).rows[0]?.count ?? 0);
+    result.bookings = bookingIds.length;
+    result.orders = orderIds.length;
+    result.transactions = txCount;
+    if (!dryRun) {
+      if (orderIds.length) await client.query(`DELETE FROM "orderItems" WHERE "orderId" = ANY($1::int[])`, [orderIds]);
+      if (orderIds.length) await client.query(`DELETE FROM "orders" WHERE "id" = ANY($1::int[])`, [orderIds]);
+      if (bookingIds.length) await client.query(`DELETE FROM "bookings" WHERE "id" = ANY($1::int[])`, [bookingIds]);
+      await client.query(`DELETE FROM "transactions" WHERE ${unpaidTx}`, params);
+    }
+    await client.query(dryRun ? "ROLLBACK" : "COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
 }

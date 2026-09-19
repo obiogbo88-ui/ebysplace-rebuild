@@ -69,6 +69,17 @@ export function registerStripeWebhook(app: Application) {
             checkoutTotal: Number.isFinite(webhookCheckoutTotal) ? webhookCheckoutTotal : undefined,
           });
           const booking = await db.getBookingByCheckoutSession(session.id);
+          await db.completeTransaction({
+            type: "booking_deposit",
+            stripeCheckoutSessionId: session.id,
+            amount: session.amount_total != null ? Number(session.amount_total) / 100 : Number(booking?.checkoutTotalCharged ?? 20),
+            stripePaymentIntentId: paymentIntentId,
+            customerName: booking?.clientName ?? session.metadata?.customer_name,
+            customerEmail: booking?.clientEmail ?? session.metadata?.customer_email ?? session.customer_email,
+            description: `Booking deposit: ${booking?.serviceName ?? session.metadata?.service_name ?? "service"}`,
+            referenceType: "booking",
+            referenceId: booking?.id ?? (Number(session.metadata?.booking_id) || null),
+          });
           const bookingSurcharge = Number(booking?.checkoutSurchargeCharged ?? booking?.homeServiceSurcharge ?? session.metadata?.home_service_surcharge ?? 0);
           const bookingTotalPaid = Number(booking?.checkoutTotalCharged ?? (session.amount_total != null ? Number(session.amount_total) / 100 : NaN));
           console.info("[StripeWebhook] Booking payment settlement recorded", {
@@ -135,6 +146,17 @@ export function registerStripeWebhook(app: Application) {
         if (session.metadata?.order_type === "shop_products" && session.id) {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
           await db.markOrderPaid(session.id, paymentIntentId);
+          await db.completeTransaction({
+            type: "shop_order",
+            stripeCheckoutSessionId: session.id,
+            amount: session.amount_total != null ? Number(session.amount_total) / 100 : 0,
+            stripePaymentIntentId: paymentIntentId,
+            customerName: session.metadata?.customer_name,
+            customerEmail: session.metadata?.customer_email ?? session.customer_email,
+            description: `Shop order #${session.metadata?.order_id ?? ""}`.trim(),
+            referenceType: "order",
+            referenceId: Number(session.metadata?.order_id) || null,
+          });
           const orderCheckoutTotal = session.amount_total != null ? Number(session.amount_total) / 100 : NaN;
           await db.recordOrderCheckoutSettlement(session.id, {
             checkoutTotal: Number.isFinite(orderCheckoutTotal) ? orderCheckoutTotal : undefined,
@@ -196,6 +218,15 @@ export function registerStripeWebhook(app: Application) {
           const customerEmail = session.metadata?.customer_email || session.customer_email || "";
           const customerPhone = session.metadata?.customer_phone || undefined;
           const credits = Number(session.metadata?.credits || 0);
+          await db.completeTransaction({
+            type: "tryon_credits",
+            stripeCheckoutSessionId: session.id,
+            amount: session.amount_total != null ? Number(session.amount_total) / 100 : 0,
+            stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
+            customerEmail: customerEmail || null,
+            description: `AI Try-On credits: ${credits} credit${credits === 1 ? "" : "s"}`,
+            referenceType: "tryon_bundle",
+          });
           if (customerEmail && credits > 0) {
             await db.creditTryOnPurchase(customerEmail, customerPhone, credits);
             await sendOwnerSmsAndWhatsAppSafely(
@@ -205,6 +236,10 @@ export function registerStripeWebhook(app: Application) {
             console.warn("[StripeWebhook] Try-On credits session missing email or credits", { sessionId: session.id, customerEmail, credits });
           }
         }
+      }
+      if (event.type === "checkout.session.expired") {
+        const expired = event.data.object as Stripe.Checkout.Session;
+        if (expired.id) await db.markTransactionUnfinished(expired.id, "cancelled");
       }
       if (event.type === "payment_intent.succeeded") {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
