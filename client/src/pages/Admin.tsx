@@ -699,12 +699,12 @@ export default function Admin() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary/30 bg-black text-primary transition hover:bg-primary hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary/30 bg-black !text-[#C9A84C] transition hover:border-[#C9A84C] hover:bg-[#2b2110] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     aria-label="Open admin notifications"
                   >
                     <Bell className="h-5 w-5" />
                     {(unreadActivityCount.data ?? 0) > 0 ? (
-                      <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-black">
+                      <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#C9A84C] px-1.5 text-[10px] font-bold leading-none !text-[#111111] ring-2 ring-[#fffaf0]">
                         {unreadActivityCount.data}
                       </span>
                     ) : null}
