@@ -40,7 +40,7 @@ const policies: Record<PolicyKey, PolicyContent> = {
       {
         title: "Cookies",
         body:
-          "The website may use essential cookies for security, checkout, booking, and account functionality. Analytics or preference cookies should only be used where appropriate consent or settings are available.",
+          "The website uses essential cookies and storage for security, checkout, booking, and account functionality. Analytics is optional and off by default: only if you accept it do we count your page visits and set a random visitor ID cookie (kept for up to a year) so we can recognise return visits. If you decline, we do not count your page visits or set that cookie, and any existing one is removed. We do not currently run advertising or marketing trackers; the marketing choice is recorded for future use. You can change or withdraw your choice at any time using \"Cookie settings\" in the site footer.",
       },
       {
         title: "Your choices",

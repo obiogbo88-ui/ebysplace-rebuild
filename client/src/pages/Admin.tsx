@@ -1308,6 +1308,9 @@ export default function Admin() {
 
           <AdminPanel id="cookies" eyebrow="Consent & tracking" title="Cookie consent" description="See who has accepted or rejected analytics and marketing cookies, and how many visits are being tracked with a returning-visitor cookie." icon={Cookie} open={isPanelOpen("cookies")} onToggle={() => togglePanel("cookies")}>
             <div className="mt-5">
+              <p className="mb-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/70">
+                This is your record of what each visitor chose on the website's cookie banner. <b className="text-primary">Accepted analytics</b> visitors are counted in your page-visit figures and get a returning-visitor ID. Visitors who reject are not counted in page visits at all, so your visit totals only cover people who accepted. Booking, checkout and Try-On activity is logged for everyone because the service needs it. <b className="text-primary">Marketing</b> is recorded but not used yet, since no advertising trackers run on the site.
+              </p>
               <div className="grid gap-3 text-sm text-white/65 sm:grid-cols-2 lg:grid-cols-4">
                 <p className="rounded-2xl border border-white/10 bg-black/20 p-4">Consent decisions: <b className="block text-2xl text-primary">{cookieConsentSummary.data?.total ?? "..."}</b></p>
                 <p className="rounded-2xl border border-white/10 bg-black/20 p-4">Accepted analytics: <b className="block text-2xl text-primary">{cookieConsentSummary.data?.acceptedAnalytics ?? "..."}</b></p>

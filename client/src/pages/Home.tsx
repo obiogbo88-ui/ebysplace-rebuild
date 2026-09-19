@@ -37,6 +37,7 @@ import {
   X,
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { openCookieSettings } from "@/lib/cookieConsent";
 
 const LOGO_SRC =
   "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
@@ -383,6 +384,7 @@ export function SiteFooter() {
             <Link className="w-fit transition hover:text-[#8a641e]" href="/policies/shopping">Shopping Policy</Link>
             <Link className="w-fit transition hover:text-[#8a641e]" href="/policies/returns">Returns Policy</Link>
             <Link className="w-fit transition hover:text-[#8a641e]" href="/policies/terms">Terms of Use</Link>
+            <button className="w-fit text-left transition hover:text-[#8a641e]" type="button" onClick={openCookieSettings}>Cookie settings</button>
           </div>
         </div>
         <div>

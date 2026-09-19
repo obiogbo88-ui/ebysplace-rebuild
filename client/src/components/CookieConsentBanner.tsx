@@ -1,22 +1,37 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { getStoredConsent, saveConsent } from "@/lib/cookieConsent";
-import { getActivitySessionId, getCurrentPageUrl } from "@/lib/activityTracking";
+import { getStoredConsent, OPEN_COOKIE_SETTINGS_EVENT, saveConsent } from "@/lib/cookieConsent";
+import { clearPersistentSessionId, getActivitySessionId, getCurrentPageUrl } from "@/lib/activityTracking";
 
 export default function CookieConsentBanner() {
   const [location] = useLocation();
   const isAdmin = location.startsWith("/admin");
   const [dismissed, setDismissed] = useState(() => Boolean(getStoredConsent()));
   const [manageOpen, setManageOpen] = useState(false);
-  const [analyticsChecked, setAnalyticsChecked] = useState(true);
+  // Optional cookies start switched off: the visitor has to opt in.
+  const [analyticsChecked, setAnalyticsChecked] = useState(false);
   const [marketingChecked, setMarketingChecked] = useState(false);
   const logConsent = trpc.public.logCookieConsent.useMutation();
+
+  // The footer "Cookie settings" link reopens the panel so a choice can be changed or withdrawn.
+  useEffect(() => {
+    const reopen = () => {
+      const current = getStoredConsent();
+      setAnalyticsChecked(Boolean(current?.analytics));
+      setMarketingChecked(Boolean(current?.marketing));
+      setManageOpen(true);
+      setDismissed(false);
+    };
+    window.addEventListener(OPEN_COOKIE_SETTINGS_EVENT, reopen);
+    return () => window.removeEventListener(OPEN_COOKIE_SETTINGS_EVENT, reopen);
+  }, []);
 
   if (isAdmin || dismissed) return null;
 
   const submit = (analytics: boolean, marketing: boolean) => {
     saveConsent({ analytics, marketing });
+    if (!analytics) clearPersistentSessionId();
     logConsent.mutate({
       sessionId: getActivitySessionId(),
       analytics,
@@ -25,6 +40,7 @@ export default function CookieConsentBanner() {
       userAgent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 500) : undefined,
     });
     setDismissed(true);
+    setManageOpen(false);
   };
 
   return (
@@ -35,7 +51,7 @@ export default function CookieConsentBanner() {
     >
       <div className="lux-card mx-auto max-w-3xl p-5 shadow-[0_-12px_40px_rgba(0,0,0,.35)] sm:p-6">
         <p className="text-sm font-medium leading-6 text-white/78">
-          We use cookies to keep the site working properly and, if you agree, to understand how visitors use it. See our{" "}
+          We use essential cookies to keep the site, bookings and checkout working. Analytics is optional and off unless you accept it: if you decline, we do not count your page visits or remember you between visits. See our{" "}
           <a className="underline decoration-white/30 underline-offset-4 hover:text-white" href="/policies/privacy">
             Privacy Policy
           </a>{" "}
@@ -55,7 +71,7 @@ export default function CookieConsentBanner() {
                 checked={analyticsChecked}
                 onChange={(event) => setAnalyticsChecked(event.target.checked)}
               />
-              Analytics — helps us see which pages and styles get the most interest
+              Analytics — counts page visits and remembers you between visits (a random visitor ID), so we can see which pages and styles get the most interest
             </label>
             <label className="flex items-start gap-2 text-sm text-white/70">
               <input
@@ -64,7 +80,7 @@ export default function CookieConsentBanner() {
                 checked={marketingChecked}
                 onChange={(event) => setMarketingChecked(event.target.checked)}
               />
-              Marketing — lets us tailor offers and promotions
+              Marketing — reserved for tailoring offers and promotions. We do not run any advertising trackers at the moment
             </label>
           </div>
         ) : null}

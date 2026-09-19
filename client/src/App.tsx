@@ -13,6 +13,7 @@ import { trpc } from "@/lib/trpc";
 import {
   createTrackingEventKey,
   getActivitySessionId,
+  hasAnalyticsConsent,
   getBrowserInfo,
   shouldThrottleTrackingEvent,
   shouldTrackPublicActivity,
@@ -384,6 +385,8 @@ function DynamicSeoMetadata() {
   useEffect(() => {
     const pagePath = location.split(/[?#]/)[0] || "/";
     if (!shouldTrackPublicActivity(pagePath)) return;
+    // Page-visit analytics are opt-in: nothing is recorded until the visitor accepts analytics.
+    if (!hasAnalyticsConsent()) return;
     const dedupeKey = "ebysplace:last-public-page-visit";
     const now = Date.now();
     try {
