@@ -1,3 +1,5 @@
+import { getStoredConsent } from "./cookieConsent";
+
 const SESSION_KEY = "ebysplace_activity_session_id";
 const ADMIN_PATH_PREFIX = "/admin";
 const trackingThrottleByKey = new Map<string, number>();
@@ -12,13 +14,33 @@ function randomSessionId() {
   return `sess_${Date.now().toString(36)}_${(Date.now() % 9973).toString(36)}`;
 }
 
+export function hasAnalyticsConsent() {
+  return Boolean(getStoredConsent()?.analytics);
+}
+
+/**
+ * Links a visitor's booking/checkout activity together. Without analytics consent the id only lives for
+ * the current tab (sessionStorage) and is gone when it closes; with consent it persists so return visits
+ * can be recognised.
+ */
 export function getActivitySessionId() {
   if (typeof window === "undefined") return "";
-  const existing = localStorage.getItem(SESSION_KEY);
-  if (existing) return existing;
-  const next = randomSessionId();
-  localStorage.setItem(SESSION_KEY, next);
-  return next;
+  try {
+    const store = hasAnalyticsConsent() ? window.localStorage : window.sessionStorage;
+    const existing = store.getItem(SESSION_KEY);
+    if (existing) return existing;
+    const next = randomSessionId();
+    store.setItem(SESSION_KEY, next);
+    return next;
+  } catch {
+    return randomSessionId();
+  }
+}
+
+/** Removes the long-lived id, e.g. when a visitor rejects or withdraws analytics consent. */
+export function clearPersistentSessionId() {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.removeItem(SESSION_KEY); } catch { /* storage unavailable */ }
 }
 
 export function getBrowserInfo() {

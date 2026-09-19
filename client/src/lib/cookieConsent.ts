@@ -25,6 +25,13 @@ export function getStoredConsent(): CookiePreferences | null {
   }
 }
 
+export const OPEN_COOKIE_SETTINGS_EVENT = "ebysplace:open-cookie-settings";
+
+/** Lets a visitor change or withdraw their choice later (used by the footer "Cookie settings" link). */
+export function openCookieSettings() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(OPEN_COOKIE_SETTINGS_EVENT));
+}
+
 export function saveConsent(preferences: { analytics: boolean; marketing: boolean }): CookiePreferences {
   const value: CookiePreferences = { necessary: true, analytics: preferences.analytics, marketing: preferences.marketing };
   setCookie(CONSENT_COOKIE_NAME, JSON.stringify(value), CONSENT_COOKIE_DAYS);
