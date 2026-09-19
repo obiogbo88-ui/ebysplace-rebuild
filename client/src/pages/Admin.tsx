@@ -8,6 +8,7 @@ import { getExistingPushSubscription, isPushSupported, pushSubscriptionToInput, 
 import {
   Bell,
   CalendarDays,
+  ChevronDown,
   Images,
   MessageSquare,
   Package,
@@ -22,6 +23,7 @@ import {
   Trash2,
   CheckCheck,
   Cookie,
+  PoundSterling,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -63,10 +65,12 @@ type AdminReviewItem = {
 
 function Stat({ label, value, icon: Icon }: { label: string; value: number | string; icon: any }) {
   return (
-    <div className="lux-card bg-card">
-      <Icon className="text-primary" />
-      <p className="mt-4 text-sm text-white/55">{label}</p>
-      <b className="mt-1 block text-3xl text-primary">{value}</b>
+    <div className="flex items-center gap-3 rounded-2xl border border-primary/15 bg-card px-3 py-2.5">
+      <Icon className="h-4 w-4 shrink-0 text-primary" />
+      <div className="min-w-0">
+        <b className="block text-xl leading-none text-primary">{value}</b>
+        <p className="mt-1 truncate text-xs text-white/55">{label}</p>
+      </div>
     </div>
   );
 }
@@ -170,6 +174,7 @@ const productCategories = ["Accessories", "Aftercare", "Hair Attachments"] as co
 const serviceCategories = ["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"] as const;
 const adminOverviewActions = [
   { label: "Bookings", sectionId: "bookings", description: "Review and update appointment statuses." },
+  { label: "Transactions", sectionId: "transactions", description: "Completed payments by type, and clear abandoned checkouts." },
   { label: "Orders", sectionId: "orders", description: "Open protected shop order fulfilment." },
   { label: "Email Notifications", sectionId: "email-notifications", description: "View email delivery status and resend failed notifications." },
   { label: "Newsletter Subscribers", sectionId: "newsletter-subscribers", description: "See everyone who joined the Eby's Place list." },
@@ -183,6 +188,13 @@ const adminOverviewActions = [
   { label: "Content", sectionId: "content", description: "Update the About Us story, round image, and image description." },
 ] as const;
 
+const transactionTypeLabels: Record<string, string> = {
+  booking_deposit: "Booking deposits",
+  shop_order: "Shop orders",
+  tryon_credits: "AI Try-On credits",
+};
+const formatMoney = (value: number) => `£${Number(value || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 type AdminPanelProps = {
   id: string;
   title: string;
@@ -191,32 +203,35 @@ type AdminPanelProps = {
   icon: any;
   open: boolean;
   onToggle: () => void;
+  badge?: number;
   children: ReactNode;
 };
 
-function AdminPanel({ id, title, eyebrow, description, icon: Icon, open, onToggle, children }: AdminPanelProps) {
+function AdminPanel({ id, title, eyebrow, description, icon: Icon, open, onToggle, badge, children }: AdminPanelProps) {
   return (
-    <section id={id} className="lux-card overflow-hidden border-primary/20 bg-card/95">
+    <section id={id} className="lux-card overflow-hidden border-primary/20 bg-card/95 !p-3 sm:!p-4">
       <button
         type="button"
-        className="flex w-full flex-col gap-4 text-left sm:flex-row sm:items-center sm:justify-between"
+        className="flex w-full items-center gap-3 text-left"
         aria-expanded={open}
         aria-controls={`${id}-content`}
+        title={description}
         onClick={onToggle}
       >
-        <span className="flex min-w-0 gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
-            <Icon className="h-5 w-5" />
-          </span>
-          <span className="min-w-0">
-            <span className="pill w-fit">{eyebrow}</span>
-            <span className="serif mt-3 block text-3xl font-bold leading-tight text-primary">{title}</span>
-            <span className="mt-2 block text-sm text-white/60">{description}</span>
-          </span>
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" />
         </span>
-        <span className="btn-dark shrink-0 py-2 text-sm">{open ? "Hide section" : "Open section"}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white/45">{eyebrow}</span>
+          <span className="serif block truncate text-xl font-bold leading-tight text-primary">{title}</span>
+        </span>
+        {badge ? (
+          <span className="shrink-0 rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-black" aria-label={`${badge} need attention`}>{badge}</span>
+        ) : null}
+        <ChevronDown className={`h-5 w-5 shrink-0 text-primary transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+        <span className="sr-only">{open ? "Hide section" : "Open section"}</span>
       </button>
-      {open && <div id={`${id}-content`} className="mt-6 border-t border-white/10 pt-6">{children}</div>}
+      {open && <div id={`${id}-content`} className="mt-4 border-t border-white/10 pt-4">{children}</div>}
     </section>
   );
 }
@@ -248,8 +263,8 @@ const EMPTY_REPLY = {
 
 export default function Admin() {
   const { user } = useAuth();
-  const summary = trpc.admin.summary.useQuery(undefined, { retry: false });
-  const lists = trpc.admin.lists.useQuery(undefined, { retry: false });
+  const summary = trpc.admin.summary.useQuery(undefined, { retry: false, refetchInterval: 60000 });
+  const lists = trpc.admin.lists.useQuery(undefined, { retry: false, refetchInterval: 60000 });
   const insights = trpc.admin.insights.useQuery(undefined, { retry: false });
   const emailLogs = trpc.admin.listEmailNotificationLogs.useQuery(undefined, { retry: false });
   const newsletterSubscribers = trpc.admin.listNewsletterSubscribers.useQuery(undefined, { retry: false });
@@ -323,6 +338,8 @@ export default function Admin() {
     utils.admin.lists.invalidate();
     utils.admin.summary.invalidate();
     utils.admin.insights.invalidate();
+    utils.admin.transactionSummary.invalidate();
+    utils.admin.transactions.invalidate();
     utils.admin.listEmailNotificationLogs.invalidate();
     utils.admin.listActivityLogs.invalidate();
     utils.admin.unreadActivityCount.invalidate();
@@ -338,8 +355,8 @@ export default function Admin() {
     utils.public.paymentMode.invalidate();
   };
   const scrollAdminFeedback = (sectionId: string) => {
-    setOpenPanels((current) => new Set(current).add(sectionId));
-    smoothScrollToElement(sectionId, 60);
+    setOpenPanels(new Set([sectionId]));
+    window.setTimeout(() => smoothScrollToElement(sectionId, 60), 60);
   };
   const opts = {
     onSuccess: () => {
@@ -515,7 +532,7 @@ export default function Admin() {
   const [newService, setNewService] = useState({ name: "", slug: "", category: "Braids", description: "", duration: "", priceFrom: "", badge: "", imageUrl: "", isBookable: "true", isFeatured: "false", sortOrder: 0 });
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [deletingGalleryId, setDeletingGalleryId] = useState<number | null>(null);
-  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set(["activity-monitoring"]));
+  const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set());
   const newProductFileRef = useRef<{ file: File; dataUrl: string } | null>(null);
   const [newProductPreviewUrl, setNewProductPreviewUrl] = useState<string>("");
   const data = (lists.data || {}) as AdminListData;
@@ -531,13 +548,70 @@ export default function Admin() {
   const cookieConsentRows = cookieConsents.data || [];
   const activityRows = activityLogs.data || data.activityLogs || [];
   const notificationRows = (notificationFeed.data || []).filter(isImportantAdminNotification).slice(0, 6);
+  const pendingBookingCount = ((data.bookings || []) as any[]).filter((booking) => booking.status === "pending").length;
+  const unreadAlertCount = unreadActivityCount.data ?? 0;
+  const attentionItems = [
+    { sectionId: "bookings", label: "Bookings", count: pendingBookingCount, noun: "pending" },
+    { sectionId: "reviews", label: "Reviews", count: pendingReviewRows.length, noun: "to moderate" },
+    { sectionId: "product-reviews", label: "Product reviews", count: pendingProductReviewRows.length, noun: "to moderate" },
+    { sectionId: "activity-monitoring", label: "Alerts", count: unreadAlertCount, noun: "unread" },
+  ].filter((item) => item.count > 0);
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (autoOpenedRef.current || !lists.data || typeof window === "undefined") return;
+    autoOpenedRef.current = true;
+    if (resolvePanelFromHash(window.location.hash || "")) return;
+    const urgent = attentionItems.find((item) => item.sectionId !== "activity-monitoring");
+    if (urgent) setOpenPanels(new Set([urgent.sectionId]));
+  }, [lists.data]);
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
-  const togglePanel = (panelId: string) => setOpenPanels((current) => {
-    const next = new Set(current);
-    if (next.has(panelId)) next.delete(panelId);
-    else next.add(panelId);
-    return next;
-  });
+  const transactionSummary = trpc.admin.transactionSummary.useQuery(undefined, { retry: false, refetchInterval: 60000 });
+  const [transactionFilter, setTransactionFilter] = useState<{ type: string }>({ type: "" });
+  const transactionList = trpc.admin.transactions.useQuery(
+    { type: (transactionFilter.type || undefined) as any, status: "completed", limit: 30 },
+    { retry: false, enabled: openPanels.has("transactions") },
+  );
+  const clearIncompleteTransactions = trpc.admin.deleteIncompleteTransactions.useMutation();
+  const importTryOnPurchases = trpc.admin.importTryOnPurchasesFromStripe.useMutation();
+  const tryOnImportStartedRef = useRef(false);
+  useEffect(() => {
+    if (tryOnImportStartedRef.current || !summary.data) return;
+    tryOnImportStartedRef.current = true;
+    try { if (window.sessionStorage.getItem("ebysplace_tryon_import_done")) return; } catch { /* storage unavailable */ }
+    importTryOnPurchases.mutate(undefined, {
+      onSuccess: (result) => {
+        try { window.sessionStorage.setItem("ebysplace_tryon_import_done", "1"); } catch { /* storage unavailable */ }
+        if (result.imported > 0) {
+          toast.success(`Imported ${result.imported} past AI Try-On purchase${result.imported === 1 ? "" : "s"} from Stripe`);
+          utils.admin.transactionSummary.invalidate();
+          utils.admin.transactions.invalidate();
+        }
+      },
+    });
+  }, [summary.data]);
+  const handleClearIncompleteTransactions = async () => {
+    try {
+      const preview = await clearIncompleteTransactions.mutateAsync({ olderThanHours: 24, dryRun: true });
+      if (!preview.transactions && !preview.bookings && !preview.orders) {
+        toast.info("Nothing to clear", { description: "There are no abandoned checkouts older than 24 hours." });
+        return;
+      }
+      const confirmed = window.confirm(
+        `Delete ${preview.transactions} incomplete transaction${preview.transactions === 1 ? "" : "s"}, ${preview.bookings} unpaid booking${preview.bookings === 1 ? "" : "s"} and ${preview.orders} unpaid order${preview.orders === 1 ? "" : "s"} older than 24 hours?\n\nPaid records are never deleted. This cannot be undone.`,
+      );
+      if (!confirmed) return;
+      await clearIncompleteTransactions.mutateAsync({ olderThanHours: 24, dryRun: false });
+      toast.success("Incomplete transactions cleared");
+      refresh();
+    } catch (error) {
+      toast.error("Could not clear incomplete transactions", { description: error instanceof Error ? error.message : "Please try again." });
+    }
+  };
+  const togglePanel = (panelId: string) => {
+    const opening = !openPanels.has(panelId);
+    setOpenPanels(opening ? new Set([panelId]) : new Set());
+    if (opening) window.setTimeout(() => smoothScrollToElement(panelId, 60), 60);
+  };
   const openPublicHomepage = () => {
     navigateWithSmoothScroll("/");
   };
@@ -546,6 +620,7 @@ export default function Admin() {
     if (!hash || hash === "overview") return null;
     if (hash === "activity" || hash === "activity-monitoring") return "activity-monitoring";
     const validPanels = new Set([
+      "transactions",
       "bookings",
       "availability",
       "orders",
@@ -565,19 +640,16 @@ export default function Admin() {
     const syncPanelFromHash = () => {
       const panelId = resolvePanelFromHash(window.location.hash || "");
       if (!panelId) return;
-      setOpenPanels((current) => {
-        if (current.has(panelId)) return current;
-        return new Set(current).add(panelId);
-      });
-      window.setTimeout(() => smoothScrollToElement(panelId, 60), 10);
+      setOpenPanels((current) => (current.has(panelId) && current.size === 1 ? current : new Set([panelId])));
+      window.setTimeout(() => smoothScrollToElement(panelId, 60), 60);
     };
     syncPanelFromHash();
     window.addEventListener("hashchange", syncPanelFromHash);
     return () => window.removeEventListener("hashchange", syncPanelFromHash);
   }, []);
   const openProtectedOverviewSection = (sectionId: string, label: string) => {
-    setOpenPanels((current) => new Set(current).add(sectionId));
-    smoothScrollToElement(sectionId, 60);
+    setOpenPanels(new Set([sectionId]));
+    window.setTimeout(() => smoothScrollToElement(sectionId, 60), 60);
     window.history.replaceState(null, "", `${window.location.pathname}#${sectionId}`);
     refresh();
     toast.success(`${label} opened with protected admin data refreshed`);
@@ -679,14 +751,10 @@ export default function Admin() {
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-background text-foreground">
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="pill w-fit">Role-based backend</p>
-            <h1 className="serif mt-3 text-4xl font-bold leading-tight gold-text sm:text-5xl">Eby’s Place Admin Dashboard</h1>
-            <p className="mt-3 max-w-3xl text-white/60">
-              Manage bookings, services, ecommerce orders, stock, gallery assets, moderated reviews, AI try-on records,
-              homepage content, uploaded service media, and performance indicators from one secure area.
-            </p>
+            <h1 className="serif mt-2 !text-3xl font-bold leading-tight gold-text sm:!text-4xl">Eby’s Place Admin Dashboard</h1>
+            <p className="mt-2 max-w-3xl text-sm text-white/60">Bookings, orders, stock, reviews and site content in one secure area.</p>
           </div>
           <div className="lux-card grid gap-3 py-4">
             <div className="flex items-start justify-between gap-4">
@@ -776,12 +844,12 @@ export default function Admin() {
           </div>
         )}
 
-        <section id="overview" className="mt-8 overflow-hidden rounded-[2rem] border border-primary/20 bg-card/95 p-5 shadow-[0_24px_80px_rgba(46,27,16,.12)] sm:p-6">
+        <section id="overview" className="mt-5 overflow-hidden rounded-[2rem] border border-primary/20 bg-card/95 p-4 shadow-[0_24px_80px_rgba(46,27,16,.12)] sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
               <p className="pill w-fit">Protected overview</p>
-              <h2 className="serif mt-3 text-3xl font-bold text-primary">Eby’s Place command centre</h2>
-              <p className="mt-2 text-sm text-white/65">Use these protected shortcuts to open each owner area on demand. Dense records stay hidden until clicked, keeping daily management calm, branded, and easy to scan.</p>
+              <h2 className="serif mt-2 !text-2xl font-bold text-primary">Eby’s Place command centre</h2>
+              <p className="mt-1 text-sm text-white/65">Open one owner area at a time. Dense records stay hidden until clicked.</p>
             </div>
             <div className="flex flex-col items-start gap-2 sm:items-end">
               <button className="btn-gold w-fit py-2 text-sm" type="button" onClick={refresh}>Refresh overview data</button>
@@ -797,28 +865,47 @@ export default function Admin() {
               {ownerNotifStatus === "error" && <p className="text-xs text-white/45">Something went wrong — please try again.</p>}
             </div>
           </div>
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {adminOverviewActions.map((action) => (
-              <button className="rounded-2xl border border-white/10 bg-white/70 p-4 text-left transition hover:border-primary/40 hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" type="button" key={action.sectionId} onClick={() => openProtectedOverviewSection(action.sectionId, action.label)}>
-                <b className="text-primary">{action.label}</b>
-                <small className="mt-1 block text-white/55">{action.description}</small>
-              </button>
-            ))}
+          {attentionItems.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Needs attention">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Needs attention</span>
+              {attentionItems.map((item) => (
+                <button className="rounded-full border border-primary/50 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" type="button" key={item.sectionId} onClick={() => openProtectedOverviewSection(item.sectionId, item.label)}>
+                  {item.count} {item.label.toLowerCase()} {item.noun}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="mt-4">
+            <label className="sr-only" htmlFor="admin-jump-to">Jump to a section</label>
+            <select
+              id="admin-jump-to"
+              className="w-full sm:w-72"
+              value=""
+              onChange={(event) => {
+                const action = adminOverviewActions.find((item) => item.sectionId === event.target.value);
+                if (action) openProtectedOverviewSection(action.sectionId, action.label);
+              }}
+            >
+              <option value="">Jump to a section…</option>
+              {adminOverviewActions.map((action) => (
+                <option key={action.sectionId} value={action.sectionId}>{action.label}</option>
+              ))}
+            </select>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Stat label="Bookings" value={summary.data?.bookings ?? 0} icon={CalendarDays} />
             <Stat label="Orders" value={summary.data?.orders ?? 0} icon={ShoppingBag} />
             <Stat label="Pending reviews" value={summary.data?.pendingReviews ?? 0} icon={MessageSquare} />
             <Stat label="Pending product reviews" value={summary.data?.pendingProductReviews ?? 0} icon={MessageSquare} />
             <Stat label="Products" value={summary.data?.products ?? 0} icon={Package} />
-            <Stat label="Services" value={summary.data?.services ?? 0} icon={Scissors} />
+            <Stat label="Completed payments" value={formatMoney(transactionSummary.data?.completedTotal ?? 0)} icon={PoundSterling} />
             <Stat label="AI try-ons" value={summary.data?.tryOns ?? 0} icon={Sparkles} />
-            <Stat label="Unread alerts" value={unreadActivityCount.data ?? summary.data?.unreadActivities ?? 0} icon={Activity} />
+            <Stat label="Unread alerts" value={unreadAlertCount || (summary.data?.unreadActivities ?? 0)} icon={Activity} />
           </div>
         </section>
 
-        <div className="mt-8 grid gap-6">
-          <AdminPanel id="activity-monitoring" eyebrow="Live intelligence" title="Analytics and activity monitoring" description="View visits, booking/payment/shop/AI actions, Braiders Near Me/Kouvia events, failures, and admin audit updates in one feed." icon={Activity} open={isPanelOpen("activity-monitoring")} onToggle={() => togglePanel("activity-monitoring")}>
+        <div className="mt-3 grid gap-3">
+          <AdminPanel id="activity-monitoring" badge={unreadAlertCount} eyebrow="Live intelligence" title="Analytics and activity monitoring" description="View visits, booking/payment/shop/AI actions, Braiders Near Me/Kouvia events, failures, and admin audit updates in one feed." icon={Activity} open={isPanelOpen("activity-monitoring")} onToggle={() => togglePanel("activity-monitoring")}>
             <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
               <div>
                 <h3 className="serif text-2xl font-bold text-primary"><TrendingUp className="mr-2 inline h-5 w-5" />Best-selling analytics</h3>
@@ -959,8 +1046,78 @@ export default function Admin() {
           </AdminPanel>
         </div>
 
-        <div className="mt-8 grid gap-6">
-          <AdminPanel id="bookings" eyebrow="Appointments" title="Bookings manager" description="Open appointment requests, deposits, dates, and status controls only when you need to manage the diary." icon={CalendarDays} open={isPanelOpen("bookings")} onToggle={() => togglePanel("bookings")}>
+        <div className="mt-3 grid gap-3">
+          <AdminPanel id="transactions" eyebrow="Money in" title="Transactions" description="Completed, paid transactions by type, plus best sellers." icon={PoundSterling} open={isPanelOpen("transactions")} onToggle={() => togglePanel("transactions")}>
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Completed payments</p>
+                <b className="serif block text-4xl text-primary">{formatMoney(transactionSummary.data?.completedTotal ?? 0)}</b>
+                <p className="text-sm text-white/55">{transactionSummary.data?.completedCount ?? 0} paid transaction{(transactionSummary.data?.completedCount ?? 0) === 1 ? "" : "s"}</p>
+              </div>
+              <button className="text-sm font-semibold text-white/70 underline decoration-white/30 underline-offset-4 hover:text-white" type="button" disabled={clearIncompleteTransactions.isPending} onClick={handleClearIncompleteTransactions}>
+                {clearIncompleteTransactions.isPending ? "Checking…" : "Clear abandoned checkouts…"}
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {(transactionSummary.data?.byType ?? []).map((item: any) => (
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4" key={item.type}>
+                  <b className="text-primary">{transactionTypeLabels[item.type] ?? item.type}</b>
+                  <p className="serif mt-1 text-2xl text-primary">{formatMoney(item.completedTotal)}</p>
+                  <small className="block text-white/50">{item.completedCount} paid transaction{item.completedCount === 1 ? "" : "s"}</small>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <b className="text-primary">Most booked hair styles</b>
+                {(insights.data?.bestBookedServices || []).slice(0, 5).map((item: any, index: number) => <p className="mt-2 text-sm" key={item.label}>{index + 1}. {item.label}<small className="block text-white/45">{item.total} paid booking{item.total === 1 ? "" : "s"}</small></p>)}
+                {!(insights.data?.bestBookedServices || []).length && <p className="mt-2 text-sm text-white/45">No paid bookings yet.</p>}
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <b className="text-primary">Most sold items</b>
+                {(insights.data?.bestSellingProducts || []).slice(0, 5).map((item: any, index: number) => <p className="mt-2 text-sm" key={item.label}>{index + 1}. {item.label}<small className="block text-white/45">{item.units} sold · {formatMoney(Number(item.revenue || 0))}</small></p>)}
+                {!(insights.data?.bestSellingProducts || []).length && <p className="mt-2 text-sm text-white/45">No paid shop orders yet.</p>}
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <b className="text-primary">Most tried-on styles</b>
+                {(insights.data?.bestTriedStyles || []).slice(0, 5).map((item: any, index: number) => <p className="mt-2 text-sm" key={item.label}>{index + 1}. {item.label}<small className="block text-white/45">{item.total} try-on{item.total === 1 ? "" : "s"}</small></p>)}
+                {!(insights.data?.bestTriedStyles || []).length && <p className="mt-2 text-sm text-white/45">No try-ons yet.</p>}
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <label className="sr-only" htmlFor="transaction-type-filter">Filter by type</label>
+              <select id="transaction-type-filter" value={transactionFilter.type} onChange={(event) => setTransactionFilter((current) => ({ ...current, type: event.target.value }))}>
+                <option value="">All paid transactions</option>
+                {Object.entries(transactionTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </div>
+            <div className="mt-3 max-h-[26rem] overflow-auto rounded-2xl border border-white/10">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="bg-black/40 text-primary">
+                  <tr><th className="px-3 py-2">Paid on</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Customer</th><th className="px-3 py-2">Details</th><th className="px-3 py-2 text-right">Amount</th></tr>
+                </thead>
+                <tbody>
+                  {transactionList.isLoading ? (
+                    <tr><td className="px-3 py-4 text-white/60" colSpan={5}>Loading transactions…</td></tr>
+                  ) : !(transactionList.data || []).length ? (
+                    <tr><td className="px-3 py-4 text-white/60" colSpan={5}>No paid transactions yet.</td></tr>
+                  ) : (
+                    (transactionList.data || []).map((item: any) => (
+                      <tr className="border-t border-white/10" key={item.id}>
+                        <td className="px-3 py-3 text-white/70">{new Date(item.completedAt || item.createdAt).toLocaleString()}</td>
+                        <td className="px-3 py-3">{transactionTypeLabels[item.type] ?? item.type}</td>
+                        <td className="px-3 py-3 text-white/70">{item.customerName || item.customerEmail || "Guest"}{item.customerName && item.customerEmail ? <small className="block text-white/45">{item.customerEmail}</small> : null}</td>
+                        <td className="px-3 py-3 text-white/70">{item.description || "-"}</td>
+                        <td className="px-3 py-3 text-right font-semibold text-primary">{formatMoney(item.amount)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </AdminPanel>
+
+          <AdminPanel id="bookings" badge={pendingBookingCount} eyebrow="Appointments" title="Bookings manager" description="Open appointment requests, deposits, dates, and status controls only when you need to manage the diary." icon={CalendarDays} open={isPanelOpen("bookings")} onToggle={() => togglePanel("bookings")}>
           <div className="mt-5 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-primary">
@@ -1234,7 +1391,7 @@ export default function Admin() {
             </div>
           </AdminPanel>
 
-          <AdminPanel id="reviews" eyebrow="Trust & reputation" title="Reviews moderator" description="Approve or reject customer reviews from a focused moderation panel without crowding the daily overview." icon={MessageSquare} open={isPanelOpen("reviews")} onToggle={() => togglePanel("reviews")}>
+          <AdminPanel id="reviews" badge={pendingReviewRows.length} eyebrow="Trust & reputation" title="Reviews moderator" description="Approve or reject customer reviews from a focused moderation panel without crowding the daily overview." icon={MessageSquare} open={isPanelOpen("reviews")} onToggle={() => togglePanel("reviews")}>
           {lists.isLoading && <p className="mt-4 text-sm text-white/55">Loading reviews…</p>}
           {lists.error && <p className="mt-4 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">Could not load reviews: {lists.error.message}</p>}
           {!lists.isLoading && !lists.error && (
@@ -1284,7 +1441,7 @@ export default function Admin() {
           )}
           </AdminPanel>
 
-          <AdminPanel id="product-reviews" eyebrow="Shop trust" title="Product reviews moderator" description="Approve or reject customer reviews for shop products. Approved reviews appear live on each product page." icon={MessageSquare} open={isPanelOpen("product-reviews")} onToggle={() => togglePanel("product-reviews")}>
+          <AdminPanel id="product-reviews" badge={pendingProductReviewRows.length} eyebrow="Shop trust" title="Product reviews moderator" description="Approve or reject customer reviews for shop products. Approved reviews appear live on each product page." icon={MessageSquare} open={isPanelOpen("product-reviews")} onToggle={() => togglePanel("product-reviews")}>
           {lists.isLoading && <p className="mt-4 text-sm text-white/55">Loading product reviews…</p>}
           {lists.error && <p className="mt-4 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">Could not load product reviews: {lists.error.message}</p>}
           {!lists.isLoading && !lists.error && (
