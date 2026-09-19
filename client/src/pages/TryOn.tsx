@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Loader2, UploadCloud, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -186,6 +186,8 @@ export default function TryOn() {
   const [contact, setContact] = useState(() => readStoredContact());
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [purchaseNotice, setPurchaseNotice] = useState<string>();
+  const [showOriginal, setShowOriginal] = useState(false);
+  const resultRef = useRef<HTMLElement>(null);
 
   const balance = trpc.public.tryOnBalance.useQuery(
     { email: contact.email, phone: contact.phone || undefined },
@@ -238,6 +240,7 @@ export default function TryOn() {
     setPhoto(undefined);
     setStoredPhoto(undefined);
     generate.reset();
+    setShowOriginal(false);
     setIsPreparing(true);
     try {
       const compressed = await compressImage(file);
@@ -300,6 +303,10 @@ export default function TryOn() {
 
     setError(undefined);
     setPaywallOpen(false);
+    setShowOriginal(false);
+    window.setTimeout(() => {
+      if (window.matchMedia("(max-width: 1023px)").matches) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
     try {
       logActivity.mutate({
         sessionId: getActivitySessionId(),
@@ -366,6 +373,12 @@ export default function TryOn() {
     }
   }
 
+  const generatedUrl = generate.data?.generatedImageUrl;
+  const shownImage = generatedUrl && !showOriginal ? generatedUrl : photo?.dataUrl;
+  const showResultPanel = generate.isPending || Boolean(generatedUrl);
+  const inputClass = "mt-2 w-full rounded-full border border-[#d8b66b]/50 bg-white px-5 py-3 text-[#2f2418] outline-none ring-[#c8a552]/25 focus:ring-4";
+  const labelClass = "block text-xs font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]";
+
   return (
     <div className="luxury-shell">
       <SiteHeader />
@@ -374,65 +387,52 @@ export default function TryOn() {
         <h1 className="serif mt-4 max-w-5xl text-4xl font-bold leading-tight text-[#2f2418] sm:text-5xl md:text-6xl">
           See yourself in any braid style.
         </h1>
-        <p className="mt-5 max-w-3xl text-[#5f5142]">
+        <p className="mt-4 max-w-3xl text-[#5f5142]">
           Upload a clear portrait photo, choose your style, and see an AI preview.
         </p>
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <section className="lux-card border-[#d8b66b]/35 bg-[#fffaf0]/90 shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#c8a552]/60 bg-white/70 p-6 text-center transition hover:border-[#9f7a25] hover:bg-[#fff7df]">
-                <UploadCloud className="h-10 w-10 text-[#9f7a25]" />
-                <span className="mt-3 font-semibold text-[#2f2418]">Photo Gallery</span>
-                <span className="mt-2 text-sm text-[#6e604f]">Choose an image from your phone photo library.</span>
-                <input
-                  className="sr-only"
-                  type="file"
-                  accept={TRY_ON_ACCEPT}
-                  disabled={isBusy}
-                  onChange={(event) => void onPhotoInputChange(event, "gallery")}
-                />
-              </label>
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#c8a552]/60 bg-white/70 p-6 text-center transition hover:border-[#9f7a25] hover:bg-[#fff7df]">
-                <UploadCloud className="h-10 w-10 text-[#9f7a25]" />
-                <span className="mt-3 font-semibold text-[#2f2418]">Take Photo</span>
-                <span className="mt-2 text-sm text-[#6e604f]">On mobile, this opens your phone camera directly.</span>
-                <input
-                  className="sr-only"
-                  type="file"
-                  accept={TRY_ON_ACCEPT}
-                  capture="user"
-                  disabled={isBusy}
-                  onChange={(event) => void onPhotoInputChange(event, "camera")}
-                />
-              </label>
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#c8a552]/60 bg-white/70 p-6 text-center transition hover:border-[#9f7a25] hover:bg-[#fff7df] sm:col-span-2">
-                <UploadCloud className="h-10 w-10 text-[#9f7a25]" />
-                <span className="mt-3 font-semibold text-[#2f2418]">Desktop File Upload</span>
-                <span className="mt-2 text-sm text-[#6e604f]">Choose an image file from your computer.</span>
-                <input
-                  className="sr-only"
-                  type="file"
-                  accept={TRY_ON_ACCEPT}
-                  disabled={isBusy}
-                  onChange={(event) => void onPhotoInputChange(event, "desktop")}
-                />
-              </label>
-            </div>
-            <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
-              Step 1: use phone camera, photo gallery, or desktop file upload. Step 2: preview it below. Step 3: generate your hairstyle preview when you are happy with the image.
-            </p>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {photo ? (
+              <div className="flex items-center gap-4 rounded-3xl border border-[#c8a552]/40 bg-white/70 p-3">
+                <img className="h-20 w-16 shrink-0 rounded-xl object-cover object-top" src={photo.dataUrl} alt="Your selected portrait" />
+                <div className="min-w-0 flex-1 text-sm text-[#5f5142]">
+                  <p className="font-semibold text-[#2f2418]">Photo ready</p>
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                    <label className="cursor-pointer font-semibold text-[#8a6a1f] underline underline-offset-2">
+                      Change photo
+                      <input className="sr-only" type="file" accept={TRY_ON_ACCEPT} disabled={isBusy} onChange={(event) => void onPhotoInputChange(event, "gallery")} />
+                    </label>
+                    <label className="cursor-pointer font-semibold text-[#8a6a1f] underline underline-offset-2">
+                      Take new photo
+                      <input className="sr-only" type="file" accept={TRY_ON_ACCEPT} capture="user" disabled={isBusy} onChange={(event) => void onPhotoInputChange(event, "camera")} />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            ) : (
               <div>
-                <label className="block text-sm font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]" htmlFor="try-on-email">
-                  Email
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#c8a552]/60 bg-white/70 px-6 py-8 text-center transition hover:border-[#9f7a25] hover:bg-[#fff7df]">
+                  {isPreparing ? <Loader2 className="h-9 w-9 animate-spin text-[#9f7a25]" /> : <UploadCloud className="h-9 w-9 text-[#9f7a25]" />}
+                  <span className="mt-3 font-semibold text-[#2f2418]">{isPreparing ? "Preparing photo…" : "Upload a portrait photo"}</span>
+                  <span className="mt-1 text-sm text-[#6e604f]">From your gallery or computer</span>
+                  <input className="sr-only" type="file" accept={TRY_ON_ACCEPT} disabled={isBusy} onChange={(event) => void onPhotoInputChange(event, "gallery")} />
                 </label>
+                <label className="mt-2 block cursor-pointer text-center text-sm font-semibold text-[#8a6a1f] underline underline-offset-2">
+                  or take a photo with your camera
+                  <input className="sr-only" type="file" accept={TRY_ON_ACCEPT} capture="user" disabled={isBusy} onChange={(event) => void onPhotoInputChange(event, "camera")} />
+                </label>
+              </div>
+            )}
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={labelClass} htmlFor="try-on-email">Email</label>
                 <input
                   id="try-on-email"
                   type="email"
                   required
-                  className="mt-3 w-full rounded-full border border-[#d8b66b]/50 bg-white px-5 py-3 text-[#2f2418] outline-none ring-[#c8a552]/25 focus:ring-4"
+                  className={inputClass}
                   value={contact.email}
                   onChange={(event) => updateContact({ email: event.target.value })}
                   placeholder="you@example.com"
@@ -440,13 +440,11 @@ export default function TryOn() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]" htmlFor="try-on-phone">
-                  Phone (optional)
-                </label>
+                <label className={labelClass} htmlFor="try-on-phone">Phone (optional)</label>
                 <input
                   id="try-on-phone"
                   type="tel"
-                  className="mt-3 w-full rounded-full border border-[#d8b66b]/50 bg-white px-5 py-3 text-[#2f2418] outline-none ring-[#c8a552]/25 focus:ring-4"
+                  className={inputClass}
                   value={contact.phone}
                   onChange={(event) => updateContact({ phone: event.target.value })}
                   placeholder="07…"
@@ -455,12 +453,10 @@ export default function TryOn() {
               </div>
             </div>
 
-            <label className="mt-6 block text-sm font-semibold uppercase tracking-[0.2em] text-[#8a6a1f]" htmlFor="try-on-style">
-              Choose style
-            </label>
+            <label className={`mt-5 ${labelClass}`} htmlFor="try-on-style">Choose style</label>
             <select
               id="try-on-style"
-              className="mt-3 w-full rounded-full border border-[#d8b66b]/50 bg-white px-5 py-3 text-[#2f2418] outline-none ring-[#c8a552]/25 focus:ring-4"
+              className={inputClass}
               value={style}
               onChange={(event) => setStyle(event.target.value)}
               disabled={isBusy}
@@ -470,13 +466,13 @@ export default function TryOn() {
               ))}
             </select>
 
-            <button className="btn-gold mt-6 w-full" onClick={run} disabled={!photo || !contact.email || isBusy}>
+            <button className="btn-gold mt-5 w-full" onClick={run} disabled={!photo || !contact.email || isBusy}>
               {isBusy ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Wand2 className="mr-2 h-5 w-5" />}
               {isPreparing ? "Preparing photo…" : upload.isPending ? "Uploading photo…" : generate.isPending ? "Generating your preview…" : "Generate hairstyle preview"}
             </button>
             {generate.isPending && (
               <p className="mt-3 text-center text-xs text-[#6e604f]">
-                This can take up to a minute for the best quality — please don't close this tab.
+                This can take up to a minute — please do not close this tab.
               </p>
             )}
             {purchaseNotice && (
@@ -516,52 +512,41 @@ export default function TryOn() {
                 </div>
               </div>
             )}
-
-            {photo && (
-              <p className="mt-4 rounded-2xl bg-[#f6edda] px-4 py-3 text-sm text-[#5f5142]">
-                {photo.source === "camera"
-                  ? "Camera photo ready for preview."
-                  : photo.source === "gallery"
-                    ? "Gallery photo ready for preview."
-                    : "Desktop upload ready for preview."} Prepared upload size: <strong className="text-[#2f2418]">{photo.sizeKb}KB</strong>. This helps the AI read the portrait and prevents large-photo upload timeouts.
-              </p>
-            )}
             {error && (
               <p className="mt-4 rounded-2xl border-2 border-[#b42318] bg-[#fff1f0] px-4 py-3 text-sm font-semibold leading-relaxed text-[#5a160f] shadow-[0_10px_24px_rgba(180,35,24,0.16)]" role="alert">
                 {error}
               </p>
             )}
-            <p className="mt-4 text-sm text-[#6e604f]">
-              For best results, use a bright portrait where your hair and face are clearly visible. This is a visual preview before booking, not a guarantee of an exact finished salon result.
+            <p className="mt-4 text-xs text-[#6e604f]">
+              Best with a bright, front-facing portrait. This is a visual preview before booking, not a guarantee of an exact finished salon result.
             </p>
           </section>
 
-          <section className="grid gap-5 md:grid-cols-2">
-            <div className="lux-card border-[#d8b66b]/35 bg-[#fffaf0]/90 shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
-              <h2 className="serif text-3xl font-bold text-[#2f2418]">Original</h2>
-              <div className="mt-4 flex aspect-[4/5] min-h-[22rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-3 sm:min-h-[26rem] sm:p-4">
-                {photo ? (
-                  <img className="h-full w-full rounded-xl object-contain object-top" src={photo.dataUrl} alt={photo.source === "camera" ? "Camera portrait preview before submission" : photo.source === "gallery" ? "Gallery portrait preview before submission" : "Desktop upload portrait preview before submission"} />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
-                    Your selected portrait will appear here for preview before submission.
-                  </div>
-                )}
-              </div>
+          <section ref={resultRef} className={`lux-card border-[#d8b66b]/35 bg-[#fffaf0]/90 shadow-[0_18px_45px_rgba(93,67,32,0.12)] ${showResultPanel ? "" : "hidden lg:block"}`}>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="serif text-2xl font-bold text-[#2f2418]">{generatedUrl && !showOriginal ? "Your preview" : photo ? "Your photo" : "Preview"}</h2>
+              {generatedUrl && photo && (
+                <div className="inline-flex rounded-full border border-[#d8b66b]/50 bg-white p-1 text-sm font-semibold" role="group" aria-label="Compare original and generated">
+                  <button type="button" className={`rounded-full px-4 py-1 ${!showOriginal ? "bg-[#2f2418] text-white" : "text-[#5f5142]"}`} onClick={() => setShowOriginal(false)}>Preview</button>
+                  <button type="button" className={`rounded-full px-4 py-1 ${showOriginal ? "bg-[#2f2418] text-white" : "text-[#5f5142]"}`} onClick={() => setShowOriginal(true)}>Original</button>
+                </div>
+              )}
             </div>
-            <div className="lux-card border-[#d8b66b]/35 bg-[#fffaf0]/90 shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
-              <h2 className="serif text-3xl font-bold text-[#2f2418]">Generated</h2>
-              <div className="mt-4 flex aspect-[4/5] min-h-[22rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-3 sm:min-h-[26rem] sm:p-4">
-                {generate.data?.generatedImageUrl ? (
-                  <img className="h-full w-full rounded-xl object-contain object-top" src={generate.data.generatedImageUrl} alt={`${style} AI Try-On preview`} />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
-                    Your AI result will appear here after upload and generation.
-                  </div>
-                )}
-              </div>
+            <div className="relative mt-4 flex aspect-[4/5] max-h-[32rem] w-full items-center justify-center overflow-hidden rounded-2xl border border-[#d8b66b]/40 bg-[#f8efe0] p-3">
+              {shownImage ? (
+                <img className="h-full w-full rounded-xl object-contain object-top" src={shownImage} alt={generatedUrl && !showOriginal ? `${style} AI Try-On preview` : "Your portrait before the AI Try-On"} />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-[#d8b66b]/50 bg-white/60 p-6 text-center text-[#6e604f]">
+                  Your photo and AI result will appear here.
+                </div>
+              )}
+              {generate.isPending && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#fffaf0]/80 text-[#2f2418]">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#9f7a25]" />
+                  <span className="font-semibold">Generating your preview…</span>
+                </div>
+              )}
             </div>
-
           </section>
         </div>
       </main>

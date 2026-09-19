@@ -121,11 +121,10 @@ describe("strict visual-only change regression coverage", () => {
     websiteStyles.forEach((style) => expect(tryOnSource).toContain(`\"${style}\"`));
     expect(tryOnSource).toContain("trpc.public.uploadTryOnPhoto.useMutation()");
     expect(tryOnSource).toContain("trpc.public.generateTryOn.useMutation()");
-    expect(tryOnSource).toContain("Photo Gallery");
-    expect(tryOnSource).toContain("Take Photo");
-    expect(tryOnSource).toContain("Desktop File Upload");
+    expect(tryOnSource).toContain("Upload a portrait photo");
+    expect(tryOnSource).toContain("or take a photo with your camera");
     expect(tryOnSource).toContain('capture="user"');
-    expect(tryOnSource).toContain("Your selected portrait will appear here for preview before submission.");
-    expect(tryOnSource).toContain("This is a visual preview before booking, not a guarantee of an exact finished salon result.");
+    expect(tryOnSource).toContain("Your photo and AI result will appear here.");
+    expect(tryOnSource).toContain("not a guarantee of an exact finished salon result.");
   });
 });
