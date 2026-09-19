@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { getStoredAuthToken, setStoredAuthSession } from "@/const";
 import { CANONICAL_SITE_ORIGIN } from "@/lib/canonicalUrl";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -91,18 +91,7 @@ export default function AdminLogin() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(216,182,107,0.18),transparent_36%),linear-gradient(135deg,#140f0b_0%,#2f2418_52%,#fff7df_220%)] px-4 py-10 text-white">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center justify-center">
-        <div className="grid w-full gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
-          <section className="hidden rounded-[2rem] border border-white/10 bg-white/[0.06] p-8 shadow-2xl backdrop-blur lg:block">
-            <div className="mb-10 inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary">
-              <ShieldCheck className="h-4 w-4" />
-              Supabase-secured admin access
-            </div>
-            <h1 className="font-serif text-5xl leading-tight text-primary">Eby’s Place Admin</h1>
-            <p className="mt-5 max-w-md text-base leading-8 text-white/72">
-              Sign in with the configured Supabase administrator account to manage services, products, gallery images, reviews, bookings, and website content without any Manus OAuth environment variables.
-            </p>
-          </section>
-
+        <div className="grid w-full">
           <Card className="mx-auto w-full max-w-md border-primary/25 bg-[#fffaf0] text-[#2f2418] shadow-[0_28px_80px_rgba(0,0,0,0.32)]">
             <CardHeader className="space-y-3 text-center">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
@@ -110,7 +99,7 @@ export default function AdminLogin() {
               </div>
               <CardTitle className="font-serif text-3xl">Admin sign in</CardTitle>
               <CardDescription className="text-[#5f5142]">
-                Use the Eby’s Place Supabase email and password to continue.
+                Sign in to continue.
               </CardDescription>
             </CardHeader>
             <CardContent>
