@@ -37,7 +37,7 @@ describe("Resend branded customer replies", () => {
       subject: "Re: Your crochet style enquiry",
       paragraphs: ["Hi Tanya,", "Thank you for getting in touch."],
     });
-    expect(html).toContain("top-header-logo");
+    expect(html).toContain("ebysplace-logo-email.png");
     expect(html).toContain("Founder &amp; Service Lead");
     expect(html).toContain("Hi Tanya,");
     expect(html).toContain("Thank you for getting in touch.");
