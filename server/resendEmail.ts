@@ -31,6 +31,8 @@ export type BrandedEmail = {
   /** Optional gold call-to-action button below the paragraphs. */
   cta?: { label: string; url: string };
   replyTo?: string;
+  /** Extra message headers, e.g. List-Unsubscribe on bulk mail. */
+  headers?: Record<string, string>;
 };
 
 export type ResendResult = {
@@ -149,6 +151,7 @@ export async function sendBrandedEmail(email: BrandedEmail, fetchImpl: typeof fe
         subject: email.subject,
         html: renderBrandedEmail(email),
         text: renderPlainText(email),
+        ...(email.headers ? { headers: email.headers } : {}),
       }),
     });
   } catch (error) {
@@ -199,7 +202,7 @@ export async function sendBroadcastEmail(
   let failed = 0;
   await Promise.all(
     recipients.map(async (to) => {
-      const result = await sendBrandedEmail({ to, ...content }, fetchImpl);
+      const result = await sendBrandedEmail({ to, ...content, headers: { "List-Unsubscribe": `<mailto:${CONTACT_EMAIL}?subject=Unsubscribe>` } }, fetchImpl);
       if (result.sent) delivered += 1;
       else failed += 1;
     }),
