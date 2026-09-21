@@ -169,6 +169,20 @@ async function normalizeAdminUploadFile(file: File) {
   return compressAdminImage(workingFile);
 }
 
+type ChatStatus = "new" | "contacted" | "closed";
+
+/** wa.me link for replying to a visitor; UK numbers written as 07... become +44. */
+function visitorWhatsAppUrl(phone: string) {
+  const trimmed = phone.trim();
+  const digits = trimmed.replace(/\D/g, "");
+  const international = trimmed.startsWith("+") || trimmed.startsWith("00")
+    ? digits.replace(/^00/, "")
+    : digits.startsWith("0")
+      ? `44${digits.slice(1)}`
+      : digits;
+  return `https://wa.me/${international}`;
+}
+
 const galleryCategories = ["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"] as const;
 const productCategories = ["Accessories", "Aftercare", "Hair Attachments"] as const;
 const serviceCategories = ["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"] as const;
@@ -176,6 +190,7 @@ const adminOverviewActions = [
   { label: "Bookings", sectionId: "bookings", description: "Review and update appointment statuses." },
   { label: "Transactions", sectionId: "transactions", description: "Completed payments by type, and clear abandoned checkouts." },
   { label: "Orders", sectionId: "orders", description: "Open protected shop order fulfilment." },
+  { label: "Chats", sectionId: "chats", description: "See website chat conversations, visitor contact details, and follow up." },
   { label: "Email Notifications", sectionId: "email-notifications", description: "View email delivery status and resend failed notifications." },
   { label: "Newsletter Subscribers", sectionId: "newsletter-subscribers", description: "See everyone who joined the Eby's Place list." },
   { label: "Send Announcement", sectionId: "announcements", description: "Broadcast to web push, email, and SMS subscribers at once." },
@@ -533,6 +548,22 @@ export default function Admin() {
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [deletingGalleryId, setDeletingGalleryId] = useState<number | null>(null);
   const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set());
+  const [chatFilter, setChatFilter] = useState<"all" | ChatStatus>("all");
+  const chatConversations = trpc.admin.listChatConversations.useQuery(
+    chatFilter === "all" ? undefined : { status: chatFilter },
+    { retry: false, refetchInterval: 60000 },
+  );
+  const chatNewCount = trpc.admin.chatConversationsNewCount.useQuery(undefined, { retry: false, refetchInterval: 60000 });
+  const updateChatStatus = trpc.admin.updateChatConversationStatus.useMutation({
+    onSuccess: () => {
+      utils.admin.listChatConversations.invalidate();
+      utils.admin.chatConversationsNewCount.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const sendTestAlert = trpc.admin.sendTestOwnerAlert.useMutation({
+    onError: (error) => toast.error(error.message),
+  });
   const newProductFileRef = useRef<{ file: File; dataUrl: string } | null>(null);
   const [newProductPreviewUrl, setNewProductPreviewUrl] = useState<string>("");
   const data = (lists.data || {}) as AdminListData;
@@ -552,6 +583,7 @@ export default function Admin() {
   const unreadAlertCount = unreadActivityCount.data ?? 0;
   const attentionItems = [
     { sectionId: "bookings", label: "Bookings", count: pendingBookingCount, noun: "pending" },
+    { sectionId: "chats", label: "Chats", count: chatNewCount.data ?? 0, noun: "to follow up" },
     { sectionId: "reviews", label: "Reviews", count: pendingReviewRows.length, noun: "to moderate" },
     { sectionId: "product-reviews", label: "Product reviews", count: pendingProductReviewRows.length, noun: "to moderate" },
     { sectionId: "activity-monitoring", label: "Alerts", count: unreadAlertCount, noun: "unread" },
@@ -1269,6 +1301,123 @@ export default function Admin() {
                   </div>
                 );
               }) : <p className="text-white/55">No Zoho SMTP email notification logs yet. New paid bookings and shop orders will appear here after Stripe checkout completion.</p>}
+            </div>
+          </AdminPanel>
+
+          <AdminPanel id="chats" eyebrow="Website chat" title="Chats" description="Conversations visitors had with the Eby assistant, with any contact details they left." icon={MessageSquare} badge={chatNewCount.data || undefined} open={isPanelOpen("chats")} onToggle={() => togglePanel("chats")}>
+            <div className="mt-5 space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {(["all", "new", "contacted", "closed"] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setChatFilter(filter)}
+                    aria-pressed={chatFilter === filter}
+                    className={`rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-[0.14em] ${chatFilter === filter ? "border-primary bg-primary text-black" : "border-white/15 text-white/70 hover:border-primary/50"}`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => sendTestAlert.mutate()}
+                  disabled={sendTestAlert.isPending}
+                  className="btn-dark ml-auto px-4 py-1.5 text-xs disabled:opacity-60"
+                >
+                  {sendTestAlert.isPending ? "Sending test…" : "Send test alert"}
+                </button>
+              </div>
+
+              {sendTestAlert.data ? (
+                <div className="rounded-2xl border border-white/10 bg-black/25 p-4 text-sm">
+                  <p className="font-semibold text-white/85">Test alert result</p>
+                  <ul className="mt-2 space-y-1.5">
+                    {([
+                      ["SMS", sendTestAlert.data.sms],
+                      ["WhatsApp", sendTestAlert.data.whatsapp],
+                      ["Browser notification", sendTestAlert.data.push],
+                      ["Email", sendTestAlert.data.email],
+                    ] as const).map(([label, outcome]) => (
+                      <li key={label} className="flex flex-wrap gap-x-2">
+                        <span className={outcome.sent ? "font-bold text-emerald-300" : "font-bold text-red-300"}>{outcome.sent ? "Sent" : "Failed"}</span>
+                        <span className="text-white/80">{label}</span>
+                        {!outcome.sent && outcome.detail ? <span className="text-xs text-white/55">— {outcome.detail}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {chatConversations.isLoading ? <p className="text-sm text-white/55">Loading chats...</p> : null}
+              {chatConversations.error ? <p className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">Could not load chats: {chatConversations.error.message}</p> : null}
+              {!chatConversations.isLoading && !chatConversations.error ? (
+                (chatConversations.data || []).length ? (
+                  <div className="space-y-3">
+                    {(chatConversations.data || []).map((chat: any) => {
+                      const transcript = Array.isArray(chat.transcript) ? chat.transcript : [];
+                      const hasContact = Boolean(chat.phone || chat.email);
+                      const place = [chat.city, chat.country].filter(Boolean).join(", ");
+                      return (
+                        <article key={chat.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-base font-bold text-white/90">{chat.name || (hasContact ? "Visitor" : "Anonymous visitor")}</p>
+                              <p className="mt-0.5 text-xs text-white/50">
+                                {chat.updatedAt ? new Date(chat.updatedAt).toLocaleString() : "—"}
+                                {place ? ` · ${place}` : ""}
+                                {chat.deviceType ? ` · ${chat.deviceType}` : ""}
+                                {` · ${chat.messageCount} message${chat.messageCount === 1 ? "" : "s"}`}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {chat.wantsHuman === "true" ? <span className="rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-primary">Wants a person</span> : null}
+                              <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] ${chat.status === "new" ? "border-amber-300/40 text-amber-200" : chat.status === "contacted" ? "border-emerald-300/40 text-emerald-200" : "border-white/20 text-white/50"}`}>{chat.status}</span>
+                            </div>
+                          </div>
+
+                          {hasContact ? (
+                            <div className="mt-3 flex flex-wrap gap-2 text-sm">
+                              {chat.phone ? (
+                                <>
+                                  <a href={`tel:${String(chat.phone).replace(/[^+\d]/g, "")}`} className="rounded-full border border-primary/30 px-3 py-1 text-primary hover:bg-primary/10">{chat.phone}</a>
+                                  <a href={visitorWhatsAppUrl(String(chat.phone))} target="_blank" rel="noopener noreferrer" className="rounded-full border border-emerald-300/30 px-3 py-1 text-emerald-200 hover:bg-emerald-300/10">WhatsApp them</a>
+                                </>
+                              ) : null}
+                              {chat.email ? <a href={`mailto:${chat.email}`} className="break-all rounded-full border border-primary/30 px-3 py-1 text-primary hover:bg-primary/10">{chat.email}</a> : null}
+                            </div>
+                          ) : <p className="mt-3 text-xs text-white/45">No contact details left.</p>}
+
+                          <details className="mt-3">
+                            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.14em] text-white/55">Read conversation</summary>
+                            <div className="mt-2 space-y-2">
+                              {transcript.map((message: any, index: number) => (
+                                <p key={index} className={`whitespace-pre-wrap rounded-xl px-3 py-2 text-sm ${message.role === "user" ? "bg-primary/15 text-white/90" : "bg-white/5 text-white/70"}`}>
+                                  <b className="mr-1 text-xs uppercase tracking-wide text-white/45">{message.role === "user" ? "Visitor" : "Eby"}</b>
+                                  {message.content}
+                                </p>
+                              ))}
+                            </div>
+                          </details>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {(["new", "contacted", "closed"] as const).filter((status) => status !== chat.status).map((status) => (
+                              <button
+                                key={status}
+                                type="button"
+                                disabled={updateChatStatus.isPending}
+                                onClick={() => updateChatStatus.mutate({ id: chat.id, status })}
+                                className="btn-dark px-3 py-1.5 text-xs disabled:opacity-60"
+                              >
+                                Mark {status}
+                              </button>
+                            ))}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : <p className="text-white/55">No chats {chatFilter === "all" ? "yet" : `marked ${chatFilter}`}. Conversations appear here after a visitor closes the chat, leaves their details, or asks for a real person.</p>
+              ) : null}
             </div>
           </AdminPanel>
 

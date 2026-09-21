@@ -257,6 +257,32 @@ export const smsSubscriptions = pgTable("smsSubscriptions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/**
+ * One row per website chat conversation with the Eby assistant. The visitor's
+ * browser generates `conversationKey`, so repeated saves of the same chat
+ * update one row instead of creating duplicates. Contact details are optional
+ * and only present when the visitor typed or submitted them.
+ */
+export const chatConversations = pgTable("chatConversations", {
+  id: serial("id").primaryKey(),
+  conversationKey: varchar("conversationKey", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 180 }),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 80 }),
+  transcript: json("transcript").notNull(),
+  messageCount: integer("messageCount").default(0).notNull(),
+  wantsHuman: trueFalseEnum("wantsHuman").default("false").notNull(),
+  status: varchar("status", { length: 20 }).default("new").notNull(),
+  notifiedLevel: integer("notifiedLevel").default(0).notNull(),
+  pageUrl: varchar("pageUrl", { length: 500 }),
+  city: varchar("city", { length: 120 }),
+  country: varchar("country", { length: 120 }),
+  deviceType: varchar("deviceType", { length: 40 }),
+  browser: varchar("browser", { length: 60 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
 export const cookieConsents = pgTable("cookieConsents", {
   id: serial("id").primaryKey(),
   sessionId: varchar("sessionId", { length: 128 }),

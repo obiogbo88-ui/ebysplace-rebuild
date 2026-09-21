@@ -11,7 +11,23 @@ type ChatMessage = {
 };
 
 const BOOK_MARKER = /\s*\[\[BOOK:([^\]]+)\]\]\s*$/;
+const HANDOFF_MARKER = /\s*\[\[HANDOFF\]\]\s*/g;
 const WHATSAPP_URL = "https://wa.me/447864585110?text=Hi%20Eby%27s%20Place%2C%20I%20would%20like%20to%20make%20an%20enquiry.";
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function newConversationKey() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `chat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+/** WhatsApp link that tells the team what the visitor was asking about. */
+function whatsappUrlFor(messages: ChatMessage[]) {
+  const lastQuestion = [...messages].reverse().find((message) => message.role === "user")?.content.trim().slice(0, 140);
+  const text = lastQuestion
+    ? `Hi Eby's Place, I was chatting on your website and would like to speak to someone. I asked: "${lastQuestion}"`
+    : "Hi Eby's Place, I was on your website and would like to speak to someone.";
+  return `https://wa.me/447864585110?text=${encodeURIComponent(text)}`;
+}
 
 const STARTER_PROMPTS = [
   "What styles do you offer?",
@@ -19,10 +35,12 @@ const STARTER_PROMPTS = [
   "Can you come to my home?",
 ];
 
-function parseAssistantReply(raw: string): { content: string; bookService?: string } {
-  const match = raw.match(BOOK_MARKER);
-  if (!match) return { content: raw.trim() };
-  return { content: raw.replace(BOOK_MARKER, "").trim(), bookService: match[1].trim() };
+function parseAssistantReply(raw: string): { content: string; bookService?: string; handoff: boolean } {
+  const handoff = /\[\[HANDOFF\]\]/.test(raw);
+  const withoutHandoff = raw.replace(HANDOFF_MARKER, "\n").trim();
+  const match = withoutHandoff.match(BOOK_MARKER);
+  if (!match) return { content: withoutHandoff, handoff };
+  return { content: withoutHandoff.replace(BOOK_MARKER, "").trim(), bookService: match[1].trim(), handoff };
 }
 
 export default function ChatAssistant() {
@@ -32,15 +50,23 @@ export default function ChatAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
-  const leadCapturedRef = useRef(false);
+  const conversationKeyRef = useRef<string>("");
+  if (!conversationKeyRef.current) conversationKeyRef.current = newConversationKey();
+  const lastSavedCountRef = useRef(0);
   const [nearFooter, setNearFooter] = useState(false);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [contactSaved, setContactSaved] = useState(false);
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactError, setContactError] = useState("");
   const chat = trpc.public.chatAssistant.useMutation();
-  const chatLead = trpc.public.chatLead.useMutation();
+  const chatSave = trpc.public.chatSave.useMutation();
 
   useEffect(() => {
     if (!listRef.current) return;
     listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages, chat.isPending]);
+  }, [messages, chat.isPending, showContactForm]);
 
   useEffect(() => {
     let io: IntersectionObserver | null = null;
@@ -85,6 +111,7 @@ export default function ChatAssistant() {
         ...current,
         { role: "assistant", content: parsed.content, bookService: parsed.bookService },
       ]);
+      if (parsed.handoff && !contactSaved) setShowContactForm(true);
     } catch {
       setMessages((current) => [
         ...current,
@@ -102,14 +129,74 @@ export default function ChatAssistant() {
     void send(input);
   }
 
+  function plainMessages() {
+    return messages.map((message) => ({ role: message.role, content: message.content }));
+  }
+
   function closeChat() {
     setOpen(false);
     const hasBookingHandoff = messages.some((message) => message.bookService);
-    if (!leadCapturedRef.current && messages.length > 0 && !hasBookingHandoff) {
-      leadCapturedRef.current = true;
-      chatLead.mutate({
-        messages: messages.map((message) => ({ role: message.role, content: message.content })),
+    if (messages.length > 0 && messages.length !== lastSavedCountRef.current && (!hasBookingHandoff || contactSaved)) {
+      lastSavedCountRef.current = messages.length;
+      chatSave.mutate({ conversationKey: conversationKeyRef.current, messages: plainMessages() });
+    }
+  }
+
+  function talkToPerson() {
+    // The team learns this visitor wanted a person even if they never send the form.
+    if (messages.length > 0) {
+      lastSavedCountRef.current = messages.length;
+      chatSave.mutate({ conversationKey: conversationKeyRef.current, messages: plainMessages(), wantsHuman: true });
+    }
+    if (!contactSaved) setShowContactForm(true);
+    window.open(whatsappUrlFor(messages), "_blank", "noopener,noreferrer");
+  }
+
+  async function submitContact(event: FormEvent) {
+    event.preventDefault();
+    const name = contactName.trim();
+    const phone = contactPhone.trim();
+    const email = contactEmail.trim();
+    if (!phone && !email) {
+      setContactError("Please add a phone number or an email so we can reach you.");
+      return;
+    }
+    if (email && !EMAIL_PATTERN.test(email)) {
+      setContactError("That email address doesn't look right.");
+      return;
+    }
+    if (phone && phone.replace(/\D/g, "").length < 9) {
+      setContactError("That phone number looks too short.");
+      return;
+    }
+    setContactError("");
+    // The server needs at least one message; a visitor who opens the form
+    // straight away is recorded with a short note rather than being rejected.
+    const transcript = messages.length > 0
+      ? plainMessages()
+      : [{ role: "user" as const, content: "(Visitor asked for a follow-up without sending a message.)" }];
+    try {
+      await chatSave.mutateAsync({
+        conversationKey: conversationKeyRef.current,
+        messages: transcript,
+        name: name || undefined,
+        phone: phone || undefined,
+        email: email || undefined,
+        wantsHuman: true,
       });
+      lastSavedCountRef.current = messages.length;
+      setContactSaved(true);
+      setShowContactForm(false);
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content: `Thank you${name ? `, ${name}` : ""}! The Eby's Place team has your details and will get back to you soon. You can also message us on WhatsApp any time.`,
+          isFallback: true,
+        },
+      ]);
+    } catch (error) {
+      setContactError(error instanceof Error && error.message ? error.message : "Sorry, that didn't send. Please try again or use WhatsApp.");
     }
   }
 
@@ -139,6 +226,16 @@ export default function ChatAssistant() {
           <div className="border-b border-primary/20 px-5 py-4">
             <p className="pill w-fit text-xs">Eby's Place Assistant</p>
             <h2 className="serif mt-2 text-xl font-bold text-primary">Chat with Eby</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={talkToPerson} className="btn-gold px-4 py-2 text-xs">
+                Talk to a real person
+              </button>
+              {!contactSaved && !showContactForm && (
+                <button type="button" onClick={() => setShowContactForm(true)} className="btn-dark px-4 py-2 text-xs">
+                  Leave your details
+                </button>
+              )}
+            </div>
           </div>
 
           <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
@@ -207,6 +304,52 @@ export default function ChatAssistant() {
                   Eby is typing…
                 </div>
               </div>
+            )}
+
+            {showContactForm && !contactSaved && (
+              <form onSubmit={submitContact} className="space-y-2 rounded-2xl border border-primary/30 bg-black/30 p-4">
+                <p className="text-sm font-semibold text-primary">Leave your details and the team will get back to you</p>
+                <input
+                  type="text"
+                  value={contactName}
+                  onChange={(event) => setContactName(event.target.value)}
+                  placeholder="Your name"
+                  autoComplete="name"
+                  maxLength={120}
+                  aria-label="Your name"
+                  className="w-full rounded-full border border-primary/25 bg-black/30 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"
+                />
+                <input
+                  type="tel"
+                  value={contactPhone}
+                  onChange={(event) => setContactPhone(event.target.value)}
+                  placeholder="Phone / WhatsApp number"
+                  autoComplete="tel"
+                  maxLength={40}
+                  aria-label="Phone or WhatsApp number"
+                  className="w-full rounded-full border border-primary/25 bg-black/30 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"
+                />
+                <input
+                  type="email"
+                  value={contactEmail}
+                  onChange={(event) => setContactEmail(event.target.value)}
+                  placeholder="Email (optional if you added a phone)"
+                  autoComplete="email"
+                  maxLength={320}
+                  aria-label="Email address"
+                  className="w-full rounded-full border border-primary/25 bg-black/30 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"
+                />
+                {contactError && <p role="alert" className="text-xs text-red-300">{contactError}</p>}
+                <div className="flex gap-2">
+                  <button type="submit" disabled={chatSave.isPending} className="btn-gold flex-1 py-2 text-xs disabled:opacity-60">
+                    {chatSave.isPending ? "Sending…" : "Send my details"}
+                  </button>
+                  <button type="button" onClick={() => setShowContactForm(false)} className="btn-dark px-4 py-2 text-xs">
+                    Not now
+                  </button>
+                </div>
+                <p className="text-[11px] leading-snug text-white/45">Only used so the team can reply to your enquiry.</p>
+              </form>
             )}
           </div>
 

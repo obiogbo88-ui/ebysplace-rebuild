@@ -7,6 +7,7 @@ import {
   analyticsEvents,
   activityLogs,
   bookings,
+  chatConversations,
   cookieConsents,
   emailNotificationLogs,
   galleryImages,
@@ -2620,6 +2621,136 @@ export async function listSmsSubscriptions() {
   if (!db) return [];
   await ensureSmsSubscriptionsTable();
   return db.select().from(smsSubscriptions).orderBy(desc(smsSubscriptions.createdAt));
+}
+
+async function ensureChatConversationsTable() {
+  if (!_pool) return;
+  try {
+    await _pool.query(`CREATE TABLE IF NOT EXISTS "chatConversations" (
+      "id" SERIAL PRIMARY KEY,
+      "conversationKey" VARCHAR(64) NOT NULL UNIQUE,
+      "name" VARCHAR(180),
+      "email" VARCHAR(320),
+      "phone" VARCHAR(80),
+      "transcript" JSON NOT NULL,
+      "messageCount" INTEGER NOT NULL DEFAULT 0,
+      "wantsHuman" true_false_enum NOT NULL DEFAULT 'false',
+      "status" VARCHAR(20) NOT NULL DEFAULT 'new',
+      "notifiedLevel" INTEGER NOT NULL DEFAULT 0,
+      "pageUrl" VARCHAR(500),
+      "city" VARCHAR(120),
+      "country" VARCHAR(120),
+      "deviceType" VARCHAR(40),
+      "browser" VARCHAR(60),
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+    await _pool.query(`ALTER TABLE "chatConversations" ENABLE ROW LEVEL SECURITY`);
+  } catch (err) {
+    console.warn("[Database] Could not ensure chatConversations table", err);
+  }
+}
+
+export type ChatConversationInput = {
+  request?: Request | null;
+  conversationKey: string;
+  messages: Array<{ role: "user" | "assistant"; content: string }>;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  wantsHuman?: boolean;
+  pageUrl?: string | null;
+};
+
+/**
+ * Creates or updates the single row for a chat. Contact details and the
+ * "wants a person" flag are sticky: a later save that omits them never erases
+ * what the visitor already gave us.
+ */
+export async function upsertChatConversation(input: ChatConversationInput) {
+  const db = await getDb();
+  if (!db) return null;
+  await ensureChatConversationsTable();
+  const context = getRequestContext(input.request);
+  const [row] = await db
+    .insert(chatConversations)
+    .values({
+      conversationKey: input.conversationKey,
+      name: truncateText(input.name, 180),
+      email: truncateText(input.email, 320),
+      phone: truncateText(input.phone, 80),
+      transcript: input.messages,
+      messageCount: input.messages.length,
+      wantsHuman: input.wantsHuman ? "true" : "false",
+      pageUrl: truncateText(input.pageUrl, 500),
+      city: context.city,
+      country: context.country,
+      deviceType: context.deviceType,
+      browser: context.browser,
+    })
+    .onConflictDoUpdate({
+      target: chatConversations.conversationKey,
+      set: {
+        name: sql`COALESCE(excluded."name", ${chatConversations.name})`,
+        email: sql`COALESCE(excluded."email", ${chatConversations.email})`,
+        phone: sql`COALESCE(excluded."phone", ${chatConversations.phone})`,
+        transcript: sql`excluded."transcript"`,
+        messageCount: sql`excluded."messageCount"`,
+        wantsHuman: sql`CASE WHEN excluded."wantsHuman" = 'true' THEN 'true'::true_false_enum ELSE ${chatConversations.wantsHuman} END`,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+  return row ?? null;
+}
+
+/**
+ * Atomically claims the right to alert the owner at `level`. Returns true for
+ * exactly one caller, so two near-simultaneous saves cannot double-notify.
+ */
+export async function claimChatAlert(id: number, level: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const claimed = await db
+    .update(chatConversations)
+    .set({ notifiedLevel: level })
+    .where(and(eq(chatConversations.id, id), lt(chatConversations.notifiedLevel, level)))
+    .returning({ id: chatConversations.id });
+  return claimed.length > 0;
+}
+
+export async function listChatConversations(filter?: { status?: "new" | "contacted" | "closed" }) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureChatConversationsTable();
+  const query = db.select().from(chatConversations);
+  const rows = filter?.status
+    ? await query.where(eq(chatConversations.status, filter.status)).orderBy(desc(chatConversations.updatedAt)).limit(300)
+    : await query.orderBy(desc(chatConversations.updatedAt)).limit(300);
+  return rows;
+}
+
+export async function countNewChatConversations() {
+  const db = await getDb();
+  if (!db) return 0;
+  await ensureChatConversationsTable();
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(chatConversations)
+    .where(and(eq(chatConversations.status, "new"), sql`(${chatConversations.email} IS NOT NULL OR ${chatConversations.phone} IS NOT NULL OR ${chatConversations.wantsHuman} = 'true')`));
+  return row?.count ?? 0;
+}
+
+export async function updateChatConversationStatus(id: number, status: "new" | "contacted" | "closed") {
+  const db = await getDb();
+  if (!db) return null;
+  await ensureChatConversationsTable();
+  const [row] = await db
+    .update(chatConversations)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(chatConversations.id, id))
+    .returning();
+  return row ?? null;
 }
 
 export async function saveCookieConsent(input: {
