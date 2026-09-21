@@ -215,6 +215,9 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(chatAssistantSource).toContain("https://wa.me/447864585110?text=Hi%20Eby%27s%20Place%2C%20I%20would%20like%20to%20make%20an%20enquiry.");
     expect(chatAssistantSource).toContain("Message us on WhatsApp");
     expect(chatAssistantSource).toContain("message.isFallback");
+    expect(chatAssistantSource).toContain("Talk to a real person");
+    expect(chatAssistantSource).toContain("chatSave");
+    expect(chatAssistantSource).toContain("HANDOFF");
     expect(homeSource).not.toContain("bg-[#25D366]");
     expect(homeSource).not.toContain("Chat with Eby’s Place on WhatsApp");
     expect(homeSource).toContain("Beauty in every strand");

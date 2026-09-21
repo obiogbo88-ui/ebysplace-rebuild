@@ -16,7 +16,11 @@ describe("customer SMS notifications", () => {
 
     const result = await sendCustomerSms({ to: "+447700900123", body: "Hello" });
 
-    expect(result).toEqual({ sent: false, reason: "sms_not_configured_or_invalid_number" });
+    expect(result).toEqual({
+      sent: false,
+      reason: "sms_not_configured_or_invalid_number",
+      detail: expect.stringContaining("TWILIO_ACCOUNT_SID"),
+    });
   });
 
   it("normalises UK local mobile numbers before posting to Twilio", async () => {

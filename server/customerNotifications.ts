@@ -89,7 +89,13 @@ async function sendTwilioMessage(input: MessageInput) {
       hasValidSender: config.hasValidSender,
       hasValidRecipient: Boolean(to),
     });
-    return { sent: false, reason: `${channel}_not_configured_or_invalid_number` } as const;
+    const missing = [
+      !config.hasAccountSid && "TWILIO_ACCOUNT_SID",
+      !config.hasAuthToken && "TWILIO_AUTH_TOKEN",
+      !config.hasValidSender && (channel === "whatsapp" ? "a valid TWILIO_WHATSAPP_FROM (whatsapp:+E164)" : "a valid TWILIO_SMS_FROM"),
+      !to && "a valid owner phone number in E.164 format (e.g. +447864585110)",
+    ].filter(Boolean);
+    return { sent: false, reason: `${channel}_not_configured_or_invalid_number`, detail: `Missing: ${missing.join(", ")}` } as const;
   }
 
   const formattedTo = channel === "whatsapp" ? `whatsapp:${to}` : to;
@@ -114,7 +120,14 @@ async function sendTwilioMessage(input: MessageInput) {
   if (!response.ok) {
     const details = await response.text().catch(() => "");
     console.warn(`[TwilioNotification] ${channel} send failed`, response.status, details.slice(0, 300));
-    return { sent: false, reason: "twilio_error" } as const;
+    let detail = `Twilio responded ${response.status}`;
+    try {
+      const parsed = JSON.parse(details) as { code?: number; message?: string };
+      if (parsed?.message) detail = `${parsed.code ? `Twilio error ${parsed.code}: ` : ""}${parsed.message}`.slice(0, 300);
+    } catch {
+      // keep the status-only detail
+    }
+    return { sent: false, reason: "twilio_error", detail } as const;
   }
   return { sent: true } as const;
 }

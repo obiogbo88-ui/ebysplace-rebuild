@@ -7,6 +7,8 @@ import { storageGetSignedUrl, storagePut, storageRemove } from "./storage";
 import { generateImage } from "./_core/imageGeneration";
 import { buildTryOnPrompt } from "./_core/tryOnPrompt";
 import { askEby } from "./_core/chatAssistant";
+import { alertOwnerOfChatLead, dispatchOwnerAlert } from "./chatAlerts";
+import { cleanEmail, cleanName, cleanPhone, extractContactFromMessages, summariseTranscript } from "./chatContact";
 import { systemRouter } from "./_core/systemRouter";
 import { normalizeSecretKey } from "./_core/envSecrets";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
@@ -449,40 +451,70 @@ export const appRouter = router({
       const reply = await askEby(input.messages);
       return { reply };
     }),
-    chatLead: publicProcedure.input(z.object({
+    chatSave: publicProcedure.input(z.object({
+      conversationKey: z.string().regex(/^[A-Za-z0-9-]{8,64}$/),
       messages: z.array(z.object({
         role: z.enum(["user", "assistant"]),
         content: z.string().max(4000),
       })).min(1).max(40),
+      name: z.string().max(120).optional(),
+      email: z.string().max(320).optional(),
+      phone: z.string().max(40).optional(),
+      wantsHuman: z.boolean().optional(),
     })).mutation(async ({ input, ctx }) => {
-      await enforceRateLimit(ctx.req, "public.chatLead", 10, 10 * 60_000);
-      const lastUserMessage = [...input.messages].reverse().find((message) => message.role === "user");
-      const summary = input.messages
-        .slice(-6)
-        .map((message) => `${message.role === "user" ? "Visitor" : "Eby"}: ${message.content}`)
-        .join("\n");
+      await enforceRateLimit(ctx.req, "public.chatSave", 20, 10 * 60_000);
 
-      await db.logActivity({
+      // Details typed into the contact form are validated strictly; anything
+      // we merely spot inside the chat text is used opportunistically.
+      const formEmail = input.email?.trim() ? cleanEmail(input.email) : null;
+      const formPhone = input.phone?.trim() ? cleanPhone(input.phone) : null;
+      if (input.email?.trim() && !formEmail) throw new TRPCError({ code: "BAD_REQUEST", message: "Please enter a valid email address." });
+      if (input.phone?.trim() && !formPhone) throw new TRPCError({ code: "BAD_REQUEST", message: "Please enter a valid phone number." });
+      const spotted = extractContactFromMessages(input.messages);
+
+      const conversation = await db.upsertChatConversation({
         request: ctx.req,
-        activityType: "chat_lead",
-        activityCategory: "chat_assistant",
-        description: lastUserMessage ? `Eby chat ended without booking: "${lastUserMessage.content.slice(0, 200)}"` : "Eby chat ended without booking",
-        pageUrl: "/",
-        status: "info",
-        relatedEntityType: "chat",
-        metadata: { transcript: summary },
-        sourceApp: "ebysplace",
-      }).catch((error) => {
-        console.warn("[ChatAssistant] Failed to log chat lead", error);
+        conversationKey: input.conversationKey,
+        messages: input.messages,
+        name: cleanName(input.name),
+        email: formEmail ?? spotted.email,
+        phone: formPhone ?? spotted.phone,
+        wantsHuman: input.wantsHuman,
+        pageUrl: ctx.req?.headers?.referer ? String(ctx.req.headers.referer).slice(0, 500) : null,
       });
+      if (!conversation) return { success: true, notified: false, hasContact: false } as const;
 
-      await sendOwnerSmsAndWhatsAppSafely(
-        `New Eby chat lead (no booking yet):\n${summary}`
-      ).catch((error) => {
-        console.warn("[ChatAssistant] Failed to notify owner of chat lead", error);
-      });
+      const hasContact = Boolean(conversation.email || conversation.phone);
+      const wantsHuman = conversation.wantsHuman === "true";
+      const level = hasContact || wantsHuman ? 2 : 1;
+      let notified = false;
+      if (await db.claimChatAlert(conversation.id, level)) {
+        notified = true;
+        const lastUserMessage = [...input.messages].reverse().find((message) => message.role === "user");
+        await db.logActivity({
+          request: ctx.req,
+          activityType: "chat_lead",
+          activityCategory: "chat_assistant",
+          description: lastUserMessage ? `Eby chat ${hasContact ? "lead" : "ended without booking"}: "${lastUserMessage.content.slice(0, 200)}"` : "Eby chat ended without booking",
+          pageUrl: "/",
+          status: "info",
+          relatedEntityType: "chat",
+          relatedEntityId: String(conversation.id),
+          metadata: { transcript: summariseTranscript(input.messages), hasContact, wantsHuman },
+          sourceApp: "ebysplace",
+        }).catch((error) => console.warn("[ChatAssistant] Failed to log chat lead", error));
 
-      return { success: true } as const;
+        await alertOwnerOfChatLead({
+          name: conversation.name,
+          email: conversation.email,
+          phone: conversation.phone,
+          wantsHuman,
+          messages: input.messages,
+          adminUrl: "https://www.ebysplace.com/admin",
+        }).catch((error) => console.warn("[ChatAssistant] Failed to notify owner of chat lead", error));
+      }
+
+      return { success: true, notified, hasContact } as const;
     }),
     newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(async ({ input, ctx }) => {
       await enforceRateLimit(ctx.req, "public.newsletter", 10, 60 * 60_000);
@@ -1041,6 +1073,21 @@ export const appRouter = router({
     unreadActivityCount: adminProcedure.query(() => db.unreadActivityCount()),
     markActivityLogsRead: adminProcedure.input(z.object({ ids: z.array(z.number().int().positive()).optional() }).optional()).mutation(({ input }) => db.markActivityLogsRead(input?.ids)),
     notificationDiagnostics: adminProcedure.query(() => getNotificationDiagnostics()),
+    listChatConversations: adminProcedure
+      .input(z.object({ status: z.enum(["new", "contacted", "closed"]).optional() }).optional())
+      .query(({ input }) => db.listChatConversations(input?.status ? { status: input.status } : undefined)),
+    chatConversationsNewCount: adminProcedure.query(() => db.countNewChatConversations()),
+    updateChatConversationStatus: adminProcedure
+      .input(z.object({ id: z.number().int().positive(), status: z.enum(["new", "contacted", "closed"]) }))
+      .mutation(({ input }) => db.updateChatConversationStatus(input.id, input.status)),
+    sendTestOwnerAlert: adminProcedure.mutation(() => dispatchOwnerAlert({
+      title: "Eby's Place test alert",
+      text: "If you can read this, this channel is working. Sent from the admin Chats panel.",
+      emailParagraphs: [
+        "This is a test alert sent from the Chats panel in admin.",
+        "If it reached you, this channel will also carry real chat and booking alerts.",
+      ],
+    })),
     moderateReview: adminProcedure.input(z.object({ id: z.number(), status: reviewStatus })).mutation(({ input }) => db.moderateReview(input.id, input.status)),
     moderateProductReview: adminProcedure.input(z.object({ id: z.number(), status: reviewStatus })).mutation(({ input }) => db.moderateProductReview(input.id, input.status)),
     updateBookingStatus: adminProcedure.input(z.object({ id: z.number(), status: bookingStatus })).mutation(async ({ input, ctx }) => {
