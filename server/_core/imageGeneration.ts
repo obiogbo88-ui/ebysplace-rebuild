@@ -1,5 +1,6 @@
 import { storagePut } from "server/storage";
 import { normalizeSecretKey, trimEnvValue } from "./envSecrets";
+import { pickOpenAIImageSize, probeImageSize } from "./imageDimensions";
 
 export type GenerateImageOptions = {
   prompt: string;
@@ -35,13 +36,9 @@ async function fetchImageBytes(image: NonNullable<GenerateImageOptions["original
   return { bytes, mimeType: contentType };
 }
 
-async function fetchImageAsFile(
-  image: NonNullable<GenerateImageOptions["originalImages"]>[number],
-  index: number,
-) {
-  const { bytes, mimeType } = await fetchImageBytes(image);
+function bytesToFile(bytes: Buffer, mimeType: string, index: number) {
   const ext = mimeType.split("/")[1] || "png";
-  return new File([bytes], `source-${index}.${ext}`, { type: mimeType });
+  return new File([new Uint8Array(bytes)], `source-${index}.${ext}`, { type: mimeType });
 }
 
 async function generateImageWithOpenAI(options: GenerateImageOptions): Promise<GenerateImageResponse> {
@@ -53,15 +50,23 @@ async function generateImageWithOpenAI(options: GenerateImageOptions): Promise<G
   const originals = options.originalImages || [];
   const model = trimEnvValue(process.env.OPENAI_IMAGE_MODEL) || "gpt-image-1";
   const endpoint = originals.length > 0 ? "https://api.openai.com/v1/images/edits" : "https://api.openai.com/v1/images/generations";
+
+  // Fetch bytes once, both to build the upload and to read the source
+  // photo's own dimensions — matching the output canvas to the customer's
+  // photo shape (portrait selfie, square, landscape, …) instead of always
+  // forcing a square keeps the model from having to zoom in or reframe the
+  // shot to make a tall/narrow selfie fit a 1:1 canvas.
+  const fetched = originals.length > 0 ? await Promise.all(originals.map((image) => fetchImageBytes(image))) : [];
+
   const form = new FormData();
   form.set("model", model);
   form.set("prompt", options.prompt);
-  form.set("size", trimEnvValue(process.env.OPENAI_IMAGE_SIZE) || "1024x1024");
+  const sizeOverride = trimEnvValue(process.env.OPENAI_IMAGE_SIZE);
+  form.set("size", sizeOverride || pickOpenAIImageSize(fetched[0] ? probeImageSize(fetched[0].bytes) : null));
   form.set("quality", trimEnvValue(process.env.OPENAI_IMAGE_QUALITY) || "high");
 
-  if (originals.length > 0) {
-    const files = await Promise.all(originals.map((image, index) => fetchImageAsFile(image, index)));
-    for (const file of files) form.append("image", file);
+  if (fetched.length > 0) {
+    fetched.forEach(({ bytes, mimeType }, index) => form.append("image", bytesToFile(bytes, mimeType, index)));
     // input_fidelity="high" is OpenAI's documented fix for edits drifting away from
     // the source photo's face/identity — only supported on gpt-image-1 (not 1.5+).
     if (model === "gpt-image-1") {
