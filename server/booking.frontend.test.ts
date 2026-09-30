@@ -64,3 +64,14 @@ describe("Eby’s Place staged booking frontend", () => {
     expect(cssSource).toContain("{ color: #4a3014; }");
   });
 });
+
+describe("Eby’s Place deposit policy wording", () => {
+  it("states the £20 deposit is non-refundable everywhere a customer sees it (owner confirmed 2026-09-30)", () => {
+    const chatSource = readFileSync(resolve(process.cwd(), "server/_core/chatAssistant.ts"), "utf8");
+    for (const source of [bookingSource, chatSource]) {
+      expect(source).not.toContain("full deposit refund");
+    }
+    expect(bookingSource).toContain("The deposit is non-refundable");
+    expect(chatSource).toContain("The £20 deposit is non-refundable");
+  });
+});
