@@ -1247,7 +1247,8 @@ export const appRouter = router({
     sendReviewRequest: adminProcedure.input(z.object({ bookingId: z.number() })).mutation(async ({ input }) => {
       const booking = await db.getBookingById(input.bookingId);
       if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });
-      await sendReviewRequestEmailSafely({ to: booking.clientEmail, customerName: booking.clientName, bookingId: booking.id, serviceName: booking.serviceName, reviewUrl: `/reviews?booking=${booking.id}` });
+      const result = await sendReviewRequestEmailSafely({ to: booking.clientEmail, customerName: booking.clientName, bookingId: booking.id, serviceName: booking.serviceName });
+      if (!result.sent) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Review request email was not sent: ${result.reason}` });
       return { success: true };
     }),
     resendEmailNotification: adminProcedure.input(z.object({ logId: z.number().int().positive() })).mutation(async ({ input }) => {
