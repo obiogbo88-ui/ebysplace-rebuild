@@ -2,70 +2,26 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const homeSource = readFileSync(
-  resolve(process.cwd(), "client/src/pages/Home.tsx"),
-  "utf8"
-);
-const cssSource = readFileSync(
-  resolve(process.cwd(), "client/src/index.css"),
-  "utf8"
-);
-const adminSource = readFileSync(
-  resolve(process.cwd(), "client/src/pages/Admin.tsx"),
-  "utf8"
-);
-const appSource = readFileSync(
-  resolve(process.cwd(), "client/src/App.tsx"),
-  "utf8"
-);
-const policiesSource = readFileSync(
-  resolve(process.cwd(), "client/src/pages/Policies.tsx"),
-  "utf8"
-);
-const tryOnSource = readFileSync(
-  resolve(process.cwd(), "client/src/pages/TryOn.tsx"),
-  "utf8"
-);
-const bookingSource = readFileSync(
-  resolve(process.cwd(), "client/src/pages/Booking.tsx"),
-  "utf8"
-);
-const shopSource = readFileSync(
-  resolve(process.cwd(), "client/src/pages/Shop.tsx"),
-  "utf8"
-);
-const reviewsSource = readFileSync(
-  resolve(process.cwd(), "client/src/pages/Reviews.tsx"),
-  "utf8"
-);
-const loginDialogSource = readFileSync(
-  resolve(process.cwd(), "client/src/components/SecureDialog.tsx"),
-  "utf8"
-);
-const dbSource = readFileSync(
-  resolve(process.cwd(), "server/db.ts"),
-  "utf8"
-);
-const indexSource = readFileSync(
-  resolve(process.cwd(), "client/index.html"),
-  "utf8"
-);
-const manifestSource = readFileSync(
-  resolve(process.cwd(), "client/public/site.webmanifest"),
-  "utf8"
-);
-const servicesSource = readFileSync(
-  resolve(process.cwd(), "client/src/pages/Services.tsx"),
-  "utf8"
-);
-const gallerySource = readFileSync(
-  resolve(process.cwd(), "client/src/pages/Gallery.tsx"),
-  "utf8"
-);
-const chatAssistantSource = readFileSync(
-  resolve(process.cwd(), "client/src/components/ChatAssistant.tsx"),
-  "utf8"
-);
+// Normalise CRLF so assertions hold on Windows checkouts (core.autocrlf) as well as Linux CI.
+const readSource = (relativePath: string) =>
+  readFileSync(resolve(process.cwd(), relativePath), "utf8").replace(/\r\n/g, "\n");
+
+const homeSource = readSource("client/src/pages/Home.tsx");
+const cssSource = readSource("client/src/index.css");
+const adminSource = readSource("client/src/pages/Admin.tsx");
+const appSource = readSource("client/src/App.tsx");
+const policiesSource = readSource("client/src/pages/Policies.tsx");
+const tryOnSource = readSource("client/src/pages/TryOn.tsx");
+const bookingSource = readSource("client/src/pages/Booking.tsx");
+const shopSource = readSource("client/src/pages/Shop.tsx");
+const reviewsSource = readSource("client/src/pages/Reviews.tsx");
+const loginDialogSource = readSource("client/src/components/SecureDialog.tsx");
+const dbSource = readSource("server/db.ts");
+const indexSource = readSource("client/index.html");
+const manifestSource = readSource("client/public/site.webmanifest");
+const servicesSource = readSource("client/src/pages/Services.tsx");
+const gallerySource = readSource("client/src/pages/Gallery.tsx");
+const chatAssistantSource = readSource("client/src/components/ChatAssistant.tsx");
 
 describe("Eby’s Place landing page visual refinements", () => {
   it("keeps the hero photo free of brand-card overlays and places the pain-free promise as a styled list", () => {
@@ -170,9 +126,10 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain('alt="Eby’s Place story portrait"');
     expect(homeSource).toContain("ABOUT_PORTRAIT_FALLBACK_SRC");
     expect(homeSource).toContain("onError={event => {");
-    expect(servicesSource).toContain('loading="lazy"\n                        decoding="async"');
-    expect(gallerySource).toContain('loading="lazy" decoding="async"');
-    expect(gallerySource).toContain('loading="eager" decoding="async"');
+    // Attribute order matters, line layout does not (the #96 redesign split these across lines).
+    expect(servicesSource).toMatch(/loading="lazy"\s+decoding="async"/);
+    expect(gallerySource).toMatch(/loading="lazy"\s+decoding="async"/);
+    expect(gallerySource).toMatch(/loading="eager"\s+decoding="async"/);
   });
 
   it("applies live-site brand typography and luxury palette tokens with readable navigation contrast", () => {
