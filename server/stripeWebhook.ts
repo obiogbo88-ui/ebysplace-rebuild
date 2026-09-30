@@ -7,6 +7,7 @@ import { sendCustomerEmailSafely, sendShopOrderPaidEmailSafely, sendCustomerSmsS
 import { sendBookingPaymentEmailsSafely, sendOrderPaymentEmailsSafely } from "./smtpEmailNotifications";
 import { checkAndAlertLowStockAfterPurchase } from "./stockAlerts";
 import { normalizeSecretKey } from "./_core/envSecrets";
+import { syncPaymentBreakdown } from "./stripeBreakdown";
 
 const STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
 
@@ -236,6 +237,16 @@ export function registerStripeWebhook(app: Application) {
             console.warn("[StripeWebhook] Try-On credits session missing email or credits", { sessionId: session.id, customerEmail, credits });
           }
         }
+        // Record how the payment breaks down (items, discount, Stripe fee, net). Never fails the webhook:
+        // anything missed here is picked up by the admin "Sync fees from Stripe" backfill.
+        if (session.id && (session.metadata?.deposit_type || session.metadata?.order_type === "shop_products" || session.metadata?.purchase_type === "tryon_credits")) {
+          await syncPaymentBreakdown(config.stripe, session.id).catch((error) => console.warn("[StripeWebhook] Could not record payment breakdown", session.id, error));
+        }
+      }
+      if (event.type === "charge.refunded") {
+        const charge = event.data.object as Stripe.Charge;
+        const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+        if (paymentIntentId) await db.recordTransactionRefund(paymentIntentId, Number(charge.amount_refunded || 0) / 100, Boolean(charge.refunded));
       }
       if (event.type === "checkout.session.expired") {
         const expired = event.data.object as Stripe.Checkout.Session;

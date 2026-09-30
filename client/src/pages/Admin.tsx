@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { Fragment, useEffect, useState, useRef, type ReactNode } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { getServiceImageFallback, getServiceImageSrc } from "@/lib/serviceImageFallback";
@@ -203,12 +203,50 @@ const adminOverviewActions = [
   { label: "Content", sectionId: "content", description: "Update the About Us story, round image, and image description." },
 ] as const;
 
+const TRANSACTION_TYPE_ORDER = ["booking_deposit", "shop_order", "tryon_credits"] as const;
 const transactionTypeLabels: Record<string, string> = {
-  booking_deposit: "Booking deposits",
-  shop_order: "Shop orders",
-  tryon_credits: "AI Try-On credits",
+  booking_deposit: "Bookings",
+  shop_order: "Products",
+  tryon_credits: "AI Try-On",
 };
 const formatMoney = (value: number) => `£${Number(value || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatMonth = (month: string) => new Date(`${month}-01T12:00:00Z`).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+
+// How one Stripe payment adds up: items, discount, what the customer paid, Stripe's fee and what reaches the bank.
+function PaymentBreakdownDetails({ item }: { item: any }) {
+  const breakdown = item.breakdown;
+  if (!breakdown) {
+    return <p className="text-sm text-white/55">Stripe breakdown not synced yet. Use “Sync fees from Stripe” above to fetch it.</p>;
+  }
+  const refunded = Number(item.refundedAmount || 0);
+  const rows: Array<{ label: string; value: string; strong?: boolean }> = [
+    { label: "Subtotal", value: formatMoney(breakdown.subtotal) },
+    ...(breakdown.discount > 0 ? [{ label: "Discount (promo code)", value: `−${formatMoney(breakdown.discount)}` }] : []),
+    ...(breakdown.shipping > 0 ? [{ label: "Delivery", value: formatMoney(breakdown.shipping) }] : []),
+    ...(breakdown.tax > 0 ? [{ label: "Tax", value: formatMoney(breakdown.tax) }] : []),
+    { label: "Customer paid", value: formatMoney(breakdown.total), strong: true },
+    { label: "Stripe fee", value: breakdown.stripeFee != null ? `−${formatMoney(breakdown.stripeFee)}` : "Not settled yet" },
+    ...(refunded > 0 ? [{ label: "Refunded to customer", value: `−${formatMoney(refunded)}` }] : []),
+    { label: "Net received", value: breakdown.net != null ? formatMoney(breakdown.net - refunded) : "Pending fee", strong: true },
+  ];
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Items charged</p>
+        <ul className="mt-2 space-y-1 text-sm text-white/75">
+          {(breakdown.lines || []).map((line: any, index: number) => (
+            <li className="flex justify-between gap-4" key={index}><span>{line.quantity > 1 ? `${line.quantity} × ` : ""}{line.description}</span><span>{formatMoney(line.amount)}</span></li>
+          ))}
+        </ul>
+      </div>
+      <dl className="space-y-1 text-sm text-white/70">
+        {rows.map((row) => (
+          <div className={`flex justify-between gap-4 ${row.strong ? "border-t border-white/10 pt-1 font-semibold text-white/90" : ""}`} key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>
+        ))}
+      </dl>
+    </div>
+  );
+}
 
 type AdminPanelProps = {
   id: string;
@@ -600,9 +638,41 @@ export default function Admin() {
   const transactionSummary = trpc.admin.transactionSummary.useQuery(undefined, { retry: false, refetchInterval: 60000 });
   const [transactionFilter, setTransactionFilter] = useState<{ type: string }>({ type: "" });
   const transactionList = trpc.admin.transactions.useQuery(
-    { type: (transactionFilter.type || undefined) as any, status: "completed", limit: 30 },
+    { type: (transactionFilter.type || undefined) as any, paidOnly: true, limit: 50 },
     { retry: false, enabled: openPanels.has("transactions") },
   );
+  const transactionMonthly = trpc.admin.transactionMonthly.useQuery({ months: 12 }, { retry: false, enabled: openPanels.has("transactions"), refetchInterval: 60000 });
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [expandedTransactionId, setExpandedTransactionId] = useState<number | null>(null);
+  const syncTransactionBreakdowns = trpc.admin.syncTransactionBreakdowns.useMutation({
+    onSuccess: () => {
+      utils.admin.transactionMonthly.invalidate();
+      utils.admin.transactions.invalidate();
+    },
+  });
+  const handleSyncTransactionBreakdowns = async () => {
+    try {
+      const result = await syncTransactionBreakdowns.mutateAsync();
+      if (!result.checked) toast.success("Every payment already has its Stripe breakdown");
+      else toast.success(`Updated ${result.updated} of ${result.checked} payment${result.checked === 1 ? "" : "s"} from Stripe`, {
+        description: result.stillPending || result.failed ? `${result.stillPending} not settled by Stripe yet, ${result.failed} could not be read.` : undefined,
+      });
+    } catch (error) {
+      toast.error("Could not sync from Stripe", { description: error instanceof Error ? error.message : "Please try again." });
+    }
+  };
+  // Older payments pre-date fee tracking: fill them in quietly the first time the panel opens each session.
+  const breakdownSyncStartedRef = useRef(false);
+  useEffect(() => {
+    if (breakdownSyncStartedRef.current || !openPanels.has("transactions")) return;
+    breakdownSyncStartedRef.current = true;
+    try { if (window.sessionStorage.getItem("ebysplace_breakdown_sync_done")) return; } catch { /* storage unavailable */ }
+    syncTransactionBreakdowns.mutate(undefined, {
+      onSuccess: () => {
+        try { window.sessionStorage.setItem("ebysplace_breakdown_sync_done", "1"); } catch { /* storage unavailable */ }
+      },
+    });
+  }, [openPanels]);
   const clearIncompleteTransactions = trpc.admin.deleteIncompleteTransactions.useMutation();
   const importTryOnPurchases = trpc.admin.importTryOnPurchasesFromStripe.useMutation();
   const tryOnImportStartedRef = useRef(false);
@@ -1079,26 +1149,80 @@ export default function Admin() {
         </div>
 
         <div className="mt-3 grid gap-3">
-          <AdminPanel id="transactions" eyebrow="Money in" title="Transactions" description="Completed, paid transactions by type, plus best sellers." icon={PoundSterling} open={isPanelOpen("transactions")} onToggle={() => togglePanel("transactions")}>
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Completed payments</p>
-                <b className="serif block text-4xl text-primary">{formatMoney(transactionSummary.data?.completedTotal ?? 0)}</b>
-                <p className="text-sm text-white/55">{transactionSummary.data?.completedCount ?? 0} paid transaction{(transactionSummary.data?.completedCount ?? 0) === 1 ? "" : "s"}</p>
-              </div>
-              <button className="text-sm font-semibold text-white/70 underline decoration-white/30 underline-offset-4 hover:text-white" type="button" disabled={clearIncompleteTransactions.isPending} onClick={handleClearIncompleteTransactions}>
-                {clearIncompleteTransactions.isPending ? "Checking…" : "Clear abandoned checkouts…"}
-              </button>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {(transactionSummary.data?.byType ?? []).map((item: any) => (
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4" key={item.type}>
-                  <b className="text-primary">{transactionTypeLabels[item.type] ?? item.type}</b>
-                  <p className="serif mt-1 text-2xl text-primary">{formatMoney(item.completedTotal)}</p>
-                  <small className="block text-white/50">{item.completedCount} paid transaction{item.completedCount === 1 ? "" : "s"}</small>
-                </div>
-              ))}
-            </div>
+          <AdminPanel id="transactions" eyebrow="Money in" title="Transactions" description="Monthly totals for bookings, products and AI Try-On, with Stripe fees and what reaches the bank." icon={PoundSterling} open={isPanelOpen("transactions")} onToggle={() => togglePanel("transactions")}>
+            {(() => {
+              const monthlyReport: any[] = transactionMonthly.data ?? [];
+              const current = monthlyReport.find((item) => item.month === selectedMonth) ?? monthlyReport[0];
+              const cards = current ? [
+                ...TRANSACTION_TYPE_ORDER.map((type) => ({ key: type, label: transactionTypeLabels[type], totals: current.byType[type], isTotal: false })),
+                { key: "total", label: "Month total", totals: current.total, isTotal: true },
+              ] : [];
+              const missingFees = monthlyReport.reduce((sum, item) => sum + (item.total?.missingFees ?? 0), 0);
+              return (
+                <>
+                  <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45" htmlFor="transaction-month">Month</label>
+                      <select id="transaction-month" className="mt-1 block" value={current?.month ?? ""} onChange={(event) => setSelectedMonth(event.target.value)}>
+                        {monthlyReport.map((item) => <option key={item.month} value={item.month}>{formatMonth(item.month)}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <button className="text-sm font-semibold text-white/70 underline decoration-white/30 underline-offset-4 hover:text-white" type="button" disabled={syncTransactionBreakdowns.isPending} onClick={handleSyncTransactionBreakdowns}>
+                        {syncTransactionBreakdowns.isPending ? "Syncing…" : "Sync fees from Stripe"}
+                      </button>
+                      <button className="text-sm font-semibold text-white/70 underline decoration-white/30 underline-offset-4 hover:text-white" type="button" disabled={clearIncompleteTransactions.isPending} onClick={handleClearIncompleteTransactions}>
+                        {clearIncompleteTransactions.isPending ? "Checking…" : "Clear abandoned checkouts…"}
+                      </button>
+                    </div>
+                  </div>
+                  {transactionMonthly.isLoading ? (
+                    <p className="mt-4 text-sm text-white/60">Loading monthly totals…</p>
+                  ) : (
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      {cards.map((card) => (
+                        <div className={`rounded-2xl border p-4 ${card.isTotal ? "border-primary/50 bg-primary/10" : "border-white/10 bg-black/20"}`} key={card.key}>
+                          <b className="text-primary">{card.label}</b>
+                          <p className="serif mt-1 text-2xl text-primary">{formatMoney(card.totals.gross)}</p>
+                          <small className="block text-white/50">{card.totals.count} payment{card.totals.count === 1 ? "" : "s"}</small>
+                          <dl className="mt-3 space-y-1 border-t border-white/10 pt-2 text-xs text-white/60">
+                            <div className="flex justify-between"><dt>Stripe fees</dt><dd>−{formatMoney(card.totals.fees)}</dd></div>
+                            {card.totals.refunded > 0 && <div className="flex justify-between"><dt>Refunded</dt><dd>−{formatMoney(card.totals.refunded)}</dd></div>}
+                            <div className="flex justify-between font-semibold text-white/85"><dt>Net received</dt><dd>{formatMoney(card.totals.net)}</dd></div>
+                          </dl>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {missingFees > 0 && (
+                    <p className="mt-3 text-xs text-amber-200/80">{missingFees} payment{missingFees === 1 ? " is" : "s are"} still waiting for Stripe fee details, so net figures include them at full value until synced.</p>
+                  )}
+                  <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10">
+                    <table className="w-full min-w-[760px] text-left text-sm">
+                      <thead className="bg-black/40 text-primary">
+                        <tr>
+                          <th className="px-3 py-2">Month</th>
+                          {TRANSACTION_TYPE_ORDER.map((type) => <th className="px-3 py-2 text-right" key={type}>{transactionTypeLabels[type]}</th>)}
+                          <th className="px-3 py-2 text-right">Total paid</th><th className="px-3 py-2 text-right">Stripe fees</th><th className="px-3 py-2 text-right">Net received</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {monthlyReport.map((item) => (
+                          <tr className={`cursor-pointer border-t border-white/10 hover:bg-white/5 ${item.month === current?.month ? "bg-primary/10" : ""}`} key={item.month} onClick={() => setSelectedMonth(item.month)}>
+                            <td className="px-3 py-2 text-white/80">{formatMonth(item.month)}</td>
+                            {TRANSACTION_TYPE_ORDER.map((type) => <td className="px-3 py-2 text-right text-white/70" key={type}>{formatMoney(item.byType[type].gross)}</td>)}
+                            <td className="px-3 py-2 text-right font-semibold text-primary">{formatMoney(item.total.gross)}</td>
+                            <td className="px-3 py-2 text-right text-white/60">−{formatMoney(item.total.fees)}</td>
+                            <td className="px-3 py-2 text-right font-semibold text-white/85">{formatMoney(item.total.net)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-2 text-xs text-white/45">All time: {formatMoney(transactionSummary.data?.completedTotal ?? 0)} from {transactionSummary.data?.completedCount ?? 0} paid transaction{(transactionSummary.data?.completedCount ?? 0) === 1 ? "" : "s"}. Months follow UK time.</p>
+                </>
+              );
+            })()}
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <b className="text-primary">Most booked hair styles</b>
@@ -1124,25 +1248,41 @@ export default function Admin() {
               </select>
             </div>
             <div className="mt-3 max-h-[26rem] overflow-auto rounded-2xl border border-white/10">
-              <table className="w-full min-w-[720px] text-left text-sm">
+              <table className="w-full min-w-[860px] text-left text-sm">
                 <thead className="bg-black/40 text-primary">
-                  <tr><th className="px-3 py-2">Paid on</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Customer</th><th className="px-3 py-2">Details</th><th className="px-3 py-2 text-right">Amount</th></tr>
+                  <tr><th className="px-3 py-2">Paid on</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Customer</th><th className="px-3 py-2">Details</th><th className="px-3 py-2 text-right">Paid</th><th className="px-3 py-2 text-right">Stripe fee</th><th className="px-3 py-2 text-right">Net</th></tr>
                 </thead>
                 <tbody>
                   {transactionList.isLoading ? (
-                    <tr><td className="px-3 py-4 text-white/60" colSpan={5}>Loading transactions…</td></tr>
+                    <tr><td className="px-3 py-4 text-white/60" colSpan={7}>Loading transactions…</td></tr>
                   ) : !(transactionList.data || []).length ? (
-                    <tr><td className="px-3 py-4 text-white/60" colSpan={5}>No paid transactions yet.</td></tr>
+                    <tr><td className="px-3 py-4 text-white/60" colSpan={7}>No paid transactions yet.</td></tr>
                   ) : (
-                    (transactionList.data || []).map((item: any) => (
-                      <tr className="border-t border-white/10" key={item.id}>
-                        <td className="px-3 py-3 text-white/70">{new Date(item.completedAt || item.createdAt).toLocaleString()}</td>
-                        <td className="px-3 py-3">{transactionTypeLabels[item.type] ?? item.type}</td>
-                        <td className="px-3 py-3 text-white/70">{item.customerName || item.customerEmail || "Guest"}{item.customerName && item.customerEmail ? <small className="block text-white/45">{item.customerEmail}</small> : null}</td>
-                        <td className="px-3 py-3 text-white/70">{item.description || "-"}</td>
-                        <td className="px-3 py-3 text-right font-semibold text-primary">{formatMoney(item.amount)}</td>
-                      </tr>
-                    ))
+                    (transactionList.data || []).map((item: any) => {
+                      const expanded = expandedTransactionId === item.id;
+                      const refunded = Number(item.refundedAmount || 0);
+                      const net = item.netAmount != null ? item.netAmount - refunded : null;
+                      return (
+                        <Fragment key={item.id}>
+                          <tr className="cursor-pointer border-t border-white/10 hover:bg-white/5" aria-expanded={expanded} onClick={() => setExpandedTransactionId(expanded ? null : item.id)}>
+                            <td className="px-3 py-3 text-white/70">{new Date(item.completedAt || item.createdAt).toLocaleString("en-GB")}</td>
+                            <td className="px-3 py-3">{transactionTypeLabels[item.type] ?? item.type}{item.status === "refunded" ? <small className="block text-amber-200/80">Refunded</small> : refunded > 0 ? <small className="block text-amber-200/80">Part refunded</small> : null}</td>
+                            <td className="px-3 py-3 text-white/70">{item.customerName || item.customerEmail || "Guest"}{item.customerName && item.customerEmail ? <small className="block text-white/45">{item.customerEmail}</small> : null}</td>
+                            <td className="px-3 py-3 text-white/70">{item.description || "-"}<small className="block text-white/40">{expanded ? "Hide breakdown" : "Show breakdown"}</small></td>
+                            <td className="px-3 py-3 text-right font-semibold text-primary">{formatMoney(item.amount)}</td>
+                            <td className="px-3 py-3 text-right text-white/60">{item.stripeFee != null ? `−${formatMoney(item.stripeFee)}` : "…"}</td>
+                            <td className="px-3 py-3 text-right font-semibold text-white/85">{net != null ? formatMoney(net) : "…"}</td>
+                          </tr>
+                          {expanded && (
+                            <tr className="bg-black/30">
+                              <td className="px-3 py-3" colSpan={7}>
+                                <PaymentBreakdownDetails item={item} />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
