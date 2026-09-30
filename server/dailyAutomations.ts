@@ -3,6 +3,7 @@ import { runUnconfirmedBookingReminders } from "./bookingReminders";
 import { runAbandonedOrderReminders } from "./orderReminders";
 import { runDayBeforeAppointmentReminders } from "./appointmentReminders";
 import { cleanupOldRateLimitBuckets } from "./db";
+import { runStaleUnpaidCheckoutCleanup } from "./staleCheckoutCleanup";
 
 const CRON_PATH = "/api/cron/daily-reminders";
 
@@ -32,18 +33,19 @@ export function registerDailyAutomationsCron(app: Application) {
       runAbandonedOrderReminders(),
       runDayBeforeAppointmentReminders(),
       cleanupOldRateLimitBuckets(),
+      runStaleUnpaidCheckoutCleanup(),
     ]);
 
-    const [bookingReminders, orderReminders, appointmentReminders] = results.map((result) =>
+    const [bookingReminders, orderReminders, appointmentReminders, , staleCheckoutCleanup] = results.map((result) =>
       result.status === "fulfilled" ? result.value : { error: result.reason instanceof Error ? result.reason.message : String(result.reason) }
     );
 
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        console.error("[DailyAutomations] Check failed", ["bookingReminders", "orderReminders", "appointmentReminders", "rateLimitCleanup"][index], result.reason);
+        console.error("[DailyAutomations] Check failed", ["bookingReminders", "orderReminders", "appointmentReminders", "rateLimitCleanup", "staleCheckoutCleanup"][index], result.reason);
       }
     });
 
-    res.json({ success: true, bookingReminders, orderReminders, appointmentReminders });
+    res.json({ success: true, bookingReminders, orderReminders, appointmentReminders, staleCheckoutCleanup });
   });
 }
