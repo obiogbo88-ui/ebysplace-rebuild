@@ -279,6 +279,31 @@ export async function sendNewsletterWelcomeEmailSafely(input: { to?: string | nu
   return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
 }
 
+function formatAppointmentDate(value?: string | null) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return value || "tomorrow";
+  return new Date(`${value}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+}
+
+// Day-before reminder. Same Resend path and plain style as the review request.
+export async function sendAppointmentReminderEmailSafely(input: { to?: string | null; customerName?: string | null; serviceName?: string | null; appointmentDate?: string | null; appointmentTime?: string | null; serviceLocation?: string | null }) {
+  if (!isValidEmail(input.to)) return { sent: false, reason: "invalid_address" } as const;
+  const when = `${formatAppointmentDate(input.appointmentDate)}${input.appointmentTime ? ` at ${input.appointmentTime}` : ""}`;
+  const result = await sendBrandedEmail({
+    to: input.to!.trim(),
+    subject: "Your Eby’s Place appointment is tomorrow",
+    paragraphs: [
+      `Hi ${input.customerName || "there"},`,
+      `This is a friendly reminder that your ${input.serviceName || "braiding"} appointment with Eby’s Place is tomorrow, ${when}.`,
+      input.serviceLocation === "home_service"
+        ? "We will come to the address you gave when booking."
+        : "The studio address is in your booking confirmation.",
+      "Need to change anything? Reply to this email or message us on WhatsApp at 07864 585110.",
+      "We look forward to seeing you.",
+    ],
+  });
+  return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
+}
+
 export async function sendShopOrderPaidEmailSafely(input: { to?: string | null; customerName?: string | null; orderId: number | string; deliveryAddress?: string; itemsSummary?: string }) {
   return sendCustomerEmailSafely({
     to: input.to,
