@@ -42,11 +42,8 @@ const initial: {
 const STEPS = [
   { id: 0, label: "Choose Service" },
   { id: 1, label: "Date & Time" },
-  { id: 2, label: "Location" },
-  { id: 3, label: "Your Details" },
-  { id: 4, label: "Add-ons" },
-  { id: 5, label: "Shop Products" },
-  { id: 6, label: "Review & Pay" },
+  { id: 2, label: "Your Details" },
+  { id: 3, label: "Extras & Pay" },
 ];
 
 type AddOnOption = {
@@ -140,7 +137,7 @@ function StepIndicator({ step, total }: { step: number; total: number }) {
           style={{ width: `${((step + 1) / total) * 100}%` }}
         />
       </div>
-      <div className="mt-4 hidden grid-cols-7 gap-1 sm:grid">
+      <div className="mt-4 hidden grid-cols-4 gap-1 sm:grid">
         {STEPS.map(item => (
           <div
             key={item.id}
@@ -211,7 +208,7 @@ export default function Booking() {
       goToStep(1);
     }
     if (params.get("payment") === "cancelled") {
-      goToStep(6);
+      goToStep(3);
       logActivity.mutate({
         sessionId: getActivitySessionId(),
         activityType: "booking_cancelled",
@@ -270,14 +267,14 @@ export default function Booking() {
     if (step > 0) goToStep(step - 1);
   }
 
-  function continueToAddons() {
+  function continueToExtras() {
     if (!canContinueFromDetails) {
       toast.error("Complete your details", {
         description: "Name, email, phone" + (homeAddressRequired ? ", and full address" : "") + " are required.",
       });
       return;
     }
-    goToStep(4);
+    goToStep(3);
   }
 
   async function submit(event: React.FormEvent) {
@@ -342,7 +339,9 @@ export default function Booking() {
           relatedEntityId: booking.bookingId,
           metadata: { checkoutProvider: "stripe" },
         });
-        window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
+        // Same-tab redirect: window.open after the awaited mutations above has lost the
+        // click's user activation, so mobile browsers silently blocked the Stripe tab.
+        window.location.assign(session.checkoutUrl);
       }
     } catch (error) {
       logActivity.mutate({
@@ -369,7 +368,7 @@ export default function Booking() {
           Secure your appointment with a <span className="gold-text">£20 deposit.</span>
         </h1>
         <p className="mt-4 max-w-3xl text-white/70">
-          Seven simple steps — choose your service, pick a date and time, select your location, enter your details, add optional extras, and pay a £20 deposit securely to confirm.
+          Four quick steps — choose your service, pick a date, time and location, enter your details, then add any extras and pay a £20 deposit securely to confirm.
         </p>
 
         {!paymentMode.isLoading && paymentMode.data && !paymentMode.data.publishableKeyConfigured ? (
@@ -463,8 +462,8 @@ export default function Booking() {
           {step === 1 ? (
             <section className="grid gap-5">
               <div>
-                <h2 className="serif text-3xl font-bold text-primary">Choose date and time</h2>
-                <p className="mt-2 text-[#4a3014]">Select your preferred appointment date and time, then tap Confirm Date and Time to continue.</p>
+                <h2 className="serif text-3xl font-bold text-primary">Choose date, time and location</h2>
+                <p className="mt-2 text-[#4a3014]">Pick your preferred date and time, choose the studio or a home visit, then continue.</p>
                 {form.serviceName ? <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-bold text-primary">{form.serviceName}</div> : null}
               </div>
               <div className="input-grid">
@@ -493,6 +492,37 @@ export default function Booking() {
                   This slot has been blocked by Eby's Place. Please choose a different date or time.
                 </div>
               ) : null}
+              <div className="grid gap-3">
+                <h3 className="font-semibold text-[#24170d]">Where would you like your appointment?</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {[
+                    {
+                      value: "studio" as ServiceLocation,
+                      title: "Visit the Studio",
+                      emoji: "🏛️",
+                      note: "Come to the Eby's Place studio. The studio address is shared only in your post-payment confirmation — it is never published on the website.",
+                    },
+                    {
+                      value: "home_service" as ServiceLocation,
+                      title: "Home Service",
+                      emoji: "🏠",
+                      note: "Eby's Place comes to you. Requires your full address in the next step" + (homeServiceSurcharge > 0 ? " and includes a travel surcharge of £" + homeServiceSurcharge.toFixed(2) : "") + ".",
+                    },
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => set("serviceLocation", option.value)}
+                      aria-pressed={form.serviceLocation === option.value}
+                      className={`flex flex-col gap-2 rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${form.serviceLocation === option.value ? "border-primary bg-primary/15 ring-2 ring-primary/35" : "border-[#d8bd74]/45 bg-white/70 hover:border-primary/60"}`}
+                    >
+                      <span className="text-3xl">{option.emoji}</span>
+                      <h3 className="serif text-2xl font-bold text-[#24170d]">{option.title}</h3>
+                      <p className="text-sm leading-6 text-[#4a3014]">{option.note}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex flex-wrap gap-3">
                 <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
                 <button
@@ -501,52 +531,13 @@ export default function Booking() {
                   disabled={!canContinueFromDate}
                   onClick={() => { if (canContinueFromDate) goToStep(2); }}
                 >
-                  Confirm Date and Time
+                  Continue to your details
                 </button>
               </div>
             </section>
           ) : null}
 
           {step === 2 ? (
-            <section className="grid gap-5">
-              <div>
-                <h2 className="serif text-3xl font-bold text-primary">Choose your location</h2>
-                <p className="mt-2 text-[#4a3014]">Will you visit the studio or would you like a home service? Tap your choice to continue automatically.</p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {[
-                  {
-                    value: "studio" as ServiceLocation,
-                    title: "Visit the Studio",
-                    emoji: "🏛️",
-                    note: "Come to the Eby's Place studio. The studio address is shared only in your post-payment confirmation — it is never published on the website.",
-                  },
-                  {
-                    value: "home_service" as ServiceLocation,
-                    title: "Home Service",
-                    emoji: "🏠",
-                    note: "Eby's Place comes to you. Requires your full address at the next step" + (homeServiceSurcharge > 0 ? " and includes a travel surcharge of £" + homeServiceSurcharge.toFixed(2) : "") + ".",
-                  },
-                ].map(option => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => { set("serviceLocation", option.value); goToStep(3); }}
-                    className="flex min-h-[160px] flex-col gap-3 rounded-3xl border border-[#d8bd74]/45 bg-white/70 p-7 text-left transition hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_16px_40px_rgba(189,140,52,.18)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <span className="text-4xl">{option.emoji}</span>
-                    <h3 className="serif text-2xl font-bold text-[#24170d]">{option.title}</h3>
-                    <p className="text-sm leading-6 text-[#4a3014]">{option.note}</p>
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
-              </div>
-            </section>
-          ) : null}
-
-          {step === 3 ? (
             <section className="grid gap-5">
               <div>
                 <h2 className="serif text-3xl font-bold text-primary">Your details</h2>
@@ -613,100 +604,76 @@ export default function Booking() {
               </label>
               <div className="flex flex-wrap gap-3">
                 <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
-                <button type="button" className="btn-gold" onClick={continueToAddons}>Continue to Add-ons</button>
+                <button type="button" className="btn-gold" onClick={continueToExtras}>Continue to extras and payment</button>
               </div>
             </section>
           ) : null}
 
-          {step === 4 ? (
-            <section className="grid gap-5">
+          {step === 3 ? (
+            <form onSubmit={submit} className="grid gap-6">
               <div>
-                <h2 className="serif text-3xl font-bold text-primary">Optional add-ons</h2>
-                <p className="mt-2 text-[#4a3014]">Enhance your appointment with optional extras. Tap to select or deselect. This step is optional.</p>
+                <h2 className="serif text-3xl font-bold text-primary">Extras and payment</h2>
+                <p className="mt-2 text-[#4a3014]">Add any optional extras or braid-care products to your appointment, check your summary, then pay your £20 deposit to confirm.</p>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {addOnOptions.map(addOn => {
-                  const selected = selectedAddOns.some(item => item.id === addOn.id);
-                  return (
-                    <button
-                      key={addOn.id}
-                      type="button"
-                      onClick={() => toggleAddOn(addOn)}
-                      className={`rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 ${selected ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/50"}`}
-                    >
-                      <span className="text-xs font-bold uppercase tracking-wide text-primary">{selected ? "Selected" : "Optional"}</span>
-                      <h3 className="serif mt-2 text-2xl font-bold text-[#24170d]">{addOn.name}</h3>
-                      {addOn.description ? <p className="mt-1 text-sm leading-6 text-[#4a3014]">{addOn.description}</p> : null}
-                      <b className="mt-3 block text-xl text-primary">£{addOn.price}</b>
-                    </button>
-                  );
-                })}
-                {!servicesLoading && addOnOptions.length === 0 ? (
-                  <p className="rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-5 text-[#4a3014]">No appointment add-ons are available right now. Continue to shop products or review your booking.</p>
-                ) : null}
+              <div className="grid gap-3">
+                <h3 className="serif text-2xl font-bold text-[#24170d]">Optional add-ons</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {addOnOptions.map(addOn => {
+                    const selected = selectedAddOns.some(item => item.id === addOn.id);
+                    return (
+                      <button
+                        key={addOn.id}
+                        type="button"
+                        onClick={() => toggleAddOn(addOn)}
+                        className={`rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 ${selected ? "border-primary bg-primary/15" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/50"}`}
+                      >
+                        <span className="text-xs font-bold uppercase tracking-wide text-primary">{selected ? "Selected" : "Optional"}</span>
+                        <h3 className="serif mt-2 text-2xl font-bold text-[#24170d]">{addOn.name}</h3>
+                        {addOn.description ? <p className="mt-1 text-sm leading-6 text-[#4a3014]">{addOn.description}</p> : null}
+                        <b className="mt-3 block text-xl text-primary">£{addOn.price}</b>
+                      </button>
+                    );
+                  })}
+                  {!servicesLoading && addOnOptions.length === 0 ? (
+                    <p className="rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-5 text-[#4a3014]">No appointment add-ons are available right now.</p>
+                  ) : null}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
-                <button type="button" className="btn-dark" onClick={() => goToStep(5)}>Skip add-ons</button>
-                <button type="button" className="btn-gold" onClick={() => goToStep(5)}>
-                  {selectedAddOns.length > 0 ? "Continue with " + selectedAddOns.length + " add-on" + (selectedAddOns.length > 1 ? "s" : "") : "Continue"}
-                </button>
-              </div>
-            </section>
-          ) : null}
-
-          {step === 5 ? (
-            <section className="grid gap-5">
-              <div>
-                <h2 className="serif text-3xl font-bold text-primary">Optional shop products</h2>
-                <p className="mt-2 text-[#4a3014]">Add hair care or accessories to your appointment order. This step is optional.</p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                {productOptions.map((product: BookingShopProduct) => {
-                  const productId = normalizeProductId(product);
-                  const selected = productId ? selectedProducts.some(item => item.productId === productId) : false;
-                  return (
-                    <button
-                      key={product.id ?? product.productId ?? product.slug ?? product.name}
-                      type="button"
-                      onClick={() => toggleProduct(product)}
-                      aria-pressed={selected}
-                      className={`relative overflow-hidden rounded-3xl border text-left transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected ? "border-primary bg-primary/20 shadow-[0_14px_36px_rgba(201,168,76,.22)] ring-2 ring-primary/35" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/50"}`}
-                    >
-                      {selected ? <span className="absolute right-3 top-3 z-10 rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#111111]">✓ Added</span> : null}
-                      {product.imageUrl ? (
-                        <div className="h-36 overflow-hidden">
-                          <img src={product.imageUrl} alt={`Shop product: ${product.name}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+              <div className="grid gap-3">
+                <h3 className="serif text-2xl font-bold text-[#24170d]">Add braid-care products <span className="text-base font-semibold text-[#6f4b16]">(optional)</span></h3>
+                <p className="text-sm text-[#4a3014]">Hair care and accessories, paid with your deposit and ready at your appointment.</p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {productOptions.map((product: BookingShopProduct) => {
+                    const productId = normalizeProductId(product);
+                    const selected = productId ? selectedProducts.some(item => item.productId === productId) : false;
+                    return (
+                      <button
+                        key={product.id ?? product.productId ?? product.slug ?? product.name}
+                        type="button"
+                        onClick={() => toggleProduct(product)}
+                        aria-pressed={selected}
+                        className={`relative overflow-hidden rounded-3xl border text-left transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selected ? "border-primary bg-primary/20 shadow-[0_14px_36px_rgba(201,168,76,.22)] ring-2 ring-primary/35" : "border-[#d8bd74]/45 bg-white/60 hover:border-primary/50"}`}
+                      >
+                        {selected ? <span className="absolute right-3 top-3 z-10 rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#111111]">✓ Added</span> : null}
+                        {product.imageUrl ? (
+                          <div className="h-36 overflow-hidden">
+                            <img src={product.imageUrl} alt={`Shop product: ${product.name}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                          </div>
+                        ) : null}
+                        <div className="p-4">
+                          <span className="text-xs font-bold uppercase tracking-wide text-primary">{selected ? "Selected — tap again to remove" : product.badge || "Optional"}</span>
+                          <h3 className="serif mt-2 text-xl font-bold text-[#24170d]">{product.name}</h3>
+                          <b className="mt-2 block text-lg text-primary">£{product.price}</b>
                         </div>
-                      ) : null}
-                      <div className="p-4">
-                        <span className="text-xs font-bold uppercase tracking-wide text-primary">{selected ? "Selected — tap again to remove" : product.badge || "Optional"}</span>
-                        <h3 className="serif mt-2 text-xl font-bold text-[#24170d]">{product.name}</h3>
-                        <b className="mt-2 block text-lg text-primary">£{product.price}</b>
-                      </div>
-                    </button>
-                  );
-                })}
-                {!productsLoading && productOptions.length === 0 ? (
-                  <p className="rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-5 text-[#4a3014]">No shop products available right now. Continue to review your booking.</p>
-                ) : null}
+                      </button>
+                    );
+                  })}
+                  {!productsLoading && productOptions.length === 0 ? (
+                    <p className="rounded-3xl border border-[#d8bd74]/45 bg-white/60 p-5 text-[#4a3014]">No shop products are available right now.</p>
+                  ) : null}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <button type="button" className="btn-dark inline-flex items-center gap-2" onClick={goBack}><ChevronLeft className="h-4 w-4" /> Back</button>
-                <button type="button" className="btn-dark" onClick={() => goToStep(6)}>Skip products</button>
-                <button type="button" className="btn-gold" onClick={() => goToStep(6)}>
-                  {selectedProducts.length > 0 ? "Continue with " + selectedProducts.length + " product" + (selectedProducts.length > 1 ? "s" : "") : "Continue"}
-                </button>
-              </div>
-            </section>
-          ) : null}
-
-          {step === 6 ? (
-            <form onSubmit={submit} className="grid gap-5">
-              <div>
-                <h2 className="serif text-3xl font-bold text-primary">Review and Pay</h2>
-                <p className="mt-2 text-[#4a3014]">Please review your booking summary. Click Pay £20 Deposit to proceed to secure payment and confirm your appointment.</p>
-              </div>
+              <h3 className="serif text-2xl font-bold text-[#24170d]">Your booking summary</h3>
               <div className="grid gap-3 rounded-3xl border border-primary/25 bg-primary/10 p-5 text-[#3a2615] sm:grid-cols-2">
                 <p><strong className="text-primary">Service:</strong> {form.serviceName}</p>
                 <p><strong className="text-primary">Date:</strong> {form.appointmentDate}</p>
@@ -745,7 +712,7 @@ export default function Booking() {
                   className="btn-gold min-h-12 px-8 text-base"
                   disabled={create.isPending || checkout.isPending}
                 >
-                  {create.isPending || checkout.isPending ? "Opening payment..." : "Pay £20 Deposit"}
+                  {create.isPending || checkout.isPending ? "Opening secure payment..." : bookingCheckoutTotal > 20 ? `Pay £${formatMoney(bookingCheckoutTotal)} securely` : "Pay £20 Deposit"}
                 </button>
               </div>
             </form>

@@ -28,10 +28,23 @@ describe("Eby’s Place staged booking frontend", () => {
     expect(bookingSource).not.toContain("form.addressLine1 && form.city && form.county && form.postcode");
     expect(bookingSource).toContain("Postcode (optional)");
     expect(bookingSource).not.toContain("<input required value={form.postcode}");
-    expect(bookingSource).toContain("continueToAddons");
+    expect(bookingSource).toContain("continueToExtras");
     expect(bookingSource).toContain("Pay £20 Deposit");
     expect(bookingSource).toContain("createDepositCheckout.useMutation");
-    expect(bookingSource).toContain("window.open(session.checkoutUrl");
+    expect(bookingSource).toContain("window.location.assign(session.checkoutUrl)");
+    expect(bookingSource).not.toContain("window.open(session.checkoutUrl");
+  });
+
+  it("uses four steps with location on the date step and shop products offered before payment", () => {
+    expect(bookingSource).toContain('{ id: 2, label: "Your Details" }');
+    expect(bookingSource).toContain('{ id: 3, label: "Extras & Pay" }');
+    expect(bookingSource).not.toContain('label: "Shop Products"');
+    expect(bookingSource).toContain("Where would you like your appointment?");
+    expect(bookingSource).toContain('onClick={() => set("serviceLocation", option.value)}');
+    const payStep = bookingSource.slice(bookingSource.indexOf("{step === 3 ? ("));
+    expect(payStep.indexOf("Add braid-care products")).toBeGreaterThan(-1);
+    expect(payStep.indexOf("Add braid-care products")).toBeLessThan(payStep.indexOf('type="submit"'));
+    expect(bookingSource).toContain("Pay £${formatMoney(bookingCheckoutTotal)} securely");
   });
 
   it("keeps the mobile style selector and selected-service note readable without changing booking flow", () => {

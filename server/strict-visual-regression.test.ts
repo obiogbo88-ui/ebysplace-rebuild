@@ -52,7 +52,7 @@ describe("strict visual-only change regression coverage", () => {
     expect(homeSource).toContain("href=\"/ai-try-on\"");
     expect(bookingSource).toContain("trpc.public.createBooking.useMutation()");
     expect(bookingSource).toContain("trpc.public.createDepositCheckout.useMutation()");
-    expect(bookingSource).toContain("window.open(session.checkoutUrl");
+    expect(bookingSource).toContain("window.location.assign(session.checkoutUrl)");
     expect(servicesSource).toContain("const serviceQueryInput = useMemo(() => (category === \"All\" ? {} : { category }), [category])");
     expect(servicesSource).toContain("trpc.public.services.useQuery(serviceQueryInput)");
     expect(servicesSource).toContain("<SiteHeader />");
