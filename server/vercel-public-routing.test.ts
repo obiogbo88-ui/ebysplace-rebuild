@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const projectRoot = resolve(__dirname, "..");
-const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf8");
+// Normalise CRLF so assertions hold on Windows checkouts (core.autocrlf) as well as Linux CI.
+const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf8").replace(/\r\n/g, "\n");
 
 describe("Vercel public frontend routing", () => {
   it("routes API requests to the backend and all non-API routes to the static React frontend shell", () => {
