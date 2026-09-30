@@ -39,6 +39,7 @@ const Braiders = lazy(() => import("./pages/Braiders"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const Blog = lazy(() => import("./pages/Blog"));
 const Reviews = lazy(() => import("./pages/Reviews"));
+const Newsletter = lazy(() => import("./pages/Newsletter"));
 const BookingSuccess = lazy(() => import("./pages/BookingSuccess"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
@@ -110,6 +111,9 @@ const sharedLinkPathAliases: Record<string, string> = {
   "/review": "/reviews",
   "/testimonial": "/reviews",
   "/testimonials": "/reviews",
+  "/subscribe": "/newsletter",
+  "/join": "/newsletter",
+  "/mailing-list": "/newsletter",
   "/blogs": "/blog",
   "/articles": "/blog",
   "/journal": "/blog",
@@ -140,6 +144,7 @@ const canonicalStaticPaths = new Set([
   "/gallery",
   "/blog",
   "/reviews",
+  "/newsletter",
   "/admin",
   "/admin/login",
   "/admin/reset-password",
@@ -257,6 +262,11 @@ const seoByPath: Record<string, { title: string; description: string }> = {
     title: "Client Reviews | Eby’s Place",
     description:
       "Read and leave reviews for Eby’s Place luxury pain-free braiding, scalp-conscious protective styling, and customer care.",
+  },
+  "/newsletter": {
+    title: "Join the Newsletter | Eby’s Place",
+    description:
+      "Join the Eby’s Place list for style openings, product drops, and premium braid care guidance.",
   },
   "/policies": {
     title: "Policies | Eby’s Place",
@@ -623,6 +633,7 @@ function Router() {
         <Route path="/blog/:slug" component={Blog} />
         <Route path="/blog" component={Blog} />
         <Route path="/reviews" component={Reviews} />
+        <Route path="/newsletter" component={Newsletter} />
         <Route path="/admin/login" component={AdminLogin} />
         <Route path="/admin/reset-password" component={AdminResetPassword} />
         <Route path="/admin" component={Admin} />
