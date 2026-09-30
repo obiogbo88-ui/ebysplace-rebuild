@@ -26,6 +26,7 @@ import {
   PoundSterling,
 } from "lucide-react";
 import { toast } from "sonner";
+import { bookingDepositLabel, isPastAppointment } from "@/lib/bookingDisplay";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1293,27 +1294,52 @@ export default function Admin() {
           <div className="mt-5 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-primary">
-                <tr><th>Client</th><th>Service</th><th>Location</th><th>Date</th><th>Deposit</th><th>Surcharge</th><th>Stripe total</th><th>Status</th><th>Change status</th></tr>
+                <tr><th>Client</th><th>Service</th><th>Location</th><th>Date</th><th>Deposit</th><th>Surcharge</th><th>Amount paid</th><th>Status</th></tr>
               </thead>
               <tbody>
-                {(data.bookings || []).map((booking: any) => (
-                  <tr className="border-t border-white/10" key={booking.id}>
-                    <td className="py-3">{booking.clientName}<small className="block text-white/45">{booking.clientEmail}</small></td>
-                    <td>{booking.serviceName}</td>
-                    <td>{booking.serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}<small className="block text-white/45">{booking.serviceLocation === "home_service" ? [booking.addressLine1, booking.addressLine2, booking.city, booking.county, booking.postcode].filter(Boolean).join(", ") : "Studio address hidden until paid confirmation"}</small></td>
-                    <td>{booking.appointmentDate} {booking.appointmentTime}</td>
-                    <td>{booking.depositStatus}</td>
-                    <td>£{Number(booking.checkoutSurchargeCharged ?? booking.homeServiceSurcharge ?? 0).toFixed(2)}</td>
-                    <td>{booking.checkoutTotalCharged != null ? `£${Number(booking.checkoutTotalCharged).toFixed(2)}` : "Pending"}</td>
-                    <td>{booking.status}</td>
-                    <td>
-                      <select value={booking.status} onChange={(event) => updateBooking.mutate({ id: booking.id, status: event.target.value as any })}>
-                        <option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
-                      </select>
-                      {booking.status === "completed" ? <button className="btn-dark mt-2 py-2 text-xs" type="button" onClick={() => sendReviewRequest.mutate({ bookingId: booking.id })}>Send review request</button> : null}
-                    </td>
-                  </tr>
-                ))}
+                {(data.bookings || []).map((booking: any) => {
+                  const deposit = bookingDepositLabel(booking.depositStatus);
+                  const isPaid = booking.depositStatus === "paid" || booking.depositStatus === "refunded";
+                  const needsCompleting = booking.status === "confirmed" && isPaid && isPastAppointment(booking.appointmentDate);
+                  const unpaidButConfirmed = booking.status === "confirmed" && !isPaid;
+                  return (
+                    <tr className="border-t border-white/10 align-top" key={booking.id}>
+                      <td className="py-3">{booking.clientName}<small className="block text-white/45">{booking.clientEmail}</small></td>
+                      <td className="py-3">{booking.serviceName}</td>
+                      <td className="py-3">{booking.serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}<small className="block text-white/45">{booking.serviceLocation === "home_service" ? [booking.addressLine1, booking.addressLine2, booking.city, booking.county, booking.postcode].filter(Boolean).join(", ") : "Studio address hidden until paid confirmation"}</small></td>
+                      <td className="whitespace-nowrap py-3">{booking.appointmentDate} {booking.appointmentTime}</td>
+                      <td className="py-3">
+                        <span className={`inline-block whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${deposit.tone === "paid" ? "bg-emerald-500/15 text-emerald-300" : deposit.tone === "warn" ? "bg-amber-400/15 text-amber-200" : "bg-white/10 text-white/60"}`}>{deposit.label}</span>
+                      </td>
+                      <td className="whitespace-nowrap py-3 pr-3">£{Number(booking.checkoutSurchargeCharged ?? booking.homeServiceSurcharge ?? 0).toFixed(2)}</td>
+                      <td className="whitespace-nowrap py-3 pr-3">{isPaid && booking.checkoutTotalCharged != null ? `£${Number(booking.checkoutTotalCharged).toFixed(2)}` : "—"}</td>
+                      <td className="py-3">
+                        <select
+                          aria-label={`Status for ${booking.clientName}'s booking`}
+                          value={booking.status}
+                          onChange={(event) => {
+                            const status = event.target.value as "pending" | "confirmed" | "completed" | "cancelled";
+                            if (status === "confirmed" && !isPaid) {
+                              // Keep the select on its saved value until the admin explicitly overrides.
+                              event.target.value = booking.status;
+                              toast.warning("This booking's deposit hasn't been paid", {
+                                description: "Confirmed bookings get appointment reminders. Only confirm it if the customer paid another way.",
+                                action: { label: "Confirm anyway", onClick: () => updateBooking.mutate({ id: booking.id, status }) },
+                              });
+                              return;
+                            }
+                            updateBooking.mutate({ id: booking.id, status });
+                          }}
+                        >
+                          <option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
+                        </select>
+                        {unpaidButConfirmed ? <small className="mt-2 block max-w-[14rem] text-amber-200">Confirmed but not paid. Cancel it if it was an abandoned checkout.</small> : null}
+                        {needsCompleting ? <small className="mt-2 block max-w-[14rem] text-amber-200">Appointment date has passed. Mark as Completed if it went ahead.</small> : null}
+                        {booking.status === "completed" ? <button className="btn-dark mt-2 py-2 text-xs" type="button" onClick={() => sendReviewRequest.mutate({ bookingId: booking.id })}>Send review request</button> : null}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
