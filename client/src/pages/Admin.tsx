@@ -408,14 +408,17 @@ export default function Admin() {
     utils.public.gallery.invalidate();
     utils.public.paymentMode.invalidate();
   };
+  // After a save, keep the admin exactly where they were. Only open and scroll
+  // to the section if it isn't already open (e.g. the action was started from
+  // elsewhere); never jump back to the top of a section they're working in.
   const scrollAdminFeedback = (sectionId: string) => {
+    if (openPanelsRef.current.has(sectionId)) return;
     setOpenPanels(new Set([sectionId]));
     window.setTimeout(() => smoothScrollToElement(sectionId, 60), 60);
   };
   const opts = {
     onSuccess: () => {
       refresh();
-      scrollAdminFeedback("activity-monitoring");
       toast.success("Admin update saved");
     },
     onError: (error: any) => toast.error(error.message),
@@ -587,6 +590,8 @@ export default function Admin() {
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [deletingGalleryId, setDeletingGalleryId] = useState<number | null>(null);
   const [openPanels, setOpenPanels] = useState<Set<string>>(() => new Set());
+  const openPanelsRef = useRef(openPanels);
+  openPanelsRef.current = openPanels;
   const [chatFilter, setChatFilter] = useState<"all" | ChatStatus>("all");
   const chatConversations = trpc.admin.listChatConversations.useQuery(
     chatFilter === "all" ? undefined : { status: chatFilter },
