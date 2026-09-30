@@ -3583,6 +3583,57 @@ export async function listTransactions(filter: { type?: TransactionType; status?
   }
 }
 
+// Marks bookings and shop orders that are still unpaid after `olderThanDays` as cancelled (never deleted),
+// along with their pending ledger rows and stale unpaid Try-On checkouts. Run daily, well after the 24h
+// owner reminders, so the owner always gets a chance to follow up first. Anything paid is never touched,
+// and a cancelled booking is still confirmed if the customer later pays for it.
+export async function cancelStaleUnpaidCheckouts(olderThanDays = 7) {
+  const days = Math.max(3, Math.floor(olderThanDays));
+  const result = { olderThanDays: days, bookings: [] as Array<{ id: number; clientName: string; serviceName: string; appointmentDate: string }>, orders: [] as Array<{ id: number; customerName: string }>, transactions: 0 };
+  await getDb();
+  if (!_pool) return result;
+  await ensureTransactionsTable();
+  const client = await _pool.connect();
+  try {
+    await client.query("BEGIN");
+    const cutoff = `NOW() - ($1 || ' days')::interval`;
+    const params = [String(days)];
+    const bookingRows = (await client.query(
+      `UPDATE "bookings" SET "status" = 'cancelled', "updatedAt" = NOW()
+       WHERE "status" = 'pending' AND "depositStatus" IN ('unpaid','checkout_started','failed') AND "createdAt" < ${cutoff}
+       RETURNING "id", "clientName", "serviceName", "appointmentDate"`,
+      params,
+    )).rows;
+    const orderRows = (await client.query(
+      `UPDATE "orders" SET "status" = 'cancelled', "updatedAt" = NOW()
+       WHERE "status" IN ('draft','pending_payment') AND "createdAt" < ${cutoff}
+       RETURNING "id", "customerName"`,
+      params,
+    )).rows;
+    const bookingIds = bookingRows.map((row) => Number(row.id));
+    const orderIds = orderRows.map((row) => Number(row.id));
+    const tx = await client.query(
+      `UPDATE "transactions" SET "status" = 'cancelled'
+       WHERE "status" = 'pending' AND (
+         ("referenceType" = 'booking' AND "referenceId" = ANY($1::int[]))
+         OR ("referenceType" = 'order' AND "referenceId" = ANY($2::int[]))
+         OR ("type" = 'tryon_credits' AND "createdAt" < NOW() - ($3 || ' days')::interval)
+       )`,
+      [bookingIds, orderIds, String(days)],
+    );
+    await client.query("COMMIT");
+    result.bookings = bookingRows.map((row) => ({ id: Number(row.id), clientName: String(row.clientName ?? ""), serviceName: String(row.serviceName ?? ""), appointmentDate: String(row.appointmentDate ?? "") }));
+    result.orders = orderRows.map((row) => ({ id: Number(row.id), customerName: String(row.customerName ?? "") }));
+    result.transactions = tx.rowCount ?? 0;
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 // Removes abandoned checkouts older than `olderThanHours` (Stripe sessions expire after 24h, so that is the minimum).
 // Only touches records that were never paid: unpaid pending bookings and draft/pending_payment orders. Paid records are never deleted.
 export async function deleteIncompleteTransactions(options: { olderThanHours?: number; dryRun?: boolean } = {}) {
