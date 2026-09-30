@@ -1,5 +1,5 @@
 import * as db from "./db";
-import { sendCustomerSmsSafely, sendCustomerWhatsAppSafely, sendCustomerEmailSafely } from "./customerNotifications";
+import { sendAppointmentReminderEmailSafely, sendCustomerSmsSafely, sendCustomerWhatsAppSafely } from "./customerNotifications";
 
 function reminderMessage(booking: any) {
   return `Hi ${booking.clientName}, this is a reminder from Eby's Place: your ${booking.serviceName} appointment is tomorrow (${booking.appointmentDate}) at ${booking.appointmentTime}. Reply or contact us if you need to reschedule.`;
@@ -20,7 +20,7 @@ export async function runDayBeforeAppointmentReminders() {
     await Promise.allSettled([
       sendCustomerSmsSafely({ to: booking.clientPhone, body }),
       sendCustomerWhatsAppSafely({ to: booking.clientPhone, body }),
-      sendCustomerEmailSafely({ to: booking.clientEmail, subject: "Your Eby's Place appointment is tomorrow", body }),
+      sendAppointmentReminderEmailSafely({ to: booking.clientEmail, customerName: booking.clientName, serviceName: booking.serviceName, appointmentDate: booking.appointmentDate, appointmentTime: booking.appointmentTime, serviceLocation: booking.serviceLocation }),
     ]).catch((error) => {
       console.error("[AppointmentReminders] Failed to send reminder", booking.id, error);
     });

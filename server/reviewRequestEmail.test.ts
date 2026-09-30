@@ -37,3 +37,29 @@ describe("review request and newsletter welcome emails", () => {
     expect(email.paragraphs.join("\n")).toContain("https://www.ebysplace.com/booking");
   });
 });
+
+describe("day-before appointment reminder email", () => {
+  beforeEach(() => {
+    sendBrandedEmailMock.mockReset();
+    sendBrandedEmailMock.mockResolvedValue({ sent: true });
+  });
+
+  it("sends through branded Resend with a readable date, time and location note", async () => {
+    const { sendAppointmentReminderEmailSafely } = await import("./customerNotifications");
+    const result = await sendAppointmentReminderEmailSafely({ to: "client@example.com", customerName: "Ada", serviceName: "Knotless Braids", appointmentDate: "2026-10-20", appointmentTime: "10:00", serviceLocation: "studio" });
+    expect(result).toEqual({ sent: true });
+    const email = sendBrandedEmailMock.mock.calls[0][0];
+    expect(email.subject).toBe("Your Eby’s Place appointment is tomorrow");
+    const text = email.paragraphs.join("\n");
+    expect(text).toContain("Tuesday 20 October at 10:00");
+    expect(text).toContain("The studio address is in your booking confirmation.");
+    expect(text).toContain("07864 585110");
+  });
+
+  it("is what the daily reminder job uses (not the unconfigured SendGrid path)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync(`${process.cwd()}/server/appointmentReminders.ts`, "utf8");
+    expect(source).toContain("sendAppointmentReminderEmailSafely(");
+    expect(source).not.toContain("sendCustomerEmailSafely");
+  });
+});
