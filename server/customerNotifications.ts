@@ -1,4 +1,15 @@
 import { normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
+import { sendBrandedEmail } from "./resendEmail";
+
+const SITE_URL = "https://www.ebysplace.com";
+
+/**
+ * Opens the "write a review" dialog on the Eby's Place Google Business Profile
+ * (listed on Google as "Ebysplace.com"). The lrd hash carries the listing's
+ * feature id; the query just needs to surface the listing's knowledge panel.
+ */
+export const GOOGLE_REVIEW_URL =
+  "https://www.google.com/search?q=Ebysplace.com+hairdresser+07864+585110#lrd=0x4872056909763369:0x24f90dbf5e290238,3,,,";
 
 type MessageInput = {
   to?: string | null;
@@ -230,31 +241,42 @@ export async function sendOwnerSmsAndWhatsAppSafely(body: string) {
   return results.map((result) => result.status === 'fulfilled' ? result.value : { sent: false, reason: 'exception' });
 }
 
-export async function sendReviewRequestEmailSafely(input: { to?: string | null; customerName?: string | null; bookingId?: number | null; serviceName?: string | null; reviewUrl?: string | null }) {
-  const reviewUrl = input.reviewUrl || (input.bookingId ? `/reviews?booking=${input.bookingId}` : '/reviews');
-  return sendCustomerEmailSafely({
-    to: input.to,
-    subject: 'How was your Eby’s Place appointment?',
-    body: [
-      `Hi ${input.customerName || 'there'},`,
-      `Thank you for visiting Eby’s Place for ${input.serviceName || 'your appointment'}.`,
-      `Please leave a review here: ${reviewUrl}`,
-      'Reviews are checked by the Eby’s Place team before appearing publicly.'
-    ].join('\n\n'),
+// Review requests and newsletter welcomes go through Resend (branded, from
+// info@ebysplace.com). They used to go through sendCustomerEmailSafely, whose
+// SendGrid credentials were never set in production, so they silently never sent.
+// Kept plain (no CTA button): 1:1 mail with boxed CTAs has landed in Junk before.
+export async function sendReviewRequestEmailSafely(input: { to?: string | null; customerName?: string | null; bookingId?: number | null; serviceName?: string | null }) {
+  if (!isValidEmail(input.to)) return { sent: false, reason: "invalid_address" } as const;
+  const websiteReviewUrl = `${SITE_URL}/reviews${input.bookingId ? `?booking=${input.bookingId}` : ""}`;
+  const result = await sendBrandedEmail({
+    to: input.to!.trim(),
+    subject: "How was your Eby’s Place appointment?",
+    paragraphs: [
+      `Hi ${input.customerName || "there"},`,
+      `Thank you for visiting Eby’s Place for ${input.serviceName || "your appointment"}. We hope you love your braids.`,
+      `If you have a minute, a Google review helps other people in Bridgwater and across Somerset find us: ${GOOGLE_REVIEW_URL}`,
+      `You can also leave a review on our website: ${websiteReviewUrl}`,
+      "Thank you for your support.",
+    ],
   });
+  return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
 }
 
 export async function sendNewsletterWelcomeEmailSafely(input: { to?: string | null; productAlerts?: boolean }) {
-  return sendCustomerEmailSafely({
-    to: input.to,
-    subject: 'Welcome to Eby’s Place updates',
-    body: [
-      'Hi there,',
-      'Thank you for joining Eby’s Place updates. You will receive styling news, braid-care guidance, booking reminders, and selected product updates from the Eby’s Place team.',
-      input.productAlerts ? 'You are also subscribed to product and stock alerts for Eby’s Place braid-care essentials.' : 'You can opt into product alerts whenever you want updates on braid-care essentials.',
-      'If this was not you, you can ignore this email.'
-    ].join('\n\n'),
+  if (!isValidEmail(input.to)) return { sent: false, reason: "invalid_address" } as const;
+  const result = await sendBrandedEmail({
+    to: input.to!.trim(),
+    subject: "Welcome to Eby’s Place updates",
+    paragraphs: [
+      "Hi there,",
+      "Thank you for joining the Eby’s Place list. You will receive style openings, braid-care guidance, and selected product updates from the Eby’s Place team.",
+      input.productAlerts ? "You are also subscribed to product and stock alerts for Eby’s Place braid-care essentials." : "You can opt into product alerts whenever you want updates on braid-care essentials.",
+      `Ready for your next style? Book online with a £20 deposit: ${SITE_URL}/booking`,
+      "To unsubscribe, reply to this email with “Unsubscribe”. If you did not sign up, you can ignore this email.",
+    ],
+    headers: { "List-Unsubscribe": "<mailto:info@ebysplace.com?subject=Unsubscribe>" },
   });
+  return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
 }
 
 export async function sendShopOrderPaidEmailSafely(input: { to?: string | null; customerName?: string | null; orderId: number | string; deliveryAddress?: string; itemsSummary?: string }) {

@@ -922,23 +922,23 @@ export default function Home() {
             <Reveal className="lux-card" delay={0.1}>
               <ShieldCheck className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
-                Professional from booking to finish.
+                Book in minutes. Pay just £20.
               </h2>
               <p className="mt-3 text-white/65">
-                Clear services, simple deposits, customer reviews, gallery
-                updates, delivery details, and full admin oversight — all built
-                for a smooth salon experience.
+                Pick your style, choose a time that suits you, and secure your
+                appointment in Bridgwater with a £20 deposit. The rest is paid
+                on the day.
               </p>
             </Reveal>
             <Reveal className="lux-card" delay={0.2}>
               <Sparkles className="text-primary" />
               <h2 className="serif mt-4 text-4xl font-bold">
-                The future of braiding is here.
+                See your style before you sit.
               </h2>
               <p className="mt-3 text-white/65">
-                AI hairstyle previews, ecommerce, live content, customer
-                reviews, analytics, and SaaS integration — all inside one
-                powerful Eby’s Place platform.
+                Not sure which look suits you? Upload a photo to our AI
+                Try-On, preview braid styles on yourself, then book the one
+                you love.
               </p>
             </Reveal>
           </div>

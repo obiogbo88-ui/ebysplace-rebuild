@@ -154,13 +154,15 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).toContain('className="mt-10 grid gap-5 md:grid-cols-3"');
   });
 
-  it("uses the requested three homepage card write-ups without changing the card structure", () => {
+  it("uses customer-facing homepage card write-ups (rewritten 2026-09-30 at the owner's request) without changing the card structure", () => {
     expect(homeSource).toContain("No pain. No pulling. Just flawless braids.");
     expect(homeSource).toContain("Premium braiding designed to protect your scalp, last");
-    expect(homeSource).toContain("Professional from booking to finish.");
-    expect(homeSource).toContain("Clear services, simple deposits, customer reviews,");
-    expect(homeSource).toContain("The future of braiding is here.");
-    expect(homeSource).toContain("AI hairstyle previews, ecommerce, live content,");
+    expect(homeSource).toContain("Book in minutes. Pay just £20.");
+    expect(homeSource).toContain("Pick your style, choose a time that suits you");
+    expect(homeSource).toContain("See your style before you sit.");
+    expect(homeSource).toContain("Not sure which look suits you? Upload a photo to our AI");
+    expect(homeSource).not.toContain("SaaS integration");
+    expect(homeSource).not.toContain("full admin oversight");
     expect(homeSource.match(/lux-card/g)?.length).toBeGreaterThanOrEqual(3);
     expect(homeSource).not.toContain("Professional structure");
     expect(homeSource).not.toContain("Modern automation");
