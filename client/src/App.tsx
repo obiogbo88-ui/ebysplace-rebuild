@@ -20,6 +20,7 @@ import {
 } from "@/lib/activityTracking";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ChatAssistant from "./components/ChatAssistant";
+import { Analytics } from "@vercel/analytics/react";
 import CookieConsentBanner from "./components/CookieConsentBanner";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import {
@@ -216,22 +217,22 @@ function normalizeSharedLinkPath(pathname: string) {
 }
 
 const defaultSeo = {
-  title: "Eby’s Place | African Braids & Braiding in Somerset, UK",
+  title: "Eby’s Place | Pain-Free Braids in Bridgwater, Somerset",
   description:
-    "Eby’s Place offers luxury African braiding near Bridgwater and across Somerset, UK: zero pain, zero trauma, just perfection, with bookings, £20 deposits, braid care products, reviews, gallery inspiration, AI hairstyle try-on, and Braiders Near Me SaaS matching.",
+    "Pain-free knotless braids, box braids, cornrows, twists and locs in Bridgwater, Somerset. Zero pain, zero trauma, just perfection. Book online with a £20 deposit.",
 };
 
 const seoByPath: Record<string, { title: string; description: string }> = {
   "/": defaultSeo,
   "/services": {
-    title: "African Braids, Knotless Braids & Cornrows Somerset | Eby’s Place",
+    title: "Knotless Braids, Box Braids & Cornrows in Bridgwater | Eby’s Place",
     description:
-      "Explore Eby’s Place African braiding services in Somerset, UK — knotless braids, boho knotless braids, box braids, goddess braids, cornrows, locs, twists, kids braids, men’s styles, beads, accessories, and gentle add-ons.",
+      "Explore Eby’s Place African braiding services in Bridgwater, Somerset — knotless braids, boho knotless braids, box braids, goddess braids, cornrows, locs, twists, kids braids, men’s styles, beads, accessories, and gentle add-ons.",
   },
   "/booking": {
     title: "Book Appointment | Eby’s Place",
     description:
-      "Book your Eby’s Place appointment online with a secure £20 deposit for luxury, scalp-conscious, pain-free braiding in Somerset, UK.",
+      "Book your Eby’s Place appointment online with a secure £20 deposit for luxury, scalp-conscious, pain-free braiding in Bridgwater, Somerset.",
   },
   "/shop": {
     title: "Braid Care Products & Accessories | Eby’s Place Shop",
@@ -664,6 +665,7 @@ function App() {
           <MobileStickyBookingCta />
           <ChatAssistant />
           <CookieConsentBanner />
+          <Analytics />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

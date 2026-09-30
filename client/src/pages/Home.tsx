@@ -43,15 +43,18 @@ const LOGO_SRC =
   "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
 const HEADER_LOGO_SRC =
   "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/top-header-logo-1000220440-cropped-transparent_777ea202-de10edbcb7.png";
+export const WHATSAPP_URL = "https://wa.me/447864585110";
+export const WHATSAPP_DISPLAY = "07864 585110";
 const HERO_CAPTION_LINES = [
   "Zero pain.",
   "Zero trauma.",
   "Just perfection.",
   "Luxury Pain-Free Braiding in",
-  "Somerset, UK",
+  "Bridgwater, Somerset",
 ];
-const LANDING_HERO_IMAGE_SRC =
-  "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace_service_knotless_braids_7dbbea62-45d4296622.png";
+// Self-hosted WebP copies of the original 2.3 MB Supabase PNG hero (ebysplace_service_knotless_braids_7dbbea62-45d4296622.png).
+const LANDING_HERO_IMAGE_SRC = "/hero-knotless-braids.webp";
+const LANDING_HERO_IMAGE_SRCSET = "/hero-knotless-braids-800.webp 800w, /hero-knotless-braids.webp 1088w";
 const ABOUT_PORTRAIT_FALLBACK_SRC =
   "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-about-story-portrait.png";
 const PRODUCT_THUMBNAIL_SIZES =
@@ -338,7 +341,7 @@ export function SiteFooter() {
             decoding="async"
           />
           <p className="mt-4 max-w-[16rem] text-sm leading-relaxed text-[#4f3720]">
-            Luxury pain-free braiding in Somerset, UK.
+            Luxury pain-free braiding in Bridgwater, Somerset.
           </p>
         </div>
         <div>
@@ -400,6 +403,19 @@ export function SiteFooter() {
             >
               info@ebysplace.com
             </a>
+          </p>
+          <p className="mt-3 text-sm font-semibold">
+            <a
+              className="underline decoration-primary/60 underline-offset-4 transition hover:text-[#8a641e]"
+              href={WHATSAPP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              WhatsApp {WHATSAPP_DISPLAY}
+            </a>
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-[#4f3720]">
+            Studio in Bridgwater, Somerset. Clients welcome from Taunton, Burnham-on-Sea, Weston-super-Mare, Wells, Yeovil and nearby.
           </p>
           {instagram?.enabled && instagram.handle && instagram.feedUrl ? (
             <p className="mt-3 text-sm font-semibold">
@@ -760,7 +776,7 @@ function HeroCaption() {
       </ul>
       <h1
         className="serif mt-8 max-w-full break-words text-4xl font-bold leading-[1.02] min-[420px]:text-5xl sm:text-6xl md:text-7xl xl:text-8xl"
-        aria-label="Luxury Pain-Free Braiding in Somerset, UK"
+        aria-label="Luxury Pain-Free Braiding in Bridgwater, Somerset"
       >
         <span aria-hidden="true">
           {HERO_CAPTION_LINES[3].slice(0, heroTyped[3])}
@@ -826,6 +842,8 @@ export default function Home() {
             <motion.img
               className="absolute inset-0 h-full w-full object-cover object-[center_10%] md:object-[center_12%] lg:object-[center_14%]"
               src={LANDING_HERO_IMAGE_SRC}
+              srcSet={LANDING_HERO_IMAGE_SRCSET}
+              sizes="100vw"
               alt="Eby’s Place pain-free braiding hero style"
               loading="eager"
               decoding="async"
@@ -848,7 +866,7 @@ export default function Home() {
                 variants={staggerItem}
                 className="pill pill-ribbon w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs"
               >
-                Somerset, UK &middot; Est. braid studio
+                Bridgwater, Somerset &middot; Braid studio
               </motion.p>
               <div className="mt-6 max-w-3xl [text-shadow:0_3px_22px_rgba(0,0,0,.88)]">
                 <HeroCaption />
