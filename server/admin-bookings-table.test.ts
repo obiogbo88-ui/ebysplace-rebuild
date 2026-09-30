@@ -32,3 +32,11 @@ describe("admin bookings table", () => {
     expect(adminSource).toContain("Appointment date has passed. Mark as Completed if it went ahead.");
   });
 });
+
+describe("admin keeps its place after a save", () => {
+  it("does not jump to the Activity feed or to the top of the open section", () => {
+    const optsBlock = adminSource.slice(adminSource.indexOf("const opts = {"), adminSource.indexOf("const moderate ="));
+    expect(optsBlock).not.toContain("scrollAdminFeedback");
+    expect(adminSource).toContain("if (openPanelsRef.current.has(sectionId)) return;");
+  });
+});
