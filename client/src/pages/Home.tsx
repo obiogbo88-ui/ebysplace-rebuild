@@ -373,6 +373,8 @@ export function SiteFooter() {
             <Link className="w-fit transition hover:text-[#8a641e]" href="/ai-try-on">AI Try-On</Link>
             <Link className="w-fit transition hover:text-[#8a641e]" href="/braiders-near-me">Braiders Near Me</Link>
             <Link className="w-fit transition hover:text-[#8a641e]" href="/blog">Blog</Link>
+            <Link className="w-fit transition hover:text-[#8a641e]" href="/reviews">Leave a Review</Link>
+            <Link className="w-fit transition hover:text-[#8a641e]" href="/newsletter">Join Our Newsletter</Link>
           </div>
         </div>
         <div>
