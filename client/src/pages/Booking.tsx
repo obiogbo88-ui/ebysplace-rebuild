@@ -394,8 +394,8 @@ export default function Booking() {
         ) : null}
 
         <div className="mt-6 rounded-3xl border border-primary/30 bg-primary/10 p-5 text-white/85">
-          <b className="text-primary">48-hour cancellation policy</b>
-          <p className="mt-2 text-sm leading-6">Cancel 48 hours or more before your appointment for a full deposit refund. Cancellations under 48 hours are non-refundable — please choose your date and time carefully.</p>
+          <b className="text-primary">Deposit policy</b>
+          <p className="mt-2 text-sm leading-6">Your £20 deposit secures your appointment and comes off your final price. The deposit is non-refundable — please choose your date and time carefully.</p>
         </div>
 
         <div id="booking-card" className="lux-card mt-8 grid gap-6 scroll-mt-28">

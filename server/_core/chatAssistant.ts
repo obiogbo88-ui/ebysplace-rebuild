@@ -29,7 +29,7 @@ async function buildSystemPrompt() {
     ``,
     `BOOKING POLICY:`,
     `- A £20 deposit is required to confirm any booking, paid securely online at booking time.`,
-    `- Cancellations 48 hours or more before the appointment get a full deposit refund. Cancellations under 48 hours are non-refundable.`,
+    `- The £20 deposit is non-refundable, whenever the booking is cancelled. It comes off the final price of the appointment.`,
     surcharge > 0
       ? `- Home-service (Eby's Place comes to you) adds a £${surcharge.toFixed(2)} travel surcharge.`
       : `- Home-service (Eby's Place comes to you) is available.`,
