@@ -29,6 +29,7 @@ import {
   websiteSections,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { shapeMonthlyTotals, type PaymentBreakdown } from "./transactionReport";
 
 let _pool: Pool | null = null;
 let _db: any | null = null;
@@ -3289,6 +3290,14 @@ async function ensureTransactionsTable() {
     )`);
     await _pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "transactions_session_uidx" ON "transactions" ("stripeCheckoutSessionId") WHERE "stripeCheckoutSessionId" IS NOT NULL`);
     await _pool.query(`CREATE INDEX IF NOT EXISTS "transactions_type_status_idx" ON "transactions" ("type", "status")`);
+    // Stripe payment breakdown, filled in by the webhook (or the admin sync for older payments).
+    await _pool.query(`ALTER TABLE "transactions"
+      ADD COLUMN IF NOT EXISTS "subtotal" NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS "discount" NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS "stripeFee" NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS "netAmount" NUMERIC(10,2),
+      ADD COLUMN IF NOT EXISTS "refundedAmount" NUMERIC(10,2) NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "breakdown" JSONB`);
     _transactionsReady = true;
     await backfillTransactions();
   } catch (err) {
@@ -3452,7 +3461,96 @@ export async function transactionSummary() {
   }
 }
 
-export async function listTransactions(filter: { type?: TransactionType; status?: TransactionStatus; limit?: number } = {}) {
+// Stores what Stripe says about a paid checkout: line items, discount, fee and net.
+export async function saveTransactionBreakdown(stripeCheckoutSessionId: string, breakdown: PaymentBreakdown) {
+  await getDb();
+  if (!_pool) return;
+  await ensureTransactionsTable();
+  await _pool.query(
+    `UPDATE "transactions" SET "subtotal" = $2, "discount" = $3, "stripeFee" = $4, "netAmount" = $5, "breakdown" = $6::jsonb
+     WHERE "stripeCheckoutSessionId" = $1`,
+    [stripeCheckoutSessionId, breakdown.subtotal.toFixed(2), breakdown.discount.toFixed(2), breakdown.stripeFee?.toFixed(2) ?? null, breakdown.net?.toFixed(2) ?? null, JSON.stringify(breakdown)],
+  );
+}
+
+// Paid checkouts whose Stripe fee is not known yet (paid before breakdowns existed, or not settled at webhook time).
+export async function listTransactionsMissingBreakdown(limit = 50) {
+  await getDb();
+  if (!_pool) return [] as string[];
+  await ensureTransactionsTable();
+  const result = await _pool.query(
+    `SELECT "stripeCheckoutSessionId" FROM "transactions"
+     WHERE "status" IN ('completed','refunded') AND "stripeFee" IS NULL AND "stripeCheckoutSessionId" IS NOT NULL
+     ORDER BY "completedAt" DESC NULLS LAST LIMIT $1`,
+    [limit],
+  );
+  return result.rows.map((row) => String(row.stripeCheckoutSessionId));
+}
+
+// Called from the charge.refunded webhook. Stripe reports the cumulative refunded amount, so this is safe to replay.
+export async function recordTransactionRefund(stripePaymentIntentId: string, refundedAmount: number, fullyRefunded: boolean) {
+  try {
+    await getDb();
+    if (!_pool) return;
+    await ensureTransactionsTable();
+    await _pool.query(
+      `UPDATE "transactions" SET "refundedAmount" = $2, "status" = CASE WHEN $3::boolean THEN 'refunded' ELSE "status" END
+       WHERE "stripePaymentIntentId" = $1 AND "status" IN ('completed','refunded')`,
+      [stripePaymentIntentId, refundedAmount.toFixed(2), fullyRefunded],
+    );
+  } catch (err) {
+    console.warn("[Transactions] Could not record refund", err);
+  }
+}
+
+// Paid money per month (UK time) and type. Gross is what customers paid; net is after Stripe fees and refunds.
+export async function transactionMonthly(months = 12) {
+  const count = Math.min(Math.max(Math.floor(months), 1), 36);
+  try {
+    await getDb();
+    if (!_pool) return shapeMonthlyTotals([], count, londonNow());
+    await ensureTransactionsTable();
+    const paidAt = `((COALESCE("completedAt","createdAt") AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/London')`;
+    const result = await _pool.query(
+      `SELECT to_char(date_trunc('month', ${paidAt}), 'YYYY-MM') AS "month", "type",
+              COUNT(*) AS "count",
+              COALESCE(SUM("amount"), 0) AS "gross",
+              COALESCE(SUM("stripeFee"), 0) AS "fees",
+              COALESCE(SUM("refundedAmount"), 0) AS "refunded",
+              COALESCE(SUM(COALESCE("netAmount", "amount") - "refundedAmount"), 0) AS "net",
+              COUNT(*) FILTER (WHERE "stripeFee" IS NULL) AS "missingFees"
+       FROM "transactions"
+       WHERE "status" IN ('completed','refunded')
+         AND ${paidAt} >= date_trunc('month', (NOW() AT TIME ZONE 'Europe/London')) - make_interval(months => $1::int)
+       GROUP BY 1, 2`,
+      [count - 1],
+    );
+    const rows = result.rows.map((row) => ({
+      month: String(row.month),
+      type: String(row.type),
+      count: Number(row.count),
+      gross: Number(row.gross),
+      fees: Number(row.fees),
+      refunded: Number(row.refunded),
+      net: Number(row.net),
+      missingFees: Number(row.missingFees),
+    }));
+    return shapeMonthlyTotals(rows, count, londonNow());
+  } catch (err) {
+    console.warn("[Transactions] Could not load monthly totals", err);
+    return shapeMonthlyTotals([], count, londonNow());
+  }
+}
+
+// Current UK calendar month expressed as a UTC date, so month keys line up with the SQL above.
+function londonNow() {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", year: "numeric", month: "2-digit" }).formatToParts(new Date());
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value);
+  return new Date(Date.UTC(year, month - 1, 1));
+}
+
+export async function listTransactions(filter: { type?: TransactionType; status?: TransactionStatus; paidOnly?: boolean; limit?: number } = {}) {
   try {
     await getDb();
     if (!_pool) return [];
@@ -3461,13 +3559,24 @@ export async function listTransactions(filter: { type?: TransactionType; status?
     const params: unknown[] = [];
     if (filter.type) { params.push(filter.type); where.push(`"type" = $${params.length}`); }
     if (filter.status) { params.push(filter.status); where.push(`"status" = $${params.length}`); }
+    if (filter.paidOnly) where.push(`"status" IN ('completed','refunded')`);
     params.push(Math.min(Math.max(filter.limit ?? 50, 1), 200));
     const result = await _pool.query(
-      `SELECT "id","type","status","amount","currency","customerName","customerEmail","description","referenceType","referenceId","createdAt","completedAt"
-       FROM "transactions" ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY "createdAt" DESC LIMIT $${params.length}`,
+      `SELECT "id","type","status","amount","currency","customerName","customerEmail","description","referenceType","referenceId","createdAt","completedAt",
+              "subtotal","discount","stripeFee","netAmount","refundedAmount","breakdown"
+       FROM "transactions" ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY COALESCE("completedAt","createdAt") DESC LIMIT $${params.length}`,
       params,
     );
-    return result.rows.map((row) => ({ ...row, amount: Number(row.amount) }));
+    const money = (value: unknown) => (value == null ? null : Number(value));
+    return result.rows.map((row) => ({
+      ...row,
+      amount: Number(row.amount),
+      subtotal: money(row.subtotal),
+      discount: money(row.discount),
+      stripeFee: money(row.stripeFee),
+      netAmount: money(row.netAmount),
+      refundedAmount: Number(row.refundedAmount ?? 0),
+    }));
   } catch (err) {
     console.warn("[Transactions] Could not list transactions", err);
     return [];

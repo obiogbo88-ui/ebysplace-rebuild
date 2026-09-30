@@ -13,6 +13,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { normalizeSecretKey } from "./_core/envSecrets";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { collectTryOnPurchases } from "./tryOnPurchaseImport";
+import { syncMissingPaymentBreakdowns } from "./stripeBreakdown";
 import { notifyOwner } from "./_core/notification";
 import { getNotificationDiagnostics, sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely } from "./customerNotifications";
 import { resendEmailNotificationLog } from "./smtpEmailNotifications";
@@ -1382,9 +1383,14 @@ export const appRouter = router({
       }
       return result;
     }),
+    transactionMonthly: adminProcedure.input(z.object({
+      months: z.number().int().min(1).max(36).default(12),
+    }).optional()).query(({ input }) => db.transactionMonthly(input?.months ?? 12)),
+    syncTransactionBreakdowns: adminProcedure.mutation(() => syncMissingPaymentBreakdowns(getStripe(), 50)),
     transactions: adminProcedure.input(z.object({
       type: z.enum(db.TRANSACTION_TYPES).optional(),
       status: z.enum(db.TRANSACTION_STATUSES).optional(),
+      paidOnly: z.boolean().optional(),
       limit: z.number().int().min(1).max(200).optional(),
     }).optional()).query(({ input }) => db.listTransactions(input ?? {})),
     deleteIncompleteTransactions: adminProcedure.input(z.object({
