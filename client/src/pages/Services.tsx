@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
+import { DEFAULT_SCROLL_OFFSET, navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { createServiceImageErrorHandler, getServiceImageSrc } from "@/lib/serviceImageFallback";
 import { Reveal } from "@/lib/motion";
 import { SiteFooter, SiteHeader } from "./Home";
@@ -48,9 +48,23 @@ export default function Services() {
   const { data = [], isLoading } = trpc.public.services.useQuery(serviceQueryInput);
   useEffect(() => {
     if (!sharedServiceSlug || isLoading) return;
-    if ((data as any[]).some((service) => service.slug === sharedServiceSlug)) {
-      smoothScrollToElement(`service-${sharedServiceSlug}`, 350);
-    }
+    if (!(data as any[]).some((service) => service.slug === sharedServiceSlug)) return;
+    // The route-change scroll-to-top and late-loading images can cancel or
+    // shift a single smooth scroll, so re-check a few times and jump again
+    // until the shared style is actually on screen.
+    const targetId = `service-${sharedServiceSlug}`;
+    smoothScrollToElement(targetId, 350);
+    const timers = [1200, 2200, 3500].map((delay) =>
+      window.setTimeout(() => {
+        const element = document.getElementById(targetId);
+        if (!element) return;
+        const { top } = element.getBoundingClientRect();
+        if (top < 0 || top > window.innerHeight * 0.6) {
+          window.scrollTo({ top: Math.max(0, top + window.scrollY - DEFAULT_SCROLL_OFFSET), left: 0, behavior: "auto" });
+        }
+      }, delay),
+    );
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [data, isLoading, sharedServiceSlug]);
   const visibleServices = useMemo(() => {
     if (!initialSearchTerm) return data as any[];
