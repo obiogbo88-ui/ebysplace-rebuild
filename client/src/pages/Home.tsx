@@ -1185,29 +1185,29 @@ export default function Home() {
         <section className="section-pad">
           <div className="container max-w-3xl">
             <Reveal>
-              <div className="rounded-[1.75rem] border border-[#C9A84C]/35 bg-[#111111] px-6 py-10 text-center shadow-[0_24px_70px_rgba(17,17,17,.28)] sm:px-12 md:py-14">
-                <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#C9A84C]">
+              <div className="brand-card rounded-[1.75rem] border border-[#C9A84C]/35 bg-[#111111] px-5 py-10 text-center shadow-[0_24px_70px_rgba(17,17,17,.28)] sm:px-12 md:py-14">
+                <p className="brand-card-gold text-sm font-bold uppercase tracking-[0.22em] text-[#C9A84C]">
                   Eby’s Place
                 </p>
                 <div className="mx-auto mt-5 h-px w-full max-w-md bg-[#C9A84C]/70" aria-hidden="true" />
-                <h2 className="serif mt-8 text-4xl font-bold leading-[1.1] text-white md:text-6xl">
+                <h2 className="brand-card-title serif mt-8 text-[2.15rem] font-bold leading-[1.1] text-white sm:text-5xl md:text-6xl">
                   More than a salon.
                 </h2>
-                <p className="serif mt-4 text-2xl leading-snug text-[#C9A84C] md:text-3xl">
+                <p className="brand-card-gold serif mt-4 text-xl leading-snug text-[#C9A84C] sm:text-2xl md:text-3xl">
                   A feeling of home. A touch of luxury.
                 </p>
-                <p className="mx-auto mt-5 max-w-xl text-lg leading-8 text-[#F4EFE6]/85">
+                <p className="brand-card-body mx-auto mt-5 max-w-xl text-base leading-7 text-[#F4EFE6]/85 sm:text-lg sm:leading-8">
                   Your space to unwind, feel beautiful and leave with
                   confidence.
                 </p>
                 <button
                   type="button"
-                  className="mt-8 inline-flex items-center justify-center rounded-full border border-[#C9A84C] bg-[#C9A84C] px-8 py-4 text-sm font-bold uppercase tracking-[0.14em] text-[#111111] transition hover:-translate-y-0.5 hover:bg-transparent hover:text-[#C9A84C]"
+                  className="brand-card-cta mt-8 inline-flex max-w-full items-center justify-center rounded-full border border-[#C9A84C] bg-[#C9A84C] px-6 py-4 sm:px-8 text-sm font-bold uppercase tracking-[0.14em] text-[#111111] transition hover:-translate-y-0.5 hover:bg-transparent hover:text-[#C9A84C]"
                   onClick={() => smoothScrollToElement("our-story")}
                 >
                   Discover Eby’s Place
                 </button>
-                <p className="serif mt-6 text-base italic text-[#C9A84C]/90">
+                <p className="brand-card-gold serif mt-6 text-base italic text-[#C9A84C]/90">
                   Beauty in every strand.
                 </p>
               </div>
