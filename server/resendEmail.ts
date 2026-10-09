@@ -177,8 +177,16 @@ export type BroadcastResult = {
   recipientCount: number;
   deliveredCount: number;
   failedCount: number;
+  /** Addresses that still failed after the retry, so they can be re-sent. */
+  failedRecipients?: string[];
   errorMessage?: string;
 };
+
+/** ~6 sends per second, comfortably under Resend's 10/s limit. */
+export const BROADCAST_SEND_GAP_MS = 160;
+export const BROADCAST_RETRY_DELAY_MS = 1500;
+
+const wait = (ms: number) => (ms > 0 ? new Promise<void>((resolve) => setTimeout(resolve, ms)) : Promise.resolve());
 
 /**
  * Sends one individual email per recipient rather than a single email with
@@ -198,15 +206,27 @@ export async function sendBroadcastEmail(
     return { sent: true, recipientCount: 0, deliveredCount: 0, failedCount: 0 };
   }
 
+  // Resend allows 10 requests per second. Firing every send at once got 11 of
+  // 21 announcement emails rejected with 429 (2026-10-09), so send one at a
+  // time with a gap, and retry a rate-limited send once after a pause.
   let delivered = 0;
   let failed = 0;
-  await Promise.all(
-    recipients.map(async (to) => {
-      const result = await sendBrandedEmail({ to, ...content, headers: { "List-Unsubscribe": `<mailto:${CONTACT_EMAIL}?subject=Unsubscribe>` } }, fetchImpl);
-      if (result.sent) delivered += 1;
-      else failed += 1;
-    }),
-  );
+  const failedRecipients: string[] = [];
+  for (let index = 0; index < recipients.length; index += 1) {
+    const to = recipients[index];
+    if (index > 0) await wait(BROADCAST_SEND_GAP_MS);
+    const email = { to, ...content, headers: { "List-Unsubscribe": `<mailto:${CONTACT_EMAIL}?subject=Unsubscribe>` } };
+    let result = await sendBrandedEmail(email, fetchImpl);
+    if (!result.sent && /too many requests|429/i.test(result.errorMessage ?? "")) {
+      await wait(BROADCAST_RETRY_DELAY_MS);
+      result = await sendBrandedEmail(email, fetchImpl);
+    }
+    if (result.sent) delivered += 1;
+    else {
+      failed += 1;
+      failedRecipients.push(to);
+    }
+  }
 
-  return { sent: true, recipientCount: recipients.length, deliveredCount: delivered, failedCount: failed };
+  return { sent: true, recipientCount: recipients.length, deliveredCount: delivered, failedCount: failed, failedRecipients };
 }
