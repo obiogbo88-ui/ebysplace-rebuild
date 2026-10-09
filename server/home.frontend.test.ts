@@ -180,14 +180,14 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("bg-[#25D366]");
     expect(homeSource).not.toContain("Chat with Eby’s Place on WhatsApp");
     expect(homeSource).toContain("Beauty in every strand");
-    expect(homeSource.lastIndexOf("Beauty in every strand")).toBeGreaterThan(homeSource.indexOf("export function SiteFooter"));
     // Tagline is allowed only in the footer and the "More than a salon" brand card.
     expect(homeSource.split("Beauty in every strand").length - 1).toBe(2);
+    expect(homeSource.indexOf("Beauty in every strand")).toBeGreaterThan(homeSource.indexOf("export function SiteFooter"));
     const brandCardStart = homeSource.indexOf("More than a salon.");
-    const firstTagline = homeSource.indexOf("Beauty in every strand");
+    const cardTagline = homeSource.lastIndexOf("Beauty in every strand");
     expect(brandCardStart).toBeGreaterThan(-1);
-    expect(firstTagline).toBeGreaterThan(brandCardStart);
-    expect(firstTagline - brandCardStart).toBeLessThan(2000);
+    expect(cardTagline).toBeGreaterThan(brandCardStart);
+    expect(cardTagline - brandCardStart).toBeLessThan(2000);
   });
 
   it("adds a backend-managed final About Us story section with an admin-controlled round portrait", () => {
