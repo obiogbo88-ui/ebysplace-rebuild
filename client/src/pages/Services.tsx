@@ -1,10 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { createServiceImageErrorHandler, getServiceImageSrc } from "@/lib/serviceImageFallback";
 import { Reveal } from "@/lib/motion";
 import { SiteFooter, SiteHeader } from "./Home";
+import { ShareLinkButton } from "@/components/ShareLinkButton";
+
+/** Shareable link for one service: opens the catalogue scrolled to (and highlighting) that style. */
+function servicePublicPath(service: { slug?: string | null; name: string }) {
+  return service.slug ? `/services?style=${encodeURIComponent(service.slug)}` : `/services?search=${encodeURIComponent(service.name)}`;
+}
 
 const tabs = ["All", "Braids", "Twists", "Locs", "Weaves", "Kids Styles", "Men Styles", "Add-ons"] as const;
 
@@ -35,7 +41,17 @@ export default function Services() {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("search")?.trim() || "";
   }, []);
+  const sharedServiceSlug = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("style")?.trim() || "";
+  }, []);
   const { data = [], isLoading } = trpc.public.services.useQuery(serviceQueryInput);
+  useEffect(() => {
+    if (!sharedServiceSlug || isLoading) return;
+    if ((data as any[]).some((service) => service.slug === sharedServiceSlug)) {
+      smoothScrollToElement(`service-${sharedServiceSlug}`, 350);
+    }
+  }, [data, isLoading, sharedServiceSlug]);
   const visibleServices = useMemo(() => {
     if (!initialSearchTerm) return data as any[];
     const term = initialSearchTerm.toLowerCase();
@@ -126,9 +142,10 @@ export default function Services() {
                 return (
                 <Reveal
                   delay={Math.min(index, 4) * 0.06}
-                  className="lux-card flex flex-col overflow-hidden p-0"
+                  className={`lux-card relative flex flex-col overflow-hidden p-0${service.slug && service.slug === sharedServiceSlug ? " ring-2 ring-primary ring-offset-4 ring-offset-transparent" : ""}`}
                   key={service.id ?? service.slug}
                 >
+                  {service.slug ? <span id={`service-${service.slug}`} className="absolute top-0 scroll-mt-28" aria-hidden="true" /> : null}
                   {serviceImageSrc ? (
                     <div className="media-portrait media-service overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
                       <img
@@ -172,6 +189,12 @@ export default function Services() {
                         Currently unavailable
                       </button>
                     )}
+                    <ShareLinkButton
+                      path={servicePublicPath(service)}
+                      title={`${service.name} | Eby’s Place`}
+                      text={`${service.name} at Eby’s Place, Bridgwater — from £${service.priceFrom}`}
+                      className="mt-4 self-center"
+                    />
                   </div>
                 </Reveal>
               );

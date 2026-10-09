@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ShareLinkButton } from "@/components/ShareLinkButton";
 import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { getActivitySessionId, getBrowserInfo, getCurrentPageUrl } from "@/lib/activityTracking";
@@ -256,7 +257,10 @@ function ProductCard({
                 <span className="font-semibold">{commerce.rating.toFixed(1)}</span> ({commerce.reviewCount} ratings)
               </button>
             </p>
-            <button type="button" className="mt-2 text-left text-sm font-semibold text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => navigateWithSmoothScroll(productPublicPath(product))}>View product page</button>
+            <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+              <button type="button" className="text-left text-sm font-semibold text-primary underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => navigateWithSmoothScroll(productPublicPath(product))}>View product page</button>
+              <ShareLinkButton path={productPublicPath(product)} title={`${product.name} | Eby’s Place`} text={`${product.name} from Eby’s Place — £${product.price}`} />
+            </div>
           </div>
           <div className="shrink-0 text-right">
             {commerce.savingsLabel ? <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300">{commerce.savingsLabel}</p> : null}
