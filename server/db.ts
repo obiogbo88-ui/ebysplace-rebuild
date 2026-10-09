@@ -2520,7 +2520,8 @@ export async function listAllClientEmails() {
   const emails = new Set<string>();
   for (const row of [...bookingRows, ...orderRows, ...tryOnRows, ...newsletterRows, ...chatRows]) {
     const email = row.email?.trim().toLowerCase();
-    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) emails.add(email);
+    // Skip internal smoke-test addresses (.test domains can never receive mail).
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !/\.(test|example|invalid|localhost)$/.test(email)) emails.add(email);
   }
   return Array.from(emails);
 }

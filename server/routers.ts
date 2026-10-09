@@ -1195,16 +1195,30 @@ export const appRouter = router({
         body: z.string().min(2).max(200),
         url: z.string().url().optional(),
         channels: z.object({ webPush: z.boolean(), email: z.boolean(), sms: z.boolean(), whatsapp: z.boolean() }),
-        audience: z.enum(["subscribers", "all_clients"]).default("subscribers"),
+        audience: z.enum(["subscribers", "all_clients", "selected"]).default("all_clients"),
         extraPhones: z.array(z.string().min(8).max(20)).max(20).optional(),
+        // "selected" audience: email only these addresses (e.g. re-sending to people a send missed).
+        selectedEmails: z.array(z.string().email()).max(200).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const textMessage = `${input.title}\n${input.body}${input.url ? `\n${input.url}` : ""}`;
         const withExtraPhones = (phones: string[]) => Array.from(new Set([...phones, ...(input.extraPhones ?? [])]));
+        const isSelected = input.audience === "selected";
+        if (isSelected && input.channels.email && !input.selectedEmails?.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Add at least one email address for a specific-people announcement." });
+        }
+        const emailRecipients = () =>
+          isSelected
+            ? Promise.resolve(Array.from(new Set(input.selectedEmails!.map((email) => email.trim().toLowerCase()))))
+            : input.audience === "all_clients"
+              ? db.listAllClientEmails()
+              : db.listNewsletterSubscribers().then((subscribers) => subscribers.map((s) => s.email));
+        const phoneRecipients = (subscriberPhones: () => Promise<string[]>) =>
+          isSelected ? Promise.resolve([] as string[]) : input.audience === "all_clients" ? db.listAllClientPhones() : subscriberPhones();
         const [webPushResult, emailResult, smsResult, whatsappResult] = await Promise.all([
-          input.channels.webPush ? sendPushToAllSubscribers({ title: input.title, body: input.body, url: input.url }) : Promise.resolve(null),
+          input.channels.webPush && !isSelected ? sendPushToAllSubscribers({ title: input.title, body: input.body, url: input.url }) : Promise.resolve(null),
           input.channels.email
-            ? (input.audience === "all_clients" ? db.listAllClientEmails() : db.listNewsletterSubscribers().then((subscribers) => subscribers.map((s) => s.email))).then((recipients) =>
+            ? emailRecipients().then((recipients) =>
                 sendBroadcastEmail(recipients, {
                   subject: input.title,
                   paragraphs: [input.body],
@@ -1213,10 +1227,10 @@ export const appRouter = router({
               )
             : Promise.resolve(null),
           input.channels.sms
-            ? (input.audience === "all_clients" ? db.listAllClientPhones() : db.listSmsSubscriptions().then((subscribers) => subscribers.map((s) => s.phone))).then((phones) => sendSmsToPhones(withExtraPhones(phones), textMessage))
+            ? phoneRecipients(() => db.listSmsSubscriptions().then((subscribers) => subscribers.map((s) => s.phone))).then((phones) => sendSmsToPhones(withExtraPhones(phones), textMessage))
             : Promise.resolve(null),
           input.channels.whatsapp
-            ? (input.audience === "all_clients" ? db.listAllClientPhones() : db.listSmsSubscriptions().then((subscribers) => subscribers.map((s) => s.phone))).then((phones) => sendWhatsAppToPhones(withExtraPhones(phones), textMessage))
+            ? phoneRecipients(() => db.listSmsSubscriptions().then((subscribers) => subscribers.map((s) => s.phone))).then((phones) => sendWhatsAppToPhones(withExtraPhones(phones), textMessage))
             : Promise.resolve(null),
         ]);
 
@@ -1232,6 +1246,7 @@ export const appRouter = router({
             url: input.url ?? null,
             audience: input.audience,
             extraPhoneCount: input.extraPhones?.length ?? 0,
+            selectedEmailCount: input.selectedEmails?.length ?? 0,
             webPush: webPushResult,
             email: emailResult,
             sms: smsResult,
