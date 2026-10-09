@@ -583,7 +583,7 @@ export default function Admin() {
   const [replyForm, setReplyForm] = useState({ ...EMPTY_REPLY });
   const [availabilitySlot, setAvailabilitySlot] = useState({ date: "", time: "", reason: "Unavailable" });
   const [instagramSettings, setInstagramSettings] = useState({ handle: "@ebysplace", feedUrl: "https://www.instagram.com/ebysplace/", enabled: true, note: "Latest Eby’s Place Instagram posts appear here once the production feed is connected." });
-  const [announcementForm, setAnnouncementForm] = useState({ title: "", body: "", url: "", channels: { webPush: true, email: false, sms: false, whatsapp: false }, audience: "all_clients" as "subscribers" | "all_clients", extraPhones: "" });
+  const [announcementForm, setAnnouncementForm] = useState({ title: "", body: "", url: "", channels: { webPush: true, email: false, sms: false, whatsapp: false }, audience: "all_clients" as "subscribers" | "all_clients" | "selected", extraPhones: "", selectedEmails: "" });
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [newService, setNewService] = useState({ name: "", slug: "", category: "Braids", description: "", duration: "", priceFrom: "", badge: "", imageUrl: "", isBookable: "true", isFeatured: "false", sortOrder: 0 });
@@ -1676,23 +1676,25 @@ export default function Admin() {
             <div className="mt-5">
               <label className="flex flex-col gap-1 text-sm text-white/70">
                 Audience
-                <select value={announcementForm.audience} onChange={(event) => setAnnouncementForm({ ...announcementForm, audience: event.target.value as "subscribers" | "all_clients" })}>
+                <select value={announcementForm.audience} onChange={(event) => setAnnouncementForm({ ...announcementForm, audience: event.target.value as "subscribers" | "all_clients" | "selected" })}>
                   <option value="all_clients">Everyone on our database (bookings, orders, AI Try-On, sign-ups)</option>
                   <option value="subscribers">Opt-in subscribers only</option>
+                  <option value="selected">Specific people (enter email addresses below)</option>
                 </select>
               </label>
               <div className="mt-3 grid gap-2 text-sm text-white/65 sm:grid-cols-2">
                 <p>Web push subscribers: <b className="text-primary">{announcementStatus.data?.webPush.subscriberCount ?? "..."}</b> (opt-in only — browser push has no "all clients" reach){announcementStatus.data && !announcementStatus.data.webPush.configured ? <span className="block text-xs text-white/45">VAPID keys not configured yet</span> : null}</p>
-                <p>Email: <b className="text-primary">{announcementForm.audience === "all_clients" ? announcementStatus.data?.email.allClientCount : announcementStatus.data?.email.subscriberCount ?? "..."}</b> recipients{announcementStatus.data && !announcementStatus.data.email.configured ? <span className="block text-xs text-white/45">Resend not configured yet</span> : null}</p>
-                <p>SMS: <b className="text-primary">{announcementForm.audience === "all_clients" ? announcementStatus.data?.sms.allClientCount : announcementStatus.data?.sms.subscriberCount ?? "..."}</b> recipients{announcementStatus.data && !announcementStatus.data.sms.configured ? <span className="block text-xs text-white/45">Twilio SMS not configured, or trial account (verified numbers only)</span> : null}</p>
-                <p>WhatsApp: <b className="text-primary">{announcementForm.audience === "all_clients" ? announcementStatus.data?.whatsapp.allClientCount : announcementStatus.data?.whatsapp.subscriberCount ?? "..."}</b> recipients{announcementStatus.data && !announcementStatus.data.whatsapp.configured ? <span className="block text-xs text-white/45">Sandbox mode — only reaches numbers that have joined</span> : null}</p>
+                <p>Email: <b className="text-primary">{announcementForm.audience === "selected" ? announcementForm.selectedEmails.split(/[\s,;]+/).filter(Boolean).length : announcementForm.audience === "all_clients" ? announcementStatus.data?.email.allClientCount : announcementStatus.data?.email.subscriberCount ?? "..."}</b> recipients{announcementStatus.data && !announcementStatus.data.email.configured ? <span className="block text-xs text-white/45">Resend not configured yet</span> : null}</p>
+                <p>SMS: <b className="text-primary">{announcementForm.audience === "selected" ? announcementForm.extraPhones.split(",").filter((p) => p.trim()).length : announcementForm.audience === "all_clients" ? announcementStatus.data?.sms.allClientCount : announcementStatus.data?.sms.subscriberCount ?? "..."}</b> recipients{announcementStatus.data && !announcementStatus.data.sms.configured ? <span className="block text-xs text-white/45">Twilio SMS not configured, or trial account (verified numbers only)</span> : null}</p>
+                <p>WhatsApp: <b className="text-primary">{announcementForm.audience === "selected" ? announcementForm.extraPhones.split(",").filter((p) => p.trim()).length : announcementForm.audience === "all_clients" ? announcementStatus.data?.whatsapp.allClientCount : announcementStatus.data?.whatsapp.subscriberCount ?? "..."}</b> recipients{announcementStatus.data && !announcementStatus.data.whatsapp.configured ? <span className="block text-xs text-white/45">Sandbox mode — only reaches numbers that have joined</span> : null}</p>
               </div>
               <form
                 className="mt-4 grid gap-3 rounded-2xl border border-primary/20 bg-black/20 p-4"
                 onSubmit={(event) => {
                   event.preventDefault();
                   const extraPhones = announcementForm.extraPhones.split(",").map((p) => p.trim()).filter(Boolean);
-                  sendAnnouncement.mutate({ title: announcementForm.title, body: announcementForm.body, url: announcementForm.url || undefined, channels: announcementForm.channels, audience: announcementForm.audience, extraPhones: extraPhones.length ? extraPhones : undefined });
+                  const selectedEmails = announcementForm.selectedEmails.split(/[\s,;]+/).map((e) => e.trim()).filter(Boolean);
+                  sendAnnouncement.mutate({ title: announcementForm.title, body: announcementForm.body, url: announcementForm.url || undefined, channels: announcementForm.channels, audience: announcementForm.audience, extraPhones: extraPhones.length ? extraPhones : undefined, selectedEmails: announcementForm.audience === "selected" && selectedEmails.length ? selectedEmails : undefined });
                 }}
               >
                 <input required maxLength={80} placeholder="Title (e.g. New style openings this week)" value={announcementForm.title} onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })} />
@@ -1704,6 +1706,9 @@ export default function Admin() {
                   <label className="flex items-center gap-2"><input type="checkbox" checked={announcementForm.channels.sms} onChange={(event) => setAnnouncementForm({ ...announcementForm, channels: { ...announcementForm.channels, sms: event.target.checked } })} /> SMS</label>
                   <label className="flex items-center gap-2"><input type="checkbox" checked={announcementForm.channels.whatsapp} onChange={(event) => setAnnouncementForm({ ...announcementForm, channels: { ...announcementForm.channels, whatsapp: event.target.checked } })} /> WhatsApp</label>
                 </div>
+                {announcementForm.audience === "selected" ? (
+                  <textarea placeholder="Email addresses to send to (one per line or comma-separated)" rows={4} value={announcementForm.selectedEmails} onChange={(event) => setAnnouncementForm({ ...announcementForm, selectedEmails: event.target.value })} />
+                ) : null}
                 {(announcementForm.channels.sms || announcementForm.channels.whatsapp) ? (
                   <input placeholder="Also send SMS/WhatsApp to these numbers (comma-separated, e.g. the owner's own number)" value={announcementForm.extraPhones} onChange={(event) => setAnnouncementForm({ ...announcementForm, extraPhones: event.target.value })} />
                 ) : null}
