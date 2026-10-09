@@ -86,6 +86,21 @@
       "destination": "/index.html"
     },
     {
+      "source": "/shop/:slug",
+      "destination": "/api/index?__share=product&__slug=:slug"
+    },
+    {
+      "source": "/services",
+      "has": [
+        {
+          "type": "query",
+          "key": "style",
+          "value": "(?<style>[a-z0-9-]+)"
+        }
+      ],
+      "destination": "/api/index?__share=service&__slug=:style"
+    },
+    {
       "source": "/:path*",
       "destination": "/index.html"
     }
