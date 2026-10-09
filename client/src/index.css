@@ -366,3 +366,14 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
   color: inherit !important;
 }
 
+
+/* "More than a salon" brand card: a dark panel inside the light site, so its
+   colours must beat the global dark-text overrides above (h2 / .text-white /
+   section colour rules all force #1A1A1A). */
+.luxury-shell .brand-card { background: #111111 !important; color: #F4EFE6 !important; }
+.luxury-shell .brand-card .brand-card-title { color: #FFFFFF !important; }
+.luxury-shell .brand-card .brand-card-gold { color: #C9A84C !important; }
+.luxury-shell .brand-card .brand-card-body { color: rgba(244, 239, 230, 0.86) !important; }
+.luxury-shell .brand-card .brand-card-cta { background: #C9A84C !important; color: #111111 !important; border-color: #C9A84C !important; }
+.luxury-shell .brand-card .brand-card-cta:hover,
+.luxury-shell .brand-card .brand-card-cta:focus-visible { background: transparent !important; color: #C9A84C !important; }
