@@ -23,7 +23,7 @@ import { isSmsConfigured, isWhatsAppConfigured, sendSmsToPhones, sendWhatsAppToP
 import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken, getPreferredProductionOrigin, getTrustedSiteHostnames } from "./supabaseAuth";
 import * as db from "./db";
 
-const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"]);
+const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Weaves", "Kids Styles", "Men Styles", "Add-ons"]);
 const bookingStatus = z.enum(["pending", "confirmed", "completed", "cancelled"]);
 const reviewStatus = z.enum(["approved", "rejected"]);
 const orderStatus = z.enum(["draft", "pending_payment", "paid", "fulfilling", "shipped", "completed", "cancelled"]);
