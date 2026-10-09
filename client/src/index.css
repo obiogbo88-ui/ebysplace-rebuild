@@ -377,3 +377,10 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
 .luxury-shell .brand-card .brand-card-cta { background: #C9A84C !important; color: #111111 !important; border-color: #C9A84C !important; }
 .luxury-shell .brand-card .brand-card-cta:hover,
 .luxury-shell .brand-card .brand-card-cta:focus-visible { background: transparent !important; color: #C9A84C !important; }
+
+/* Share badge on service/product photos: solid gold so it reads as a button
+   on any photo, protected from the global text/button colour overrides. */
+.share-icon-badge { background: #C9A84C !important; color: #111111 !important; border: 2px solid #FFFFFF !important; }
+.share-icon-badge svg { color: #111111 !important; stroke: #111111 !important; }
+.share-icon-badge:hover, .share-icon-badge:focus-visible { background: #111111 !important; color: #C9A84C !important; border-color: #C9A84C !important; }
+.share-icon-badge:hover svg, .share-icon-badge:focus-visible svg { color: #C9A84C !important; stroke: #C9A84C !important; }

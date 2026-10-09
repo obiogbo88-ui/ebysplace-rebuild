@@ -26,11 +26,14 @@ export function ShareLinkButton({
   title,
   text,
   className = "",
+  variant = "link",
 }: {
   path: string;
   title: string;
   text?: string;
   className?: string;
+  /** "icon": round gold share badge for the corner of a card photo. */
+  variant?: "link" | "icon";
 }) {
   const handleShare = async () => {
     const url = shareableUrl(path);
@@ -49,6 +52,23 @@ export function ShareLinkButton({
       toast.message("Copy this link to share", { description: url });
     }
   };
+
+  if (variant === "icon") {
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          void handleShare();
+        }}
+        aria-label={`Share ${title}`}
+        title="Share"
+        className={`share-icon-badge inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#C9A84C] bg-[#111111]/85 text-[#C9A84C] shadow-[0_8px_22px_rgba(0,0,0,.35)] backdrop-blur transition hover:bg-[#C9A84C] hover:text-[#111111] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C] ${className}`}
+      >
+        <Share2 className="h-5 w-5" aria-hidden="true" />
+      </button>
+    );
+  }
 
   return (
     <button

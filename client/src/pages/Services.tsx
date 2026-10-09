@@ -161,13 +161,20 @@ export default function Services() {
                 >
                   {service.slug ? <span id={`service-${service.slug}`} className="absolute top-0 scroll-mt-28" aria-hidden="true" /> : null}
                   {serviceImageSrc ? (
-                    <div className="media-portrait media-service overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
+                    <div className="media-portrait media-service relative overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
                       <img
                         src={serviceImageSrc}
                         alt={`${service.name} hairstyle by Eby’s Place`}
                         loading="lazy"
                         decoding="async"
                         onError={createServiceImageErrorHandler(service)}
+                      />
+                      <ShareLinkButton
+                        variant="icon"
+                        path={servicePublicPath(service)}
+                        title={`${service.name} | Eby’s Place`}
+                        text={`${service.name} at Eby’s Place, Bridgwater — from £${service.priceFrom}`}
+                        className="absolute right-3 top-3 z-10"
                       />
                     </div>
                   ) : null}

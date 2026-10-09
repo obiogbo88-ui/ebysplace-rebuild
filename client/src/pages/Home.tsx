@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { openCookieSettings } from "@/lib/cookieConsent";
+import { ShareLinkButton } from "@/components/ShareLinkButton";
 
 const LOGO_SRC =
   "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
@@ -993,7 +994,7 @@ export default function Home() {
                   key={`${s.id ?? s.slug ?? s.name}-${index}`}
                 >
                   {getServiceImageSrc(s) ? (
-                    <div className="media-portrait overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
+                    <div className="media-portrait relative overflow-hidden rounded-t-[1.6rem] bg-[#171009]">
                       <img
                         src={getServiceImageSrc(s)!}
                         alt={`${s.name} hairstyle by Eby’s Place`}
@@ -1001,6 +1002,13 @@ export default function Home() {
                         loading="lazy"
                         decoding="async"
                         onError={createServiceImageErrorHandler(s)}
+                      />
+                      <ShareLinkButton
+                        variant="icon"
+                        path={s.slug ? `/services?style=${encodeURIComponent(s.slug)}` : `/services?search=${encodeURIComponent(s.name)}`}
+                        title={`${s.name} | Eby’s Place`}
+                        text={`${s.name} at Eby’s Place, Bridgwater — from £${s.priceFrom}`}
+                        className="absolute right-3 top-3 z-10"
                       />
                     </div>
                   ) : null}

@@ -24,6 +24,14 @@ describe("shareable service and product links", () => {
     expect(servicesSource).toContain("<ShareLinkButton");
   });
 
+  it("shows a visible share badge on every service and product photo", () => {
+    expect(shareSource).toContain('variant === "icon"');
+    expect(servicesSource).toContain('variant="icon"');
+    expect(shopSource).toContain('variant="icon"');
+    expect(readSource("client/src/pages/Home.tsx")).toContain('variant="icon"');
+    expect(readSource("client/src/index.css")).toContain(".share-icon-badge { background: #C9A84C !important;");
+  });
+
   it("shares product pages but not the picture gallery", () => {
     expect(shopSource).toContain("<ShareLinkButton path={productPublicPath(product)}");
     expect(gallerySource).not.toContain("ShareLinkButton");
