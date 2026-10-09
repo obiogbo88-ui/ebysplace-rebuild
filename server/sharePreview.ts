@@ -75,7 +75,7 @@ export async function getSharePreviewMeta(kind: string, slug: string): Promise<S
     const image = product?.imageUrl || product?.image_url;
     if (!product || !image) return null;
     return {
-      title: `${product.name} | £${product.price} | Eby’s Place`,
+      title: /eby/i.test(product.name) ? `${product.name} | £${product.price}` : `${product.name} | £${product.price} | Eby’s Place`,
       description: clip(product.seoDescription || product.description || `${product.name} from Eby’s Place.`),
       image: absoluteUrl(image),
       imageAlt: `${product.name} from Eby’s Place`,
