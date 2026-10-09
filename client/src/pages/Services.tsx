@@ -6,7 +6,7 @@ import { createServiceImageErrorHandler, getServiceImageSrc } from "@/lib/servic
 import { Reveal } from "@/lib/motion";
 import { SiteFooter, SiteHeader } from "./Home";
 
-const tabs = ["All", "Braids", "Twists", "Locs", "Kids Styles", "Men Styles", "Add-ons"] as const;
+const tabs = ["All", "Braids", "Twists", "Locs", "Weaves", "Kids Styles", "Men Styles", "Add-ons"] as const;
 
 type ServiceCategory = (typeof tabs)[number];
 
@@ -18,6 +18,8 @@ const categoryIntro: Record<ServiceCategory, string> = {
   Twists:
     "Soft rope and passion twist services designed for lightweight movement, protection, and comfort.",
   Locs: "Loc-inspired protective options, from faux and butterfly locs through to starter loc support.",
+  Weaves:
+    "Weave sew-in installations in Bridgwater, Somerset — your own hair braided down flat and the weave sewn in securely for a full, natural-looking finish.",
   "Kids Styles":
     "Gentle children’s braid, cornrow, and twist appointments for boys and girls of all ages and all backgrounds — comfort, patience, and neat finishing at the centre. Lower pricing for our youngest clients.",
   "Men Styles":
