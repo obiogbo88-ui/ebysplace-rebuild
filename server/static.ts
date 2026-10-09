@@ -2,6 +2,7 @@
 import express, { type Application, type Request, type Response, type NextFunction } from "express";
 import fs from "fs";
 import path from "path";
+import { getSharePreviewMeta, injectSharePreview } from "./sharePreview";
 
 function resolveProductionStaticPath() {
   const candidates = [
@@ -51,6 +52,25 @@ export function serveStatic(app: Application) {
   app.use("*", (req: Request, res: Response, next: NextFunction) => {
     if (isBackendApiRequest(req.originalUrl || req.url)) {
       return next();
+    }
+
+    const shareKind = typeof req.query?.__share === "string" ? req.query.__share : "";
+    const shareSlug = typeof req.query?.__slug === "string" ? req.query.__slug : "";
+    if (shareKind && shareSlug) {
+      // Shared service/product link: same page, but with that item's own
+      // link-preview photo and title (see sharePreview.ts).
+      getSharePreviewMeta(shareKind, shareSlug)
+        .then((meta) => {
+          if (!meta) return res.status(200).sendFile(indexPath, error => { if (error) next(error); });
+          const html = injectSharePreview(fs.readFileSync(indexPath, "utf8"), meta);
+          res.setHeader("Cache-Control", "public, max-age=0, s-maxage=600, stale-while-revalidate=86400");
+          res.status(200).type("html").send(html);
+        })
+        .catch((error) => {
+          console.warn("[SharePreview] Falling back to generic page", error);
+          res.status(200).sendFile(indexPath, sendError => { if (sendError) next(sendError); });
+        });
+      return;
     }
 
     res.status(200).sendFile(indexPath, error => {

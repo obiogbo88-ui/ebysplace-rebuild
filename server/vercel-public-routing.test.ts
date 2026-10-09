@@ -51,6 +51,16 @@ describe("Vercel public frontend routing", () => {
         source: "/booking/:path*",
         destination: "/index.html",
       },
+      // Shared product/service links get that item's own link preview (sharePreview.ts).
+      {
+        source: "/shop/:slug",
+        destination: "/api/index?__share=product&__slug=:slug",
+      },
+      {
+        source: "/services",
+        has: [{ type: "query", key: "style", value: "(?<style>[a-z0-9-]+)" }],
+        destination: "/api/index?__share=service&__slug=:style",
+      },
       {
         source: "/:path*",
         destination: "/index.html",
