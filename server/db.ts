@@ -2503,20 +2503,22 @@ export async function getEmailNotificationLogById(id: number) {
 }
 
 /**
- * Every distinct email that has ever booked an appointment or placed a shop
- * order — the real client base, separate from the newsletter/push/SMS
- * opt-in lists (which only cover people who explicitly signed up for
- * updates).
+ * Every distinct email on the database: bookings, shop orders, AI Try-On
+ * accounts, newsletter sign-ups and chat hand-offs. This is the "everyone"
+ * audience for owner announcements, separate from the opt-in-only lists.
  */
 export async function listAllClientEmails() {
   const db = await getDb();
   if (!db) return [];
-  const [bookingRows, orderRows] = await Promise.all([
+  const [bookingRows, orderRows, tryOnRows, newsletterRows, chatRows] = await Promise.all([
     db.selectDistinct({ email: bookings.clientEmail }).from(bookings),
     db.selectDistinct({ email: orders.customerEmail }).from(orders),
+    db.selectDistinct({ email: tryOnAccounts.email }).from(tryOnAccounts).catch(() => []),
+    db.selectDistinct({ email: newsletterSubscribers.email }).from(newsletterSubscribers).catch(() => []),
+    db.selectDistinct({ email: chatConversations.email }).from(chatConversations).catch(() => []),
   ]);
   const emails = new Set<string>();
-  for (const row of [...bookingRows, ...orderRows]) {
+  for (const row of [...bookingRows, ...orderRows, ...tryOnRows, ...newsletterRows, ...chatRows]) {
     const email = row.email?.trim().toLowerCase();
     if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) emails.add(email);
   }
@@ -2524,24 +2526,31 @@ export async function listAllClientEmails() {
 }
 
 /**
- * Every distinct phone number that has ever booked an appointment or placed
- * a shop order — for SMS/WhatsApp, separate from the smsSubscriptions
- * opt-in list. Left as entered at checkout/booking (not E164-normalised
- * here); sendCustomerSmsSafely/sendCustomerWhatsAppSafely normalise per send.
+ * Every distinct phone number on the database: bookings, shop orders, AI
+ * Try-On accounts, SMS sign-ups and chat hand-offs — for SMS/WhatsApp.
+ * Deduplicated on the last 10 digits so "07…" and "+447…" forms of the same
+ * number are only messaged once. Left as entered (not E164-normalised here);
+ * sendCustomerSmsSafely/sendCustomerWhatsAppSafely normalise per send.
  */
 export async function listAllClientPhones() {
   const db = await getDb();
   if (!db) return [];
-  const [bookingRows, orderRows] = await Promise.all([
+  const [bookingRows, orderRows, tryOnRows, smsRows, chatRows] = await Promise.all([
     db.selectDistinct({ phone: bookings.clientPhone }).from(bookings),
     db.selectDistinct({ phone: orders.customerPhone }).from(orders),
+    db.selectDistinct({ phone: tryOnAccounts.phone }).from(tryOnAccounts).catch(() => []),
+    db.selectDistinct({ phone: smsSubscriptions.phone }).from(smsSubscriptions).catch(() => []),
+    db.selectDistinct({ phone: chatConversations.phone }).from(chatConversations).catch(() => []),
   ]);
-  const phones = new Set<string>();
-  for (const row of [...bookingRows, ...orderRows]) {
+  const phonesByDigits = new Map<string, string>();
+  for (const row of [...bookingRows, ...orderRows, ...tryOnRows, ...smsRows, ...chatRows]) {
     const phone = row.phone?.trim();
-    if (phone) phones.add(phone);
+    const digits = phone?.replace(/\D/g, "") ?? "";
+    if (!phone || digits.length < 10) continue;
+    const key = digits.slice(-10);
+    if (!phonesByDigits.has(key)) phonesByDigits.set(key, phone);
   }
-  return Array.from(phones);
+  return Array.from(phonesByDigits.values());
 }
 
 export async function listNewsletterSubscribers(limit = 500) {
