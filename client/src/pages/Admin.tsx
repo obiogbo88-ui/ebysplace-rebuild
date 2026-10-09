@@ -1678,7 +1678,7 @@ export default function Admin() {
                 Audience
                 <select value={announcementForm.audience} onChange={(event) => setAnnouncementForm({ ...announcementForm, audience: event.target.value as "subscribers" | "all_clients" })}>
                   <option value="subscribers">Opt-in subscribers only</option>
-                  <option value="all_clients">Everyone who's booked or ordered</option>
+                  <option value="all_clients">Everyone on our database (bookings, orders, AI Try-On, sign-ups)</option>
                 </select>
               </label>
               <div className="mt-3 grid gap-2 text-sm text-white/65 sm:grid-cols-2">
