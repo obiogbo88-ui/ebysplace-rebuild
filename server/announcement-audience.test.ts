@@ -22,6 +22,6 @@ describe("announcement audiences", () => {
 
   it("covers every contact source and skips test-domain addresses", () => {
     expect(db).toContain("db.selectDistinct({ email: tryOnAccounts.email })");
-    expect(db).toContain("!/\.(test|example|invalid|localhost)$/.test(email)");
+    expect(db).toContain(String.raw`!/\.(test|example|invalid|localhost)$/.test(email)`);
   });
 });
