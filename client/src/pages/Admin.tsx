@@ -583,7 +583,7 @@ export default function Admin() {
   const [replyForm, setReplyForm] = useState({ ...EMPTY_REPLY });
   const [availabilitySlot, setAvailabilitySlot] = useState({ date: "", time: "", reason: "Unavailable" });
   const [instagramSettings, setInstagramSettings] = useState({ handle: "@ebysplace", feedUrl: "https://www.instagram.com/ebysplace/", enabled: true, note: "Latest Eby’s Place Instagram posts appear here once the production feed is connected." });
-  const [announcementForm, setAnnouncementForm] = useState({ title: "", body: "", url: "", channels: { webPush: true, email: false, sms: false, whatsapp: false }, audience: "subscribers" as "subscribers" | "all_clients", extraPhones: "" });
+  const [announcementForm, setAnnouncementForm] = useState({ title: "", body: "", url: "", channels: { webPush: true, email: false, sms: false, whatsapp: false }, audience: "all_clients" as "subscribers" | "all_clients", extraPhones: "" });
   const [gallery, setGallery] = useState({ title: "", category: "Braids", imageUrl: "", altText: "", sortOrder: 0 });
   const [newProduct, setNewProduct] = useState({ name: "", slug: "", category: "Accessories", description: "", price: "", imageUrl: "", badge: "", stockQuantity: 0, seoTitle: "", seoDescription: "", colourChoices: "" });
   const [newService, setNewService] = useState({ name: "", slug: "", category: "Braids", description: "", duration: "", priceFrom: "", badge: "", imageUrl: "", isBookable: "true", isFeatured: "false", sortOrder: 0 });
@@ -1677,8 +1677,8 @@ export default function Admin() {
               <label className="flex flex-col gap-1 text-sm text-white/70">
                 Audience
                 <select value={announcementForm.audience} onChange={(event) => setAnnouncementForm({ ...announcementForm, audience: event.target.value as "subscribers" | "all_clients" })}>
-                  <option value="subscribers">Opt-in subscribers only</option>
                   <option value="all_clients">Everyone on our database (bookings, orders, AI Try-On, sign-ups)</option>
+                  <option value="subscribers">Opt-in subscribers only</option>
                 </select>
               </label>
               <div className="mt-3 grid gap-2 text-sm text-white/65 sm:grid-cols-2">
