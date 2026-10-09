@@ -223,6 +223,13 @@ function ProductCard({
           }}
         />
         <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,.18),transparent_38%,rgba(0,0,0,.45))]" />
+        <ShareLinkButton
+          variant="icon"
+          path={productPublicPath(product)}
+          title={`${product.name} | Eby’s Place`}
+          text={`${product.name} from Eby’s Place — £${product.price}`}
+          className="absolute bottom-4 right-4 z-10"
+        />
         <div className="absolute left-5 top-5 flex flex-wrap gap-2">
           <span className="pill bg-black/55 text-xs text-primary">{product.badge || "Eby’s Pick"}</span>
           <span className="pill bg-black/55 text-xs text-primary">{product.stockStatus?.replace("_", " ") || "available"}</span>
