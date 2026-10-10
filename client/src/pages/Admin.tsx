@@ -186,7 +186,7 @@ function visitorWhatsAppUrl(phone: string) {
 
 const galleryCategories = ["Braids", "Twists", "Locs", "Kids Styles", "Behind the Chair"] as const;
 const productCategories = ["Accessories", "Aftercare", "Hair Attachments"] as const;
-const serviceCategories = ["Braids", "Twists", "Locs", "Weaves", "Kids Styles", "Men Styles", "Add-ons"] as const;
+const serviceCategories = ["Braids", "Twists", "Locs", "Weaves", "Crochet", "Kids Styles", "Men Styles", "Add-ons"] as const;
 const adminOverviewActions = [
   { label: "Bookings", sectionId: "bookings", description: "Review and update appointment statuses." },
   { label: "Transactions", sectionId: "transactions", description: "Completed payments by type, and clear abandoned checkouts." },
