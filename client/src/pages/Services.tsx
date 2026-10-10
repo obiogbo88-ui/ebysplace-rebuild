@@ -12,7 +12,7 @@ function servicePublicPath(service: { slug?: string | null; name: string }) {
   return service.slug ? `/services?style=${encodeURIComponent(service.slug)}` : `/services?search=${encodeURIComponent(service.name)}`;
 }
 
-const tabs = ["All", "Braids", "Twists", "Locs", "Weaves", "Kids Styles", "Men Styles", "Add-ons"] as const;
+const tabs = ["All", "Braids", "Twists", "Locs", "Weaves", "Crochet", "Kids Styles", "Men Styles", "Add-ons"] as const;
 
 type ServiceCategory = (typeof tabs)[number];
 
@@ -26,6 +26,8 @@ const categoryIntro: Record<ServiceCategory, string> = {
   Locs: "Loc-inspired protective options, from faux and butterfly locs through to starter loc support.",
   Weaves:
     "Weave sew-in installations in Bridgwater, Somerset — your own hair braided down flat and the weave sewn in securely for a full, natural-looking finish.",
+  Crochet:
+    "Crochet hair installations in Bridgwater, Somerset — your natural hair braided down and full, bouncy curls crocheted in for a quick, low-tension protective style.",
   "Kids Styles":
     "Gentle children’s braid, cornrow, and twist appointments for boys and girls of all ages and all backgrounds — comfort, patience, and neat finishing at the centre. Lower pricing for our youngest clients.",
   "Men Styles":
