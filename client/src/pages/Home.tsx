@@ -40,6 +40,15 @@ import {
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { openCookieSettings } from "@/lib/cookieConsent";
 import { ShareLinkButton } from "@/components/ShareLinkButton";
+import {
+  SEASONAL_PILL_CLASSES,
+  SeasonalFall,
+  SeasonalLanterns,
+  SeasonalLogoDecoration,
+  SeasonalTint,
+  seasonalGreeting,
+  useSeasonalTheme,
+} from "@/components/SeasonalEffects";
 
 const LOGO_SRC =
   "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
@@ -81,6 +90,7 @@ const desktopNavLinks = navLinks.filter(
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const seasonalTheme = useSeasonalTheme();
   const [productSearch, setProductSearch] = useState("");
   const [, setLocation] = useLocation();
   const track = trpc.public.track.useMutation();
@@ -120,17 +130,20 @@ export function SiteHeader() {
       <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-2 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 lg:px-8 xl:px-10">
         <Link
           href="/"
-          className="flex shrink-0 items-center py-1"
+          className={`flex shrink-0 items-center py-1${seasonalTheme === "christmas" || seasonalTheme === "christmassnow" ? " pt-4" : ""}`}
           aria-label="Eby’s Place home"
         >
-          <img
-            src={HEADER_LOGO_SRC}
-            alt="Eby’s Place"
-            className="h-16 w-[10.5rem] object-contain object-left mix-blend-multiply min-[380px]:h-[4.5rem] min-[380px]:w-[11.75rem] sm:h-24 sm:w-[16.5rem] lg:h-[5.75rem] lg:w-[18rem] xl:w-[19.5rem]"
-            loading="eager"
-            decoding="async"
-            fetchPriority="high"
-          />
+          <span className="seasonal-logo-wrap">
+            <img
+              src={HEADER_LOGO_SRC}
+              alt="Eby’s Place"
+              className="h-16 w-[10.5rem] object-contain object-left mix-blend-multiply min-[380px]:h-[4.5rem] min-[380px]:w-[11.75rem] sm:h-24 sm:w-[16.5rem] lg:h-[5.75rem] lg:w-[18rem] xl:w-[19.5rem]"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+            />
+            <SeasonalLogoDecoration theme={seasonalTheme} />
+          </span>
         </Link>
 
         <div className="hidden min-w-0 flex-1 items-center justify-end xl:flex">
@@ -834,6 +847,7 @@ export default function Home() {
       : (products as any[])
   ).slice(0, 4);
   const featuredBlogPosts = blogPosts.filter(post => post.featured).slice(0, 3);
+  const seasonalTheme = useSeasonalTheme();
 
   return (
     <div className="luxury-shell">
@@ -858,6 +872,9 @@ export default function Home() {
               }}
             />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(247,238,222,.72),rgba(247,238,222,.38)_45%,rgba(247,238,222,.1)),linear-gradient(180deg,rgba(247,238,222,.08),rgba(20,12,5,.76))]" />
+            <SeasonalTint theme={seasonalTheme} />
+            <SeasonalLanterns theme={seasonalTheme} />
+            <SeasonalFall theme={seasonalTheme} />
             <motion.div
               className="container relative z-10 py-24 md:py-32 lg:pb-28 lg:pt-40"
               variants={staggerContainer}
@@ -866,9 +883,10 @@ export default function Home() {
             >
               <motion.p
                 variants={staggerItem}
-                className="pill pill-ribbon w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs"
+                className={`pill pill-ribbon w-fit border-primary/50 bg-white/70 text-[0.65rem] tracking-[.18em] [text-shadow:none] sm:text-xs ${SEASONAL_PILL_CLASSES[seasonalTheme] ?? ""}`}
+                data-seasonal-greeting={seasonalGreeting(seasonalTheme) ? seasonalTheme : undefined}
               >
-                Bridgwater, Somerset &middot; Braid studio
+                {seasonalGreeting(seasonalTheme) ?? <>Bridgwater, Somerset &middot; Braid studio</>}
               </motion.p>
               <div className="mt-6 max-w-3xl [text-shadow:0_3px_22px_rgba(0,0,0,.88)]">
                 <HeroCaption />

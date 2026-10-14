@@ -22,6 +22,7 @@ import { isWebPushConfigured, sendPushToAllSubscribers, sendPushToOwner } from "
 import { isSmsConfigured, isWhatsAppConfigured, sendSmsToPhones, sendWhatsAppToPhones } from "./sms";
 import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPasswordWithRecoveryToken, getPreferredProductionOrigin, getTrustedSiteHostnames } from "./supabaseAuth";
 import * as db from "./db";
+import { getSeasonalTheme } from "./seasonalTheme";
 
 const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Weaves", "Crochet", "Kids Styles", "Men Styles", "Add-ons"]);
 const bookingStatus = z.enum(["pending", "confirmed", "completed", "cancelled"]);
@@ -437,6 +438,7 @@ export const appRouter = router({
     availability: publicProcedure.query(() => db.getAvailabilitySettings()),
     paymentMode: publicProcedure.query(() => getLivePaymentMode()),
     instagramSettings: publicProcedure.query(() => db.getInstagramSettings()),
+    seasonalTheme: publicProcedure.query(() => getSeasonalTheme()),
     websiteSections: publicProcedure.query(() => db.listWebsiteSections()),
     reviews: publicProcedure.query(() => db.listApprovedReviews()),
     productReviewSummaries: publicProcedure.query(() => db.listProductReviewSummaries()),
@@ -1113,6 +1115,7 @@ export const appRouter = router({
     }),
     blockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional(), reason: z.string().optional() })).mutation(({ input }) => db.blockBookingSlot(input)),
     unblockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional() })).mutation(({ input }) => db.unblockBookingSlot(input)),
+    updateSeasonalEffects: adminProcedure.input(z.object({ enabled: z.boolean() })).mutation(({ input }) => db.updateSeasonalSettings({ enabled: input.enabled })),
     updateInstagramSettings: adminProcedure.input(z.object({ handle: z.string().min(2), feedUrl: z.string().url(), enabled: z.boolean(), note: z.string().optional() })).mutation(({ input }) => db.updateInstagramSettings(input)),
     updateHomeServiceSurcharge: adminProcedure.input(z.object({ homeServiceSurcharge: z.string().regex(/^\d+(\.\d{2})?$/) })).mutation(async ({ input }) => {
       try {
