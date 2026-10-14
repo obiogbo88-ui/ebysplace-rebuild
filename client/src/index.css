@@ -384,3 +384,27 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
 .share-icon-badge svg { color: #111111 !important; stroke: #111111 !important; }
 .share-icon-badge:hover, .share-icon-badge:focus-visible { background: #111111 !important; color: #C9A84C !important; border-color: #C9A84C !important; }
 .share-icon-badge:hover svg, .share-icon-badge:focus-visible svg { color: #C9A84C !important; stroke: #C9A84C !important; }
+
+/* Seasonal designs (shared/seasonal.ts decides which one shows). Only autumn leaves and
+   winter snow fall; festivals are the logo touch, hero greeting and tint. Never blocks taps. */
+.seasonal-fall { position: absolute; inset: 0; z-index: 20; overflow: hidden; pointer-events: none; }
+.seasonal-particle { position: absolute; top: -48px; display: block; animation: seasonal-fall linear infinite; will-change: transform; }
+.seasonal-particle.is-snow svg { filter: drop-shadow(0 0 2px rgba(255,255,255,.8)); }
+.seasonal-sway, .seasonal-still { display: block; width: 100%; height: 100%; }
+.seasonal-sway { animation: seasonal-sway ease-in-out infinite alternate; }
+.seasonal-particle svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.seasonal-lanterns { position: absolute; top: 0; right: 1.25rem; z-index: 15; display: flex; align-items: flex-start; gap: .75rem; pointer-events: none; }
+@media (min-width: 1024px) { .seasonal-lanterns { right: 5rem; gap: 1.4rem; } }
+.seasonal-lantern { display: block; transform-origin: 50% 0; animation: seasonal-swing 4.5s ease-in-out infinite alternate; }
+.seasonal-lantern svg { display: block; }
+.seasonal-lantern.is-b { margin-top: -4px; animation-duration: 5.5s; animation-delay: -2s; }
+.seasonal-lantern.is-c { animation-duration: 3.8s; animation-delay: -1s; }
+.seasonal-logo-wrap { position: relative; display: block; }
+.seasonal-logo-decoration { position: absolute; left: 0; top: -44.64%; height: 144.64%; width: auto; aspect-ratio: 834 / 648; overflow: visible; pointer-events: none; }
+.pill.seasonal-pill-christmas { background: #7a1020 !important; color: #f7e6b5 !important; border-color: #C9A84C !important; box-shadow: 0 8px 26px rgba(0,0,0,.35); }
+.pill.seasonal-pill-easter { background: #fdf0f4 !important; color: #7a3550 !important; border-color: #F4A7BB !important; box-shadow: 0 8px 26px rgba(0,0,0,.25); }
+.pill.seasonal-pill-moon { background: #0f3d33 !important; color: #f3dc95 !important; border-color: #C9A84C !important; box-shadow: 0 8px 26px rgba(0,0,0,.35); }
+@keyframes seasonal-fall { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(var(--drift, 0px), var(--fall, 900px), 0); } }
+@keyframes seasonal-sway { from { transform: translateX(-14px) rotate(-40deg) rotateX(0deg); } to { transform: translateX(14px) rotate(var(--spin, 120deg)) rotateX(60deg); } }
+@keyframes seasonal-swing { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+@media (prefers-reduced-motion: reduce) { .seasonal-particle, .seasonal-sway, .seasonal-lantern { animation-play-state: paused; } }

@@ -1241,6 +1241,18 @@ export async function isBookingSlotBlocked(date: string, time: string) {
   return settings.blockedSlots.some((slot) => slot.date === date && (!(slot.time || '').trim() || slot.time === time));
 }
 
+export type SeasonalSettings = { enabled: boolean; firstSnow: Record<string, string> };
+
+export async function getSeasonalSettings(): Promise<SeasonalSettings> {
+  const settings = await getWebsiteJsonSection<Partial<SeasonalSettings>>('seasonal_settings', {});
+  return { enabled: settings.enabled !== false, firstSnow: settings.firstSnow || {} };
+}
+
+export async function updateSeasonalSettings(input: Partial<SeasonalSettings>) {
+  const settings = await getSeasonalSettings();
+  return setWebsiteJsonSection('seasonal_settings', { ...settings, ...input });
+}
+
 export async function getInstagramSettings() {
   return getWebsiteJsonSection('instagram_settings', {
     handle: '@ebysplace',

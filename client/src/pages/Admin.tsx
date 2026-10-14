@@ -435,6 +435,8 @@ export default function Admin() {
     onSuccess: () => { setReplyForm({ ...EMPTY_REPLY }); scrollAdminFeedback("customer-replies"); toast.success("Reply sent"); },
     onError: (error: any) => toast.error(error.message),
   });
+  const seasonalTheme = trpc.public.seasonalTheme.useQuery(undefined, { refetchOnWindowFocus: false });
+  const updateSeasonal = trpc.admin.updateSeasonalEffects.useMutation({ onSuccess: () => { utils.public.seasonalTheme.invalidate(); scrollAdminFeedback("seasonal"); toast.success("Seasonal designs saved"); }, onError: (error: any) => toast.error(error.message) });
   const updateInstagram = trpc.admin.updateInstagramSettings.useMutation({ onSuccess: () => { scrollAdminFeedback("instagram"); toast.success("Instagram feed settings saved"); } });
   const updateHomeServiceSurcharge = trpc.admin.updateHomeServiceSurcharge.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("content"); toast.success("Home service surcharge saved"); }, onError: (error: any) => toast.error(error.message) });
   const updateBooking = trpc.admin.updateBookingStatus.useMutation(opts);
@@ -736,6 +738,7 @@ export default function Admin() {
       "services",
       "gallery",
       "instagram",
+      "seasonal",
       "reviews",
       "email-notifications",
       "content",
@@ -2136,6 +2139,19 @@ export default function Admin() {
             </form>
           </AdminPanel>
 
+
+          <AdminPanel id="seasonal" eyebrow="Homepage" title="Seasonal designs" description="Autumn leaves, winter snow and festival greetings switch on by themselves the first time each happens in England." icon={Sparkles} open={isPanelOpen("seasonal")} onToggle={() => togglePanel("seasonal")}>
+            <div className="mt-5 grid gap-3 text-sm text-white/70">
+              <p>
+                Showing now: <strong className="text-white">{seasonalTheme.data ? (seasonalTheme.data.enabled ? ({ none: "Nothing (normal homepage)", autumn: "Autumn leaves", winter: "Winter snow", christmas: "Christmas greeting + Santa hat", christmassnow: "Christmas greeting + Santa hat + snow", easter: "Easter greeting + blossoms", ramadan: "Ramadan greeting + crescent + lanterns", eid: "Eid greeting + crescent + lanterns" } as Record<string, string>)[seasonalTheme.data.theme] : "Switched off") : "Checking…"}</strong>
+              </p>
+              {seasonalTheme.data?.firstSnowDate && <p>First snow in England this winter: {seasonalTheme.data.firstSnowDate}</p>}
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={seasonalTheme.data?.enabled ?? true} disabled={!seasonalTheme.data || updateSeasonal.isPending} onChange={(event) => updateSeasonal.mutate({ enabled: event.target.checked })} />
+                Show seasonal designs on the website
+              </label>
+            </div>
+          </AdminPanel>
 
           <AdminPanel id="users" eyebrow="Owner access" title="Admin users" description="Review secure owner access guidance and keep role-protected management controls separate from customer-facing pages." icon={Users} open={isPanelOpen("users")} onToggle={() => togglePanel("users")}>
             <p className="text-white/60">
