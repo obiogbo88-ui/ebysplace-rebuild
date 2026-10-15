@@ -773,7 +773,7 @@ function HomepageGalleryPreview() {
  */
 function HeroCaption() {
   const { typedLines: heroTyped, activeLineIndex: heroActiveLine } =
-    useTypewriter(HERO_CAPTION_LINES, { startDelay: 0, speed: 130, linePause: 700 });
+    useTypewriter(HERO_CAPTION_LINES, { startDelay: 0, speed: 75, linePause: 450 });
 
   return (
     <>
