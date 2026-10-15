@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { SEASONAL_GREETINGS, SEASONAL_THEMES, type SeasonalTheme } from "@shared/seasonal";
+import { SEASONAL_GREETINGS, SEASONAL_THEMES, londonDateString, resolveSeasonalTheme, type SeasonalTheme } from "@shared/seasonal";
 
 // `?seasonal-preview=christmas` (any theme) shows a design on demand, for checking it before its date.
 function previewTheme(): SeasonalTheme | null {
@@ -11,8 +11,11 @@ function previewTheme(): SeasonalTheme | null {
 
 export function useSeasonalTheme(): SeasonalTheme {
   const preview = useMemo(previewTheme, []);
+  // Today's date already decides the season (only the first snow needs the server), so start
+  // with that guess: the leaves fall on arrival instead of waiting for the batched homepage queries.
+  const dateGuess = useMemo(() => resolveSeasonalTheme(londonDateString(), null), []);
   const query = trpc.public.seasonalTheme.useQuery(undefined, { staleTime: 30 * 60 * 1000, retry: false, refetchOnWindowFocus: false, enabled: !preview });
-  return preview ?? query.data?.theme ?? "none";
+  return preview ?? query.data?.theme ?? dateGuess;
 }
 
 export function seasonalGreeting(theme: SeasonalTheme): string | null {
