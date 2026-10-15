@@ -107,32 +107,29 @@ export function useTypewriter(
     }
     setDone(false);
     setTyped(0);
-    let raf = 0;
-    let cancelled = false;
+    let timer = 0;
     let count = 0;
     const startTime = performance.now() + startDelay;
-    // Reveals at most one character per frame, even if a slow/dropped frame
-    // means we're behind schedule -- catching up by dumping several
-    // characters into a single frame reads as a stutter rather than a typed
-    // cadence, so we'd rather catch up gradually over the next few frames.
-    const step = (now: number) => {
-      if (cancelled) return;
-      const elapsed = now - startTime;
-      if (elapsed >= 0 && count < total && schedule[count] <= elapsed) {
-        count += 1;
+    // Driven by timers, not requestAnimationFrame: on desktop the browser can hold
+    // back animation frames for seconds while the hero image, fonts and seasonal
+    // effects first paint, which froze the caption after two or three letters.
+    // Each tick reveals everything due by now, then sleeps until the next letter.
+    const tick = () => {
+      const elapsed = performance.now() - startTime;
+      let next = count;
+      while (next < total && schedule[next] <= elapsed) next += 1;
+      if (next !== count) {
+        count = next;
         setTyped(count);
       }
       if (count < total) {
-        raf = requestAnimationFrame(step);
+        timer = window.setTimeout(tick, Math.max(0, schedule[count] - elapsed));
       } else {
         setDone(true);
       }
     };
-    raf = requestAnimationFrame(step);
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
-    };
+    timer = window.setTimeout(tick, Math.max(0, startDelay));
+    return () => window.clearTimeout(timer);
   }, [schedule, total, startDelay, reduceMotion]);
 
   const typedLines = useMemo(() => {
