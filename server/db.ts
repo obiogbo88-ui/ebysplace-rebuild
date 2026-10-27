@@ -1382,6 +1382,7 @@ async function ensureBookingLocationColumns() {
   await addPgColumnIfMissing("bookings", "homeServiceSurcharge", "NUMERIC(10,2) NOT NULL DEFAULT 0.00");
   await addPgColumnIfMissing("bookings", "checkoutSurchargeCharged", "NUMERIC(10,2) NOT NULL DEFAULT 0.00");
   await addPgColumnIfMissing("bookings", "checkoutTotalCharged", "NUMERIC(10,2)");
+  await addPgColumnIfMissing("bookings", "reviewRequestSentAt", "TIMESTAMP");
   await makePgColumnNullable("bookings", "addressLine1");
   await makePgColumnNullable("bookings", "city");
   await makePgColumnNullable("bookings", "postcode");
@@ -3102,6 +3103,14 @@ export async function moderateReview(id: number, status: "approved" | "rejected"
   if (!db) return { success: true };
   await db.update(reviews).set({ status }).where(eq(reviews.id, id));
   return { success: true };
+}
+
+/** Records when the review request email went out, so it isn't sent twice by accident. */
+export async function markReviewRequestSent(id: number, sentAt = new Date()) {
+  const db = await getDb();
+  if (!db) return;
+  await ensureBookingLocationColumns();
+  await db.update(bookings).set({ reviewRequestSentAt: sentAt }).where(eq(bookings.id, id));
 }
 
 export async function updateBookingStatus(id: number, status: "pending" | "confirmed" | "completed" | "cancelled") {
