@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { bookingDepositLabel, isPastAppointment } from "@/lib/bookingDisplay";
+import { formatReviewRequestDate } from "@shared/reviewRequest";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -428,7 +429,7 @@ export default function Admin() {
   const moderateProductReview = trpc.admin.moderateProductReview.useMutation(opts);
   const blockAvailabilitySlot = trpc.admin.blockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot blocked"); } });
   const unblockAvailabilitySlot = trpc.admin.unblockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot unblocked"); } });
-  const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => { scrollAdminFeedback("bookings"); toast.success("Review request sent"); } });
+  const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("bookings"); toast.success("Review request sent"); }, onError: (error: any) => toast.error(error.message) });
   const resendEmail = trpc.admin.resendEmailNotification.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("email-notifications"); toast.success("Email notification resend attempted"); }, onError: (error: any) => toast.error(error.message) });
   const resendStatus = trpc.admin.resendStatus.useQuery(undefined, { retry: false });
   const sendCustomerReply = trpc.admin.sendCustomerReply.useMutation({
@@ -1343,7 +1344,23 @@ export default function Admin() {
                         </select>
                         {unpaidButConfirmed ? <small className="mt-2 block max-w-[14rem] text-amber-200">Confirmed but not paid. Cancel it if it was an abandoned checkout.</small> : null}
                         {needsCompleting ? <small className="mt-2 block max-w-[14rem] text-amber-200">Appointment date has passed. Mark as Completed if it went ahead.</small> : null}
-                        {booking.status === "completed" ? <button className="btn-dark mt-2 py-2 text-xs" type="button" onClick={() => sendReviewRequest.mutate({ bookingId: booking.id })}>Send review request</button> : null}
+                        {booking.status === "completed" && !booking.reviewRequestSentAt ? <button className="btn-dark mt-2 py-2 text-xs" type="button" disabled={sendReviewRequest.isPending} onClick={() => sendReviewRequest.mutate({ bookingId: booking.id })}>Send review request</button> : null}
+                        {booking.status === "completed" && booking.reviewRequestSentAt ? (
+                          <div className="mt-2 max-w-[14rem]">
+                            <small className="block text-emerald-300">Review request sent {formatReviewRequestDate(booking.reviewRequestSentAt)}</small>
+                            <button
+                              className="mt-1 text-xs text-white/60 underline underline-offset-2 hover:text-white"
+                              type="button"
+                              disabled={sendReviewRequest.isPending}
+                              onClick={() => toast.warning(`${booking.clientName} already has a review request`, {
+                                description: `It was sent on ${formatReviewRequestDate(booking.reviewRequestSentAt!)}. Only send another if they asked for it again.`,
+                                action: { label: "Send again", onClick: () => sendReviewRequest.mutate({ bookingId: booking.id, sendAgain: true }) },
+                              })}
+                            >
+                              Send again
+                            </button>
+                          </div>
+                        ) : null}
                       </td>
                     </tr>
                   );

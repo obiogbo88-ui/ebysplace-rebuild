@@ -100,6 +100,7 @@ export const bookings = pgTable("bookings", {
   depositStatus: depositStatusEnum("depositStatus").default("unpaid").notNull(),
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
   stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
+  reviewRequestSentAt: timestamp("reviewRequestSentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
