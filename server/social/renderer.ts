@@ -90,7 +90,11 @@ export function splitAccent(text: string, accent?: string): [string, string, str
 }
 
 function headline(text: string, accent: string | undefined, base: Record<string, unknown>, accentColor: string): El {
-  const [before, mid, after] = splitAccent(text, accent);
+  const [before, accentRun, rest] = splitAccent(text, accent);
+  // Punctuation right after the accent ("Just start.") stays on the accent's last word, not floated as " ." (seen 2026-11-03).
+  const trailing = rest.match(/^[.,!?;:…'"”’)]+/)?.[0] ?? "";
+  const mid = accentRun + trailing;
+  const after = rest.slice(trailing.length);
   // satori lays inline runs out as flex-wrap rows; one span per word keeps wrapping natural.
   const words = (s: string, style: Record<string, unknown>) =>
     s.split(/(\s+)/).filter((w) => w.length > 0 && !/^\s+$/.test(w)).map((w) => h("span", { ...style, marginRight: "0.25em" }, w));
