@@ -391,7 +391,13 @@ async function draft(date: string, slot: SlotName, kind: PostKind, used: Set<str
     case "style":
       return draftStyle(date, `${date}-${slot}`, used);
     case "inspiration":
-      return draftInspiration();
+      try {
+        return await draftInspiration();
+      } catch (err) {
+        // A broken AI image service must not leave the slot empty: post a real gallery style instead.
+        console.warn(`[social] ${date} ${slot}: AI inspiration failed, posting a gallery style instead`, err);
+        return draftStyle(date, `${date}-${slot}`, used);
+      }
   }
 }
 
