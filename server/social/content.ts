@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { storagePut } from "../storage";
 import { generateImage } from "../_core/imageGeneration";
 import { renderSlide, renderStory, UnsupportedImageError, type Slide } from "./renderer";
+import { BRAND } from "./kit";
 import { insertPost, orEmpty, recentSourceRefs, recentWriting, requireDb, type PostKind, type SlotName, type SocialPost } from "./store";
 
 // ------------------------------------------------------------------ calendar
@@ -118,40 +119,61 @@ Hard rules:
 - Use only facts given to you. Never invent prices, timings, discounts, offers, availability, reviews, client names, awards or statistics.
 - No health or medical claims (nothing about curing hair loss, growing hair or treating the scalp). Hair-care tips must be widely accepted, safe, everyday advice.
 - No emoji in card text. Captions may use at most two tasteful emoji.
-- Captions: 2 to 4 short paragraphs, under 700 characters before the hashtags. Finish the last paragraph with the exact token {BOOKING} where the booking link belongs, e.g. "Book your appointment at {BOOKING}".
+- Captions: short paragraphs (one or two sentences each), under 800 characters before the hashtags. The last paragraph before the hashtags holds the exact token {BOOKING} where the booking link belongs, e.g. "Book your appointment at {BOOKING}".
 - Then a blank line and 4 to 7 hashtags: always #EbysPlace and #Bridgwater, plus a mix of #Somerset #SomersetBraider and style tags.
-- Don't repeat ideas, quotes or openings from the recent posts you are shown.`;
+- Don't repeat ideas, quotes or openings from the recent posts you are shown.
+
+Scroll-stopping (the goal is new followers and real engagement):
+- Card headlines and the FIRST line of every caption are hooks: a curiosity gap, a direct question, a bold but true statement, or "stop doing this" / "read this if..." framing. The first line is all people see before "more", so it must make them tap. Never open with "Happy Monday", "Here at Eby's Place" or a description of the photo.
+- Every caption, in this order: hook line; 1 to 2 short paragraphs of value (the answer to the hook, the tip, the story); a save or share nudge ("Save this for wash day", "Send this to the friend who needs a refresh"); one genuine question people can answer in a word or two; a line starting with the exact token {FOLLOW} (e.g. "{FOLLOW} for more styles and braid care tips"); then the {BOOKING} line; then hashtags.
+- Allowed: curiosity, questions, this-or-that, "guess", "save this", "share with a friend". Banned, because Meta shows these posts to fewer people: "comment YES", "like if", "tag 3 friends", "share to win", "type AMEN", any giveaway or contest you were not told about.
+- Hooks must still be true. No fake urgency or scarcity ("only 2 slots left", "last chance", "ends tonight"), no invented numbers ("90% of people..."), no shock claims about hair damage.`;
 
 const Motivation = z.object({
-  eyebrow: z.string().describe("Small label, max 24 characters, e.g. 'Monday motivation'"),
-  quote: z.string().describe("An original motivational line for women in business or anyone starting something, max 85 characters. Not a famous quote."),
+  hook: z.string().describe("Pill at the top that stops the scroll, max 30 characters, e.g. 'Read this before you scroll', 'For the one scared to start', 'If you needed a sign'"),
+  quote: z.string().describe("An original, punchy motivational line for women in business or anyone starting something, max 70 characters, e.g. 'Stop waiting to feel ready.' Not a famous quote."),
   accent: z.string().describe("1 to 2 words copied exactly from the quote to highlight in gold italic"),
   supporting: z.string().describe("One or two sentences under 140 characters linking the idea to hair, self-care or Eby's own journey, without inventing facts"),
   caption: z.string(),
 });
 const Article = z.object({
-  title: z.string().describe("Carousel title, max 50 characters, e.g. '5 ways to make your braids last longer'. Its number must equal the number of tips."),
-  accent: z.string().describe("1 to 3 words copied exactly from the title to highlight"),
+  tag: z.string().describe("Red pill on the cover, max 18 characters, e.g. 'Stop doing this', 'Save this', 'Wash day rules'"),
+  title: z
+    .string()
+    .describe("Hook title for the carousel, max 50 characters, e.g. '3 habits that make your braids frizz in week one' or '4 things your braider wishes you knew'. Its number must equal the number of tips."),
+  accent: z.string().describe("1 to 4 words copied exactly from the title to highlight"),
   tips: z
     .array(z.object({ title: z.string().describe("Max 32 characters"), body: z.string().describe("Max 190 characters, practical and safe") }))
     .describe("4 or 5 tips"),
   caption: z.string(),
 });
+const HOOK_HEADLINE =
+  "Question or curiosity headline over the photo, max 34 characters, whose answer is in the caption. Only ask what the facts you were given can answer truthfully.";
 const GalleryStyle = z.object({
-  title: z.string().describe("Short style name for the card, max 26 characters, e.g. 'Boho Knotless Braids'"),
-  eyebrow: z.string().describe("Small label, max 22 characters, e.g. 'Style of the week', 'Client favourite', 'Fresh install'"),
+  headline: z.string().describe(`${HOOK_HEADLINE} E.g. 'Would you try this colour?', 'Rate this install out of 10', 'The secret is in the parting'`),
+  accent: z.string().describe("1 to 3 words copied exactly from the headline to highlight in gold"),
+  cta: z.string().describe("Pill under the photo, max 24 characters, e.g. 'Answer in the caption', 'Tell us below'"),
   caption: z.string(),
 });
 const ServiceStyle = z.object({
-  eyebrow: z.string().describe("Small label, max 22 characters, e.g. 'Book this week'"),
-  caption: z.string(),
+  headline: z.string().describe(`${HOOK_HEADLINE} E.g. 'Guess how long this took?' (the duration is in the facts), 'Guess the price?'`),
+  accent: z.string().describe("1 to 3 words copied exactly from the headline to highlight in gold"),
+  cta: z.string().describe("Pill under the photo, max 24 characters, e.g. 'Answer in the caption'"),
+  caption: z.string().describe("The first paragraph answers the headline with the real fact."),
 });
-const Inspiration = z.object({
-  styleName: z.string().describe("Name of an on-trend protective style, max 26 characters, that a braider could recreate"),
+const InspoStyle = z.object({
+  styleName: z.string().describe("Name of an on-trend protective style, max 24 characters, that a braider could recreate"),
   imagePrompt: z
     .string()
-    .describe("Prompt for an AI image: a photorealistic portrait of a fictional model wearing this style, salon or studio light, head and shoulders, 4:5 portrait. No text, no logos, no watermarks, not a real or famous person."),
-  caption: z.string().describe("Frame it as inspiration ('would you wear it?'), invite people to save it and bring it to a consultation. Do not claim Eby made it."),
+    .describe("Prompt for an AI image: a photorealistic portrait of a fictional model wearing this style, salon or studio light, head and shoulders, portrait. No text, no logos, no watermarks, not a real or famous person."),
+});
+const Inspiration = z.object({
+  headline: z.string().describe("This-or-that question, max 36 characters, e.g. 'Which one are you booking next?'"),
+  accent: z.string().describe("1 to 3 words copied exactly from the headline to highlight in gold"),
+  options: z.array(InspoStyle).describe("Exactly 2 clearly different styles (e.g. different length, colour or technique)"),
+  caption: z
+    .string()
+    .describe("Frame it as AI-made inspiration: ask which they'd pick, 1 or 2, invite them to save it and bring it to a consultation. Do not claim Eby made either look."),
 });
 
 function anthropic() {
@@ -187,9 +209,27 @@ export function ensureBookingToken(caption: string) {
   return `${parts.join("\n\n")}\n\nBook at {BOOKING}${tags ? `\n\n${tags}` : ""}`;
 }
 
-/** {BOOKING} becomes "ebysplace.com (link in bio)" on Instagram, where captions can't hold links, and the real link on Facebook. */
+/** Puts a {FOLLOW} line just before the booking line if the writer forgot it. */
+export function ensureFollowLine(caption: string) {
+  if (caption.includes("{FOLLOW}")) return caption;
+  const parts = caption.split(/\n\s*\n/);
+  const at = parts.findIndex((p) => p.includes("{BOOKING}"));
+  parts.splice(at < 0 ? parts.length : at, 0, "{FOLLOW} for more styles and braid care tips.");
+  return parts.join("\n\n");
+}
+
+function finishCaption(caption: string) {
+  return ensureFollowLine(ensureBookingToken(caption));
+}
+
+/**
+ * {BOOKING} becomes "ebysplace.com (link in bio)" on Instagram, where captions can't hold links, and the real link on Facebook.
+ * {FOLLOW} becomes "Follow @ebysplace1" on Instagram and "Follow Eby's Place" on Facebook.
+ */
 export function captionFor(platform: "instagram" | "facebook", caption: string) {
-  return caption.replaceAll("{BOOKING}", platform === "instagram" ? "ebysplace.com (link in bio)" : "https://www.ebysplace.com/booking");
+  return caption
+    .replaceAll("{BOOKING}", platform === "instagram" ? "ebysplace.com (link in bio)" : "https://www.ebysplace.com/booking")
+    .replaceAll("{FOLLOW}", platform === "instagram" ? `Follow ${BRAND.instagramHandle}` : "Follow Eby's Place");
 }
 
 // ------------------------------------------------------------------ builders
@@ -202,8 +242,8 @@ async function draftMotivation(date: string, n: number): Promise<Draft> {
     kind: "motivation",
     sourceRef: null,
     isAiGenerated: false,
-    caption: ensureBookingToken(out.caption),
-    slides: [{ layout: "motivation", eyebrow: clip(out.eyebrow, 26), quote: clip(out.quote, 90), accent: out.accent, supporting: clip(out.supporting, 150), number: n }],
+    caption: finishCaption(out.caption),
+    slides: [{ layout: "motivation", eyebrow: "Motivation", hook: clip(out.hook, 32), quote: clip(out.quote, 80), accent: out.accent, supporting: clip(out.supporting, 150), number: n }],
   };
 }
 
@@ -217,9 +257,9 @@ async function draftArticle(date: string, used: Set<string>): Promise<Draft> {
     kind: "article",
     sourceRef: cover.ref,
     isAiGenerated: false,
-    caption: ensureBookingToken(out.caption),
+    caption: finishCaption(out.caption),
     slides: [
-      { layout: "article_cover", photoUrl: cover.imageUrl, title: clip(out.title, 56), accent: out.accent, total },
+      { layout: "article_cover", photoUrl: cover.imageUrl, title: clip(out.title, 56), accent: out.accent, tag: clip(out.tag, 20), total },
       ...tips.map((t, i): Slide => ({ layout: "article_tip", index: i + 1, total, title: clip(t.title, 36), body: clip(t.body, 200) })),
     ],
   };
@@ -238,16 +278,15 @@ async function draftStyle(date: string, seed: string, used: Set<string>): Promis
         kind: "style",
         sourceRef: service.ref,
         isAiGenerated: false,
-        caption: ensureBookingToken(out.caption),
+        caption: finishCaption(out.caption),
         slides: [
           {
-            layout: "photo",
-            theme: "light",
+            layout: "photo_hook",
             photoUrl: service.imageUrl,
-            tag: "Book this look",
-            eyebrow: clip(out.eyebrow, 24),
-            title: clip(service.name, 30),
-            meta: [service.duration, price ? `from ${price}` : null, "Bridgwater"].filter(Boolean).join(" · "),
+            tag: `Book this look · ${clip(service.name, 30)}`,
+            headline: clip(out.headline, 38),
+            accent: out.accent,
+            cta: clip(out.cta, 26),
           },
         ],
       };
@@ -260,24 +299,32 @@ async function draftStyle(date: string, seed: string, used: Set<string>): Promis
     kind: "style",
     sourceRef: photo.ref,
     isAiGenerated: false,
-    caption: ensureBookingToken(out.caption),
+    caption: finishCaption(out.caption),
     slides: [
-      { layout: "photo", theme: "light", photoUrl: photo.imageUrl, tag: "Done at Eby's Place", eyebrow: clip(out.eyebrow, 24), title: clip(out.title, 30), meta: `${photo.category} · Bridgwater, Somerset` },
+      { layout: "photo_hook", photoUrl: photo.imageUrl, tag: "Done at Eby's Place", headline: clip(out.headline, 38), accent: out.accent, cta: clip(out.cta, 26) },
     ],
   };
 }
 
 async function draftInspiration(): Promise<Draft> {
-  const out = await write(Inspiration, "Pick one protective style to share as AI-generated style inspiration.");
-  const image = await generateImage({ prompt: `${out.imagePrompt}\n\nPortrait orientation. Photorealistic. No text, lettering, logos or watermarks.` });
-  if (!image.url) throw new Error("The AI image service returned no image.");
+  const out = await write(Inspiration, "Pick two clearly different protective styles to share as an AI-generated this-or-that.");
+  const [a, b] = out.options;
+  if (!a || !b) throw new Error("The writer returned fewer than two inspiration styles.");
+  const urls: string[] = [];
+  for (const option of [a, b]) {
+    const image = await generateImage({ prompt: `${option.imagePrompt}
+
+Portrait orientation. Photorealistic. No text, lettering, logos or watermarks.` });
+    if (!image.url) throw new Error("The AI image service returned no image.");
+    urls.push(image.url);
+  }
   return {
     kind: "inspiration",
     sourceRef: "ai",
     isAiGenerated: true,
-    caption: ensureBookingToken(out.caption),
+    caption: finishCaption(out.caption),
     slides: [
-      { layout: "photo", theme: "dark", photoUrl: image.url, tag: "Style inspiration", eyebrow: "Would you wear it?", title: clip(out.styleName, 30), meta: "Save it, then show us at your consultation" },
+      { layout: "this_or_that", photoUrls: [urls[0], urls[1]], labels: [clip(a.styleName, 24), clip(b.styleName, 24)], headline: clip(out.headline, 40), accent: out.accent },
     ],
   };
 }

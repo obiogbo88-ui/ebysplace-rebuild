@@ -22,6 +22,7 @@ export const BRAND = {
   mutedOnDark: "#D9D3C7",
   faintOnDark: "#BDB6A8",
   rule: "#E4DDD0",
+  alert: "#B3261E",
   instagramHandle: "@ebysplace1",
   site: "ebysplace.com",
 } as const;

@@ -13,7 +13,8 @@ vi.mock("./store", () => ({
   recentWriting: vi.fn(),
 }));
 
-import { addDays, captionFor, clip, ensureBookingToken, formatPrice, kindFor, londonDate, styleSourceFor, weekdayIndex } from "./content";
+import jpegJs from "jpeg-js";
+import { addDays, captionFor, clip, ensureBookingToken, ensureFollowLine, formatPrice, kindFor, londonDate, styleSourceFor, weekdayIndex } from "./content";
 import { splitAccent, renderSlide } from "./renderer";
 import { publishFacebookFeed, publishInstagramFeed } from "./graph";
 import { publishPost } from "./cron";
@@ -74,6 +75,13 @@ describe("captions", () => {
     expect(captionFor("instagram", "Book at {BOOKING}")).toBe("Book at ebysplace.com (link in bio)");
     expect(captionFor("facebook", "Book at {BOOKING}")).toBe("Book at https://www.ebysplace.com/booking");
   });
+
+  it("always carries a follow line, before the booking line", () => {
+    expect(ensureFollowLine("Hook.\n\nBook at {BOOKING}\n\n#EbysPlace")).toBe("Hook.\n\n{FOLLOW} for more styles and braid care tips.\n\nBook at {BOOKING}\n\n#EbysPlace");
+    expect(ensureFollowLine("{FOLLOW} for more.\n\nBook at {BOOKING}")).toBe("{FOLLOW} for more.\n\nBook at {BOOKING}");
+    expect(captionFor("instagram", "{FOLLOW} for more")).toBe("Follow @ebysplace1 for more");
+    expect(captionFor("facebook", "{FOLLOW} for more")).toBe("Follow Eby's Place for more");
+  });
 });
 
 describe("renderer", () => {
@@ -86,6 +94,23 @@ describe("renderer", () => {
     expect(jpg.readUInt16BE(sof + 5)).toBe(1350);
     expect(jpg.readUInt16BE(sof + 7)).toBe(1080);
   }, 30_000);
+
+  it("renders the scroll-stopper layouts (photo hook, this-or-that, article cover)", async () => {
+    const photo = Buffer.from(jpegJs.encode({ data: Buffer.alloc(40 * 50 * 4, 128), width: 40, height: 50 }, 80).data);
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => (String(url).startsWith("https://img.test/") ? new Response(photo) : realFetch(url, init))));
+    const slides = [
+      { layout: "photo_hook", photoUrl: "https://img.test/a.jpg", tag: "Done at Eby's Place", headline: "Guess how long this took?", accent: "this took?", cta: "Answer in the caption" },
+      { layout: "this_or_that", photoUrls: ["https://img.test/1.jpg", "https://img.test/2.jpg"], labels: ["Boho knotless", "Goddess locs"], headline: "Which one are you booking next?", accent: "booking next?" },
+      { layout: "article_cover", photoUrl: "https://img.test/c.jpg", title: "3 habits that make your braids frizz in week one", accent: "frizz in week one", tag: "Stop doing this", total: 4 },
+    ] as const;
+    for (const slide of slides) {
+      const jpg = await renderSlide(slide as any);
+      const sof = jpg.indexOf(Buffer.from([0xff, 0xc0]));
+      expect(jpg.readUInt16BE(sof + 5)).toBe(1350);
+      expect(jpg.readUInt16BE(sof + 7)).toBe(1080);
+    }
+  }, 60_000);
 });
 
 function graphStub(responses: Array<Record<string, unknown>>) {

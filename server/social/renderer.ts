@@ -14,7 +14,8 @@ import { BRAND, LOGO_ASPECT, loadFonts, logoDataUri, type SatoriFont } from "./k
 export const FEED = { width: 1080, height: 1350 } as const;
 export const STORY = { width: 1080, height: 1920 } as const;
 
-export type MotivationSlide = { layout: "motivation"; eyebrow: string; quote: string; accent?: string; supporting: string; number?: number };
+/** `hook` is the gold pill at the top ("Read this before you scroll"); older rows only have `eyebrow`. */
+export type MotivationSlide = { layout: "motivation"; eyebrow: string; hook?: string; quote: string; accent?: string; supporting: string; number?: number };
 export type PhotoSlide = {
   layout: "photo";
   theme: "light" | "dark";
@@ -24,9 +25,24 @@ export type PhotoSlide = {
   title: string;
   meta: string;
 };
-export type ArticleCoverSlide = { layout: "article_cover"; photoUrl: string; title: string; accent?: string; total: number };
+/** Full-bleed photo with a question headline over it (board 6, "Guess how long this took?"). */
+export type PhotoHookSlide = {
+  layout: "photo_hook";
+  photoUrl: string;
+  tag: string; // "Done at Eby's Place" | "Book this look"
+  headline: string;
+  accent?: string;
+  cta: string; // e.g. "Answer in the caption"
+  meta?: string;
+};
+/** Two AI inspiration images side by side, numbered 1 and 2 (board 7). */
+export type ThisOrThatSlide = { layout: "this_or_that"; photoUrls: [string, string]; labels: [string, string]; headline: string; accent?: string };
+export type ArticleCoverSlide = { layout: "article_cover"; photoUrl: string; title: string; accent?: string; tag?: string; total: number };
 export type ArticleTipSlide = { layout: "article_tip"; index: number; total: number; title: string; body: string };
-export type Slide = MotivationSlide | PhotoSlide | ArticleCoverSlide | ArticleTipSlide;
+export type Slide = MotivationSlide | PhotoSlide | PhotoHookSlide | ThisOrThatSlide | ArticleCoverSlide | ArticleTipSlide;
+
+/** Every card carries this (user request 2026-11-03: "follow us for more" on every post). */
+export const FOLLOW_LINE = `Follow ${BRAND.instagramHandle} for more`;
 
 type El = { type: string; props: Record<string, unknown> };
 type Child = El | string | null | undefined | false;
@@ -91,36 +107,141 @@ function headline(text: string, accent: string | undefined, base: Record<string,
   };
 }
 
+function icon(d: string, color: string, size = 20, extra: El[] = []): El {
+  return {
+    type: "svg",
+    props: {
+      width: px(size),
+      height: px(size),
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: color,
+      strokeWidth: 2,
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      children: [...extra, { type: "path", props: { d } }],
+    },
+  };
+}
+
+const bookmarkIcon = (color: string, size = 20) => icon("M6 3h12v18l-6-4-6 4z", color, size);
+const followIcon = (color: string, size = 20) => icon("M2 21c0-4 3-6 7-6s7 2 7 6M19 8v6M16 11h6", color, size, [{ type: "circle", props: { cx: 9, cy: 8, r: 4 } }]);
+
+function iconLine(iconEl: El, text: string, color: string, size = 15): El {
+  return h("div", { display: "flex", alignItems: "center", gap: px(10), fontSize: px(size), fontWeight: 600, color }, iconEl, text);
+}
+
+function pill(text: string, background: string, color: string, size = 12): El {
+  return h("span", { display: "flex", background, padding: `${px(9)}px ${px(14)}px`, borderRadius: px(999), ...LABEL(color, size, 2) }, text);
+}
+
+/** Board 5: pill hook, big quote, save + follow footer. */
 function motivation(slide: MotivationSlide, logoLight: string): El {
-  const quoteSize = slide.quote.length > 80 ? 38 : slide.quote.length > 60 ? 41 : 44;
-  const border = h("div", { position: "absolute", top: px(18), left: px(18), right: px(18), bottom: px(18), border: `${px(1)}px solid rgba(201,168,76,0.45)`, display: "flex" });
-  const card = frame(
+  const n = slide.quote.length;
+  const quoteSize = n > 70 ? 44 : n > 50 ? 52 : 62;
+  return frame(
     FEED,
     BRAND.night,
-    [px(48), px(44), px(36), px(44)],
+    [px(44), px(40), px(34), px(40)],
     { justifyContent: "space-between", color: BRAND.paper },
+    h("div", { display: "flex" }, pill(slide.hook || slide.eyebrow, BRAND.gold, BRAND.night)),
     h(
       "div",
-      { display: "flex", justifyContent: "space-between", alignItems: "center" },
-      h("span", LABEL(BRAND.gold, 12, 3), slide.eyebrow),
-      slide.number ? h("span", LABEL(BRAND.faintOnDark, 12, 2), `No. ${String(slide.number).padStart(2, "0")}`) : null,
+      { display: "flex", flexDirection: "column", gap: px(20) },
+      headline(slide.quote, slide.accent, { fontFamily: "Playfair Display", fontWeight: 700, fontSize: px(quoteSize), lineHeight: 1.04 }, BRAND.gold),
+      h("span", { fontSize: px(18), lineHeight: 1.5, color: BRAND.mutedOnDark, maxWidth: px(420) }, slide.supporting),
     ),
     h(
       "div",
-      { display: "flex", flexDirection: "column", gap: px(22) },
-      h("span", { fontFamily: "Playfair Display", fontWeight: 700, fontSize: px(96), lineHeight: 0.6, color: BRAND.gold, height: px(40) }, "“"),
-      headline(slide.quote, slide.accent, { fontFamily: "Playfair Display", fontWeight: 700, fontSize: px(quoteSize), lineHeight: 1.12 }, BRAND.gold),
-      h("span", { fontSize: px(16), lineHeight: 1.5, color: BRAND.mutedOnDark, maxWidth: px(400) }, slide.supporting),
-    ),
-    h(
-      "div",
-      { display: "flex", justifyContent: "space-between", alignItems: "flex-end" },
-      img(logoLight, { height: px(58), width: px(58) * LOGO_ASPECT }),
-      h("span", LABEL(BRAND.faintOnDark, 12, 2), BRAND.site),
+      { display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `${px(1)}px solid #3A362F`, paddingTop: px(18) },
+      h(
+        "div",
+        { display: "flex", flexDirection: "column", gap: px(10) },
+        iconLine(bookmarkIcon(BRAND.gold), "Save this for the day you need it", BRAND.paper),
+        iconLine(followIcon(BRAND.gold), FOLLOW_LINE, BRAND.gold),
+      ),
+      img(logoLight, { height: px(40), width: px(40) * LOGO_ASPECT }),
     ),
   );
-  card.props.children = [border, card.props.children as El];
-  return card;
+}
+
+/** Board 6: full-bleed photo, question headline, "answer in the caption" + follow pills. */
+function photoHook(slide: PhotoHookSlide, photo: string): El {
+  const size = slide.headline.length > 30 ? 42 : 50;
+  return h(
+    "div",
+    { width: FEED.width, height: FEED.height, display: "flex", position: "relative", background: BRAND.night, fontFamily: "Inter", color: BRAND.paper },
+    img(photo, { position: "absolute", top: 0, left: 0, width: FEED.width, height: FEED.height, objectFit: "cover", objectPosition: "center 25%" }),
+    h("div", { position: "absolute", top: 0, left: 0, right: 0, height: px(320), display: "flex", backgroundImage: "linear-gradient(180deg, rgba(18,18,18,0.94), rgba(18,18,18,0.6) 55%, rgba(18,18,18,0))" }),
+    h("div", { position: "absolute", bottom: 0, left: 0, right: 0, height: px(220), display: "flex", backgroundImage: "linear-gradient(0deg, rgba(18,18,18,0.92), rgba(18,18,18,0))" }),
+    h(
+      "div",
+      { position: "absolute", top: px(34), left: px(32), right: px(32), display: "flex", flexDirection: "column", gap: px(10) },
+      h("span", LABEL(BRAND.gold, 12, 3), slide.tag),
+      headline(slide.headline, slide.accent, { fontFamily: "Playfair Display", fontWeight: 700, fontSize: px(size), lineHeight: 1.04 }, BRAND.gold),
+      slide.meta ? h("span", { fontSize: px(15), color: BRAND.mutedOnDark }, slide.meta) : null,
+    ),
+    h(
+      "div",
+      { position: "absolute", bottom: px(28), left: px(28), right: px(28), display: "flex", justifyContent: "space-between", alignItems: "center" },
+      h(
+        "div",
+        { display: "flex", alignItems: "center", gap: px(8), background: BRAND.paper, color: BRAND.night, fontSize: px(15), fontWeight: 600, padding: `${px(11)}px ${px(16)}px`, borderRadius: px(999) },
+        slide.cta,
+        icon("M12 5v14M6 13l6 6 6-6", BRAND.night, 16),
+      ),
+      h(
+        "div",
+        { display: "flex", alignItems: "center", gap: px(8), background: BRAND.gold, color: BRAND.night, fontSize: px(14), fontWeight: 600, padding: `${px(11)}px ${px(14)}px`, borderRadius: px(999) },
+        followIcon(BRAND.night, 16),
+        "Follow for more",
+      ),
+    ),
+  );
+}
+
+/** Board 7: two numbered AI images, "Which one are you booking next?". */
+function thisOrThat(slide: ThisOrThatSlide, photos: [string, string], logoLight: string): El {
+  const tile = (photo: string, n: string, badgeColor: string, label: string) =>
+    h(
+      "div",
+      { position: "relative", display: "flex", flexGrow: 1, flexBasis: 0, borderRadius: px(12), overflow: "hidden" },
+      img(photo, { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }),
+      h(
+        "div",
+        { position: "absolute", top: px(12), left: px(12), width: px(44), height: px(44), borderRadius: px(22), background: badgeColor, color: BRAND.night, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Playfair Display", fontWeight: 700, fontSize: px(24) },
+        n,
+      ),
+      h(
+        "div",
+        { position: "absolute", left: px(10), right: px(10), bottom: px(10), display: "flex", justifyContent: "center", background: "rgba(18,18,18,0.72)", color: BRAND.paper, fontSize: px(13), padding: `${px(6)}px ${px(8)}px`, borderRadius: px(8) },
+        label,
+      ),
+    );
+  return frame(
+    FEED,
+    BRAND.night,
+    [px(28), px(20), px(22), px(20)],
+    { color: BRAND.paper, gap: px(16) },
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: px(6), padding: `0 ${px(8)}px` },
+      h("span", LABEL(BRAND.gold, 12, 3), "This or that? · AI inspiration"),
+      headline(slide.headline, slide.accent, { fontFamily: "Playfair Display", fontWeight: 700, fontSize: px(slide.headline.length > 34 ? 34 : 40), lineHeight: 1.05 }, BRAND.gold),
+    ),
+    h("div", { display: "flex", flexGrow: 1, gap: px(10) }, tile(photos[0], "1", BRAND.gold, slide.labels[0]), tile(photos[1], "2", BRAND.paper, slide.labels[1])),
+    h(
+      "div",
+      { display: "flex", justifyContent: "space-between", alignItems: "center", padding: `0 ${px(8)}px` },
+      h(
+        "div",
+        { display: "flex", flexDirection: "column", gap: px(6) },
+        h("span", { fontSize: px(15), fontWeight: 600 }, "Tell us 1 or 2 in the comments"),
+        iconLine(followIcon(BRAND.gold, 16), `${FOLLOW_LINE} styles`, BRAND.gold, 14),
+      ),
+      img(logoLight, { height: px(36), width: px(36) * LOGO_ASPECT }),
+    ),
+  );
 }
 
 function photoPost(slide: PhotoSlide, photo: string, logo: string): El {
@@ -180,6 +301,7 @@ function arrow(color: string): El {
   };
 }
 
+/** Board 8: photo, red hook pill, mistakes-style title, save + follow + swipe. */
 function articleCover(slide: ArticleCoverSlide, photo: string): El {
   return frame(
     FEED,
@@ -190,17 +312,22 @@ function articleCover(slide: ArticleCoverSlide, photo: string): El {
       "div",
       { display: "flex", position: "relative", flexGrow: 1, overflow: "hidden" },
       img(photo, { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%" }),
-      h("span", { position: "absolute", bottom: px(20), left: px(20), background: BRAND.paper, padding: `${px(8)}px ${px(12)}px`, borderRadius: px(999), ...LABEL(BRAND.ink, 11, 2) }, "Hair care · Swipe"),
+      h("div", { position: "absolute", top: px(20), left: px(20), display: "flex" }, slide.tag ? pill(slide.tag, BRAND.alert, "#FFFFFF") : pill("Hair care · Swipe", BRAND.paper, BRAND.ink)),
     ),
     h(
       "div",
-      { display: "flex", flexDirection: "column", gap: px(12), padding: `${px(26)}px ${px(32)}px ${px(24)}px`, borderTop: `${px(4)}px solid ${BRAND.gold}` },
-      headline(slide.title, slide.accent, { fontFamily: "Playfair Display", fontWeight: 700, fontSize: px(slide.title.length > 44 ? 30 : 36), lineHeight: 1.08 }, BRAND.deepGold),
+      { display: "flex", flexDirection: "column", gap: px(12), padding: `${px(24)}px ${px(30)}px ${px(22)}px`, borderTop: `${px(4)}px solid ${BRAND.gold}` },
+      headline(slide.title, slide.accent, { fontFamily: "Playfair Display", fontWeight: 700, fontSize: px(slide.title.length > 44 ? 32 : 38), lineHeight: 1.05 }, BRAND.deepGold),
       h(
         "div",
-        { display: "flex", justifyContent: "space-between", alignItems: "center" },
-        h("span", { fontSize: px(14), color: BRAND.muted }, `More on ${BRAND.site}/blog`),
-        h("div", { display: "flex", alignItems: "center", gap: px(6), ...LABEL(BRAND.ink, 12, 1) }, `1 / ${slide.total}`, arrow(BRAND.ink)),
+        { display: "flex", justifyContent: "space-between", alignItems: "flex-end" },
+        h(
+          "div",
+          { display: "flex", flexDirection: "column", gap: px(4) },
+          h("span", { fontSize: px(15), fontWeight: 600, color: BRAND.ink }, "Save this before wash day"),
+          iconLine(followIcon(BRAND.deepGold, 16), `${FOLLOW_LINE} tips`, BRAND.deepGold, 14),
+        ),
+        h("div", { display: "flex", alignItems: "center", gap: px(6), ...LABEL(BRAND.ink, 12, 1) }, `Swipe · 1 / ${slide.total}`, arrow(BRAND.ink)),
       ),
     ),
   );
@@ -229,7 +356,7 @@ function articleTip(slide: ArticleTipSlide, logoDark: string): El {
       "div",
       { display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `${px(1)}px solid ${BRAND.rule}`, paddingTop: px(18) },
       img(logoDark, { height: px(34), width: px(34) * LOGO_ASPECT }),
-      h("span", LABEL(BRAND.muted, 11, 1), "Save this for later"),
+      h("span", LABEL(BRAND.muted, 11, 1), slide.index === slide.total - 1 ? "Save + follow for more" : "Save this for later"),
     ),
   );
 }
@@ -281,6 +408,12 @@ export async function renderSlide(slide: Slide): Promise<Buffer> {
       return toJpeg(motivation(slide, await logoDataUri("light")), FEED);
     case "photo":
       return toJpeg(photoPost(slide, await fetchImageDataUri(slide.photoUrl), await logoDataUri(slide.theme === "dark" ? "light" : "dark")), FEED);
+    case "photo_hook":
+      return toJpeg(photoHook(slide, await fetchImageDataUri(slide.photoUrl)), FEED);
+    case "this_or_that": {
+      const photos: [string, string] = [await fetchImageDataUri(slide.photoUrls[0]), await fetchImageDataUri(slide.photoUrls[1])];
+      return toJpeg(thisOrThat(slide, photos, await logoDataUri("light")), FEED);
+    }
     case "article_cover":
       return toJpeg(articleCover(slide, await fetchImageDataUri(slide.photoUrl)), FEED);
     case "article_tip":
