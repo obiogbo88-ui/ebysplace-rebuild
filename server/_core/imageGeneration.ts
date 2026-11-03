@@ -74,11 +74,16 @@ async function generateImageWithOpenAI(options: GenerateImageOptions): Promise<G
     }
   }
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
-    body: form,
-  });
+  // /images/generations only accepts JSON now (400 unsupported_content_type on
+  // multipart, seen 2026-11-03); /images/edits still takes the file upload.
+  const response =
+    fetched.length > 0
+      ? await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${apiKey}` }, body: form })
+      : await fetch(endpoint, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model, prompt: options.prompt, size: form.get("size"), quality: form.get("quality") }),
+        });
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
