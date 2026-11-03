@@ -15,7 +15,9 @@ describe("Vercel public frontend routing", () => {
     const packageJson = JSON.parse(readProjectFile("package.json"));
     expect(packageJson.scripts.build).toBe("tsc -p server/tsconfig.json && cd client && pnpm run build");
     expect(packageJson.scripts["build:vercel"]).toBe("pnpm run build && pnpm run build:api");
-    expect(vercelConfig.functions["api/index.js"].includeFiles).toBe("public/**");
+    // public/** ships the static assets the server reads; ffmpeg is bundled for the Instagram Reels (#148)
+    expect(vercelConfig.functions["api/index.js"].includeFiles).toContain("public/**");
+    expect(vercelConfig.functions["api/index.js"].includeFiles).toContain("node_modules/@ffmpeg-installer/**");
     expect(vercelConfig.redirects).toEqual([
       {
         source: "/booking/",

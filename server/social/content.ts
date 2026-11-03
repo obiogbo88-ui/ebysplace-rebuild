@@ -30,11 +30,35 @@ export function weekdayIndex(date: string): number {
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 /**
- * The approved weekly plan (Design canvas board "Weekly plan · 2 posts a day"):
- * 10:00 motivation / hair article / weekend style, 19:00 real work / AI inspiration.
+ * Three posts a day at UK Instagram peak times (user request 2026-11-03,
+ * "3 times a day at the topmost peak time"): the morning scroll, lunch, and
+ * the evening peak. Times are Europe/London; vercel.json fires each publish
+ * cron at both possible UTC hours and the run only acts in the right London
+ * hour, so the clock change never shifts a post.
+ */
+export const SLOT_TIMES: Record<SlotName, { hour: number; minute: number }> = {
+  am: { hour: 8, minute: 0 },
+  md: { hour: 12, minute: 30 },
+  pm: { hour: 20, minute: 0 },
+};
+export const SLOTS: SlotName[] = ["am", "md", "pm"];
+
+export function londonHour(at: Date = new Date()): number {
+  return Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", hour12: false }).format(at));
+}
+
+/** True when `at` is in the slot's London hour (the other UTC twin of the cron is skipped). */
+export function slotDue(slot: SlotName, at: Date = new Date()): boolean {
+  return londonHour(at) === SLOT_TIMES[slot].hour;
+}
+
+/**
+ * Weekly plan: no kind twice in a day except Friday's priced styles.
+ * 08:00 motivation / hair article, 12:30 mixed, 20:00 real work / AI inspiration.
  */
 const ROTATION: Record<SlotName, PostKind[]> = {
   am: ["motivation", "article", "motivation", "article", "style", "motivation", "article"],
+  md: ["inspiration", "style", "article", "style", "motivation", "inspiration", "style"],
   pm: ["style", "inspiration", "style", "inspiration", "style", "style", "inspiration"],
 };
 
