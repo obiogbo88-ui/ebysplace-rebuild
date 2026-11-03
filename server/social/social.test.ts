@@ -14,7 +14,7 @@ vi.mock("./store", () => ({
 }));
 
 import jpegJs from "jpeg-js";
-import { addDays, captionFor, captionProblem, clip, ensureBookingToken, ensureFollowLine, formatPrice, kindFor, londonDate, styleSourceFor, weekdayIndex } from "./content";
+import { addDays, captionFor, captionProblem, clip, slotDue, ensureBookingToken, ensureFollowLine, formatPrice, kindFor, londonDate, styleSourceFor, weekdayIndex } from "./content";
 import { splitAccent, renderSlide } from "./renderer";
 import { publishFacebookFeed, publishInstagramFeed } from "./graph";
 import { publishPost } from "./cron";
@@ -32,6 +32,27 @@ describe("weekly plan", () => {
     const week = Array.from({ length: 7 }, (_, i) => addDays("2026-11-02", i));
     expect(week.map((d) => kindFor(d, "am"))).toEqual(["motivation", "article", "motivation", "article", "style", "motivation", "article"]);
     expect(week.map((d) => kindFor(d, "pm"))).toEqual(["style", "inspiration", "style", "inspiration", "style", "style", "inspiration"]);
+  });
+
+  it("adds a 12:30 slot and never repeats a kind on one day except Friday's priced styles", () => {
+    const week = Array.from({ length: 7 }, (_, i) => addDays("2026-11-02", i));
+    expect(week.map((d) => kindFor(d, "md"))).toEqual(["inspiration", "style", "article", "style", "motivation", "inspiration", "style"]);
+    for (const d of week) {
+      const kinds = (["am", "md", "pm"] as const).map((s) => kindFor(d, s));
+      if (weekdayIndex(d) !== 4) expect(new Set(kinds).size).toBe(3);
+    }
+  });
+
+  it("posts at 08:00, 12:30 and 20:00 UK in winter and summer (the other UTC twin is skipped)", () => {
+    expect(slotDue("am", new Date("2026-11-04T08:00:30Z"))).toBe(true); // GMT
+    expect(slotDue("am", new Date("2026-11-04T07:00:30Z"))).toBe(false);
+    expect(slotDue("am", new Date("2026-07-01T07:00:30Z"))).toBe(true); // BST
+    expect(slotDue("am", new Date("2026-07-01T08:00:30Z"))).toBe(false);
+    expect(slotDue("md", new Date("2026-11-04T12:30:30Z"))).toBe(true);
+    expect(slotDue("md", new Date("2026-07-01T11:30:30Z"))).toBe(true);
+    expect(slotDue("pm", new Date("2026-11-04T20:00:30Z"))).toBe(true);
+    expect(slotDue("pm", new Date("2026-07-01T19:00:30Z"))).toBe(true);
+    expect(slotDue("pm", new Date("2026-11-04T19:00:30Z"))).toBe(false);
   });
 
   it("only Friday's style posts use a priced service; the rest use Eby's gallery", () => {
@@ -210,6 +231,6 @@ describe("publishPost", () => {
 describe("wiring", () => {
   it("schedules prepare and both publish runs", () => {
     const crons = JSON.parse(readFileSync("vercel.json", "utf8")).crons.map((c: { path: string }) => c.path);
-    expect(crons).toEqual(expect.arrayContaining(["/api/cron/social-prepare", "/api/cron/social-publish-am", "/api/cron/social-publish-pm"]));
+    expect(crons).toEqual(expect.arrayContaining(["/api/cron/social-prepare", "/api/cron/social-publish-am", "/api/cron/social-publish-md", "/api/cron/social-publish-pm"]));
   });
 });

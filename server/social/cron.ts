@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Application, Request, Response } from "express";
-import { addDays, captionFor, londonDate, preparePost } from "./content";
+import { SLOTS, addDays, captionFor, londonDate, londonHour, preparePost, slotDue } from "./content";
 import {
   publishFacebookFeed,
   publishFacebookStory,
@@ -21,13 +21,17 @@ import { sql } from "drizzle-orm";
  * the owner's choice (2026-11-02): there is no review step.
  *
  *   /api/cron/social-prepare     06:00 UTC daily: writes + renders the next posts
- *   /api/cron/social-publish-am  10:05 UTC daily: posts today's 10:00 slot
- *   /api/cron/social-publish-pm  19:05 UTC daily: posts today's 19:00 slot
+ *   /api/cron/social-publish-am  08:00 UK (cron at 07:00 and 08:00 UTC)
+ *   /api/cron/social-publish-md  12:30 UK (cron at 11:30 and 12:30 UTC)
+ *   /api/cron/social-publish-pm  20:00 UK (cron at 19:00 and 20:00 UTC)
+ *   ?force=1 on a publish route posts that slot now (manual "post one now")
  *   /api/cron/social-preview     on demand: renders a post without queueing it
  *
  * All need the CRON_SECRET bearer token Vercel sends with cron calls.
  * SOCIAL_AUTOPOST_PAUSED=true stops publishing without a deploy.
  */
+
+const SLOT_HOUR: Record<SlotName, number> = { am: 8, md: 12, pm: 20 };
 
 function authorized(req: Request) {
   const expected = String(process.env.CRON_SECRET || "").trim();
@@ -115,8 +119,9 @@ export async function publishPost(post: SocialPost, ig: InstagramCredentials | n
   return result;
 }
 
-async function runPublish(slot: SlotName) {
+async function runPublish(slot: SlotName, force = false) {
   if (paused()) return { skipped: "paused (SOCIAL_AUTOPOST_PAUSED)" };
+  if (!force && !slotDue(slot)) return { skipped: `not ${slot}'s London hour (the other clock-change twin of this cron)` };
   const ig = await instagramCredentials();
   const fb = await facebookCredentials();
   if (!ig && !fb) return { skipped: "no Instagram or Facebook credentials configured yet" };
@@ -145,16 +150,15 @@ async function runPublish(slot: SlotName) {
 
 async function runPrepare(startedAt: number) {
   const today = londonDate();
-  const londonHour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", hour12: false }).format(new Date()));
+  const hour = londonHour();
   const wanted: Array<[string, SlotName]> = [];
-  if (londonHour < 10) wanted.push([today, "am"]);
-  if (londonHour < 19) wanted.push([today, "pm"]);
-  wanted.push([addDays(today, 1), "am"], [addDays(today, 1), "pm"]);
+  for (const slot of SLOTS) if (hour < SLOT_HOUR[slot]) wanted.push([today, slot]);
+  for (const slot of SLOTS) wanted.push([addDays(today, 1), slot]);
 
   const made: string[] = [];
   const errors: string[] = [];
   for (const [date, slot] of wanted) {
-    if (made.length >= 2 || Date.now() - startedAt > 45_000) break; // stay inside the 90s function limit
+    if (made.length >= 3 || Date.now() - startedAt > 150_000) break; // each post (writer + slides + Reel) takes about a minute; the limit is 300s
     if (await getPost(date, slot)) continue;
     try {
       await preparePost(date, slot);
@@ -185,13 +189,12 @@ function guard(handler: (req: Request) => Promise<unknown>) {
 
 export function registerSocialCrons(app: Application) {
   app.get("/api/cron/social-prepare", guard(async () => runPrepare(Date.now())));
-  app.get("/api/cron/social-publish-am", guard(async () => runPublish("am")));
-  app.get("/api/cron/social-publish-pm", guard(async () => runPublish("pm")));
+  for (const slot of SLOTS) app.get(`/api/cron/social-publish-${slot}`, guard(async (req) => runPublish(slot, req.query.force === "1")));
   app.get(
     "/api/cron/social-preview",
     guard(async (req) => {
       const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date)) ? String(req.query.date) : londonDate();
-      const slot: SlotName = req.query.slot === "am" ? "am" : "pm";
+      const slot: SlotName = SLOTS.includes(req.query.slot as SlotName) ? (req.query.slot as SlotName) : "pm";
       return { preview: await preparePost(date, slot, { persist: false }) };
     }),
   );

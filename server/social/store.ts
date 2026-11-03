@@ -4,7 +4,7 @@ import type { Slide } from "./renderer";
 
 /**
  * Queue of Eby's Place Instagram/Facebook posts: one row per day per slot
- * (am = 10:00, pm = 19:00 UK). The prepare cron fills rows, the publish crons
+ * (am 08:00, md 12:30, pm 20:00 UK; see SLOT_TIMES in content.ts). The prepare cron fills rows, the publish crons
  * post them. Each platform id is saved the moment it succeeds, so a retry
  * after a partial failure never posts the same thing twice.
  *
@@ -14,7 +14,7 @@ import type { Slide } from "./renderer";
  * public anon key can never read them (the server connects as postgres).
  */
 
-export type SlotName = "am" | "pm";
+export type SlotName = "am" | "md" | "pm";
 export type PostKind = "motivation" | "style" | "inspiration" | "article";
 export type PostStatus = "ready" | "publishing" | "posted" | "partial" | "failed";
 
@@ -52,7 +52,7 @@ export async function requireDb(ensureTables = true) {
     await db.execute(sql`CREATE TABLE IF NOT EXISTS "socialPosts" (
       "id" SERIAL PRIMARY KEY,
       "slotDate" VARCHAR(10) NOT NULL,
-      "slot" VARCHAR(2) NOT NULL CHECK ("slot" IN ('am','pm')),
+      "slot" VARCHAR(2) NOT NULL CHECK ("slot" IN ('am','md','pm')),
       "kind" VARCHAR(20) NOT NULL CHECK ("kind" IN ('motivation','style','inspiration','article')),
       "sourceRef" VARCHAR(160),
       "isAiGenerated" BOOLEAN NOT NULL DEFAULT false,
@@ -78,6 +78,9 @@ export async function requireDb(ensureTables = true) {
       "refreshedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
       "expiresAt" TIMESTAMPTZ
     )`);
+    // third daily slot (2026-11-03): widen the slot check on tables made with am/pm only
+    await db.execute(sql`ALTER TABLE "socialPosts" DROP CONSTRAINT IF EXISTS "socialPosts_slot_check"`);
+    await db.execute(sql`ALTER TABLE "socialPosts" ADD CONSTRAINT "socialPosts_slot_check" CHECK ("slot" IN ('am','md','pm'))`);
     await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "reelUrl" TEXT`);
     await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "musicSeed" BIGINT`);
     await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "musicFingerprint" VARCHAR(64)`);
