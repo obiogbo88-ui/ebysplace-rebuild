@@ -165,25 +165,32 @@ function motivation(slide: MotivationSlide, logoLight: string): El {
   );
 }
 
-/** Board 6: full-bleed photo, question headline, "answer in the caption" + follow pills. */
+/**
+ * Board 6: question headline in its own black band, photo below, "answer in the caption" + follow pills.
+ * Text never sits on the photo: service photos have the logo baked into the top-left corner.
+ */
 function photoHook(slide: PhotoHookSlide, photo: string): El {
-  const size = slide.headline.length > 30 ? 42 : 50;
-  return h(
-    "div",
-    { width: FEED.width, height: FEED.height, display: "flex", position: "relative", background: BRAND.night, fontFamily: "Inter", color: BRAND.paper },
-    img(photo, { position: "absolute", top: 0, left: 0, width: FEED.width, height: FEED.height, objectFit: "cover", objectPosition: "center 25%" }),
-    h("div", { position: "absolute", top: 0, left: 0, right: 0, height: px(320), display: "flex", backgroundImage: "linear-gradient(180deg, rgba(18,18,18,0.94), rgba(18,18,18,0.6) 55%, rgba(18,18,18,0))" }),
-    h("div", { position: "absolute", bottom: 0, left: 0, right: 0, height: px(220), display: "flex", backgroundImage: "linear-gradient(0deg, rgba(18,18,18,0.92), rgba(18,18,18,0))" }),
+  const size = slide.headline.length > 30 ? 38 : 44;
+  return frame(
+    FEED,
+    BRAND.night,
+    [0, 0, 0, 0],
+    { color: BRAND.paper },
     h(
       "div",
-      { position: "absolute", top: px(34), left: px(32), right: px(32), display: "flex", flexDirection: "column", gap: px(10) },
+      { display: "flex", flexDirection: "column", gap: px(8), padding: `${px(30)}px ${px(32)}px ${px(22)}px` },
       h("span", LABEL(BRAND.gold, 12, 3), slide.tag),
       headline(slide.headline, slide.accent, { fontFamily: "Playfair Display", fontWeight: 700, fontSize: px(size), lineHeight: 1.04 }, BRAND.gold),
       slide.meta ? h("span", { fontSize: px(15), color: BRAND.mutedOnDark }, slide.meta) : null,
     ),
     h(
       "div",
-      { position: "absolute", bottom: px(28), left: px(28), right: px(28), display: "flex", justifyContent: "space-between", alignItems: "center" },
+      { display: "flex", position: "relative", flexGrow: 1, margin: `0 ${px(20)}px`, borderRadius: px(14), overflow: "hidden" },
+      img(photo, { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 25%" }),
+    ),
+    h(
+      "div",
+      { display: "flex", justifyContent: "space-between", alignItems: "center", padding: `${px(18)}px ${px(24)}px ${px(22)}px` },
       h(
         "div",
         { display: "flex", alignItems: "center", gap: px(8), background: BRAND.paper, color: BRAND.night, fontSize: px(15), fontWeight: 600, padding: `${px(11)}px ${px(16)}px`, borderRadius: px(999) },
@@ -200,23 +207,23 @@ function photoHook(slide: PhotoHookSlide, photo: string): El {
   );
 }
 
-/** Board 7: two numbered AI images, "Which one are you booking next?". */
+/** Board 7: two numbered AI images, "Which one are you booking next?". Style names sit under the images, not on them. */
 function thisOrThat(slide: ThisOrThatSlide, photos: [string, string], logoLight: string): El {
   const tile = (photo: string, n: string, badgeColor: string, label: string) =>
     h(
       "div",
-      { position: "relative", display: "flex", flexGrow: 1, flexBasis: 0, borderRadius: px(12), overflow: "hidden" },
-      img(photo, { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }),
+      { display: "flex", flexDirection: "column", flexGrow: 1, flexBasis: 0, gap: px(8) },
       h(
         "div",
-        { position: "absolute", top: px(12), left: px(12), width: px(44), height: px(44), borderRadius: px(22), background: badgeColor, color: BRAND.night, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Playfair Display", fontWeight: 700, fontSize: px(24) },
-        n,
+        { position: "relative", display: "flex", flexGrow: 1, borderRadius: px(12), overflow: "hidden" },
+        img(photo, { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }),
+        h(
+          "div",
+          { position: "absolute", top: px(12), left: px(12), width: px(44), height: px(44), borderRadius: px(22), background: badgeColor, color: BRAND.night, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Playfair Display", fontWeight: 700, fontSize: px(24) },
+          n,
+        ),
       ),
-      h(
-        "div",
-        { position: "absolute", left: px(10), right: px(10), bottom: px(10), display: "flex", justifyContent: "center", background: "rgba(18,18,18,0.72)", color: BRAND.paper, fontSize: px(13), padding: `${px(6)}px ${px(8)}px`, borderRadius: px(8) },
-        label,
-      ),
+      h("span", { display: "flex", justifyContent: "center", fontSize: px(14), fontWeight: 600, color: BRAND.paper }, label),
     );
   return frame(
     FEED,
