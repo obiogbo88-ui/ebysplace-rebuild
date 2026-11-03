@@ -129,12 +129,16 @@ Scroll-stopping (the goal is new followers and real engagement):
 - Allowed: curiosity, questions, this-or-that, "guess", "save this", "share with a friend". Banned, because Meta shows these posts to fewer people: "comment YES", "like if", "tag 3 friends", "share to win", "type AMEN", any giveaway or contest you were not told about.
 - Hooks must still be true. No fake urgency or scarcity ("only 2 slots left", "last chance", "ends tonight"), no invented numbers ("90% of people..."), no shock claims about hair damage.`;
 
+const CAPTION_RULES =
+  "The FULL Instagram caption, 250 to 800 characters before the hashtags, written out in full (never a placeholder): hook line, value, save/share nudge, a genuine question, the {FOLLOW} line, the {BOOKING} line, then hashtags.";
+const caption = (extra = "") => z.string().describe(extra ? `${CAPTION_RULES} ${extra}` : CAPTION_RULES);
+
 const Motivation = z.object({
   hook: z.string().describe("Pill at the top that stops the scroll, max 30 characters, e.g. 'Read this before you scroll', 'For the one scared to start', 'If you needed a sign'"),
   quote: z.string().describe("An original, punchy motivational line for women in business or anyone starting something, max 70 characters, e.g. 'Stop waiting to feel ready.' Not a famous quote."),
   accent: z.string().describe("1 to 2 words copied exactly from the quote to highlight in gold italic"),
   supporting: z.string().describe("One or two sentences under 140 characters linking the idea to hair, self-care or Eby's own journey, without inventing facts"),
-  caption: z.string(),
+  caption: caption(),
 });
 const Article = z.object({
   tag: z.string().describe("Red pill on the cover, max 18 characters, e.g. 'Stop doing this', 'Save this', 'Wash day rules'"),
@@ -145,7 +149,7 @@ const Article = z.object({
   tips: z
     .array(z.object({ title: z.string().describe("Max 32 characters"), body: z.string().describe("Max 190 characters, practical and safe") }))
     .describe("4 or 5 tips"),
-  caption: z.string(),
+  caption: caption(),
 });
 const HOOK_HEADLINE =
   "Question or curiosity headline over the photo, max 34 characters, whose answer is in the caption. Only ask what the facts you were given can answer truthfully.";
@@ -153,13 +157,13 @@ const GalleryStyle = z.object({
   headline: z.string().describe(`${HOOK_HEADLINE} E.g. 'Would you try this colour?', 'Rate this install out of 10', 'The secret is in the parting'`),
   accent: z.string().describe("1 to 3 words copied exactly from the headline to highlight in gold"),
   cta: z.string().describe("Pill under the photo, max 24 characters, e.g. 'Answer in the caption', 'Tell us below'"),
-  caption: z.string(),
+  caption: caption(),
 });
 const ServiceStyle = z.object({
   headline: z.string().describe(`${HOOK_HEADLINE} E.g. 'Guess how long this took?' (the duration is in the facts), 'Guess the price?'`),
   accent: z.string().describe("1 to 3 words copied exactly from the headline to highlight in gold"),
   cta: z.string().describe("Pill under the photo, max 24 characters, e.g. 'Answer in the caption'"),
-  caption: z.string().describe("The first paragraph answers the headline with the real fact."),
+  caption: caption("The first paragraph answers the headline with the real fact."),
 });
 const InspoStyle = z.object({
   styleName: z.string().describe("Name of an on-trend protective style, max 24 characters, that a braider could recreate"),
@@ -173,14 +177,35 @@ const Inspiration = z.object({
   options: z.array(InspoStyle).describe("Exactly 2 clearly different styles (e.g. different length, colour or technique)"),
   caption: z
     .string()
-    .describe("Frame it as AI-made inspiration: ask which they'd pick, 1 or 2, invite them to save it and bring it to a consultation. Do not claim Eby made either look."),
+    .describe(`${CAPTION_RULES} ` + "Frame it as AI-made inspiration: ask which they'd pick, 1 or 2, invite them to save it and bring it to a consultation. Do not claim Eby made either look."),
 });
 
 function anthropic() {
   return new Anthropic();
 }
 
+class CaptionError extends Error {}
+
+/** 2026-11-03 the first live post went out with the caption "x"; never publish a placeholder again. */
+export function captionProblem(caption: string): string | null {
+  const body = caption.split(/\n\s*\n/).filter((p) => !p.trim().startsWith("#") && !p.includes("{BOOKING}") && !p.includes("{FOLLOW}")).join(" ").trim();
+  if (body.length < 120) return `caption too short (${body.length} characters of copy)`;
+  if (/lorem ipsum|\[caption\]|placeholder/i.test(body)) return "caption contains placeholder text";
+  return null;
+}
+
+/** Asks the writer up to twice; a second bad caption fails the run so nothing half-written is posted. */
 async function write<T extends z.ZodType>(schema: T, task: string): Promise<z.infer<T>> {
+  try {
+    return await writeOnce(schema, task);
+  } catch (err) {
+    if (!(err instanceof CaptionError)) throw err;
+    console.warn(`[social] Rewriting: ${err.message}`);
+    return writeOnce(schema, `${task}\n\nYour previous caption was rejected (${err.message}). Write the complete caption in full.`);
+  }
+}
+
+async function writeOnce<T extends z.ZodType>(schema: T, task: string): Promise<z.infer<T>> {
   const recent = await recentWriting();
   const response = await anthropic().beta.messages.parse({
     model: String(process.env.SOCIAL_CLAUDE_MODEL || "").trim() || "claude-opus-5-5",
@@ -198,7 +223,10 @@ async function write<T extends z.ZodType>(schema: T, task: string): Promise<z.in
   });
   if (response.stop_reason === "refusal") throw new Error("The writer declined this post.");
   if (!response.parsed_output) throw new Error(`The writer returned no usable post (stop_reason ${response.stop_reason}).`);
-  return response.parsed_output as z.infer<T>;
+  const out = response.parsed_output as z.infer<T>;
+  const problem = captionProblem(String((out as { caption?: unknown }).caption ?? ""));
+  if (problem) throw new CaptionError(problem);
+  return out;
 }
 
 export function ensureBookingToken(caption: string) {

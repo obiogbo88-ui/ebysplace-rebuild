@@ -14,7 +14,7 @@ vi.mock("./store", () => ({
 }));
 
 import jpegJs from "jpeg-js";
-import { addDays, captionFor, clip, ensureBookingToken, ensureFollowLine, formatPrice, kindFor, londonDate, styleSourceFor, weekdayIndex } from "./content";
+import { addDays, captionFor, captionProblem, clip, ensureBookingToken, ensureFollowLine, formatPrice, kindFor, londonDate, styleSourceFor, weekdayIndex } from "./content";
 import { splitAccent, renderSlide } from "./renderer";
 import { publishFacebookFeed, publishInstagramFeed } from "./graph";
 import { publishPost } from "./cron";
@@ -74,6 +74,13 @@ describe("captions", () => {
   it("uses 'link in bio' on Instagram and the real link on Facebook", () => {
     expect(captionFor("instagram", "Book at {BOOKING}")).toBe("Book at ebysplace.com (link in bio)");
     expect(captionFor("facebook", "Book at {BOOKING}")).toBe("Book at https://www.ebysplace.com/booking");
+  });
+
+  it("rejects placeholder captions like the 'x' that went out on 2026-11-03", () => {
+    expect(captionProblem("x\n\n{FOLLOW} for more styles and braid care tips.\n\nBook at {BOOKING}")).toMatch(/too short/);
+    const real =
+      "Your braids can last weeks longer with five small habits.\n\nSatin at night, light oil on the scalp, and hands off the edges. Save this for wash day.\n\nWhich one do you skip?\n\n{FOLLOW} for more.\n\nBook at {BOOKING}\n\n#EbysPlace #Bridgwater";
+    expect(captionProblem(real)).toBeNull();
   });
 
   it("always carries a follow line, before the booking line", () => {
