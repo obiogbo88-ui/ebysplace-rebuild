@@ -4,9 +4,10 @@ import * as z from "zod/v4";
 import { sql } from "drizzle-orm";
 import { storagePut } from "../storage";
 import { generateImage } from "../_core/imageGeneration";
-import { renderSlide, renderStory, UnsupportedImageError, type Slide } from "./renderer";
+import { renderEndCard, renderSlide, renderStory, UnsupportedImageError, type Slide } from "./renderer";
+import { buildReel, freshMelody, reelTimings } from "./reel";
 import { BRAND } from "./kit";
-import { insertPost, orEmpty, recentSourceRefs, recentWriting, requireDb, type PostKind, type SlotName, type SocialPost } from "./store";
+import { insertPost, isMusicUsed, orEmpty, recentSourceRefs, recentWriting, requireDb, type PostKind, type SlotName, type SocialPost } from "./store";
 
 // ------------------------------------------------------------------ calendar
 
@@ -382,7 +383,10 @@ async function motivationNumber() {
  * (WebP/HEIC sources, a dead link) fall through to the next photo; any other
  * failure is thrown so the cron reports it.
  */
-export type PreparedPreview = Pick<SocialPost, "slotDate" | "slot" | "kind" | "sourceRef" | "isAiGenerated" | "slides" | "caption" | "imageUrls" | "storyUrl">;
+export type PreparedPreview = Pick<
+  SocialPost,
+  "slotDate" | "slot" | "kind" | "sourceRef" | "isAiGenerated" | "slides" | "caption" | "imageUrls" | "storyUrl" | "reelUrl" | "musicSeed" | "musicFingerprint"
+>;
 
 export async function preparePost(date: string, slot: SlotName, options: { persist?: boolean } = {}): Promise<SocialPost | PreparedPreview | null> {
   const persist = options.persist !== false;
@@ -397,7 +401,25 @@ export async function preparePost(date: string, slot: SlotName, options: { persi
       const imageUrls: string[] = [];
       for (let i = 0; i < jpegs.length; i++) imageUrls.push((await storagePut(`social/${date}-${slot}-${i + 1}.jpg`, jpegs[i], "image/jpeg")).url);
       const storyUrl = (await storagePut(`social/${date}-${slot}-story.jpg`, await renderStory(jpegs[0]), "image/jpeg")).url;
-      const row = { slotDate: date, slot, kind: d.kind, sourceRef: d.sourceRef, isAiGenerated: d.isAiGenerated, slides: d.slides, caption: d.caption, imageUrls, storyUrl };
+      // Every post is also a Reel with its own, never-repeated melody.
+      const { seed, melody } = await freshMelody(reelTimings(jpegs.length).total, isMusicUsed);
+      const reel = await buildReel(jpegs, await renderEndCard(), melody);
+      const reelUrl = (await storagePut(`social/${date}-${slot}-reel.mp4`, reel, "video/mp4")).url;
+      console.log(`[social] ${date} ${slot}: reel ${Math.round(reel.length / 1024)} KB, music ${melody.description}`);
+      const row = {
+        slotDate: date,
+        slot,
+        kind: d.kind,
+        sourceRef: d.sourceRef,
+        isAiGenerated: d.isAiGenerated,
+        slides: d.slides,
+        caption: d.caption,
+        imageUrls,
+        storyUrl,
+        reelUrl,
+        musicSeed: seed,
+        musicFingerprint: melody.fingerprint,
+      };
       return persist ? insertPost(row) : row;
     } catch (err) {
       if (!(err instanceof UnsupportedImageError) || !d.sourceRef || d.sourceRef === "ai") throw err;

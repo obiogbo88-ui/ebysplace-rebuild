@@ -5,6 +5,7 @@ import {
   publishFacebookFeed,
   publishFacebookStory,
   publishInstagramFeed,
+  publishInstagramReel,
   publishInstagramStory,
   refreshInstagramToken,
   isInstagramLoginToken,
@@ -96,7 +97,11 @@ export async function publishPost(post: SocialPost, ig: InstagramCredentials | n
     }
   };
   if (ig) {
-    result.igMediaId = await step("Instagram post", result.igMediaId, () => publishInstagramFeed(ig, post.imageUrls, captionFor("instagram", post.caption), post.isAiGenerated));
+    result.igMediaId = await step("Instagram post", result.igMediaId, () =>
+      post.reelUrl
+        ? publishInstagramReel(ig, post.reelUrl, captionFor("instagram", post.caption), post.isAiGenerated)
+        : publishInstagramFeed(ig, post.imageUrls, captionFor("instagram", post.caption), post.isAiGenerated),
+    );
     if (post.storyUrl) result.igStoryId = await step("Instagram story", result.igStoryId, () => publishInstagramStory(ig, post.storyUrl!, post.isAiGenerated));
   }
   if (fb) {
