@@ -41,14 +41,64 @@ function bytesToFile(bytes: Buffer, mimeType: string, index: number) {
   return new File([new Uint8Array(bytes)], `source-${index}.${ext}`, { type: mimeType });
 }
 
-async function generateImageWithOpenAI(options: GenerateImageOptions): Promise<GenerateImageResponse> {
+/**
+ * OpenAI retires image models (gpt-image-1 started returning "does not
+ * exist" on 2026-11-03), so unless OPENAI_IMAGE_MODEL pins one we ask the
+ * account which gpt-image models it has and use the newest full-size one.
+ */
+export function pickImageModel(ids: string[]): string | null {
+  const candidates = ids.filter((id) => /^gpt-image-/.test(id));
+  if (!candidates.length) return null;
+  const version = (id: string) => (id.match(/^gpt-image-(\d+(?:\.\d+)?)/)?.[1] ?? "0").split(".").map(Number);
+  const dated = (id: string) => /-\d{4}-\d{2}-\d{2}$/.test(id);
+  return [...candidates].sort((a, b) => {
+    const [a1 = 0, a2 = 0] = version(a);
+    const [b1 = 0, b2 = 0] = version(b);
+    if (a1 !== b1) return b1 - a1;
+    if (a2 !== b2) return b2 - a2;
+    const am = a.includes("mini") ? 1 : 0;
+    const bm = b.includes("mini") ? 1 : 0;
+    if (am !== bm) return am - bm; // full-size before mini
+    if (dated(a) !== dated(b)) return dated(a) ? 1 : -1; // alias before dated snapshot
+    return a.localeCompare(b);
+  })[0];
+}
+
+const FALLBACK_IMAGE_MODEL = "gpt-image-1.5";
+let discoveredImageModel: string | null = null;
+
+async function resolveImageModel(apiKey: string, refresh = false): Promise<string> {
+  const pinned = trimEnvValue(process.env.OPENAI_IMAGE_MODEL);
+  if (pinned && !refresh) return pinned;
+  if (discoveredImageModel && !refresh) return discoveredImageModel;
+  try {
+    const res = await fetch("https://api.openai.com/v1/models", { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (res.ok) {
+      const body = (await res.json()) as { data?: Array<{ id?: string }> };
+      const picked = pickImageModel((body.data ?? []).map((m) => String(m.id ?? "")));
+      if (picked) {
+        discoveredImageModel = picked;
+        return picked;
+      }
+    }
+  } catch (err) {
+    console.warn("[AI image] Could not list OpenAI models", err);
+  }
+  return FALLBACK_IMAGE_MODEL;
+}
+
+function isRetiredModelError(status: number, detail: string) {
+  return status === 400 || status === 404 ? /does not exist|model_not_found|invalid_value[\s\S]*"param":\s*"model"/.test(detail) : false;
+}
+
+async function generateImageWithOpenAI(options: GenerateImageOptions, refreshModel = false): Promise<GenerateImageResponse> {
   const apiKey = normalizeSecretKey(process.env.OPENAI_API_KEY);
   if (!apiKey) {
     throw new Error("AI Try-On (OpenAI) is not configured for this deployment. Add OPENAI_API_KEY in Vercel, then redeploy.");
   }
 
   const originals = options.originalImages || [];
-  const model = trimEnvValue(process.env.OPENAI_IMAGE_MODEL) || "gpt-image-1";
+  const model = await resolveImageModel(apiKey, refreshModel);
   const endpoint = originals.length > 0 ? "https://api.openai.com/v1/images/edits" : "https://api.openai.com/v1/images/generations";
 
   // Fetch bytes once, both to build the upload and to read the source
@@ -87,6 +137,11 @@ async function generateImageWithOpenAI(options: GenerateImageOptions): Promise<G
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
+    if (!refreshModel && isRetiredModelError(response.status, detail)) {
+      console.warn(`[AI image] ${model} is no longer available; looking up the current model`);
+      discoveredImageModel = null;
+      return generateImageWithOpenAI(options, true);
+    }
     throw new Error(`OpenAI image generation failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`);
   }
 
@@ -110,11 +165,10 @@ async function generateImageWithFluxKontext(options: GenerateImageOptions): Prom
     throw new Error("AI Try-On (FLUX) is not configured for this deployment. Add BFL_API_KEY in Vercel, then redeploy.");
   }
 
+  // With a source photo this edits it (Try-On); without one it is plain
+  // text-to-image, used as the back-up for social inspiration images.
   const original = options.originalImages?.[0];
-  if (!original) throw new Error("FLUX Kontext requires a source photo for editing.");
-
-  const { bytes } = await fetchImageBytes(original);
-  const inputImage = bytes.toString("base64");
+  const inputImage = original ? (await fetchImageBytes(original)).bytes.toString("base64") : undefined;
   const model = trimEnvValue(process.env.BFL_MODEL) || "flux-kontext-pro";
 
   const submitResponse = await fetch(`https://api.bfl.ai/v1/${model}`, {
@@ -122,7 +176,7 @@ async function generateImageWithFluxKontext(options: GenerateImageOptions): Prom
     headers: { "x-key": apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
       prompt: options.prompt,
-      input_image: inputImage,
+      ...(inputImage ? { input_image: inputImage } : { aspect_ratio: "3:4" }),
       output_format: "png",
     }),
   });
@@ -160,6 +214,15 @@ async function generateImageWithFluxKontext(options: GenerateImageOptions): Prom
 }
 
 export async function generateImage(options: GenerateImageOptions): Promise<GenerateImageResponse> {
+  if (!options.originalImages?.length) {
+    // Text-only (social posts): OpenAI first, FLUX as the back-up.
+    try {
+      return await generateImageWithOpenAI(options);
+    } catch (openAiError) {
+      console.warn("[AI image] OpenAI generation failed, trying FLUX", openAiError);
+      return generateImageWithFluxKontext(options);
+    }
+  }
   try {
     return await generateImageWithFluxKontext(options);
   } catch (fluxError) {
