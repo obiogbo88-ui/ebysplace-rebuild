@@ -431,3 +431,20 @@ export async function renderSlide(slide: Slide): Promise<Buffer> {
 export async function renderStory(firstSlideJpeg: Buffer): Promise<Buffer> {
   return toJpeg(story(`data:image/jpeg;base64,${firstSlideJpeg.toString("base64")}`, await logoDataUri("light")), STORY);
 }
+
+/** 9:16 end card every Reel finishes on: the white logo on the black ground (standing rule). */
+export async function renderEndCard(): Promise<Buffer> {
+  const logo = await logoDataUri("light");
+  const w = 760;
+  return toJpeg(
+    frame(
+      STORY,
+      BRAND.night,
+      [0, 0, 0, 0],
+      { alignItems: "center", justifyContent: "center", gap: 48, color: BRAND.paper },
+      img(logo, { width: w, height: w / LOGO_ASPECT }),
+      h("span", LABEL(BRAND.gold, 13, 3), `${BRAND.instagramHandle} · ${BRAND.site}`),
+    ),
+    STORY,
+  );
+}

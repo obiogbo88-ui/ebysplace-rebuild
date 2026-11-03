@@ -4,7 +4,7 @@
   "outputDirectory": "public",
   "functions": {
     "api/index.js": {
-      "includeFiles": "public/**",
+      "includeFiles": "{public/**,node_modules/@ffmpeg-installer/**,node_modules/.pnpm/@ffmpeg-installer+*/node_modules/@ffmpeg-installer/**}",
       "maxDuration": 300
     }
   },

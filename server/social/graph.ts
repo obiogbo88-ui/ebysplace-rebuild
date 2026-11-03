@@ -88,6 +88,10 @@ async function createContainer(creds: InstagramCredentials, params: Record<strin
 }
 
 async function waitUntilReady(creds: InstagramCredentials, containerId: string, timeoutMs = 40_000) {
+  return waitForContainer(creds, containerId, timeoutMs);
+}
+
+async function waitForContainer(creds: InstagramCredentials, containerId: string, timeoutMs: number) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const res = await graphFetch<{ status_code?: string }>(`${igBase(creds.accessToken)}/${containerId}?fields=status_code&access_token=${encodeURIComponent(creds.accessToken)}`);
@@ -98,8 +102,8 @@ async function waitUntilReady(creds: InstagramCredentials, containerId: string, 
   throw new GraphApiError(`Timed out waiting for Instagram to process container ${containerId}.`);
 }
 
-async function publishContainer(creds: InstagramCredentials, containerId: string): Promise<string> {
-  await waitUntilReady(creds, containerId);
+async function publishContainer(creds: InstagramCredentials, containerId: string, timeoutMs = 40_000): Promise<string> {
+  await waitForContainer(creds, containerId, timeoutMs);
   return (await post(`${igBase(creds.accessToken)}/${creds.userId}/media_publish`, { creation_id: containerId, access_token: creds.accessToken })).id;
 }
 
@@ -116,6 +120,12 @@ export async function publishInstagramFeed(creds: InstagramCredentials, imageUrl
   }
   const carousel = await createContainer(creds, { media_type: "CAROUSEL", children: children.join(","), caption }, aiGenerated);
   return publishContainer(creds, carousel);
+}
+
+/** A Reel (video with sound), also shown in the main feed grid. Video processing takes longer than photos. */
+export async function publishInstagramReel(creds: InstagramCredentials, videoUrl: string, caption: string, aiGenerated: boolean): Promise<string> {
+  const container = await createContainer(creds, { media_type: "REELS", video_url: videoUrl, caption, share_to_feed: "true" }, aiGenerated);
+  return publishContainer(creds, container, 180_000);
 }
 
 export async function publishInstagramStory(creds: InstagramCredentials, imageUrl: string, aiGenerated: boolean): Promise<string> {

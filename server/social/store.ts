@@ -29,6 +29,10 @@ export type SocialPost = {
   caption: string;
   imageUrls: string[];
   storyUrl: string | null;
+  /** Instagram Reel (slides + original melody); null on posts made before Reels. */
+  reelUrl: string | null;
+  musicSeed: number | null;
+  musicFingerprint: string | null;
   status: PostStatus;
   igMediaId: string | null;
   igStoryId: string | null;
@@ -74,6 +78,11 @@ export async function requireDb(ensureTables = true) {
       "refreshedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
       "expiresAt" TIMESTAMPTZ
     )`);
+    await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "reelUrl" TEXT`);
+    await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "musicSeed" BIGINT`);
+    await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "musicFingerprint" VARCHAR(64)`);
+    // the database itself refuses a tune that has been used before
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "socialPosts_musicFingerprint_key" ON "socialPosts" ("musicFingerprint")`);
     await db.execute(sql`ALTER TABLE "socialPosts" ENABLE ROW LEVEL SECURITY`);
     await db.execute(sql`ALTER TABLE "socialTokens" ENABLE ROW LEVEL SECURITY`);
     ensured = true;
@@ -82,7 +91,7 @@ export async function requireDb(ensureTables = true) {
 }
 
 function rowToPost(row: Record<string, any>): SocialPost {
-  return { ...row, slides: row.slides ?? [], imageUrls: row.imageUrls ?? [] } as SocialPost;
+  return { ...row, slides: row.slides ?? [], imageUrls: row.imageUrls ?? [], musicSeed: row.musicSeed == null ? null : Number(row.musicSeed) } as SocialPost;
 }
 
 export async function getPost(slotDate: string, slot: SlotName): Promise<SocialPost | null> {
@@ -94,9 +103,10 @@ export async function getPost(slotDate: string, slot: SlotName): Promise<SocialP
 export async function insertPost(post: Omit<SocialPost, "id" | "status" | "igMediaId" | "igStoryId" | "fbPostId" | "fbStoryId" | "error" | "attempts">): Promise<SocialPost | null> {
   const db = await requireDb();
   const res = await db.execute(sql`INSERT INTO "socialPosts"
-    ("slotDate", "slot", "kind", "sourceRef", "isAiGenerated", "slides", "caption", "imageUrls", "storyUrl")
+    ("slotDate", "slot", "kind", "sourceRef", "isAiGenerated", "slides", "caption", "imageUrls", "storyUrl", "reelUrl", "musicSeed", "musicFingerprint")
     VALUES (${post.slotDate}, ${post.slot}, ${post.kind}, ${post.sourceRef}, ${post.isAiGenerated},
-      ${JSON.stringify(post.slides)}::jsonb, ${post.caption}, ${JSON.stringify(post.imageUrls)}::jsonb, ${post.storyUrl})
+      ${JSON.stringify(post.slides)}::jsonb, ${post.caption}, ${JSON.stringify(post.imageUrls)}::jsonb, ${post.storyUrl},
+      ${post.reelUrl}, ${post.musicSeed}, ${post.musicFingerprint})
     ON CONFLICT ("slotDate", "slot") DO NOTHING
     RETURNING *`);
   return res.rows[0] ? rowToPost(res.rows[0]) : null;
@@ -145,6 +155,13 @@ export async function recentWriting(limit = 24): Promise<string[]> {
   const db = await requireDb(false);
   const res = await orEmpty(() => db.execute(sql`SELECT "kind", "caption" FROM "socialPosts" ORDER BY "slotDate" DESC, "slot" DESC LIMIT ${limit}`));
   return res.rows.map((r: any) => `[${r.kind}] ${String(r.caption).split("\n")[0].slice(0, 160)}`);
+}
+
+/** True if this tune has ever been attached to a post. */
+export async function isMusicUsed(fingerprint: string): Promise<boolean> {
+  const db = await requireDb();
+  const res = await db.execute(sql`SELECT 1 FROM "socialPosts" WHERE "musicFingerprint" = ${fingerprint} LIMIT 1`);
+  return res.rows.length > 0;
 }
 
 export async function getToken(platform: string): Promise<{ token: string; refreshedAt: Date } | null> {

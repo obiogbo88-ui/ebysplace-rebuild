@@ -190,6 +190,15 @@ describe("publishPost", () => {
     expect(calls.every((c) => !c.url.includes("graph.instagram.com"))).toBe(true);
   });
 
+  it("posts a Reel (video with music) when the post has one", async () => {
+    const calls = graphStub([{ id: "reel1" }, { status_code: "FINISHED" }, { id: "media9" }]);
+    const result = await publishPost({ ...base, reelUrl: "https://a/reel.mp4" } as SocialPost, { userId: "42", accessToken: "t" }, null);
+    expect(result.igMediaId).toBe("media9");
+    expect(calls[0].body).toContain("media_type=REELS");
+    expect(calls[0].body).toContain("video_url=https%3A%2F%2Fa%2Freel.mp4");
+    expect(calls[0].body).toContain("share_to_feed=true");
+  });
+
   it("marks a half-finished post partial so the next run finishes it", async () => {
     graphStub([{ error: { message: "Session has expired", code: 190 } }, { id: "fbpost" }]);
     const result = await publishPost(base, { userId: "42", accessToken: "t" }, { pageId: "77", pageAccessToken: "t" });
