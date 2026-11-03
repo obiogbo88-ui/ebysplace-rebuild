@@ -4,6 +4,7 @@ import { runAbandonedOrderReminders } from "./orderReminders";
 import { runDayBeforeAppointmentReminders } from "./appointmentReminders";
 import { cleanupOldRateLimitBuckets } from "./db";
 import { runStaleUnpaidCheckoutCleanup } from "./staleCheckoutCleanup";
+import { ifOn, runAutoReviewAsks, runRebookNudges, runWinBack } from "./crm/automations";
 
 const CRON_PATH = "/api/cron/daily-reminders";
 
@@ -28,24 +29,28 @@ export function registerDailyAutomationsCron(app: Application) {
       return;
     }
 
+    // Each job checks its own switch on the CRM's Automations page first.
     const results = await Promise.allSettled([
-      runUnconfirmedBookingReminders(),
-      runAbandonedOrderReminders(),
-      runDayBeforeAppointmentReminders(),
+      ifOn("unconfirmed_reminder", runUnconfirmedBookingReminders),
+      ifOn("abandoned_order", runAbandonedOrderReminders),
+      ifOn("day_before_reminder", runDayBeforeAppointmentReminders),
       cleanupOldRateLimitBuckets(),
-      runStaleUnpaidCheckoutCleanup(),
+      ifOn("stale_checkout_cleanup", runStaleUnpaidCheckoutCleanup),
+      ifOn("review_ask", () => runAutoReviewAsks()),
+      ifOn("rebook_nudge", () => runRebookNudges()),
+      ifOn("win_back", () => runWinBack()),
     ]);
 
-    const [bookingReminders, orderReminders, appointmentReminders, , staleCheckoutCleanup] = results.map((result) =>
+    const [bookingReminders, orderReminders, appointmentReminders, , staleCheckoutCleanup, reviewAsks, rebookNudges, winBack] = results.map((result) =>
       result.status === "fulfilled" ? result.value : { error: result.reason instanceof Error ? result.reason.message : String(result.reason) }
     );
 
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        console.error("[DailyAutomations] Check failed", ["bookingReminders", "orderReminders", "appointmentReminders", "rateLimitCleanup", "staleCheckoutCleanup"][index], result.reason);
+        console.error("[DailyAutomations] Check failed", ["bookingReminders", "orderReminders", "appointmentReminders", "rateLimitCleanup", "staleCheckoutCleanup", "reviewAsks", "rebookNudges", "winBack"][index], result.reason);
       }
     });
 
-    res.json({ success: true, bookingReminders, orderReminders, appointmentReminders, staleCheckoutCleanup });
+    res.json({ success: true, bookingReminders, orderReminders, appointmentReminders, staleCheckoutCleanup, reviewAsks, rebookNudges, winBack });
   });
 }

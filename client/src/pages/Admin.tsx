@@ -28,6 +28,8 @@ import {
 import { toast } from "sonner";
 import { bookingDepositLabel, isPastAppointment } from "@/lib/bookingDisplay";
 import { formatReviewRequestDate } from "@shared/reviewRequest";
+import { CrmPageHeader, CrmPageView, VisiblePanelsContext, useCrmLocation, usePanelVisible } from "./crm/CrmPageView";
+import { crmPage } from "./crm/nav";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -263,6 +265,8 @@ type AdminPanelProps = {
 };
 
 function AdminPanel({ id, title, eyebrow, description, icon: Icon, open, onToggle, badge, children }: AdminPanelProps) {
+  // Each CRM page shows only its own tools (see crm/nav.ts).
+  if (!usePanelVisible(id)) return null;
   return (
     <section id={id} className="lux-card overflow-hidden border-primary/20 bg-card/95 !p-3 sm:!p-4">
       <button
@@ -636,13 +640,7 @@ export default function Admin() {
     { sectionId: "activity-monitoring", label: "Alerts", count: unreadAlertCount, noun: "unread" },
   ].filter((item) => item.count > 0);
   const autoOpenedRef = useRef(false);
-  useEffect(() => {
-    if (autoOpenedRef.current || !lists.data || typeof window === "undefined") return;
-    autoOpenedRef.current = true;
-    if (resolvePanelFromHash(window.location.hash || "")) return;
-    const urgent = attentionItems.find((item) => item.sectionId !== "activity-monitoring");
-    if (urgent) setOpenPanels(new Set([urgent.sectionId]));
-  }, [lists.data]);
+  // (The old "open the most urgent panel" behaviour now lives on the CRM Home page's "Needs you" list.)
   const isPanelOpen = (panelId: string) => openPanels.has(panelId);
   const transactionSummary = trpc.admin.transactionSummary.useQuery(undefined, { retry: false, refetchInterval: 60000 });
   const [transactionFilter, setTransactionFilter] = useState<{ type: string }>({ type: "" });
@@ -720,7 +718,12 @@ export default function Admin() {
   };
   const togglePanel = (panelId: string) => {
     const opening = !openPanels.has(panelId);
-    setOpenPanels(opening ? new Set([panelId]) : new Set());
+    setOpenPanels((current) => {
+      const next = new Set(current);
+      if (opening) next.add(panelId);
+      else next.delete(panelId);
+      return next;
+    });
     if (opening) window.setTimeout(() => smoothScrollToElement(panelId, 60), 60);
   };
   const openPublicHomepage = () => {
@@ -748,21 +751,33 @@ export default function Admin() {
     ]);
     return validPanels.has(hash) ? hash : null;
   };
+  // CRM pages: each page opens its own tools; an old link like #bookings opens that one tool on its page.
+  const crmLoc = useCrmLocation();
+  const crmPanels = crmPage(crmLoc.page).panels;
+  const visiblePanels = new Set(crmPanels);
   useEffect(() => {
-    const syncPanelFromHash = () => {
-      const panelId = resolvePanelFromHash(window.location.hash || "");
-      if (!panelId) return;
-      setOpenPanels((current) => (current.has(panelId) && current.size === 1 ? current : new Set([panelId])));
-      window.setTimeout(() => smoothScrollToElement(panelId, 60), 60);
+    const panelId = crmLoc.panel ?? resolvePanelFromHash(window.location.hash || "");
+    setOpenPanels(new Set(panelId ? [panelId] : crmPanels));
+    if (panelId) window.setTimeout(() => smoothScrollToElement(panelId, 60), 60);
+    else window.scrollTo({ top: 0 });
+  }, [crmLoc.page, crmLoc.panel, crmLoc.clientKey]);
+  // The client profile's Email button fills in the reply form.
+  useEffect(() => {
+    const compose = (event: Event) => {
+      const detail = (event as CustomEvent<{ to: string; name: string }>).detail;
+      if (!detail?.to) return;
+      setReplyForm((current) => ({ ...current, to: detail.to, body: current.body || `Hi ${detail.name.split(" ")[0] || "there"},
+
+` }));
     };
-    syncPanelFromHash();
-    window.addEventListener("hashchange", syncPanelFromHash);
-    return () => window.removeEventListener("hashchange", syncPanelFromHash);
+    window.addEventListener("crm:compose", compose);
+    return () => window.removeEventListener("crm:compose", compose);
   }, []);
   const openProtectedOverviewSection = (sectionId: string, label: string) => {
+    // Moves to the CRM page that holds this tool (crm/nav.ts) and opens it there.
     setOpenPanels(new Set([sectionId]));
-    window.setTimeout(() => smoothScrollToElement(sectionId, 60), 60);
-    window.history.replaceState(null, "", `${window.location.pathname}#${sectionId}`);
+    if (window.location.hash === `#${sectionId}`) window.setTimeout(() => smoothScrollToElement(sectionId, 60), 60);
+    else window.location.hash = sectionId;
     refresh();
     toast.success(`${label} opened with protected admin data refreshed`);
   };
@@ -862,11 +877,14 @@ export default function Admin() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-background text-foreground">
+      <VisiblePanelsContext.Provider value={visiblePanels}>
+      <div className="min-h-screen bg-[#F6F5F2] text-[#1A1A1A]">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="serif mt-2 !text-3xl font-bold leading-tight gold-text sm:!text-4xl">Eby’s Place Admin Dashboard</h1>
-            <p className="mt-2 max-w-3xl text-sm text-white/60">Bookings, orders, stock, reviews and site content in one secure area.</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A641E]">Eby’s Place CRM</p>
+            <div className="mt-1">
+              <CrmPageHeader loc={crmLoc} />
+            </div>
           </div>
           <div className="lux-card grid gap-3 py-4">
             <div className="flex items-start justify-between gap-4">
@@ -956,6 +974,11 @@ export default function Admin() {
           </div>
         )}
 
+        <div className="grid gap-4">
+          <CrmPageView loc={crmLoc} blockedSlots={(data.availability?.blockedSlots || []) as any[]} />
+        </div>
+
+        {crmLoc.page === "website" && (
         <section id="overview" className="mt-5 overflow-hidden rounded-[2rem] border border-primary/20 bg-card/95 p-4 shadow-[0_24px_80px_rgba(46,27,16,.12)] sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
@@ -1015,6 +1038,7 @@ export default function Admin() {
             <Stat label="Unread alerts" value={unreadAlertCount || (summary.data?.unreadActivities ?? 0)} icon={Activity} />
           </div>
         </section>
+        )}
 
         <div className="mt-3 grid gap-3">
           <AdminPanel id="activity-monitoring" badge={unreadAlertCount} eyebrow="Live intelligence" title="Analytics and activity monitoring" description="View visits, booking/payment/shop/AI actions, Braiders Near Me/Kouvia events, failures, and admin audit updates in one feed." icon={Activity} open={isPanelOpen("activity-monitoring")} onToggle={() => togglePanel("activity-monitoring")}>
@@ -2178,6 +2202,7 @@ export default function Admin() {
           </AdminPanel>
         </div>
       </div>
+      </VisiblePanelsContext.Provider>
     </DashboardLayout>
   );
 }

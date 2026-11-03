@@ -78,7 +78,7 @@ describe("cancelStaleUnpaidCheckouts safety rules", () => {
 
   it("is wired into the daily cron alongside the reminders", () => {
     const cron = readFileSync(resolve(process.cwd(), "server/dailyAutomations.ts"), "utf8");
-    expect(cron).toContain("runStaleUnpaidCheckoutCleanup(),");
+    expect(cron).toContain('ifOn("stale_checkout_cleanup", runStaleUnpaidCheckoutCleanup)');
   });
 
   it("still confirms a cancelled booking if the customer pays for it later", () => {

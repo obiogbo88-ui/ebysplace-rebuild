@@ -23,25 +23,35 @@ import { getAdminLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { navigateWithSmoothScroll, smoothScrollToElement } from "@/lib/smoothScroll";
 import { trpc } from "@/lib/trpc";
-import { Activity, CalendarDays, Home, Images, Instagram, LayoutDashboard, LogOut, MessageSquare, Package, PanelLeft, Scissors, ShoppingBag, Users } from "lucide-react";
+import { BarChart3, CalendarDays, Globe, Home, Inbox, Instagram, LayoutDashboard, LogOut, Megaphone, PanelLeft, PoundSterling, ShoppingBag, Users, Workflow } from "lucide-react";
+import { CRM_PAGES, parseCrmHash, type CrmPageId } from "@/pages/crm/nav";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Overview", path: "/admin" },
-  { icon: CalendarDays, label: "Bookings", path: "/admin#bookings" },
-  { icon: CalendarDays, label: "Availability", path: "/admin#availability" },
-  { icon: ShoppingBag, label: "Orders", path: "/admin#orders" },
-  { icon: Package, label: "Products", path: "/admin#products" },
-  { icon: Scissors, label: "Services", path: "/admin#services" },
-  { icon: Images, label: "Gallery", path: "/admin#gallery" },
-  { icon: Instagram, label: "Instagram", path: "/admin#instagram" },
-  { icon: MessageSquare, label: "Reviews", path: "/admin#reviews" },
-  { icon: Activity, label: "Activity & Notifications", path: "/admin#activity" },
-  { icon: Users, label: "Admin Users", path: "/admin#users" },
-];
+// The CRM's pages (client/src/pages/crm/nav.ts), grouped like the mockup.
+const PAGE_ICONS: Record<CrmPageId, any> = {
+  home: LayoutDashboard,
+  clients: Users,
+  client: Users,
+  calendar: CalendarDays,
+  inbox: Inbox,
+  shop: ShoppingBag,
+  money: PoundSterling,
+  social: Instagram,
+  campaigns: Megaphone,
+  automations: Workflow,
+  reports: BarChart3,
+  website: Globe,
+};
+const menuItems = CRM_PAGES.filter((page) => page.inMenu).map((page) => ({
+  id: page.id,
+  group: page.group,
+  icon: PAGE_ICONS[page.id],
+  label: page.label,
+  path: page.id === "home" ? "/admin" : `/admin#${page.id}`,
+}));
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
@@ -132,8 +142,21 @@ function DashboardLayoutContent({
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [currentHash, setCurrentHash] = useState(() => (typeof window === "undefined" ? "" : window.location.hash));
-  const activePath = location === "/admin" && currentHash ? `/admin${currentHash}` : location;
-  const activeMenuItem = menuItems.find(item => item.path === activePath) ?? menuItems.find(item => item.path === location);
+  const activePage = parseCrmHash(currentHash).page;
+  const activeId: CrmPageId = activePage === "client" ? "clients" : activePage;
+  const activePath = location === "/admin" ? (activeId === "home" ? "/admin" : `/admin#${activeId}`) : location;
+  const activeMenuItem = menuItems.find(item => item.path === activePath) ?? menuItems[0];
+  const crmCounts = trpc.crm.overview.useQuery(undefined, { enabled: Boolean(user?.role === "admin"), retry: false, refetchInterval: 60000 });
+  const badgeFor = (id: CrmPageId) => {
+    const d = crmCounts.data;
+    if (!d) return 0;
+    if (id === "calendar") return d.needsYou.pendingBookingCount;
+    if (id === "inbox") return d.needsYou.chatCount;
+    if (id === "shop") return d.needsYou.ordersToSend;
+    if (id === "website") return d.needsYou.reviewsPending;
+    if (id === "reports") return unreadActivityCount.data ?? 0;
+    return 0;
+  };
   const isMobile = useIsMobile();
   const normalizeAdminHash = (hashValue: string) => {
     if (!hashValue) return "";
@@ -172,17 +195,20 @@ function DashboardLayoutContent({
   const navigateAdminMenu = (path: string) => {
     const [pathname, sectionId] = path.split("#");
     setLocation(pathname || "/admin");
+    if (isMobile) toggleSidebar();
     if (pathname === "/admin" && sectionId) {
       const normalizedHash = normalizeAdminHash(`#${sectionId}`);
       const targetSectionId = hashToSectionId(normalizedHash);
-      window.history.replaceState(null, "", `/admin${normalizedHash}`);
-      smoothScrollToElement(sectionId, 60);
-      if (targetSectionId !== sectionId) smoothScrollToElement(targetSectionId, 60);
+      // Setting the hash (not replaceState) fires hashchange, which switches the CRM page.
+      window.location.hash = normalizedHash.replace(/^#/, "");
       setCurrentHash(normalizedHash);
+      if (document.getElementById(targetSectionId)) smoothScrollToElement(sectionId, 60);
       return;
     }
+    if (window.location.hash) window.location.hash = "";
     window.history.replaceState(null, "", "/admin");
     setCurrentHash("");
+    window.scrollTo({ top: 0 });
   };
 
   useEffect(() => {
@@ -235,7 +261,7 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold tracking-tight truncate">
-                    Eby’s Place Admin
+                    Eby’s Place CRM
                   </span>
                 </div>
               ) : null}
@@ -244,10 +270,15 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
+              {menuItems.map((item, index) => {
                 const isActive = activePath === item.path;
+                const badge = badgeFor(item.id);
+                const groupStart = index === 0 || menuItems[index - 1].group !== item.group;
                 return (
                   <SidebarMenuItem key={item.path}>
+                    {groupStart ? (
+                      <div className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground group-data-[collapsible=icon]:hidden">{item.group}</div>
+                    ) : null}
                     <SidebarMenuButton
                       isActive={isActive}
                       onClick={() => navigateAdminMenu(item.path)}
@@ -258,9 +289,9 @@ function DashboardLayoutContent({
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
                       />
                       <span>{item.label}</span>
-                      {item.path === "/admin#activity" && (unreadActivityCount.data ?? 0) > 0 ? (
-                        <span className="ml-auto rounded-full border border-primary/35 bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary group-data-[collapsible=icon]:hidden">
-                          {unreadActivityCount.data}
+                      {badge > 0 ? (
+                        <span className="ml-auto rounded-full border border-primary/35 bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary group-data-[collapsible=icon]:hidden" aria-label={`${badge} need attention`}>
+                          {badge}
                         </span>
                       ) : null}
                     </SidebarMenuButton>

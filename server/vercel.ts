@@ -6,6 +6,7 @@ import { registerStripeWebhook } from "./stripeWebhook";
 import { registerActivityCollector } from "./activityCollector";
 import { registerDailyAutomationsCron } from "./dailyAutomations";
 import { registerSocialCrons } from "./social/cron";
+import { registerCrmRoutes } from "./crm/routes";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 import { serveStatic } from "./static";
@@ -19,6 +20,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 registerActivityCollector(app);
 registerDailyAutomationsCron(app);
 registerSocialCrons(app);
+registerCrmRoutes(app);
 app.use("/api/trpc", (_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.setHeader("Pragma", "no-cache");

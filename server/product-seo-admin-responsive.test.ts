@@ -163,7 +163,8 @@ describe("product SEO administration and responsive page safeguards", () => {
     const pages = ["Home", "Services", "Booking", "Shop", "TryOn", "Braiders", "Gallery", "Reviews", "Admin"];
 
     for (const page of pages) {
-      const source = readSource(`client/src/pages/${page}.tsx`);
+      // The admin's page headings live in the CRM page header (client/src/pages/crm).
+      const source = readSource(`client/src/pages/${page}.tsx`) + (page === "Admin" ? readSource("client/src/pages/crm/CrmPageView.tsx") : "");
       expect(source, `${page} should include mobile-first sizing`).toMatch(/text-4xl/);
       expect(source, `${page} should include a responsive breakpoint`).toMatch(/(?:sm|md|lg|xl):/);
       expect(source, `${page} should avoid fixed desktop-only overflow risks`).toMatch(/(?:min-w-0|overflow-x-auto|grid gap|container)/);

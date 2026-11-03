@@ -24,6 +24,7 @@ import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPassword
 import * as db from "./db";
 import { getSeasonalTheme } from "./seasonalTheme";
 import { reviewRequestBlockReason } from "../shared/reviewRequest";
+import { crmRouter } from "./crm/router";
 
 const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Weaves", "Crochet", "Kids Styles", "Men Styles", "Add-ons"]);
 const bookingStatus = z.enum(["pending", "confirmed", "completed", "cancelled"]);
@@ -1054,6 +1055,7 @@ export const appRouter = router({
     }),
   }),
 
+  crm: crmRouter,
   admin: router({
     summary: adminProcedure.query(() => db.adminSummary()),
     lists: adminProcedure.query(() => db.adminLists()),
