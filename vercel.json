@@ -5,7 +5,7 @@
   "functions": {
     "api/index.js": {
       "includeFiles": "public/**",
-      "maxDuration": 90
+      "maxDuration": 300
     }
   },
   "crons": [
