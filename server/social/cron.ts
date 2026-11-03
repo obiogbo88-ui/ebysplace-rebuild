@@ -15,6 +15,7 @@ import {
 } from "./graph";
 import { claimPost, getPost, getToken, requireDb, savePublishResult, saveToken, type SlotName, type SocialPost } from "./store";
 import { sql } from "drizzle-orm";
+import { isAutomationOn } from "../crm/automations";
 
 /**
  * Eby's Place automatic Instagram + Facebook posting. Fully automatic by
@@ -119,8 +120,10 @@ export async function publishPost(post: SocialPost, ig: InstagramCredentials | n
   return result;
 }
 
-async function runPublish(slot: SlotName, force = false) {
+/** `force` (the CRM's "Post one now") skips the time check; the pause switches still win. */
+export async function runPublish(slot: SlotName, force = false) {
   if (paused()) return { skipped: "paused (SOCIAL_AUTOPOST_PAUSED)" };
+  if (!(await isAutomationOn("social_autopilot"))) return { skipped: "social autopilot is switched off in the CRM" };
   if (!force && !slotDue(slot)) return { skipped: `not ${slot}'s London hour (the other clock-change twin of this cron)` };
   const ig = await instagramCredentials();
   const fb = await facebookCredentials();
@@ -149,6 +152,10 @@ async function runPublish(slot: SlotName, force = false) {
 }
 
 async function runPrepare(startedAt: number) {
+  if (paused() || !(await isAutomationOn("social_autopilot"))) {
+    // Switched off: keep the Instagram token alive but don't write posts nobody will publish.
+    return { made: [], errors: [], skipped: "social autopilot is off", instagramToken: await keepInstagramTokenFresh() };
+  }
   const today = londonDate();
   const hour = londonHour();
   const wanted: Array<[string, SlotName]> = [];

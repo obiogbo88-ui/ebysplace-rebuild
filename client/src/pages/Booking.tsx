@@ -203,6 +203,19 @@ export default function Booking() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const preselected = params.get("service");
+    // "Book again" in the CRM hands over the client's details via sessionStorage (never the URL).
+    try {
+      const raw = window.sessionStorage.getItem("ebys-booking-prefill");
+      if (raw) {
+        window.sessionStorage.removeItem("ebys-booking-prefill");
+        const prefill = JSON.parse(raw) as { clientName?: string; clientEmail?: string; clientPhone?: string };
+        if (prefill.clientName) set("clientName", String(prefill.clientName).slice(0, 180));
+        if (prefill.clientEmail) set("clientEmail", String(prefill.clientEmail).slice(0, 320));
+        if (prefill.clientPhone) set("clientPhone", String(prefill.clientPhone).slice(0, 80));
+      }
+    } catch {
+      // storage blocked: Eby types the details as usual
+    }
     if (preselected) {
       set("serviceName", preselected);
       goToStep(1);
