@@ -108,7 +108,7 @@ export function ClientProfilePage({ clientKey }: { clientKey: string }) {
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <Pill tone="new">{STAGE_LABEL[c.stage]}</Pill>
-          {c.tags.map((t) => (
+          {c.tags.filter((t) => t !== STAGE_LABEL[c.stage]).map((t) => (
             <span key={t} className="inline-flex items-center gap-1 rounded-full bg-[#F3EBDC] px-2.5 py-0.5 text-xs font-semibold text-[#8A641E]">
               {t}
               {c.ownTags.includes(t) ? (
@@ -130,7 +130,7 @@ export function ClientProfilePage({ clientKey }: { clientKey: string }) {
               Add a tag
             </label>
             <input id="crm-new-tag" value={newTag} onChange={(e) => setNewTag(e.target.value)} maxLength={40} placeholder="Add a tag, e.g. likes satin bonnets" className="h-7 w-56 max-w-full rounded-full border border-[#E6E1D8] bg-white px-3 text-xs" />
-            <button type="submit" aria-label="Add tag" disabled={!newTag.trim() || addTag.isPending} className="grid h-7 w-7 place-items-center rounded-full border border-[#E6E1D8] bg-white disabled:opacity-40">
+            <button type="submit" aria-label="Add tag" disabled={!newTag.trim() || addTag.isPending} className="grid h-7 w-7 place-items-center rounded-full !border !border-[#E6E1D8] !bg-white !text-[#1A1A1A] !shadow-none disabled:opacity-40">
               <Plus className="h-3.5 w-3.5" />
             </button>
           </form>

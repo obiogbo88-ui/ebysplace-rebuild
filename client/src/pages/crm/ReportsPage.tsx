@@ -20,10 +20,10 @@ function MonthBars({ data, dataKey, title, unit }: { data: Array<Record<string, 
         <>
           <div className="h-56 w-full" role="img" aria-label={`${title}, per month for the last 12 months`}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 8, right: 4, left: -18, bottom: 0 }} barCategoryGap={6}>
+              <BarChart data={data} margin={{ top: 8, right: 4, left: 0, bottom: 0 }} barCategoryGap={6}>
                 <CartesianGrid vertical={false} stroke={GRID} />
                 <XAxis dataKey="month" tickFormatter={monthLabel} tick={{ fill: AXIS, fontSize: 11 }} tickLine={false} axisLine={{ stroke: GRID }} interval="preserveStartEnd" />
-                <YAxis allowDecimals={false} tick={{ fill: AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
+                <YAxis allowDecimals={false} tick={{ fill: AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={40} tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 100) / 10}k` : String(v))} />
                 <Tooltip
                   cursor={{ fill: "rgba(138,100,30,0.08)" }}
                   formatter={(v: number) => [`${v.toLocaleString("en-GB")} ${unit}`, ""]}

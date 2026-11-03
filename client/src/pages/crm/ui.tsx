@@ -19,7 +19,14 @@ export function Card({ title, action, children, className = "", id }: { title?: 
     <section id={id} className={`${crm.card} min-w-0 p-4 sm:p-5 ${className}`}>
       {(title || action) && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          {title ? <h2 className="text-[15px] font-semibold text-[#1A1A1A]">{title}</h2> : <span />}
+          {title ? (
+            // Inline style: the site-wide heading style (big serif on phones) must not apply to card titles.
+            <h2 className="text-[#1A1A1A]" style={{ fontFamily: "Inter, system-ui, sans-serif", fontSize: 15, fontWeight: 600, letterSpacing: 0, lineHeight: 1.4 }}>
+              {title}
+            </h2>
+          ) : (
+            <span />
+          )}
           {action}
         </div>
       )}
@@ -108,7 +115,7 @@ export function Chip({ active, onClick, children, count }: { active: boolean; on
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`rounded-full border px-3 py-1.5 text-[13px] font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C] ${active ? "border-[#1A1A1A] bg-[#1A1A1A] text-white" : "border-[#E6E1D8] bg-white text-[#1A1A1A] hover:border-[#C9A84C]"}`}
+      className={`rounded-full border px-3 py-1.5 text-[13px] font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C] ${active ? "border-[#1A1A1A] !bg-[#1A1A1A] !text-white" : "border-[#E6E1D8] !bg-white !text-[#1A1A1A] hover:border-[#C9A84C]"}`}
     >
       {children}
       {count !== undefined ? <span className={`ml-1.5 tabular-nums ${active ? "text-white/70" : "text-[#6B6458]"}`}>{count}</span> : null}
@@ -118,7 +125,7 @@ export function Chip({ active, onClick, children, count }: { active: boolean; on
 
 export function PrimaryButton({ children, onClick, disabled, type = "button" }: { children: ReactNode; onClick?: () => void; disabled?: boolean; type?: "button" | "submit" }) {
   return (
-    <button type={type} onClick={onClick} disabled={disabled} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#1A1A1A] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#333] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+    <button type={type} onClick={onClick} disabled={disabled} className="inline-flex items-center justify-center gap-2 rounded-full !border-0 !bg-[#1A1A1A] px-4 py-2 text-[13px] font-semibold !text-white !shadow-none transition hover:bg-[#333] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
       {children}
     </button>
   );

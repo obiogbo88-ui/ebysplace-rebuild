@@ -86,7 +86,7 @@ export function SocialPage() {
               <Pill>{s.time}</Pill>
               {p?.imageUrl ? <img src={p.imageUrl} alt="" className="h-14 w-11 shrink-0 rounded-md object-cover" loading="lazy" /> : <span className="h-14 w-11 shrink-0 rounded-md bg-[#F6F5F2]" />}
               <div className="min-w-0 flex-1">
-                <div className="truncate font-semibold">{p ? p.title : "Not written yet"}</div>
+                <div className="font-semibold [overflow-wrap:anywhere]">{p ? p.title : "Not written yet"}</div>
                 <div className="truncate text-[13px] text-[#6B6458]">{p ? `${p.kindLabel}${p.isAiGenerated ? " · AI images (labelled on Instagram)" : ""}` : "The autopilot writes it before it's due"}</div>
                 {p?.error ? <div className="mt-1 break-words text-xs text-[#B3261E]">{p.error}</div> : null}
               </div>
@@ -115,7 +115,7 @@ export function SocialPage() {
                 {d.schedule.find((s) => s.slot === p.slot)?.time}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="truncate font-semibold">{p.title}</div>
+                <div className="font-semibold [overflow-wrap:anywhere]">{p.title}</div>
                 <div className="truncate text-[13px] text-[#6B6458]">
                   {p.kindLabel}
                   {p.postedAt ? ` · posted ${niceDateTime(p.postedAt)}` : ""}

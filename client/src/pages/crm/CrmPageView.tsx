@@ -1,13 +1,16 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { Suspense, createContext, lazy, useContext, useEffect, useState } from "react";
 import { AutomationsPage } from "./AutomationsPage";
 import { CalendarPage } from "./CalendarPage";
 import { CampaignsPage } from "./CampaignsPage";
 import { ClientProfilePage } from "./ClientProfilePage";
 import { ClientsPage } from "./ClientsPage";
 import { HomePage } from "./HomePage";
-import { ReportsPage } from "./ReportsPage";
 import { SocialPage } from "./SocialPage";
 import { crmPage, parseCrmHash, type CrmLocation } from "./nav";
+import { Loading } from "./ui";
+
+// Charts load only when Reports is opened.
+const ReportsPage = lazy(() => import("./ReportsPage").then((m) => ({ default: m.ReportsPage })));
 
 /** The current CRM page, from the address bar's #hash. */
 export function useCrmLocation(): CrmLocation {
@@ -55,7 +58,11 @@ export function CrmPageView({ loc, blockedSlots }: { loc: CrmLocation; blockedSl
     case "automations":
       return <AutomationsPage />;
     case "reports":
-      return <ReportsPage />;
+      return (
+        <Suspense fallback={<Loading label="Loading reports…" />}>
+          <ReportsPage />
+        </Suspense>
+      );
     default:
       return null;
   }

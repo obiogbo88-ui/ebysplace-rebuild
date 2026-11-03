@@ -78,7 +78,7 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
                 {q.data.clients.map((c) => (
                   <tr key={c.key} className="cursor-pointer transition hover:bg-[#FBF8F2]" onClick={() => goCrm(clientHash(c.key))}>
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5">
-                      <a href={clientHash(c.key)} className="flex items-center gap-3 font-semibold text-[#1A1A1A] no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]" onClick={(e) => e.stopPropagation()}>
+                      <a href={clientHash(c.key)} className="flex items-center gap-3 font-semibold !text-[#1A1A1A] no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]" onClick={(e) => e.stopPropagation()}>
                         <Avatar name={c.name} size={32} />
                         <span className="min-w-0">
                           <span className="block truncate">{c.name}</span>
@@ -109,7 +109,7 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
           <ul className="grid gap-2 md:hidden">
             {q.data.clients.map((c) => (
               <li key={c.key}>
-                <a href={clientHash(c.key)} className="flex min-w-0 items-center gap-3 rounded-xl border border-[#EFEBE4] p-3 text-[#1A1A1A] no-underline">
+                <a href={clientHash(c.key)} className="flex min-w-0 items-center gap-3 rounded-xl border border-[#EFEBE4] p-3 !text-[#1A1A1A] no-underline">
                   <Avatar name={c.name} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold">{c.name}</span>

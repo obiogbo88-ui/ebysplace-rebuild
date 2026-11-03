@@ -886,9 +886,9 @@ export default function Admin() {
               <CrmPageHeader loc={crmLoc} />
             </div>
           </div>
-          <div className="lux-card grid gap-3 py-4">
+          <div className="lux-card grid gap-3 !p-3 sm:!p-4">
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="hidden sm:block">
                 <p className="text-sm text-white/55">Signed in as</p>
                 <b>{user?.name || user?.email || "Admin"}</b>
                 <p className="text-xs text-primary">{user?.role}</p>
@@ -960,7 +960,7 @@ export default function Admin() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <button className="btn-dark py-2 text-sm" type="button" onClick={openPublicHomepage}>Back to Homepage</button>
+            <button className="btn-dark py-2 text-sm max-sm:!hidden" type="button" onClick={openPublicHomepage}>Back to Homepage</button>
           </div>
         </div>
 

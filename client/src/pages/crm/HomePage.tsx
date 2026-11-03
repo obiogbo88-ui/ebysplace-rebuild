@@ -58,7 +58,7 @@ export function HomePage() {
                 <Row key={`b${b.id}`} onClick={() => goCrm("#bookings")}>
                   <CalendarDays className="h-5 w-5 shrink-0 text-[#8A641E]" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold">{b.name} · waiting for you to confirm</div>
+                    <div className="font-semibold [overflow-wrap:anywhere]">{b.name} · waiting for you to confirm</div>
                     <div className="truncate text-[13px] text-[#6B6458]">
                       {b.serviceName} · {niceDate(b.date, { weekday: "short", day: "numeric", month: "short" })} {b.time} · deposit {b.depositStatus.replace("_", " ")}
                     </div>
@@ -71,7 +71,7 @@ export function HomePage() {
                 <Row key={`c${c.id}`} onClick={() => goCrm("#inbox")}>
                   <MessageSquare className="h-5 w-5 shrink-0 text-[#8A641E]" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold">{c.name || "A visitor"} asked to talk to you</div>
+                    <div className="font-semibold [overflow-wrap:anywhere]">{c.name || "A visitor"} asked to talk to you</div>
                     <div className="truncate text-[13px] text-[#6B6458]">{c.lastMessage ? `"${c.lastMessage}"` : niceDateTime(c.updatedAt)}</div>
                   </div>
                   <Pill tone="wait">Reply</Pill>
@@ -113,7 +113,7 @@ export function HomePage() {
                 <Row key={b.id} onClick={b.clientKey ? () => goCrm(clientHash(b.clientKey!)) : undefined}>
                   <Avatar name={b.name} />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold">{b.name}</div>
+                    <div className="font-semibold [overflow-wrap:anywhere]">{b.name}</div>
                     <div className="truncate text-[13px] text-[#6B6458]">
                       {b.serviceName} · {niceDate(b.date, { weekday: "short", day: "numeric", month: "short" })} {b.time}
                     </div>
@@ -129,7 +129,7 @@ export function HomePage() {
               <Row key={s.slot}>
                 <Pill tone="gold">{s.time}</Pill>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold">{s.post ? s.post.title : "Not written yet"}</div>
+                  <div className="font-semibold [overflow-wrap:anywhere]">{s.post ? s.post.title : "Not written yet"}</div>
                   <div className="truncate text-[13px] text-[#6B6458]">{s.post ? `${s.post.kindLabel} · Reel` : "Written automatically before it's due"}</div>
                 </div>
                 {s.post ? <Pill tone={STATUS_TONE[s.post.status] ?? "grey"}>{s.post.status === "posted" ? "Posted" : s.post.status === "ready" ? "Ready" : s.post.status}</Pill> : <Pill tone="grey">Later</Pill>}
