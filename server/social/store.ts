@@ -15,7 +15,7 @@ import type { Slide } from "./renderer";
  */
 
 export type SlotName = "am" | "md" | "pm";
-export type PostKind = "motivation" | "style" | "inspiration" | "article";
+export type PostKind = "motivation" | "style" | "inspiration" | "article" | "kouvia";
 export type PostStatus = "ready" | "publishing" | "posted" | "partial" | "failed";
 
 export type SocialPost = {
@@ -81,6 +81,9 @@ export async function requireDb(ensureTables = true) {
     // third daily slot (2026-11-03): widen the slot check on tables made with am/pm only
     await db.execute(sql`ALTER TABLE "socialPosts" DROP CONSTRAINT IF EXISTS "socialPosts_slot_check"`);
     await db.execute(sql`ALTER TABLE "socialPosts" ADD CONSTRAINT "socialPosts_slot_check" CHECK ("slot" IN ('am','md','pm'))`);
+    // Kouvia Booking recruitment posts (2026-11-03): widen the kind check
+    await db.execute(sql`ALTER TABLE "socialPosts" DROP CONSTRAINT IF EXISTS "socialPosts_kind_check"`);
+    await db.execute(sql`ALTER TABLE "socialPosts" ADD CONSTRAINT "socialPosts_kind_check" CHECK ("kind" IN ('motivation','style','inspiration','article','kouvia'))`);
     await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "reelUrl" TEXT`);
     await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "musicSeed" BIGINT`);
     await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "musicFingerprint" VARCHAR(64)`);

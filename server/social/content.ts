@@ -7,6 +7,7 @@ import { generateImage } from "../_core/imageGeneration";
 import { renderEndCard, renderSlide, renderStory, UnsupportedImageError, type Slide } from "./renderer";
 import { buildReel, freshMelody, reelTimings } from "./reel";
 import { BRAND } from "./kit";
+import { KOUVIA_CAPTIONS, KOUVIA_VARIANTS } from "./kouviaDesigns";
 import { insertPost, isMusicUsed, orEmpty, recentSourceRefs, recentWriting, requireDb, type PostKind, type SlotName, type SocialPost } from "./store";
 
 // ------------------------------------------------------------------ calendar
@@ -62,7 +63,11 @@ const ROTATION: Record<SlotName, PostKind[]> = {
   pm: ["style", "inspiration", "style", "inspiration", "style", "style", "inspiration"],
 };
 
+/** One Kouvia Booking braider-recruitment post a week, Wednesday at 20:00, from @ebysplace1 (user, 2026-11-03). */
+export const KOUVIA_SLOT = { weekday: 2, slot: "pm" as SlotName };
+
 export function kindFor(date: string, slot: SlotName): PostKind {
+  if (weekdayIndex(date) === KOUVIA_SLOT.weekday && slot === KOUVIA_SLOT.slot) return "kouvia";
   return ROTATION[slot][weekdayIndex(date)];
 }
 
@@ -390,6 +395,8 @@ async function draft(date: string, slot: SlotName, kind: PostKind, used: Set<str
       return draftArticle(date, used);
     case "style":
       return draftStyle(date, `${date}-${slot}`, used);
+    case "kouvia":
+      return draftKouvia();
     case "inspiration":
       try {
         return await draftInspiration();
@@ -399,6 +406,24 @@ async function draft(date: string, slot: SlotName, kind: PostKind, used: Set<str
         return draftStyle(date, `${date}-${slot}`, used);
       }
   }
+}
+
+/**
+ * Kouvia posts rotate the four approved feed cards in order; the caption is
+ * fixed text (not AI-written) so the facts never drift. Slide 2 is the 9:16
+ * story card, used for the Story and shown in the Reel before the end card.
+ */
+async function draftKouvia(): Promise<Draft> {
+  const db = await requireDb(false);
+  const res = await orEmpty(() => db.execute(sql`SELECT count(*)::int AS n FROM "socialPosts" WHERE "kind" = 'kouvia'`));
+  const variant = KOUVIA_VARIANTS[Number((res.rows[0] as any)?.n ?? 0) % KOUVIA_VARIANTS.length];
+  return {
+    kind: "kouvia",
+    sourceRef: `kouvia:${variant}`,
+    isAiGenerated: false,
+    caption: KOUVIA_CAPTIONS[variant],
+    slides: [{ layout: "kouvia", variant }, { layout: "kouvia_story" }],
+  };
 }
 
 /** Motivation cards are numbered "No. 01, 02 ..." in posting order. */
@@ -426,14 +451,18 @@ export async function preparePost(date: string, slot: SlotName, options: { persi
     const d = await draft(date, slot, kind, used);
     if (d.sourceRef && d.sourceRef !== "ai") used.add(d.sourceRef);
     try {
+      // 9:16 cards (the Kouvia story card) are the Story and a full-screen Reel card, never a feed image.
+      const feedSlides = d.slides.filter((sl) => sl.layout !== "kouvia_story");
+      const storyCard = d.slides.find((sl) => sl.layout === "kouvia_story");
       const jpegs: Buffer[] = [];
-      for (const slide of d.slides) jpegs.push(await renderSlide(slide));
+      for (const slide of feedSlides) jpegs.push(await renderSlide(slide));
+      const fullCards = storyCard ? [await renderSlide(storyCard)] : [];
       const imageUrls: string[] = [];
       for (let i = 0; i < jpegs.length; i++) imageUrls.push((await storagePut(`social/${date}-${slot}-${i + 1}.jpg`, jpegs[i], "image/jpeg")).url);
-      const storyUrl = (await storagePut(`social/${date}-${slot}-story.jpg`, await renderStory(jpegs[0]), "image/jpeg")).url;
+      const storyUrl = (await storagePut(`social/${date}-${slot}-story.jpg`, fullCards[0] ?? (await renderStory(jpegs[0])), "image/jpeg")).url;
       // Every post is also a Reel with its own, never-repeated melody.
-      const { seed, melody } = await freshMelody(reelTimings(jpegs.length).total, isMusicUsed);
-      const reel = await buildReel(jpegs, await renderEndCard(), melody);
+      const { seed, melody } = await freshMelody(reelTimings(jpegs.length, fullCards.length).total, isMusicUsed);
+      const reel = await buildReel(jpegs, await renderEndCard(), melody, fullCards);
       const reelUrl = (await storagePut(`social/${date}-${slot}-reel.mp4`, reel, "video/mp4")).url;
       console.log(`[social] ${date} ${slot}: reel ${Math.round(reel.length / 1024)} KB, music ${melody.description}`);
       const row = {

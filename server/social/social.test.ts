@@ -31,7 +31,8 @@ describe("weekly plan", () => {
     expect(weekdayIndex("2026-11-02")).toBe(0);
     const week = Array.from({ length: 7 }, (_, i) => addDays("2026-11-02", i));
     expect(week.map((d) => kindFor(d, "am"))).toEqual(["motivation", "article", "motivation", "article", "style", "motivation", "article"]);
-    expect(week.map((d) => kindFor(d, "pm"))).toEqual(["style", "inspiration", "style", "inspiration", "style", "style", "inspiration"]);
+    // Wednesday 20:00 is the weekly Kouvia Booking post (user, 2026-11-03)
+    expect(week.map((d) => kindFor(d, "pm"))).toEqual(["style", "inspiration", "kouvia", "inspiration", "style", "style", "inspiration"]);
   });
 
   it("adds a 12:30 slot and never repeats a kind on one day except Friday's priced styles", () => {

@@ -241,11 +241,11 @@ function addDaysIso(date: string, n: number) {
   return new Date(Date.parse(`${date}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 }
 
-const KIND_LABEL: Record<string, string> = { motivation: "Motivation", style: "Style spotlight", inspiration: "AI this-or-that", article: "Tips carousel" };
+const KIND_LABEL: Record<string, string> = { motivation: "Motivation", style: "Style spotlight", inspiration: "AI this-or-that", article: "Tips carousel", kouvia: "Kouvia Booking for braiders" };
 
 function summarisePost(r: any) {
   const first = (r.slides ?? [])[0] ?? {};
-  const title = first.headline || first.title || first.quote || first.hook || KIND_LABEL[r.kind] || r.kind;
+  const title = first.headline || first.title || first.quote || first.hook || (first.variant ? `Kouvia: ${first.variant}` : "") || KIND_LABEL[r.kind] || r.kind;
   return { kind: r.kind, kindLabel: KIND_LABEL[r.kind] ?? r.kind, title: String(title).slice(0, 90), status: r.status, postedAt: r.postedAt, error: r.error ? String(r.error).slice(0, 200) : null };
 }
 

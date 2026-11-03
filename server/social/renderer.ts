@@ -1,7 +1,8 @@
 import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import jpeg from "jpeg-js";
-import { BRAND, LOGO_ASPECT, loadFonts, logoDataUri, type SatoriFont } from "./kit";
+import { BRAND, LOGO_ASPECT, kouviaLogoDataUri, loadFonts, logoDataUri, type SatoriFont } from "./kit";
+import { KOUVIA, KOUVIA_LOGO_ASPECT, KOUVIA_PROFILE_FEATURES, KOUVIA_STEPS, type KouviaVariant } from "./kouviaDesigns";
 
 /**
  * Renders the approved post designs (Design canvas 8qEtm6herDoyhmAYE2WBqD)
@@ -39,7 +40,10 @@ export type PhotoHookSlide = {
 export type ThisOrThatSlide = { layout: "this_or_that"; photoUrls: [string, string]; labels: [string, string]; headline: string; accent?: string };
 export type ArticleCoverSlide = { layout: "article_cover"; photoUrl: string; title: string; accent?: string; tag?: string; total: number };
 export type ArticleTipSlide = { layout: "article_tip"; index: number; total: number; title: string; body: string };
-export type Slide = MotivationSlide | PhotoSlide | PhotoHookSlide | ThisOrThatSlide | ArticleCoverSlide | ArticleTipSlide;
+/** Kouvia Booking recruitment cards (K1-K4 feed, K5 the 9:16 story card). */
+export type KouviaSlide = { layout: "kouvia"; variant: KouviaVariant };
+export type KouviaStorySlide = { layout: "kouvia_story" };
+export type Slide = MotivationSlide | PhotoSlide | PhotoHookSlide | ThisOrThatSlide | ArticleCoverSlide | ArticleTipSlide | KouviaSlide | KouviaStorySlide;
 
 /** Every card carries this (user request 2026-11-03: "follow us for more" on every post). */
 export const FOLLOW_LINE = `Follow ${BRAND.instagramHandle} for more`;
@@ -383,6 +387,216 @@ function story(feedJpegDataUri: string, logoLight: string): El {
   );
 }
 
+// ------------------------------------------------------------- Kouvia cards
+
+const KF = { fontFamily: "Montserrat" } as const;
+const SYNE = { fontFamily: "Syne", fontWeight: 800 } as const;
+
+/** Syne headline with a coloured second half, wrapped word by word like `headline`. */
+function kouviaHead(before: string, accent: string, size: number, color: string, accentColor: string, extra: Record<string, unknown> = {}): El {
+  const words = (s: string, style: Record<string, unknown>) =>
+    s.split(/\s+/).filter(Boolean).map((w) => h("span", { ...style, marginRight: "0.22em" }, w));
+  return {
+    type: "div",
+    props: {
+      style: { display: "flex", flexWrap: "wrap", ...SYNE, fontSize: px(size), lineHeight: 1.02, color, ...extra },
+      children: [...words(before, {}), ...words(accent, { color: accentColor })],
+    },
+  };
+}
+
+function kouviaPill(text: string, background: string, color: string, size = 12): El {
+  return h("span", { display: "flex", alignSelf: "flex-start", background, color, ...KF, fontSize: px(size), fontWeight: 700, letterSpacing: px(2), textTransform: "uppercase", padding: `${px(9)}px ${px(14)}px`, borderRadius: px(999) }, text);
+}
+
+function kouviaLogo(logo: string, height: number): El {
+  return img(logo, { height: px(height), width: px(height) * KOUVIA_LOGO_ASPECT });
+}
+
+function kouviaHook(logo: string): El {
+  return frame(
+    FEED,
+    KOUVIA.teal,
+    [px(40), px(38), px(30), px(38)],
+    { justifyContent: "space-between", color: KOUVIA.white, ...KF },
+    kouviaPill("Braiders, read this", KOUVIA.gold, KOUVIA.deep),
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: px(18) },
+      kouviaHead("No website?", "You can still get booked online.", 50, KOUVIA.white, KOUVIA.gold),
+      h("span", { fontSize: px(17), lineHeight: 1.55, color: KOUVIA.mist, maxWidth: px(430) }, "Great braids, but hard to find online? Kouvia gives you a booking page, a calendar and deposits. No coding, no tech skills."),
+    ),
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: px(14) },
+      h(
+        "div",
+        { display: "flex", gap: px(8), flexWrap: "wrap" },
+        ...["Free to join", "No card needed", "No cut of your bookings"].map((t) =>
+          h("span", { display: "flex", border: `${px(1)}px solid ${KOUVIA.edge}`, borderRadius: px(999), padding: `${px(7)}px ${px(12)}px`, fontSize: px(13), fontWeight: 600 }, t),
+        ),
+      ),
+      h(
+        "div",
+        { display: "flex", justifyContent: "space-between", alignItems: "center", background: KOUVIA.white, color: KOUVIA.deep, borderRadius: px(14), padding: `${px(12)}px ${px(16)}px` },
+        h(
+          "div",
+          { display: "flex", flexDirection: "column", gap: px(2) },
+          h("span", { fontSize: px(15), fontWeight: 700 }, "Sign up free today"),
+          h("span", { fontSize: px(12), color: KOUVIA.slate }, KOUVIA.signupUrl),
+        ),
+        kouviaLogo(logo, 46),
+      ),
+    ),
+  );
+}
+
+function kouviaProfile(logo: string): El {
+  const card = ([title, body]: [string, string]) =>
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: px(4), flexGrow: 1, flexBasis: 0, background: KOUVIA.white, border: `${px(1)}px solid ${KOUVIA.line}`, borderRadius: px(12), padding: `${px(12)}px ${px(14)}px` },
+      h("span", { fontSize: px(15), fontWeight: 700 }, title),
+      h("span", { fontSize: px(13), color: KOUVIA.slate, lineHeight: 1.4 }, body),
+    );
+  return frame(
+    FEED,
+    KOUVIA.paper,
+    [px(34), px(34), px(26), px(34)],
+    { justifyContent: "space-between", color: KOUVIA.deep, ...KF },
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: px(8) },
+      h("span", { fontSize: px(12), fontWeight: 700, letterSpacing: px(2), textTransform: "uppercase", color: "#8A6A3D" }, "Your free Kouvia profile"),
+      kouviaHead("Everything a website does.", "Without building one.", 36, KOUVIA.deep, KOUVIA.teal, { lineHeight: 1.04 }),
+    ),
+    // satori has no CSS grid: three explicit rows of two cards
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: px(10) },
+      ...[0, 2, 4].map((i) => h("div", { display: "flex", gap: px(10) }, card(KOUVIA_PROFILE_FEATURES[i]), card(KOUVIA_PROFILE_FEATURES[i + 1]))),
+    ),
+    h(
+      "div",
+      { display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `${px(1)}px solid ${KOUVIA.line}`, paddingTop: px(14) },
+      h(
+        "div",
+        { display: "flex", flexDirection: "column", gap: px(2) },
+        h("span", { fontSize: px(15), fontWeight: 700 }, "Free · no card · no cut of your bookings"),
+        h("span", { fontSize: px(13), color: KOUVIA.teal, fontWeight: 600 }, "Save this and send it to a braider who needs it"),
+      ),
+      kouviaLogo(logo, 48),
+    ),
+  );
+}
+
+function kouviaSteps(logo: string): El {
+  const step = ([title, body]: [string, string], i: number) =>
+    h(
+      "div",
+      { display: "flex", gap: px(16), alignItems: "flex-start", background: "rgba(255,255,255,0.06)", borderRadius: px(14), padding: px(16) },
+      h("span", { display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, width: px(44), height: px(44), borderRadius: px(22), background: KOUVIA.gold, color: KOUVIA.deep, ...SYNE, fontSize: px(22) }, String(i + 1)),
+      h(
+        "div",
+        { display: "flex", flexDirection: "column", gap: px(4), maxWidth: px(380) },
+        h("span", { fontSize: px(17), fontWeight: 700 }, title),
+        h("span", { fontSize: px(14), color: KOUVIA.mist2, lineHeight: 1.45 }, body),
+      ),
+    );
+  return frame(
+    FEED,
+    KOUVIA.deep,
+    [px(38), px(36), px(28), px(36)],
+    { justifyContent: "space-between", color: KOUVIA.white, ...KF },
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: px(10) },
+      h("span", { fontSize: px(12), fontWeight: 700, letterSpacing: px(2), textTransform: "uppercase", color: KOUVIA.gold }, "Struggling to get noticed?"),
+      kouviaHead("Get booked online in", "3 steps.", 42, KOUVIA.white, KOUVIA.gold, { lineHeight: 1.04 }),
+    ),
+    h("div", { display: "flex", flexDirection: "column", gap: px(12) }, ...KOUVIA_STEPS.map(step)),
+    h(
+      "div",
+      { display: "flex", justifyContent: "space-between", alignItems: "center" },
+      h(
+        "div",
+        { display: "flex", flexDirection: "column", gap: px(2) },
+        h("span", { fontSize: px(15), fontWeight: 700 }, "Join free, no tech skills needed"),
+        h("span", { fontSize: px(13), color: KOUVIA.gold, fontWeight: 600 }, "Send this to a braider who should be on here"),
+      ),
+      h("span", { display: "flex", background: KOUVIA.white, borderRadius: px(10), padding: `${px(6)}px ${px(10)}px` }, kouviaLogo(logo, 40)),
+    ),
+  );
+}
+
+function kouviaFree(logo: string): El {
+  return frame(
+    FEED,
+    KOUVIA.white,
+    [px(38), px(36), px(28), px(36)],
+    { justifyContent: "space-between", color: KOUVIA.deep, ...KF },
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: px(10) },
+      kouviaPill("You asked", KOUVIA.teal, KOUVIA.white),
+      kouviaHead("\"Is Kouvia", "really free?\"", 46, KOUVIA.deep, KOUVIA.teal),
+    ),
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: px(14), fontSize: px(17), lineHeight: 1.5 },
+      h(
+        "div",
+        { display: "flex", flexWrap: "wrap" },
+        h("span", { fontWeight: 700, marginRight: "0.3em" }, "Yes."),
+        ..."Kouvia is free for braiders while the platform grows.".split(" ").map((w) => h("span", { marginRight: "0.28em" }, w)),
+      ),
+      h("span", {}, "No credit card to sign up. Kouvia doesn't take a cut of your bookings, so what you earn stays yours."),
+      h("span", { color: KOUVIA.slate }, "If that ever changes, we'll tell you first."),
+    ),
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: px(12) },
+      h(
+        "div",
+        { display: "flex", justifyContent: "space-between", alignItems: "center", background: KOUVIA.teal, color: KOUVIA.white, borderRadius: px(14), padding: `${px(14)}px ${px(18)}px` },
+        h("span", { fontSize: px(16), fontWeight: 700 }, "Claim your free profile"),
+        h("span", { fontSize: px(13), color: KOUVIA.mist }, KOUVIA.site),
+      ),
+      h(
+        "div",
+        { display: "flex", justifyContent: "space-between", alignItems: "center" },
+        h("span", { fontSize: px(13), color: KOUVIA.slate, fontWeight: 600 }, "Any other questions? Ask below"),
+        kouviaLogo(logo, 44),
+      ),
+    ),
+  );
+}
+
+/** K5: the 9:16 card used as the Instagram Story and shown before the logo end card in every Kouvia Reel. */
+function kouviaStoryCard(logo: string): El {
+  const k = STORY.width / 405; // drawn at 405x720
+  return frame(
+    STORY,
+    KOUVIA.teal,
+    [56 * k, 30 * k, 48 * k, 30 * k],
+    { justifyContent: "space-between", alignItems: "center", color: KOUVIA.white, ...KF },
+    h("span", { display: "flex", background: KOUVIA.gold, color: KOUVIA.deep, fontSize: 11 * k, fontWeight: 700, letterSpacing: 2 * k, textTransform: "uppercase", padding: `${8 * k}px ${12 * k}px`, borderRadius: 999 * k }, "For braiders"),
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: 16 * k, alignItems: "center" },
+      kouviaHead("Your skills deserve to be", "found.", 40 / S * k, KOUVIA.white, KOUVIA.gold, { justifyContent: "center", lineHeight: 1.04, maxWidth: 345 * k }),
+      h("span", { fontSize: 15 * k, lineHeight: 1.5, color: KOUVIA.mist, maxWidth: 300 * k, textAlign: "center" }, "A free booking page, calendar and deposits. No website or tech skills needed."),
+    ),
+    h(
+      "div",
+      { display: "flex", flexDirection: "column", gap: 14 * k, alignItems: "center", width: "100%" },
+      h("div", { display: "flex", background: KOUVIA.white, borderRadius: 16 * k, padding: `${14 * k}px ${20 * k}px` }, img(logo, { height: 92 * k, width: 92 * k * KOUVIA_LOGO_ASPECT })),
+      h("span", { display: "flex", justifyContent: "center", width: "100%", background: KOUVIA.gold, color: KOUVIA.deep, fontSize: 15 * k, fontWeight: 700, padding: 15 * k, borderRadius: 999 * k }, `Join free · ${KOUVIA.site}`),
+      h("span", { fontSize: 11 * k, color: "#B9D6D8" }, "Kouvia Booking · powered by Eby's Place"),
+    ),
+  );
+}
+
 let fontsPromise: Promise<SatoriFont[]> | null = null;
 function fonts() {
   fontsPromise ??= loadFonts();
@@ -425,6 +639,13 @@ export async function renderSlide(slide: Slide): Promise<Buffer> {
       return toJpeg(articleCover(slide, await fetchImageDataUri(slide.photoUrl)), FEED);
     case "article_tip":
       return toJpeg(articleTip(slide, await logoDataUri("dark")), FEED);
+    case "kouvia": {
+      const logo = await kouviaLogoDataUri();
+      const draw = { hook: kouviaHook, profile: kouviaProfile, steps: kouviaSteps, free: kouviaFree }[slide.variant];
+      return toJpeg(draw(logo), FEED);
+    }
+    case "kouvia_story":
+      return toJpeg(kouviaStoryCard(await kouviaLogoDataUri()), STORY);
   }
 }
 

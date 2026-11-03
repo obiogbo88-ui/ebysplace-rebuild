@@ -18,9 +18,10 @@ export const SECONDS_PER_SLIDE = 3.5;
 export const SECONDS_SINGLE_SLIDE = 7;
 export const END_CARD_SECONDS = 3;
 
-export function reelTimings(slideCount: number) {
+/** `fullCards` are extra 9:16 cards (e.g. the Kouvia story card) shown before the logo end card. */
+export function reelTimings(slideCount: number, fullCards = 0) {
   const perSlide = slideCount === 1 ? SECONDS_SINGLE_SLIDE : SECONDS_PER_SLIDE;
-  return { perSlide, total: perSlide * slideCount + END_CARD_SECONDS };
+  return { perSlide, total: perSlide * slideCount + SECONDS_PER_SLIDE * fullCards + END_CARD_SECONDS };
 }
 
 function ffmpegPath(): string {
@@ -40,18 +41,23 @@ function run(bin: string, args: string[]): Promise<void> {
   });
 }
 
-export async function buildReel(slideJpegs: Buffer[], endCardJpeg: Buffer, melody: Melody): Promise<Buffer> {
+export async function buildReel(slideJpegs: Buffer[], endCardJpeg: Buffer, melody: Melody, fullCards: Buffer[] = []): Promise<Buffer> {
   const dir = await mkdtemp(path.join(tmpdir(), "reel-"));
   try {
     const { perSlide } = reelTimings(slideJpegs.length);
     const inputs: string[] = [];
     const chains: string[] = [];
-    const parts = [...slideJpegs.map((jpg) => ({ jpg, secs: perSlide, end: false })), { jpg: endCardJpeg, secs: END_CARD_SECONDS, end: true }];
+    // Feed slides are 4:5 and get padded; full cards are already 9:16. The logo end card is always last (standing rule).
+    const parts = [
+      ...slideJpegs.map((jpg) => ({ jpg, secs: perSlide, full: false, end: false })),
+      ...fullCards.map((jpg) => ({ jpg, secs: SECONDS_PER_SLIDE, full: true, end: false })),
+      { jpg: endCardJpeg, secs: END_CARD_SECONDS, full: true, end: true },
+    ];
     for (let i = 0; i < parts.length; i++) {
       const file = path.join(dir, `s${i}.jpg`);
       await writeFile(file, parts[i].jpg);
       inputs.push("-loop", "1", "-t", String(parts[i].secs), "-i", file);
-      const fit = parts[i].end ? "scale=1080:1920" : "scale=1080:1350,pad=1080:1920:0:285:color=0x121212";
+      const fit = parts[i].full ? "scale=1080:1920" : "scale=1080:1350,pad=1080:1920:0:285:color=0x121212";
       const fadeOut = parts[i].end ? "" : `,fade=t=out:st=${(parts[i].secs - 0.35).toFixed(2)}:d=0.35`;
       chains.push(`[${i}:v]${fit},setsar=1,fps=30,format=yuv420p,fade=t=in:st=0:d=0.35${fadeOut}[v${i}]`);
     }
