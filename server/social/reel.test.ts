@@ -50,4 +50,21 @@ describe("reel video", () => {
     expect(info).toMatch(/Audio: aac/);
     expect(info).toMatch(/Duration: 00:00:1[01]/);
   }, 120_000);
+
+  it("adds full-screen cards (Kouvia story card) before the logo end card", async () => {
+    const jpg = (shade: number, w: number, h: number) => Buffer.from(jpegJs.encode({ data: Buffer.alloc(w * h * 4, shade), width: w, height: h }, 80).data);
+    const { total } = reelTimings(1, 1); // 7 + 3.5 + 3 = 13.5s
+    const mp4 = await buildReel([jpg(90, 1080, 1350)], jpg(20, 1080, 1920), composeMelody(11, total), [jpg(200, 1080, 1920)]);
+    const file = path.join(mkdtempSync(path.join(tmpdir(), "reeltest-")), "k.mp4");
+    writeFileSync(file, mp4);
+    const ffmpeg = (createRequire(import.meta.url)("@ffmpeg-installer/ffmpeg") as { path: string }).path;
+    let info = "";
+    try {
+      execFileSync(ffmpeg, ["-hide_banner", "-i", file], { stdio: "pipe" });
+    } catch (err: any) {
+      info = String(err.stderr);
+    }
+    expect(info).toMatch(/Video: h264.*1080x1920/);
+    expect(info).toMatch(/Duration: 00:00:1[34]/);
+  }, 120_000);
 });

@@ -57,7 +57,7 @@ export async function loadKitFile(name: string): Promise<Buffer> {
   return bytes;
 }
 
-export type SatoriFont = { name: string; data: Buffer; weight: 400 | 500 | 600 | 700; style: "normal" | "italic" };
+export type SatoriFont = { name: string; data: Buffer; weight: 400 | 500 | 600 | 700 | 800; style: "normal" | "italic" };
 
 export async function loadFonts(): Promise<SatoriFont[]> {
   const specs: Array<[string, string, SatoriFont["weight"], SatoriFont["style"]]> = [
@@ -67,12 +67,23 @@ export async function loadFonts(): Promise<SatoriFont[]> {
     ["Inter", "inter-500-normal.woff", 500, "normal"],
     ["Inter", "inter-600-normal.woff", 600, "normal"],
     ["Lexend", "lexend-500-normal.woff", 500, "normal"],
+    // Kouvia Booking cards (Syne + Montserrat, SIL OFL, from @fontsource)
+    ["Syne", "syne-800-normal.woff", 800, "normal"],
+    ["Montserrat", "montserrat-400-normal.woff", 400, "normal"],
+    ["Montserrat", "montserrat-600-normal.woff", 600, "normal"],
+    ["Montserrat", "montserrat-700-normal.woff", 700, "normal"],
   ];
   return Promise.all(specs.map(async ([name, file, weight, style]) => ({ name, data: await loadKitFile(file), weight, style })));
 }
 
 export async function logoDataUri(variant: "dark" | "light") {
   const bytes = await loadKitFile(variant === "dark" ? "logo-dark.png" : "logo-light.png");
+  return `data:image/png;base64,${bytes.toString("base64")}`;
+}
+
+/** Kouvia Booking logo (with "Powered by ebysplace.com"), on white. */
+export async function kouviaLogoDataUri() {
+  const bytes = await loadKitFile("kouvia-logo.png");
   return `data:image/png;base64,${bytes.toString("base64")}`;
 }
 
