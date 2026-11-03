@@ -120,6 +120,18 @@ describe("Instagram client", () => {
   });
 });
 
+describe("Instagram host", () => {
+  it("sends Unified-login (EAA) tokens to graph.facebook.com and Instagram-login (IGAA) tokens to graph.instagram.com", async () => {
+    let calls = graphStub([{ id: "c1" }, { status_code: "FINISHED" }, { id: "m" }]);
+    await publishInstagramFeed({ userId: "42", accessToken: "EAANtest" }, ["https://a/1.jpg"], "Hi", false);
+    expect(calls.every((c) => c.url.startsWith("https://graph.facebook.com/"))).toBe(true);
+    vi.unstubAllGlobals();
+    calls = graphStub([{ id: "c1" }, { status_code: "FINISHED" }, { id: "m" }]);
+    await publishInstagramFeed({ userId: "42", accessToken: "IGAAtest" }, ["https://a/1.jpg"], "Hi", false);
+    expect(calls.every((c) => c.url.startsWith("https://graph.instagram.com/"))).toBe(true);
+  });
+});
+
 describe("Facebook client", () => {
   it("attaches every carousel slide to one Page post", async () => {
     const calls = graphStub([{ id: "p1" }, { id: "p2" }, { id: "post9" }]);

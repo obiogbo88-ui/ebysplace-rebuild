@@ -2,9 +2,9 @@
  * Meta Graph API clients for Eby's Place, adapted from CareVeya's working
  * pipeline (lib/social/*-graph-client.ts in CareFlow360).
  *
- * Instagram uses "Instagram API with Instagram Login" (graph.instagram.com):
- * a token made by logging in as @ebysplace1 directly, so it does NOT need
- * the Facebook Page to be linked. Facebook uses the Page's own access token
+ * Instagram uses a token made by logging in as @ebysplace1 directly, so it
+ * does NOT need the Facebook Page to be linked. The host depends on the token
+ * type (see igBase below). Facebook uses the Page's own access token
  * (pages_manage_posts) on graph.facebook.com. A user or system-user token is
  * swapped for the Page token first, because Meta only lets a Page post as
  * itself (the "publish_actions is deprecated" error that broke CareVeya's
@@ -12,7 +12,20 @@
  */
 
 const GRAPH_VERSION = "v21.0";
-const IG_BASE = `https://graph.instagram.com/${GRAPH_VERSION}`;
+
+/**
+ * Instagram-login tokens (IGAA…) live on graph.instagram.com. Tokens from
+ * "API setup with Unified login" (EAA…, a never-expiring system-user token,
+ * the only option Meta gives new apps) live on graph.facebook.com. The
+ * content-publishing endpoints are the same on both.
+ */
+export function isInstagramLoginToken(accessToken: string) {
+  return accessToken.startsWith("IG");
+}
+
+function igBase(accessToken: string) {
+  return isInstagramLoginToken(accessToken) ? `https://graph.instagram.com/${GRAPH_VERSION}` : `https://graph.facebook.com/${GRAPH_VERSION}`;
+}
 const FB_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
 type GraphError = { error?: { message?: string; code?: number } };
@@ -58,7 +71,7 @@ const post = (url: string, params: Record<string, string>) => graphFetch<Record<
 export type InstagramCredentials = { userId: string; accessToken: string };
 
 async function createContainer(creds: InstagramCredentials, params: Record<string, string>, aiGenerated: boolean): Promise<string> {
-  const url = `${IG_BASE}/${creds.userId}/media`;
+  const url = `${igBase(creds.accessToken)}/${creds.userId}/media`;
   const base = { ...params, access_token: creds.accessToken };
   if (aiGenerated) {
     try {
@@ -77,7 +90,7 @@ async function createContainer(creds: InstagramCredentials, params: Record<strin
 async function waitUntilReady(creds: InstagramCredentials, containerId: string, timeoutMs = 40_000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const res = await graphFetch<{ status_code?: string }>(`${IG_BASE}/${containerId}?fields=status_code&access_token=${encodeURIComponent(creds.accessToken)}`);
+    const res = await graphFetch<{ status_code?: string }>(`${igBase(creds.accessToken)}/${containerId}?fields=status_code&access_token=${encodeURIComponent(creds.accessToken)}`);
     if (res.status_code === "FINISHED") return;
     if (res.status_code === "ERROR") throw new GraphApiError(`Instagram could not process media container ${containerId}.`);
     await new Promise((r) => setTimeout(r, 2000));
@@ -87,7 +100,7 @@ async function waitUntilReady(creds: InstagramCredentials, containerId: string, 
 
 async function publishContainer(creds: InstagramCredentials, containerId: string): Promise<string> {
   await waitUntilReady(creds, containerId);
-  return (await post(`${IG_BASE}/${creds.userId}/media_publish`, { creation_id: containerId, access_token: creds.accessToken })).id;
+  return (await post(`${igBase(creds.accessToken)}/${creds.userId}/media_publish`, { creation_id: containerId, access_token: creds.accessToken })).id;
 }
 
 /** One image = a photo post; 2-10 images = a carousel. Returns the published media id. */

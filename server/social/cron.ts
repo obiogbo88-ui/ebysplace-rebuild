@@ -7,6 +7,7 @@ import {
   publishInstagramFeed,
   publishInstagramStory,
   refreshInstagramToken,
+  isInstagramLoginToken,
   resolvePageToken,
   type FacebookCredentials,
   type InstagramCredentials,
@@ -60,6 +61,7 @@ export async function instagramCredentials(): Promise<InstagramCredentials | nul
 async function keepInstagramTokenFresh() {
   const envToken = env("INSTAGRAM_ACCESS_TOKEN");
   if (!envToken) return "not configured";
+  if (!isInstagramLoginToken(envToken)) return "never expires";
   const key = tokenKey(envToken);
   const stored = await getToken(key);
   if (stored && Date.now() - stored.refreshedAt.getTime() < 7 * 86400000) return "fresh";
