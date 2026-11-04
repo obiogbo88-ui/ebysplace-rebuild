@@ -4,7 +4,8 @@ import type { Request } from "express";
 import nodemailer from "nodemailer";
 import { normalizeEnvUrl, normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
 import { upsertUser } from "./db";
-import { isAddedAdmin } from "./adminAccess";
+import { addedAdminRole, isAddedAdmin } from "./adminAccess";
+import type { AdminRole } from "../shared/adminRoles";
 import { ADMIN_INVITE_CTA, ADMIN_INVITE_SUBJECT, adminInviteParagraphs } from "../shared/adminInvite";
 import { sendBrandedEmail } from "./resendEmail";
 
@@ -40,6 +41,12 @@ function isConfiguredAdminEmail(email: string | undefined) {
 /** Owners are the emails set in Vercel env vars: always admins, and the only ones who can give or remove access. */
 export function isOwnerEmail(email: string | null | undefined) {
   return isConfiguredAdminEmail(email ?? undefined);
+}
+
+/** "owner" for the env emails, the assigned role for added admins, otherwise null. */
+export async function adminRoleFor(email: string | null | undefined): Promise<AdminRole | null> {
+  if (isConfiguredAdminEmail(email ?? undefined)) return "owner";
+  return addedAdminRole(normalizeEmailCandidate(email ?? undefined));
 }
 
 /** An owner, or someone an owner added from the Command Centre. */
@@ -504,7 +511,7 @@ export async function authenticateSupabaseRequest(req: Request) {
     } as const;
 
     await upsertUser(localUser);
-    return localUser;
+    return { ...localUser, adminRole: role === "admin" ? await adminRoleFor(normalizedEmail) : null };
   } catch (error) {
     console.error("[Auth] Supabase bearer token verification failed", error);
     return null;

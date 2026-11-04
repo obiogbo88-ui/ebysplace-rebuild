@@ -2,8 +2,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Avatar, Card, GhostButton, Pill, PrimaryButton, niceDateTime } from "./ui";
+import { ASSIGNABLE_ROLES, ROLE_INFO, type AdminRole, type AssignableRole } from "@shared/adminRoles";
 
-type Admin = { email: string; name: string | null; lastSignedIn: string | null; owner: boolean; addedBy: string | null; invitedAt: string | null };
+type Admin = { email: string; name: string | null; lastSignedIn: string | null; owner: boolean; role: AdminRole; addedBy: string | null; invitedAt: string | null };
 
 /**
  * Website › Who can sign in. The owner can give someone access, check the
@@ -15,6 +16,7 @@ export function AdminAccessCard({ admins, canManage }: { admins: Admin[]; canMan
   const refresh = () => utils.crm.websiteOverview.invalidate();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [role, setRole] = useState<AssignableRole>("bookings");
   const [previewFor, setPreviewFor] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 
@@ -24,6 +26,10 @@ export function AdminAccessCard({ admins, canManage }: { admins: Admin[]; canMan
   });
   const remove = trpc.crm.removeAdmin.useMutation({
     onSuccess: (_d, vars) => { const v = vars as { email: string }; toast.success(`Access removed for ${v.email}`); setConfirmRemove(null); refresh(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const changeRole = trpc.crm.setAdminRole.useMutation({
+    onSuccess: (_d, vars) => { const v = vars as { email: string; role: AssignableRole }; toast.success(`${v.email} is now ${ROLE_INFO[v.role].label}`); refresh(); },
     onError: (e) => toast.error(e.message),
   });
   const send = trpc.crm.sendAdminInvite.useMutation({
@@ -46,7 +52,16 @@ export function AdminAccessCard({ admins, canManage }: { admins: Admin[]; canMan
                 {a.email} · {a.lastSignedIn ? `signed in ${niceDateTime(a.lastSignedIn)}` : a.invitedAt ? `invited ${niceDateTime(a.invitedAt)}, not signed in yet` : a.owner ? "not signed in yet" : "not invited yet"}
               </div>
             </div>
-            <Pill tone={a.owner ? "gold" : "grey"}>{a.owner ? "Owner" : "Admin"}</Pill>
+            {canManage && !a.owner ? (
+              <label className="text-xs font-semibold text-[#6B6458]">
+                <span className="sr-only">Role for {a.name || a.email}</span>
+                <select value={a.role} disabled={changeRole.isPending} onChange={(e) => changeRole.mutate({ email: a.email, role: e.target.value as AssignableRole })} className="rounded-full border border-[#E6E1D8] bg-white px-3 py-1.5 text-xs font-semibold text-[#1A1A1A]">
+                  {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{ROLE_INFO[r].label}</option>)}
+                </select>
+              </label>
+            ) : (
+              <Pill tone={a.owner ? "gold" : "grey"}>{ROLE_INFO[a.role]?.label ?? "Admin"}</Pill>
+            )}
             {canManage && !a.owner && (
               confirmRemove === a.email ? (
                 <span className="flex items-center gap-2">
@@ -88,10 +103,17 @@ export function AdminAccessCard({ admins, canManage }: { admins: Admin[]; canMan
         </div>
       )}
 
+      <details className="mt-3 text-[13px] text-[#6B6458]">
+        <summary className="cursor-pointer font-semibold text-[#8A641E]">What each role can do</summary>
+        <ul className="mt-2 grid gap-1">
+          {(["owner", ...ASSIGNABLE_ROLES] as AdminRole[]).map((r) => <li key={r}><strong className="text-[#1A1A1A]">{ROLE_INFO[r].label}:</strong> {ROLE_INFO[r].description}</li>)}
+        </ul>
+      </details>
+
       {canManage ? (
         <form
-          className="mt-4 grid grid-cols-1 gap-2 border-t border-[#EFEBE4] pt-4 sm:grid-cols-[1fr_1.4fr_auto]"
-          onSubmit={(e) => { e.preventDefault(); if (validEmail) add.mutate({ email: email.trim().toLowerCase(), name: name.trim() || undefined }); }}
+          className="mt-4 grid grid-cols-1 gap-2 border-t border-[#EFEBE4] pt-4 sm:grid-cols-[1fr_1.4fr_1fr_auto]"
+          onSubmit={(e) => { e.preventDefault(); if (validEmail) add.mutate({ email: email.trim().toLowerCase(), name: name.trim() || undefined, role }); }}
           aria-label="Give someone access"
         >
           <label className="grid gap-1 text-xs font-semibold text-[#6B6458]">Name
@@ -100,11 +122,16 @@ export function AdminAccessCard({ admins, canManage }: { admins: Admin[]; canMan
           <label className="grid gap-1 text-xs font-semibold text-[#6B6458]">Email
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={320} placeholder="their@email.com" required className="rounded-xl border border-[#E6E1D8] px-3 py-2 text-sm font-normal text-[#1A1A1A]" />
           </label>
+          <label className="grid gap-1 text-xs font-semibold text-[#6B6458]">Role
+            <select value={role} onChange={(e) => setRole(e.target.value as AssignableRole)} className="rounded-xl border border-[#E6E1D8] bg-white px-3 py-2 text-sm font-normal text-[#1A1A1A]">
+              {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{ROLE_INFO[r].label}</option>)}
+            </select>
+          </label>
           <div className="flex items-end"><PrimaryButton type="submit" disabled={!validEmail || add.isPending}>{add.isPending ? "Adding…" : "Give access"}</PrimaryButton></div>
-          <p className="text-[13px] text-[#6B6458] sm:col-span-3">They&apos;ll have full access to the Command Centre. Next you&apos;ll see their invite email to check before sending.</p>
+          <p className="text-[13px] text-[#6B6458] sm:col-span-4"><strong className="text-[#1A1A1A]">{ROLE_INFO[role].label}:</strong> {ROLE_INFO[role].description} Next you&apos;ll see their invite email to check before sending.</p>
         </form>
       ) : (
-        <p className="mt-2 text-[13px] text-[#6B6458]">Only the owner can give or remove access.</p>
+        <p className="mt-2 text-[13px] text-[#6B6458]">Only the owner can give or remove access, or change roles.</p>
       )}
     </Card>
   );

@@ -8,7 +8,8 @@ import { AUTOMATIONS, automationStates, campaignEmail, campaignRecipients } from
 import { renderBrandedEmail, sendBrandedEmail } from "../resendEmail";
 import { ADMIN_INVITE_CTA, ADMIN_INVITE_SUBJECT, adminInviteParagraphs } from "../../shared/adminInvite";
 import { getPreferredProductionOrigin, isOwnerEmail, listConfiguredAdminEmails, sendAdminInvite } from "../supabaseAuth";
-import { addAdmin, listAddedAdmins, removeAdmin, markInvited } from "../adminAccess";
+import { addAdmin, listAddedAdmins, removeAdmin, markInvited, setAdminRole } from "../adminAccess";
+import { ASSIGNABLE_ROLES, ROLE_INFO, allows, canSeeMoney, type AdminRole } from "../../shared/adminRoles";
 import { clientBookings, clientKeyFor, clientTimeline, filterClients, journeyCounts, type ClientFilter } from "./clients";
 import { loadClients, londonToday } from "./data";
 import { getAvailabilitySettings, logActivity as logDbActivity } from "../db";
@@ -385,10 +386,10 @@ export const crmRouter = router({
       cookies30d: { total: Number(cookies?.total ?? 0), analytics: Number(cookies?.analytics ?? 0) },
       lastChangeAt: lastChange?.at ?? null,
       admins: [
-        ...listConfiguredAdminEmails().map((email) => ({ email, name: signIns.get(email)?.name ?? null, lastSignedIn: signIns.get(email)?.lastSignedIn ?? null, owner: true, addedBy: null as string | null, invitedAt: null as string | null })),
+        ...listConfiguredAdminEmails().map((email) => ({ email, name: signIns.get(email)?.name ?? null, lastSignedIn: signIns.get(email)?.lastSignedIn ?? null, owner: true, role: "owner" as AdminRole, addedBy: null as string | null, invitedAt: null as string | null })),
         ...(await listAddedAdmins().catch(() => []))
           .filter((a) => !isOwnerEmail(a.email))
-          .map((a) => ({ email: a.email, name: a.name ?? signIns.get(a.email)?.name ?? null, lastSignedIn: signIns.get(a.email)?.lastSignedIn ?? null, owner: false, addedBy: a.addedBy, invitedAt: a.invitedAt })),
+          .map((a) => ({ email: a.email, name: a.name ?? signIns.get(a.email)?.name ?? null, lastSignedIn: signIns.get(a.email)?.lastSignedIn ?? null, owner: false, role: a.role as AdminRole, addedBy: a.addedBy, invitedAt: a.invitedAt })),
       ],
       canManageAdmins: isOwnerEmail(ctx.user?.email),
     };
@@ -396,14 +397,43 @@ export const crmRouter = router({
 
   /** Give someone access to the Command Centre (owners only). Nothing is emailed here. */
   addAdmin: adminProcedure
-    .input(z.object({ email: z.string().trim().toLowerCase().email().max(320), name: z.string().trim().max(120).optional() }))
+    .input(z.object({ email: z.string().trim().toLowerCase().email().max(320), name: z.string().trim().max(120).optional(), role: z.enum(ASSIGNABLE_ROLES as [string, ...string[]]).default("manager") }))
     .mutation(async ({ input, ctx }) => {
       if (!isOwnerEmail(ctx.user?.email)) throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner can give access." });
       if (isOwnerEmail(input.email)) throw new TRPCError({ code: "BAD_REQUEST", message: "That email already has owner access." });
-      await addAdmin({ email: input.email, name: input.name || null, addedBy: ctx.user?.email ?? "owner" });
-      await logDbActivity({ activityType: "admin_access_added", activityCategory: "admin", description: `Gave Command Centre access to ${input.email}`, userEmail: ctx.user?.email ?? null }).catch(() => {});
+      await addAdmin({ email: input.email, name: input.name || null, role: input.role as (typeof ASSIGNABLE_ROLES)[number], addedBy: ctx.user?.email ?? "owner" });
+      await logDbActivity({ activityType: "admin_access_added", activityCategory: "admin", description: `Gave Command Centre access to ${input.email} as ${ROLE_INFO[input.role as AdminRole].label}`, userEmail: ctx.user?.email ?? null }).catch(() => {});
       return { ok: true as const };
     }),
+
+  /** Change someone's role (owners only). Takes effect on their next request. */
+  setAdminRole: adminProcedure
+    .input(z.object({ email: z.string().trim().toLowerCase().email(), role: z.enum(ASSIGNABLE_ROLES as [string, ...string[]]) }))
+    .mutation(async ({ input, ctx }) => {
+      if (!isOwnerEmail(ctx.user?.email)) throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner can change roles." });
+      if (isOwnerEmail(input.email)) throw new TRPCError({ code: "BAD_REQUEST", message: "The owner’s role can’t be changed here." });
+      if (!(await listAddedAdmins()).some((a) => a.email === input.email)) throw new TRPCError({ code: "NOT_FOUND", message: "That person doesn’t have access." });
+      await setAdminRole(input.email, input.role as (typeof ASSIGNABLE_ROLES)[number]);
+      await logDbActivity({ activityType: "admin_role_changed", activityCategory: "admin", description: `Changed ${input.email} to ${ROLE_INFO[input.role as AdminRole].label}`, userEmail: ctx.user?.email ?? null }).catch(() => {});
+      return { ok: true as const };
+    }),
+
+  /** Who is signed in and what their role lets them do, so the screen can hide what they can't use. */
+  me: adminProcedure.query(({ ctx }) => {
+    const role = ((ctx.user as { adminRole?: AdminRole }).adminRole ?? "manager") as AdminRole;
+    return {
+      email: ctx.user?.email ?? null,
+      role,
+      roleLabel: ROLE_INFO[role].label,
+      canSeeMoney: canSeeMoney(role),
+      canEditBookings: allows(role, "admin.updateBookingStatus", "mutation"),
+      canEditWebsite: allows(role, "admin.updateWebsiteSection", "mutation"),
+      canEditShop: allows(role, "admin.updateService", "mutation"),
+      canEditMarketing: allows(role, "crm.sendCampaign", "mutation"),
+      canEditSettings: allows(role, "crm.somethingElse", "mutation"),
+      canManageAccess: role === "owner",
+    };
+  }),
 
   /** Take someone's access away (owners only). They're signed out on their next request. */
   removeAdmin: adminProcedure
