@@ -12,7 +12,9 @@ describe("admin upload permissions and checkout failure safeguards", () => {
     expect(source).toContain("normalizeEmailCandidate(process.env.EBYSPLACE_ADMIN_EMAIL)");
     expect(source).toContain("normalizeEmailCandidate(process.env.EBYSPLACE_OWNER_EMAIL)");
     expect(source).toContain("normalizeEmailCandidate(process.env.OWNER_EMAIL)");
-    expect(source).toContain("const role = isConfiguredAdminEmail(normalizedEmail) ? \"admin\" : \"user\"");
+    // Owners (env emails) are always admins; admins added from the Command Centre are too.
+    expect(source).toContain("const role = (await isAdminEmail(normalizedEmail)) ? \"admin\" : \"user\"");
+    expect(source).toContain("if (isConfiguredAdminEmail(email ?? undefined)) return true;");
   });
 
   it("keeps checkout configuration and provider failures behind a safe customer message", () => {

@@ -4,6 +4,10 @@ import type { Request } from "express";
 import nodemailer from "nodemailer";
 import { normalizeEnvUrl, normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
 import { upsertUser } from "./db";
+import { addedAdminRole, isAddedAdmin } from "./adminAccess";
+import type { AdminRole } from "../shared/adminRoles";
+import { ADMIN_INVITE_CTA, ADMIN_INVITE_SUBJECT, adminInviteParagraphs } from "../shared/adminInvite";
+import { sendBrandedEmail } from "./resendEmail";
 
 function normalizeEmailCandidate(value: string | undefined) {
   const email = value?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]?.trim().toLowerCase();
@@ -32,6 +36,23 @@ const PRIMARY_ADMIN_EMAIL = ADMIN_EMAILS[0] ?? "info@ebysplace.com";
 function isConfiguredAdminEmail(email: string | undefined) {
   const normalized = normalizeEmailCandidate(email);
   return Boolean(normalized && ADMIN_EMAILS.includes(normalized));
+}
+
+/** Owners are the emails set in Vercel env vars: always admins, and the only ones who can give or remove access. */
+export function isOwnerEmail(email: string | null | undefined) {
+  return isConfiguredAdminEmail(email ?? undefined);
+}
+
+/** "owner" for the env emails, the assigned role for added admins, otherwise null. */
+export async function adminRoleFor(email: string | null | undefined): Promise<AdminRole | null> {
+  if (isConfiguredAdminEmail(email ?? undefined)) return "owner";
+  return addedAdminRole(normalizeEmailCandidate(email ?? undefined));
+}
+
+/** An owner, or someone an owner added from the Command Centre. */
+export async function isAdminEmail(email: string | null | undefined) {
+  if (isConfiguredAdminEmail(email ?? undefined)) return true;
+  return isAddedAdmin(normalizeEmailCandidate(email ?? undefined));
 }
 
 type SupabaseAuthUser = {
@@ -298,9 +319,9 @@ async function supabaseAuthFetch<T>(path: string, init: RequestInit = {}): Promi
 export async function signInAdminWithPassword(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
   try {
-    if (!isConfiguredAdminEmail(normalizedEmail)) {
-      console.error("[Auth] Rejected admin sign-in for non-admin email", { email: normalizedEmail, configuredAdminEmails: ADMIN_EMAILS });
-      throw new TRPCError({ code: "UNAUTHORIZED", message: "Only the configured Eby’s Place administrator can sign in." });
+    if (!(await isAdminEmail(normalizedEmail))) {
+      console.error("[Auth] Rejected admin sign-in for non-admin email", { email: normalizedEmail });
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "This email doesn’t have access to the Eby’s Place Command Centre. Ask the owner to add you." });
     }
 
     const session = await supabaseAuthFetch<SupabaseTokenResponse>("/token?grant_type=password", {
@@ -346,8 +367,8 @@ export async function requestAdminPasswordReset(email: string, origin: string) {
     message: "If this email is the configured Eby’s Place administrator, a password reset link has been sent.",
   };
 
-  if (!isConfiguredAdminEmail(normalizedEmail)) {
-    console.warn("[Auth] Ignored password reset request for non-admin email", { email: normalizedEmail, configuredAdminEmails: ADMIN_EMAILS });
+  if (!(await isAdminEmail(normalizedEmail))) {
+    console.warn("[Auth] Ignored password reset request for non-admin email", { email: normalizedEmail });
     return genericResponse;
   }
 
@@ -435,8 +456,8 @@ export async function updateAdminPasswordWithRecoveryToken(accessToken: string, 
       headers: { Authorization: "Bearer " + token },
     });
     const normalizedEmail = user.email?.trim().toLowerCase();
-    if (!isConfiguredAdminEmail(normalizedEmail)) {
-      console.error("[Auth] Rejected password update for non-admin recovery token", { email: normalizedEmail, configuredAdminEmails: ADMIN_EMAILS });
+    if (!(await isAdminEmail(normalizedEmail))) {
+      console.error("[Auth] Rejected password update for non-admin recovery token", { email: normalizedEmail });
       throw new TRPCError({ code: "UNAUTHORIZED", message: "This reset link is not for the configured Eby’s Place administrator." });
     }
 
@@ -448,8 +469,8 @@ export async function updateAdminPasswordWithRecoveryToken(accessToken: string, 
 
     await upsertUser({
       openId: updated.id || user.id,
-      email: PRIMARY_ADMIN_EMAIL,
-      name: getDisplayName(updated.id ? updated : user, PRIMARY_ADMIN_EMAIL),
+      email: normalizedEmail || PRIMARY_ADMIN_EMAIL,
+      name: getDisplayName(updated.id ? updated : user, normalizedEmail || PRIMARY_ADMIN_EMAIL),
       loginMethod: "supabase_password",
       role: "admin",
       lastSignedIn: new Date(),
@@ -479,7 +500,7 @@ export async function authenticateSupabaseRequest(req: Request) {
     }
 
     const normalizedEmail = user.email.trim().toLowerCase();
-    const role = isConfiguredAdminEmail(normalizedEmail) ? "admin" : "user";
+    const role = (await isAdminEmail(normalizedEmail)) ? "admin" : "user";
     const localUser = {
       openId: user.id,
       email: normalizedEmail,
@@ -490,9 +511,42 @@ export async function authenticateSupabaseRequest(req: Request) {
     } as const;
 
     await upsertUser(localUser);
-    return localUser;
+    return { ...localUser, adminRole: role === "admin" ? await adminRoleFor(normalizedEmail) : null };
   } catch (error) {
     console.error("[Auth] Supabase bearer token verification failed", error);
     return null;
   }
+}
+
+/**
+ * Gives a new admin a sign-in account (if they don't have one) and emails
+ * them a secure link to choose their password. Only called when an owner
+ * presses Send in the Command Centre, after seeing the exact email text.
+ */
+export async function sendAdminInvite(input: { email: string; name: string | null; invitedBy: string; origin: string }) {
+  const email = input.email.trim().toLowerCase();
+  if (!(await isAdminEmail(email))) throw new TRPCError({ code: "BAD_REQUEST", message: "Add this person before sending their invite." });
+  try {
+    await supabaseAuthFetch<SupabaseAuthUser>("/admin/users", {
+      method: "POST",
+      body: JSON.stringify({ email, email_confirm: true, user_metadata: input.name ? { name: input.name } : {} }),
+    });
+  } catch (error) {
+    const e = toTrpcError(error, "");
+    if (!/already|registered|exists/i.test(e.message)) throw e;
+  }
+  const redirectTo = getSafeResetRedirect(input.origin);
+  const generated = await supabaseAuthFetch<SupabaseGeneratedLinkResponse>("/admin/generate_link", {
+    method: "POST",
+    body: JSON.stringify({ type: "recovery", email, options: { redirect_to: redirectTo } }),
+  });
+  if (!generated.action_link) throw new TRPCError({ code: "BAD_GATEWAY", message: "Supabase did not return a sign-in link." });
+  const result = await sendBrandedEmail({
+    to: email,
+    subject: ADMIN_INVITE_SUBJECT,
+    paragraphs: adminInviteParagraphs({ name: input.name, invitedBy: input.invitedBy }),
+    cta: { label: ADMIN_INVITE_CTA, url: withResetRedirect(generated.action_link, redirectTo) },
+  });
+  if (!result.sent) throw new TRPCError({ code: "BAD_GATEWAY", message: `The invite email didn’t send: ${result.errorMessage ?? "unknown error"}` });
+  console.info("[Auth] Sent Command Centre invite", { email, invitedBy: input.invitedBy });
 }

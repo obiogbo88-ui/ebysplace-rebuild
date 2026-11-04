@@ -17,7 +17,7 @@ export async function createContext(
   let user: User | null = null;
 
   try {
-    user = (await authenticateSupabaseRequest(req)) as User | null;
+    user = (await authenticateSupabaseRequest(req)) as unknown as User | null;
   } catch {
     user = null;
   }

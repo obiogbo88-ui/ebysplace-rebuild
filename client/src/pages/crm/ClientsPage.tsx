@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Search } from "lucide-react";
 import { clientHash, goCrm } from "./nav";
 import { Avatar, Card, Chip, Empty, ErrorNote, Loading, Pill, STAGE_LABEL, gbp, niceDate, ScrollBox } from "./ui";
+import { useAccess } from "./access";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -25,6 +26,7 @@ const NEXT_STEP: Record<string, string> = {
 };
 
 export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
+  const access = useAccess();
   const [filter, setFilter] = useState<FilterId>(() => (FILTERS.some((f) => f.id === initialFilter) ? (initialFilter as FilterId) : "all"));
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -88,7 +90,7 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
                     </td>
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5">{c.nextAppointment ? <span>Booked {niceDate(c.nextAppointment.date)}</span> : niceDate(c.lastVisit)}</td>
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5 text-right tabular-nums">{c.visits}</td>
-                    <td className="border-b border-[#EFEBE4] px-2 py-2.5 text-right tabular-nums">{gbp(c.paidOnline)}</td>
+                    <td className="border-b border-[#EFEBE4] px-2 py-2.5 text-right tabular-nums">{access.money(c.paidOnline)}</td>
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5">
                       <div className="flex flex-wrap gap-1">
                         {c.tags.slice(0, 3).map((t) => (
@@ -119,7 +121,7 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
                       {c.nextAppointment ? ` · booked ${niceDate(c.nextAppointment.date)}` : ""}
                     </span>
                   </span>
-                  <span className="text-sm tabular-nums">{gbp(c.paidOnline)}</span>
+                  <span className="text-sm tabular-nums">{access.money(c.paidOnline)}</span>
                 </a>
               </li>
             ))}

@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { goCrm } from "./nav";
 import { Card, Chip, Empty, ErrorNote, GhostButton, Kpi, Loading, Pill, PrimaryButton, gbp, niceDateTime, type PillTone, ScrollBox } from "./ui";
+import { useAccess } from "./access";
 
 const INK = "#1A1A1A";
 const GOLD = "#C9A84C";
@@ -104,6 +105,7 @@ function downloadCsv(months: Array<Record<string, any>>) {
 }
 
 export function ReportsPage() {
+  const access = useAccess();
   const [period, setPeriod] = useState<Period>("12m");
   const q = trpc.crm.reports.useQuery({ period }, { retry: false, placeholderData: (prev) => prev });
   const meta = PERIODS.find((p) => p.id === period)!;
@@ -146,8 +148,8 @@ export function ReportsPage() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <Kpi label="Appointments" value={k.appointments.now.toLocaleString("en-GB")} hint={trend(k.appointments.now, k.appointments.before, meta.compare)} />
-        <Kpi label="Paid online" value={gbp(k.paidOnline.now)} hint={trend(k.paidOnline.now, k.paidOnline.before, meta.compare, true)} />
-        <Kpi label="Average payment online" value={k.averagePayment.now === null ? "–" : gbp(k.averagePayment.now)} hint={trend(k.averagePayment.now, k.averagePayment.before, meta.compare)} />
+        <Kpi label="Paid online" value={access.money(k.paidOnline.now)} hint={access.canSeeMoney ? trend(k.paidOnline.now, k.paidOnline.before, meta.compare, true) : "Owner and managers only"} />
+        <Kpi label="Average payment online" value={!access.canSeeMoney ? "Hidden" : k.averagePayment.now === null ? "–" : gbp(k.averagePayment.now)} hint={access.canSeeMoney ? trend(k.averagePayment.now, k.averagePayment.before, meta.compare) : "Owner and managers only"} />
         <Kpi label="Clients who came back" value={d.rebookRate === null ? "–" : `${d.rebookRate}%`} hint="All time" />
         <Kpi label="Usual gap between visits" value={d.averageGapDays === null ? "–" : `${Math.round(d.averageGapDays / 7)} weeks`} hint="All time" />
         <Kpi label="Visits from Instagram" value={k.instagramVisits.now.toLocaleString("en-GB")} hint={trend(k.instagramVisits.now, k.instagramVisits.before, meta.compare)} />

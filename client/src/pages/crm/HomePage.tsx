@@ -3,6 +3,7 @@ import { CalendarDays, MessageSquare, Package, Star } from "lucide-react";
 import { clientHash, goCrm } from "./nav";
 import { toast } from "sonner";
 import { Avatar, Card, Empty, ErrorNote, GhostButton, Kpi, Loading, Pill, PrimaryButton, Row, STAGE_LABEL, STATUS_TONE, gbp, niceDate, niceDateTime, whatsappLink, ScrollBox } from "./ui";
+import { useAccess } from "./access";
 
 const STAGES = ["enquiry", "booked", "deposit_paid", "done", "review_asked", "due_rebook"] as const;
 const AUTOMATION_NAME: Record<string, string> = { review_ask: "Review request", rebook_nudge: "Rebook reminder", win_back: "We-miss-you email" };
@@ -24,6 +25,7 @@ function weekTrend(now: number, before: number, money = false) {
 const stockOf = (p: any) => Number(p?.stock ?? p?.stockQuantity ?? 0);
 
 export function HomePage() {
+  const access = useAccess();
   const utils = trpc.useUtils();
   const q = trpc.crm.overview.useQuery(undefined, { retry: false, refetchInterval: 60_000 });
   const lists = trpc.admin.lists.useQuery(undefined, { retry: false });
@@ -67,7 +69,7 @@ export function HomePage() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Appointments this week" value={d.week.appointments.now} hint={weekTrend(d.week.appointments.now, d.week.appointments.before)} onClick={() => goCrm("#calendar")} />
-        <Kpi label="Paid online this week" value={gbp(d.week.paidOnline.now)} hint={weekTrend(d.week.paidOnline.now, d.week.paidOnline.before, true)} onClick={() => goCrm("#money")} />
+        <Kpi label="Paid online this week" value={access.money(d.week.paidOnline.now)} hint={access.canSeeMoney ? weekTrend(d.week.paidOnline.now, d.week.paidOnline.before, true) : "Owner and managers only"} onClick={() => goCrm("#money")} />
         <Kpi label="New clients this week" value={d.week.newClients.now} hint={weekTrend(d.week.newClients.now, d.week.newClients.before)} onClick={() => goCrm("#clients:new_this_month")} />
         <Kpi label="Website visits this week" value={d.week.visits.now.toLocaleString("en-GB")} hint={weekTrend(d.week.visits.now, d.week.visits.before)} onClick={() => goCrm("#reports")} />
       </div>
@@ -213,7 +215,7 @@ export function HomePage() {
                 <span className="text-xs text-[#6B6458]">orders to send</span>
               </button>
               <div className="rounded-xl bg-[#FBF8F2] p-3">
-                <b className="block text-[22px] tabular-nums text-[#1A1A1A]">{gbp(d.shop.soldThisWeek)}</b>
+                <b className="block text-[22px] tabular-nums text-[#1A1A1A]">{access.money(d.shop.soldThisWeek)}</b>
                 <span className="text-xs text-[#6B6458]">sold this week</span>
               </div>
               <button type="button" onClick={() => goCrm("#products")} className={`rounded-xl p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C] ${lowStock.length ? "bg-[#FBEFD9] hover:bg-[#F6E3BF]" : "bg-[#FBF8F2] hover:bg-[#F3EBDC]"}`}>

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Mail, MessageCircle, Plus, X } from "lucide-react";
 import { goCrm } from "./nav";
 import { Avatar, Card, Empty, ErrorNote, GhostButton, Kpi, Loading, Pill, PrimaryButton, Row, STAGE_LABEL, STATUS_TONE, Toggle, gbp, niceDate, niceDateTime, relativeDays, whatsappLink, ScrollBox } from "./ui";
+import { useAccess } from "./access";
 
 const SWITCHES: Array<{ key: "reminders" | "review_ask" | "rebook_nudge" | "win_back" | "marketing"; label: string; detail: string }> = [
   { key: "reminders", label: "Appointment reminders", detail: "Day-before email and text" },
@@ -17,6 +18,7 @@ const KIND_TONE: Record<string, "gold" | "live" | "new" | "wait" | "grey"> = { b
 const KIND_LABEL: Record<string, string> = { booking: "Booking", order: "Shop", chat: "Chat", review_ask: "Review", subscribed: "List", automation: "Auto", email: "Email", note: "Note" };
 
 export function ClientProfilePage({ clientKey }: { clientKey: string }) {
+  const access = useAccess();
   const utils = trpc.useUtils();
   const q = trpc.crm.client.useQuery({ key: clientKey }, { retry: false });
   const [note, setNote] = useState("");
@@ -144,7 +146,7 @@ export function ClientProfilePage({ clientKey }: { clientKey: string }) {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Visits" value={c.visits} hint={c.bookings > c.visits ? `${c.bookings} bookings in all` : undefined} />
-        <Kpi label="Paid online" value={gbp(c.paidOnline)} hint={c.orders ? `${c.orders} shop order${c.orders === 1 ? "" : "s"}` : undefined} />
+        <Kpi label="Paid online" value={access.money(c.paidOnline)} hint={c.orders ? `${c.orders} shop order${c.orders === 1 ? "" : "s"}` : undefined} />
         <Kpi label="Usual gap between visits" value={c.averageGapDays ? `${Math.round(c.averageGapDays / 7)} wk` : "–"} />
         <Kpi
           label={c.nextAppointment ? "Next appointment" : "Last visit"}
