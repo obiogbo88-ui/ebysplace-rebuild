@@ -1,6 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Card, Empty, ErrorNote, Loading, Pill, Row, Toggle, niceDateTime } from "./ui";
+import { Card, Empty, ErrorNote, Loading, Pill, Row, Toggle, niceDateTime, ScrollBox } from "./ui";
 
 const STATUS: Record<string, { tone: "live" | "new" | "wait"; label: string }> = {
   live: { tone: "live", label: "Running" },
@@ -67,13 +67,15 @@ export function AutomationsPage() {
         {q.data!.recentSends.length === 0 ? (
           <Empty>Nothing yet. Emails the new automations send will be listed here.</Empty>
         ) : (
-          q.data!.recentSends.map((s, i) => (
+          <ScrollBox label="Sent automatically, lately" size="sm">
+          {q.data!.recentSends.map((s, i) => (
             <Row key={i}>
               <Pill tone="new">{SENT_NAME[s.automation] ?? s.automation}</Pill>
               <span className="min-w-0 flex-1 truncate text-sm">{s.clientKey.replace(/^[ep]:/, "")}</span>
               <span className="text-xs text-[#6B6458]">{niceDateTime(s.sentAt)}</span>
             </Row>
-          ))
+          ))}
+          </ScrollBox>
         )}
       </Card>
     </div>

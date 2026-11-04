@@ -217,3 +217,17 @@ export const STATUS_TONE: Record<string, PillTone> = {
   failed: "bad",
   new: "wait",
 };
+
+const SCROLL_HEIGHT = { sm: "max-h-64", md: "max-h-[26rem]", lg: "max-h-[36rem]" } as const;
+
+/**
+ * Long lists scroll inside their own card so the page stays short.
+ * Keyboard users can tab to the box and scroll it with the arrow keys.
+ */
+export function ScrollBox({ children, label, size = "md", className = "" }: { children: ReactNode; label: string; size?: keyof typeof SCROLL_HEIGHT; className?: string }) {
+  return (
+    <div tabIndex={0} role="region" aria-label={label} className={`${SCROLL_HEIGHT[size]} min-w-0 overflow-auto overscroll-contain rounded-lg pr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C] ${className}`}>
+      {children}
+    </div>
+  );
+}

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { goCrm } from "./nav";
-import { Card, Chip, Empty, ErrorNote, GhostButton, Kpi, Loading, Pill, PrimaryButton, gbp, niceDateTime, type PillTone } from "./ui";
+import { Card, Chip, Empty, ErrorNote, GhostButton, Kpi, Loading, Pill, PrimaryButton, gbp, niceDateTime, type PillTone, ScrollBox } from "./ui";
 
 const INK = "#1A1A1A";
 const GOLD = "#C9A84C";
@@ -280,6 +280,7 @@ export function ReportsPage() {
         {d.recentActivity.length === 0 ? (
           <Empty>Nothing yet.</Empty>
         ) : (
+          <ScrollBox label="Recent activity" size="sm">
           <ul className="grid grid-cols-1">
             {d.recentActivity.map((a) => {
               const t = ACTIVITY_TONE[a.activityCategory] ?? { label: a.status === "failed" ? "Problem" : "Update", tone: (a.status === "failed" ? "bad" : "grey") as PillTone };
@@ -294,6 +295,7 @@ export function ReportsPage() {
               );
             })}
           </ul>
+          </ScrollBox>
         )}
       </Card>
     </div>

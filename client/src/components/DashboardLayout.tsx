@@ -83,10 +83,10 @@ export default function DashboardLayout({
         <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-3xl border border-[#d8b66b]/40 bg-white p-8 text-center shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
           <div className="flex flex-col items-center gap-6">
             <h1 className="text-2xl font-semibold tracking-tight text-[#2f2418]">
-              Sign in to continue
+              Eby’s Place Command Centre
             </h1>
             <p className="max-w-sm text-sm leading-relaxed text-[#5f5142]">
-              Access to this dashboard requires the Eby’s Place Supabase admin email and password.
+              Sign in with the Eby’s Place admin email and password to continue.
             </p>
           </div>
           <Button
@@ -261,7 +261,7 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold tracking-tight truncate">
-                    Eby’s Place CRM
+                    Eby’s Place Command Centre
                   </span>
                 </div>
               ) : null}

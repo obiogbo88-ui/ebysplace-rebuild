@@ -1,7 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { CalendarDays, MessageSquare, Package, Star } from "lucide-react";
 import { clientHash, goCrm } from "./nav";
-import { Avatar, Card, Empty, ErrorNote, Kpi, Loading, Pill, Row, STAGE_LABEL, STATUS_TONE, niceDate, niceDateTime, relativeDays } from "./ui";
+import { Avatar, Card, Empty, ErrorNote, Kpi, Loading, Pill, Row, STAGE_LABEL, STATUS_TONE, niceDate, niceDateTime, relativeDays, ScrollBox } from "./ui";
 
 const STAGES = ["enquiry", "booked", "deposit_paid", "done", "review_asked", "due_rebook"] as const;
 const AUTOMATION_NAME: Record<string, string> = { review_ask: "Review request", rebook_nudge: "Rebook reminder", win_back: "We-miss-you email" };
@@ -53,7 +53,7 @@ export function HomePage() {
           {needsCount === 0 ? (
             <Empty>Nothing waiting. Bookings, chats asking for you, reviews and orders to send show up here.</Empty>
           ) : (
-            <div>
+            <ScrollBox label="Needs you" size="md">
               {needs.pendingBookings.map((b) => (
                 <Row key={`b${b.id}`} onClick={() => goCrm("#bookings")}>
                   <CalendarDays className="h-5 w-5 shrink-0 text-[#8A641E]" aria-hidden="true" />
@@ -100,7 +100,7 @@ export function HomePage() {
                   <Pill tone="wait">Open</Pill>
                 </Row>
               ) : null}
-            </div>
+            </ScrollBox>
           )}
         </Card>
 
@@ -109,7 +109,8 @@ export function HomePage() {
             {d.nextAppointments.length === 0 ? (
               <Empty>No appointments booked yet.</Empty>
             ) : (
-              d.nextAppointments.map((b) => (
+              <ScrollBox label="Coming up" size="sm">
+              {d.nextAppointments.map((b) => (
                 <Row key={b.id} onClick={b.clientKey ? () => goCrm(clientHash(b.clientKey!)) : undefined}>
                   <Avatar name={b.name} />
                   <div className="min-w-0 flex-1">
@@ -120,7 +121,8 @@ export function HomePage() {
                   </div>
                   <Pill tone={STATUS_TONE[b.status] ?? "grey"}>{relativeDays(b.date, d.today)}</Pill>
                 </Row>
-              ))
+              ))}
+              </ScrollBox>
             )}
           </Card>
 
@@ -141,6 +143,7 @@ export function HomePage() {
 
       {d.recentSends.length ? (
         <Card title="Sent automatically, lately">
+          <ScrollBox label="Sent automatically, lately" size="sm">
           {d.recentSends.map((s, i) => (
             <Row key={i}>
               <Pill tone="new">Auto</Pill>
@@ -150,6 +153,7 @@ export function HomePage() {
               <span className="text-xs text-[#6B6458]">{niceDateTime(s.sentAt)}</span>
             </Row>
           ))}
+          </ScrollBox>
         </Card>
       ) : null}
     </div>

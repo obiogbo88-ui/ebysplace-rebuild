@@ -27,7 +27,7 @@ export const crmRouter = router({
       db.execute(sql`SELECT count(*)::int AS n FROM "reviews" WHERE "status" = 'pending'`),
       db.execute(sql`SELECT count(*)::int AS n FROM "productReviews" WHERE "status" = 'pending'`),
       db.execute(sql`SELECT "slot", "kind", "status", "slides", "postedAt", "error" FROM "socialPosts" WHERE "slotDate" = ${today}`).catch(() => ({ rows: [] })),
-      recentSends(8).catch(() => []),
+      recentSends(20).catch(() => []),
     ]);
     const live = rows.bookings.filter((b) => b.status !== "cancelled");
     const since30 = Date.now() - 30 * 86_400_000;
@@ -55,11 +55,11 @@ export const crmRouter = router({
         dueRebook: clients.filter((c) => c.dueRebook).length,
       },
       journey: journeyCounts(clients),
-      nextAppointments: upcoming.slice(0, 5).map((b) => ({ id: b.id, name: b.clientName, serviceName: b.serviceName, date: b.appointmentDate, time: b.appointmentTime, status: b.status, depositStatus: b.depositStatus, clientKey: keyOf(b.clientEmail, b.clientPhone) })),
+      nextAppointments: upcoming.slice(0, 20).map((b) => ({ id: b.id, name: b.clientName, serviceName: b.serviceName, date: b.appointmentDate, time: b.appointmentTime, status: b.status, depositStatus: b.depositStatus, clientKey: keyOf(b.clientEmail, b.clientPhone) })),
       needsYou: {
-        pendingBookings: pending.slice(0, 5).map((b) => ({ id: b.id, name: b.clientName, serviceName: b.serviceName, date: b.appointmentDate, time: b.appointmentTime, depositStatus: b.depositStatus })),
+        pendingBookings: pending.slice(0, 20).map((b) => ({ id: b.id, name: b.clientName, serviceName: b.serviceName, date: b.appointmentDate, time: b.appointmentTime, depositStatus: b.depositStatus })),
         pendingBookingCount: pending.length,
-        chats: chats.slice(0, 5).map((c) => ({ id: c.id, name: c.name, lastMessage: c.lastMessage ?? null, updatedAt: c.updatedAt })),
+        chats: chats.slice(0, 20).map((c) => ({ id: c.id, name: c.name, lastMessage: c.lastMessage ?? null, updatedAt: c.updatedAt })),
         chatCount: chats.length,
         reviewsPending: count(reviewsPending.rows) + count(productReviewsPending.rows),
         ordersToSend: toSend.length,
@@ -254,7 +254,7 @@ export const crmRouter = router({
 
       const recentActivity = await db
         .execute(sql`SELECT "id", "activityType", "activityCategory", "description", "status", "createdAt" FROM "activityLogs"
-          WHERE "activityType" <> 'website_visit' AND "activityType" NOT LIKE 'admin\_%' ORDER BY "createdAt" DESC LIMIT 6`)
+          WHERE "activityType" <> 'website_visit' AND "activityType" NOT LIKE 'admin\_%' ORDER BY "createdAt" DESC LIMIT 25`)
         .then((r) => r.rows as Array<{ id: number; activityType: string; activityCategory: string; description: string; status: string; createdAt: string }>)
         .catch(() => []);
 
@@ -301,7 +301,7 @@ export const crmRouter = router({
           count(*) FILTER (WHERE "status" = 'failed' AND "createdAt" >= now() - interval '7 days')::int AS failed,
           max("createdAt") FILTER (WHERE "status" = 'sent') AS "lastSent"
         FROM "emailNotificationLogs"`),
-      many<{ id: number; subject: string; audience: string; status: string; createdAt: string }>(sql`SELECT "id", "subject", "audience", "status", "createdAt" FROM "emailNotificationLogs" ORDER BY "createdAt" DESC LIMIT 4`),
+      many<{ id: number; subject: string; audience: string; status: string; createdAt: string }>(sql`SELECT "id", "subject", "audience", "status", "createdAt" FROM "emailNotificationLogs" ORDER BY "createdAt" DESC LIMIT 15`),
       one<{ total: number; analytics: number }>(sql`SELECT count(*)::int AS total, count(*) FILTER (WHERE "analytics" = 'true')::int AS analytics FROM "cookieConsents" WHERE "createdAt" >= now() - interval '30 days'`),
       one<{ at: string | null }>(sql`SELECT max("createdAt") AS at FROM "activityLogs" WHERE "activityType" LIKE 'admin\_%'`),
       many<{ email: string; name: string | null; lastSignedIn: string | null }>(sql`SELECT lower("email") AS email, "name", "lastSignedIn" FROM "users" WHERE "role" = 'admin' AND "email" IS NOT NULL`),

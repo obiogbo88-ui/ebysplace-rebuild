@@ -97,7 +97,7 @@ export default function AdminLogin() {
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
                 <LockKeyhole className="h-7 w-7" />
               </div>
-              <CardTitle className="font-serif text-3xl">Admin sign in</CardTitle>
+              <CardTitle className="font-serif text-3xl">Eby’s Place Command Centre</CardTitle>
               <CardDescription className="text-[#5f5142]">
                 Sign in to continue.
               </CardDescription>
