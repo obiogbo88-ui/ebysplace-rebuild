@@ -623,7 +623,7 @@ export default function Shop() {
 
         {!selectedProduct ? (
           <section className="mt-8 grid gap-5 rounded-3xl border border-primary/25 bg-white p-5 shadow-[0_18px_50px_rgba(26,26,26,.06)] lg:grid-cols-[1.1fr_1fr_1fr]">
-            <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-primary">
+            <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-[#8F6F1D]">
               Department
               <select className="rounded-xl border border-primary/25 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-[#1A1A1A]" value={activeDepartment} onChange={(event) => setActiveDepartment(event.target.value)}>
                 {departmentOptions.map((department) => (
@@ -631,7 +631,7 @@ export default function Shop() {
                 ))}
               </select>
             </label>
-            <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-primary">
+            <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-[#8F6F1D]">
               Sort by
               <select className="rounded-xl border border-primary/25 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-[#1A1A1A]" value={sortBy} onChange={(event) => setSortBy(event.target.value as "featured" | "price_low_high" | "price_high_low" | "rating" | "name")}>
                 <option value="featured">Featured</option>
@@ -643,11 +643,11 @@ export default function Shop() {
             </label>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               <div className="grid grid-cols-2 gap-2">
-                <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-primary">
+                <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-[#8F6F1D]">
                   Min £
                   <input type="number" min={0} inputMode="decimal" className="w-full rounded-xl border border-primary/25 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-[#1A1A1A]" value={minimumPrice} onChange={(event) => setMinimumPrice(event.target.value)} />
                 </label>
-                <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-primary">
+                <label className="grid gap-2 text-xs font-bold uppercase tracking-[.16em] text-[#8F6F1D]">
                   Max £
                   <input type="number" min={0} inputMode="decimal" className="w-full rounded-xl border border-primary/25 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-[#1A1A1A]" value={maximumPrice} onChange={(event) => setMaximumPrice(event.target.value)} />
                 </label>

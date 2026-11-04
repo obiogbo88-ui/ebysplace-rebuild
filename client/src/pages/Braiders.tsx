@@ -155,13 +155,13 @@ export default function Braiders() {
               </label>
               <label className="flex items-center gap-2 rounded-full bg-white/8 px-4 py-3 text-sm text-white/70 ring-1 ring-white/10">
                 <SlidersHorizontal className="h-4 w-4 text-[var(--gold)]" />
-                <select value={selectedStyle} onChange={(event) => setSelectedStyle(event.target.value)} className="w-full bg-transparent text-white outline-none [&_option]:bg-[#15100d]">
+                <select value={selectedStyle} onChange={(event) => setSelectedStyle(event.target.value)} className="w-full bg-transparent text-white outline-none [&_option]:bg-white [&_option]:text-[#1A1A1A]">
                   {styles.map((style) => <option key={style} value={style}>{style}</option>)}
                 </select>
               </label>
               <label className="flex items-center gap-2 rounded-full bg-white/8 px-4 py-3 text-sm text-white/70 ring-1 ring-white/10">
                 <Star className="h-4 w-4 text-[var(--gold)]" />
-                <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="w-full bg-transparent text-white outline-none [&_option]:bg-[#15100d]">
+                <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="w-full bg-transparent text-white outline-none [&_option]:bg-white [&_option]:text-[#1A1A1A]">
                   {sortOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                 </select>
               </label>

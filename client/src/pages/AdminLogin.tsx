@@ -122,7 +122,7 @@ export default function AdminLogin() {
                     <Button
                       type="button"
                       variant="link"
-                      className="h-auto p-0 text-sm text-primary"
+                      className="h-auto p-0 text-sm text-[#8F6F1D]"
                       disabled={requestReset.isPending || resetCooldownSeconds > 0}
                       onClick={handleResetRequest}
                     >
