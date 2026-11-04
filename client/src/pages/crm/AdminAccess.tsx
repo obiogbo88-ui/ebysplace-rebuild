@@ -44,7 +44,7 @@ export function AdminAccessCard({ admins, canManage }: { admins: Admin[]; canMan
     <Card title="Who can sign in">
       <ul className="grid grid-cols-1" aria-label="People with access">
         {admins.map((a) => (
-          <li key={a.email} className="flex flex-wrap items-center gap-3 border-t border-[#EFEBE4] py-2.5 first:border-t-0">
+          <li key={a.email} className="flex min-w-0 flex-wrap items-center gap-3 border-t border-[#EFEBE4] py-2.5 first:border-t-0">
             <Avatar name={a.name || a.email} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold text-[#1A1A1A]">{a.name || a.email}</div>
@@ -64,13 +64,13 @@ export function AdminAccessCard({ admins, canManage }: { admins: Admin[]; canMan
             )}
             {canManage && !a.owner && (
               confirmRemove === a.email ? (
-                <span className="flex items-center gap-2">
+                <span className="flex flex-wrap items-center gap-2">
                   <span className="text-xs text-[#B3261E]">Remove their access?</span>
                   <PrimaryButton onClick={() => remove.mutate({ email: a.email })} disabled={remove.isPending}>{remove.isPending ? "Removing…" : "Yes, remove"}</PrimaryButton>
                   <GhostButton onClick={() => setConfirmRemove(null)}>Keep</GhostButton>
                 </span>
               ) : (
-                <span className="flex items-center gap-2">
+                <span className="flex flex-wrap items-center gap-2">
                   {!a.lastSignedIn && <GhostButton onClick={() => setPreviewFor(a.email)}>{a.invitedAt ? "Resend invite" : "Send invite"}</GhostButton>}
                   <button type="button" onClick={() => setConfirmRemove(a.email)} className="text-xs font-semibold text-[#B3261E] hover:underline">Remove</button>
                 </span>
@@ -112,23 +112,23 @@ export function AdminAccessCard({ admins, canManage }: { admins: Admin[]; canMan
 
       {canManage ? (
         <form
-          className="mt-4 grid grid-cols-1 gap-2 border-t border-[#EFEBE4] pt-4 sm:grid-cols-[1fr_1.4fr_1fr_auto]"
+          className="mt-4 grid min-w-0 grid-cols-1 gap-3 border-t border-[#EFEBE4] pt-4"
           onSubmit={(e) => { e.preventDefault(); if (validEmail) add.mutate({ email: email.trim().toLowerCase(), name: name.trim() || undefined, role }); }}
           aria-label="Give someone access"
         >
-          <label className="grid gap-1 text-xs font-semibold text-[#6B6458]">Name
-            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="e.g. Ada" className="rounded-xl border border-[#E6E1D8] px-3 py-2 text-sm font-normal text-[#1A1A1A]" />
+          <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#6B6458]">Name
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="e.g. Ada" className="rounded-xl border border-[#E6E1D8] px-3 py-2 text-sm font-normal text-[#1A1A1A] w-full min-w-0" />
           </label>
-          <label className="grid gap-1 text-xs font-semibold text-[#6B6458]">Email
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={320} placeholder="their@email.com" required className="rounded-xl border border-[#E6E1D8] px-3 py-2 text-sm font-normal text-[#1A1A1A]" />
+          <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#6B6458]">Email
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={320} placeholder="their@email.com" required className="rounded-xl border border-[#E6E1D8] px-3 py-2 text-sm font-normal text-[#1A1A1A] w-full min-w-0" />
           </label>
-          <label className="grid gap-1 text-xs font-semibold text-[#6B6458]">Role
-            <select value={role} onChange={(e) => setRole(e.target.value as AssignableRole)} className="rounded-xl border border-[#E6E1D8] bg-white px-3 py-2 text-sm font-normal text-[#1A1A1A]">
+          <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#6B6458]">Role
+            <select value={role} onChange={(e) => setRole(e.target.value as AssignableRole)} className="rounded-xl border border-[#E6E1D8] bg-white px-3 py-2 text-sm font-normal text-[#1A1A1A] w-full min-w-0">
               {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{ROLE_INFO[r].label}</option>)}
             </select>
           </label>
-          <div className="flex items-end"><PrimaryButton type="submit" disabled={!validEmail || add.isPending}>{add.isPending ? "Adding…" : "Give access"}</PrimaryButton></div>
-          <p className="text-[13px] text-[#6B6458] sm:col-span-4"><strong className="text-[#1A1A1A]">{ROLE_INFO[role].label}:</strong> {ROLE_INFO[role].description} Next you&apos;ll see their invite email to check before sending.</p>
+          <div><PrimaryButton type="submit" disabled={!validEmail || add.isPending}>{add.isPending ? "Adding…" : "Give access"}</PrimaryButton></div>
+          <p className="text-[13px] text-[#6B6458]"><strong className="text-[#1A1A1A]">{ROLE_INFO[role].label}:</strong> {ROLE_INFO[role].description} Next you&apos;ll see their invite email to check before sending.</p>
         </form>
       ) : (
         <p className="mt-2 text-[13px] text-[#6B6458]">Only the owner can give or remove access, or change roles.</p>
