@@ -6,6 +6,7 @@ import { ClientProfilePage } from "./ClientProfilePage";
 import { ClientsPage } from "./ClientsPage";
 import { HomePage } from "./HomePage";
 import { ReportsPage } from "./ReportsPage";
+import { WebsitePage } from "./WebsitePage";
 import { SocialPage } from "./SocialPage";
 import { crmPage, parseCrmHash, type CrmLocation } from "./nav";
 
@@ -56,6 +57,8 @@ export function CrmPageView({ loc, blockedSlots }: { loc: CrmLocation; blockedSl
       return <AutomationsPage />;
     case "reports":
       return <ReportsPage />;
+    case "website":
+      return <WebsitePage />;
     default:
       return null;
   }
