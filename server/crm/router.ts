@@ -9,6 +9,7 @@ import { sendBrandedEmail } from "../resendEmail";
 import { listConfiguredAdminEmails } from "../supabaseAuth";
 import { clientKeyFor, clientTimeline, filterClients, journeyCounts, type ClientFilter } from "./clients";
 import { loadClients, londonToday } from "./data";
+import { getAvailabilitySettings } from "../db";
 import { addTag, clientPrefs, crmDb, recentSends, removeTag, saveNote, sendsFor, setAutomationSetting, setClientPref } from "./store";
 
 const clientKey = z.string().regex(/^[ep]:.{3,320}$/, "Not a client key");
@@ -42,7 +43,71 @@ export const crmRouter = router({
       .filter((b) => b.status !== "completed" && b.appointmentDate >= today)
       .sort((a, b) => (a.appointmentDate + a.appointmentTime).localeCompare(b.appointmentDate + b.appointmentTime));
     const posts = (social.rows as any[]).reduce((acc, r) => ({ ...acc, [r.slot]: r }), {} as Record<string, any>);
+
+    // This week (Monday to Sunday) against last week.
+    const weekStart = mondayOf(today);
+    const lastWeekStart = addDaysIso(weekStart, -7);
+    const dayOf = (v: Date | string) => (v instanceof Date ? v.toISOString() : String(v)).slice(0, 10);
+    const inWeek = (d: string, from: string) => d >= from && d < addDaysIso(from, 7);
+    const PAID_ORDER = new Set(["paid", "fulfilling", "shipped", "completed"]);
+    const money = (v: string | null) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const paidIn = (from: string) =>
+      Math.round(
+        (rows.bookings.filter((b) => b.depositStatus === "paid" && inWeek(dayOf(b.createdAt), from)).reduce((s, b) => s + money(b.checkoutTotalCharged), 0) +
+          rows.orders.filter((o) => PAID_ORDER.has(o.status) && inWeek(dayOf(o.createdAt), from)).reduce((s, o) => s + money(o.checkoutTotalCharged), 0)) * 100,
+      ) / 100;
+    const soldIn = (from: string) => Math.round(rows.orders.filter((o) => PAID_ORDER.has(o.status) && inWeek(dayOf(o.createdAt), from)).reduce((s, o) => s + money(o.checkoutTotalCharged), 0) * 100) / 100;
+    const weekVisits = await db
+      .execute(sql`SELECT count(*) FILTER (WHERE "createdAt" >= ${weekStart}::date)::int AS now,
+          count(*) FILTER (WHERE "createdAt" >= ${lastWeekStart}::date AND "createdAt" < ${weekStart}::date)::int AS before
+        FROM "analyticsEvents" WHERE "eventName" = 'page_visit' AND "createdAt" >= ${lastWeekStart}::date`)
+      .then((r) => (r.rows[0] ?? { now: 0, before: 0 }) as { now: number; before: number })
+      .catch(() => ({ now: 0, before: 0 }));
+
+    // Today in the studio: times, how long each style takes, studio or home visit, deposit, new or returning.
+    type TodayRow = { id: number; serviceName: string; clientName: string; clientEmail: string; clientPhone: string; appointmentTime: string; status: string; depositStatus: string; city: string | null; serviceLocation?: string | null; duration: string | null };
+    const todayRows = await db
+      .execute(sql`SELECT b."id", b."serviceName", b."clientName", b."clientEmail", b."clientPhone", b."appointmentTime", b."status", b."depositStatus", b."city", b."serviceLocation", s."duration"
+        FROM "bookings" b LEFT JOIN "services" s ON s."name" = b."serviceName"
+        WHERE b."appointmentDate" = ${today} AND b."status" <> 'cancelled' ORDER BY b."appointmentTime"`)
+      .then((r) => r.rows as TodayRow[])
+      .catch(() =>
+        db
+          .execute(sql`SELECT "id", "serviceName", "clientName", "clientEmail", "clientPhone", "appointmentTime", "status", "depositStatus", "city", NULL AS "duration"
+            FROM "bookings" WHERE "appointmentDate" = ${today} AND "status" <> 'cancelled' ORDER BY "appointmentTime"`)
+          .then((r) => r.rows as TodayRow[])
+          .catch(() => [] as TodayRow[]),
+      );
+    const byKey = new Map(clients.map((c) => [c.key, c] as const));
+    const tomorrow = addDaysIso(today, 1);
+    const tomorrowRows = live.filter((b) => b.appointmentDate === tomorrow).sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime));
     return {
+      week: {
+        appointments: { now: live.filter((b) => inWeek(b.appointmentDate, weekStart)).length, before: live.filter((b) => inWeek(b.appointmentDate, lastWeekStart)).length },
+        paidOnline: { now: paidIn(weekStart), before: paidIn(lastWeekStart) },
+        newClients: { now: clients.filter((c) => inWeek(c.firstSeen.slice(0, 10), weekStart)).length, before: clients.filter((c) => inWeek(c.firstSeen.slice(0, 10), lastWeekStart)).length },
+        visits: { now: Number(weekVisits.now) || 0, before: Number(weekVisits.before) || 0 },
+      },
+      todayList: todayRows.map((b) => {
+        const key = keyOf(b.clientEmail, b.clientPhone);
+        const client = byKey.get(key);
+        return {
+          id: Number(b.id),
+          time: String(b.appointmentTime).slice(0, 5),
+          name: b.clientName,
+          serviceName: b.serviceName,
+          duration: b.duration ?? null,
+          homeVisit: b.serviceLocation === "home_service",
+          city: b.city,
+          status: b.status,
+          depositStatus: b.depositStatus,
+          returning: (client?.visits ?? 0) > (b.status === "completed" ? 1 : 0),
+          phone: b.clientPhone,
+          clientKey: key,
+        };
+      }),
+      tomorrow: { count: tomorrowRows.length, first: tomorrowRows[0] ? { time: tomorrowRows[0].appointmentTime, serviceName: tomorrowRows[0].serviceName } : null },
+      shop: { toSend: toSend.length, soldThisWeek: soldIn(weekStart) },
       today,
       counts: {
         clients: clients.length,
@@ -321,6 +386,52 @@ export const crmRouter = router({
     };
   }),
 
+  /**
+   * What the ready-made announcements fill themselves in with: days with no
+   * bookings, a cancelled slot that freed up, the next time blocked off, and
+   * the kids' starting price. Nothing is sent from here.
+   */
+  announcementContext: adminProcedure.query(async () => {
+    const today = londonToday();
+    const db = await crmDb();
+    const { rows } = await loadClients();
+    const live = rows.bookings.filter((b) => b.status !== "cancelled");
+    const { blockedSlots } = await getAvailabilitySettings().catch(() => ({ blockedSlots: [] as Array<{ date: string; time?: string }> }));
+    const wholeDayBlocks = new Set(blockedSlots.filter((s) => !s.time).map((s) => s.date));
+    const days = Array.from({ length: 14 }, (_, i) => addDaysIso(today, i + 1)).map((date) => ({
+      date,
+      bookings: live.filter((b) => b.appointmentDate === date).length,
+      blocked: wholeDayBlocks.has(date),
+    }));
+    const taken = new Set(live.map((b) => `${b.appointmentDate} ${b.appointmentTime}`));
+    const opening = rows.bookings
+      .filter((b) => b.status === "cancelled" && b.appointmentDate >= today && !taken.has(`${b.appointmentDate} ${b.appointmentTime}`))
+      .sort((a, b) => (a.appointmentDate + a.appointmentTime).localeCompare(b.appointmentDate + b.appointmentTime))[0];
+    const futureBlocks = Array.from(wholeDayBlocks).filter((d) => d >= today).sort();
+    let closed: { from: string; to: string; reopen: string } | null = null;
+    if (futureBlocks.length) {
+      let to = futureBlocks[0];
+      for (const d of futureBlocks.slice(1)) if (d === addDaysIso(to, 1)) to = d; else break;
+      closed = { from: futureBlocks[0], to, reopen: addDaysIso(to, 1) };
+    }
+    const kids = await db
+      .execute(sql`SELECT min("priceFrom"::numeric)::float AS p FROM "services" WHERE ("category" ILIKE '%kid%' OR "name" ILIKE '%kid%') AND "isBookable" = 'true'`)
+      .then((r) => (r.rows[0] as { p: number | null } | undefined)?.p ?? null)
+      .catch(() => null);
+    const recent = await db
+      .execute(sql`SELECT "id", "status", "createdAt", "metadata" FROM "activityLogs"
+        WHERE "activityType" IN ('admin_announcement_sent', 'admin_announcement_partial_failure') ORDER BY "createdAt" DESC LIMIT 20`)
+      .then((r) =>
+        (r.rows as Array<{ id: number; status: string; createdAt: string; metadata: any }>).map((row) => {
+          const m = typeof row.metadata === "string" ? safeJson(row.metadata) : row.metadata ?? {};
+          const ways = [m?.email ? "Email" : null, m?.webPush ? "Phone notification" : null, m?.sms ? "Text" : null, m?.whatsapp ? "WhatsApp" : null].filter(Boolean);
+          return { id: Number(row.id), title: String(m?.title ?? "Announcement"), audience: String(m?.audience ?? ""), ways, failed: row.status === "failed", createdAt: row.createdAt };
+        }),
+      )
+      .catch(() => []);
+    return { today, days, opening: opening ? { date: opening.appointmentDate, time: String(opening.appointmentTime).slice(0, 5) } : null, closed, kidsFrom: kids, recent };
+  }),
+
   /** Saves the Gallery order: the first photo shows first on the Gallery page and homepage. */
   reorderGallery: adminProcedure.input(z.object({ ids: z.array(z.number().int().positive()).min(1).max(500) })).mutation(async ({ input }) => {
     const db = await crmDb();
@@ -336,6 +447,20 @@ const keyOf = (email: string, phone: string) => clientKeyFor(email, phone);
 function hhmm(slot: SlotName) {
   const t = SLOT_TIMES[slot];
   return `${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`;
+}
+
+function safeJson(v: string) {
+  try {
+    return JSON.parse(v);
+  } catch {
+    return {};
+  }
+}
+
+/** The Monday of the week a YYYY-MM-DD date falls in. */
+function mondayOf(date: string) {
+  const day = new Date(`${date}T12:00:00Z`).getUTCDay(); // 0 = Sunday
+  return addDaysIso(date, day === 0 ? -6 : 1 - day);
 }
 
 function addDaysIso(date: string, n: number) {

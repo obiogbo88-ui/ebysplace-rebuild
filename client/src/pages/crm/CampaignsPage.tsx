@@ -2,6 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Card, Chip, GhostButton, PrimaryButton } from "./ui";
+import { QuickAnnouncements } from "./QuickAnnouncements";
 
 const GROUPS = [
   { id: "all", label: "Everyone" },
@@ -34,6 +35,8 @@ export function CampaignsPage() {
   const ready = subject.trim().length >= 3 && message.trim().length >= 10 && count > 0;
 
   return (
+    <div className="grid gap-4">
+    <QuickAnnouncements />
     <Card title="Email a group of clients" action={<span className="text-xs text-[#6B6458]">From info@ebysplace.com</span>}>
       <div className="grid gap-4">
         <div>
@@ -93,5 +96,6 @@ export function CampaignsPage() {
         )}
       </div>
     </Card>
+    </div>
   );
 }

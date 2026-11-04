@@ -1200,6 +1200,8 @@ export const appRouter = router({
         title: z.string().min(2).max(80),
         body: z.string().min(2).max(200),
         url: z.string().url().optional(),
+        // The email button's words for this message ("Book now", "Shop now"); "View more" when left out.
+        ctaLabel: z.string().trim().min(2).max(40).optional(),
         channels: z.object({ webPush: z.boolean(), email: z.boolean(), sms: z.boolean(), whatsapp: z.boolean() }),
         audience: z.enum(["subscribers", "all_clients", "selected"]).default("all_clients"),
         extraPhones: z.array(z.string().min(8).max(20)).max(20).optional(),
@@ -1228,7 +1230,7 @@ export const appRouter = router({
                 sendBroadcastEmail(recipients, {
                   subject: input.title,
                   paragraphs: [input.body],
-                  cta: input.url ? { label: "View more", url: input.url } : undefined,
+                  cta: input.url ? { label: input.ctaLabel ?? "View more", url: input.url } : undefined,
                 }),
               )
             : Promise.resolve(null),
