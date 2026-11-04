@@ -211,6 +211,22 @@ main,
   color: #1A1A1A !important;
 }
 
+/* Dark buttons, chips and badges must keep white text. The rule above turns every
+   .text-white dark (left over from the old dark theme), which made selected chips
+   and black buttons (e.g. CRM "Preview", "Due a rebook") black-on-black. */
+.bg-\[\#1A1A1A\].text-white,
+.bg-\[\#111111\].text-white,
+.bg-\[\#1a1a19\].text-white,
+.bg-\[\#2f2418\].text-white,
+.bg-\[\#1E7A46\].text-white,
+.bg-destructive.text-white {
+  color: #FFFFFF !important;
+}
+.bg-\[\#1A1A1A\] .text-white\/70,
+.bg-\[\#111111\] .text-white\/70 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
 .text-\[\#f5ead6\], .text-\[\#ecd39d\], .text-\[\#e7d7b2\], .text-\[\#d8c7a4\] { color: #1A1A1A !important; }
 .text-\[\#bda65d\], .text-\[\#9f8b52\], .text-\[\#75521c\], .text-\[\#4f3720\] { color: #4A4A4A !important; }
 .text-primary, .gold-text { color: #C9A84C !important; }
