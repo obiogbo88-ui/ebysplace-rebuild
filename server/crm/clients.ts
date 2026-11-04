@@ -341,6 +341,30 @@ export type TimelineItem = {
   status?: string;
 };
 
+/** Every booking this person made, soonest upcoming first, then the most recent past ones. */
+export function clientBookings(client: Pick<Client, "email" | "phone">, bookings: BookingRow[], today: string) {
+  const myEmail = normaliseEmail(client.email);
+  const myPhone = normalisePhone(client.phone);
+  const mine = bookings.filter((b) => {
+    const ek = normaliseEmail(b.clientEmail);
+    const pk = normalisePhone(b.clientPhone);
+    return Boolean((myEmail && ek === myEmail) || (myPhone && pk === myPhone));
+  });
+  const rows = mine.map((b) => ({
+    id: b.id,
+    serviceName: b.serviceName,
+    date: b.appointmentDate,
+    time: String(b.appointmentTime).slice(0, 5),
+    status: b.status,
+    depositStatus: b.depositStatus,
+    bookedOn: iso(b.createdAt).slice(0, 10),
+    upcoming: b.appointmentDate >= today && b.status !== "cancelled" && b.status !== "completed",
+  }));
+  const upcoming = rows.filter((r) => r.upcoming).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  const past = rows.filter((r) => !r.upcoming).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  return [...upcoming, ...past];
+}
+
 export function clientTimeline(
   client: Pick<Client, "email" | "phone">,
   rows: { bookings: BookingRow[]; orders: OrderRow[]; chats: ChatRow[]; subscribers: SubscriberRow[] },

@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getExistingPushSubscription, isPushSupported, pushSubscriptionToInput, subscribeToPush } from "@/lib/webPush";
 import {
+  ArrowLeft,
   Bell,
   CalendarDays,
   ChevronDown,
@@ -888,6 +889,19 @@ export default function Admin() {
       <div className="min-h-screen bg-[#F6F5F2] text-[#1A1A1A]">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
+            {crmLoc.page !== "home" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  // Back to the page you came from in the Command Centre; Home when there is none.
+                  if (window.history.length > 1) window.history.back();
+                  else window.location.hash = "home";
+                }}
+                className="mb-2 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#E6E1D8] bg-white px-4 text-[13px] font-semibold text-[#1A1A1A] transition hover:border-[#C9A84C] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back
+              </button>
+            ) : null}
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A641E]">Eby’s Place Command Centre</p>
             <div className="mt-1">
               <CrmPageHeader loc={crmLoc} />

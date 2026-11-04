@@ -7,7 +7,7 @@ import type { SlotName } from "../social/store";
 import { AUTOMATIONS, automationStates, campaignEmail, campaignRecipients } from "./automations";
 import { sendBrandedEmail } from "../resendEmail";
 import { listConfiguredAdminEmails } from "../supabaseAuth";
-import { clientKeyFor, clientTimeline, filterClients, journeyCounts, type ClientFilter } from "./clients";
+import { clientBookings, clientKeyFor, clientTimeline, filterClients, journeyCounts, type ClientFilter } from "./clients";
 import { loadClients, londonToday } from "./data";
 import { getAvailabilitySettings } from "../db";
 import { addTag, clientPrefs, crmDb, recentSends, removeTag, saveNote, sendsFor, setAutomationSetting, setClientPref } from "./store";
@@ -156,7 +156,7 @@ export const crmRouter = router({
         : Promise.resolve([]),
     ]);
     const switches = Object.fromEntries(CLIENT_SWITCHES.map((k) => [k, (prefs as Record<string, boolean>)[k] ?? true]));
-    return { client, timeline: clientTimeline(client, rows, { sends, emails }), switches };
+    return { client, timeline: clientTimeline(client, rows, { sends, emails }), switches, appointments: clientBookings(client, rows.bookings, londonToday()) };
   }),
 
   saveNote: adminProcedure.input(z.object({ key: clientKey, body: z.string().max(4000) })).mutation(async ({ input }) => {

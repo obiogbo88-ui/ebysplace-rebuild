@@ -62,7 +62,7 @@ export function ClientProfilePage({ clientKey }: { clientKey: string }) {
         <ErrorNote error={q.error} />
       </div>
     );
-  const { client: c, timeline, switches } = q.data!;
+  const { client: c, timeline, switches, appointments } = q.data!;
   const today = new Date().toISOString().slice(0, 10);
   const wa = whatsappLink(c.phone, `Hi ${c.name.split(" ")[0]}, it's Eby from Eby's Place. `);
   const bookAgain = () => {
@@ -87,6 +87,11 @@ export function ClientProfilePage({ clientKey }: { clientKey: string }) {
               {c.usualStyle ? ` · usual style: ${c.usualStyle}` : ""}
               {c.city ? ` · ${c.city}` : ""}
             </p>
+            {c.nextAppointment ? (
+              <p className="mt-1 text-sm font-semibold text-[#1A1A1A]">
+                Booked for {niceDate(c.nextAppointment.date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} at {c.nextAppointment.time.slice(0, 5)} · {c.nextAppointment.serviceName}
+              </p>
+            ) : null}
             <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[#1A1A1A]">
               {c.email ? <span className="select-all">{c.email}</span> : null}
               {c.phone ? <span className="select-all tabular-nums">{c.phone}</span> : null}
@@ -147,6 +152,34 @@ export function ClientProfilePage({ clientKey }: { clientKey: string }) {
           hint={c.nextAppointment ? `${c.nextAppointment.time} · ${c.nextAppointment.serviceName}` : c.dueRebook ? "Due a rebook now" : c.lastVisit ? relativeDays(c.lastVisit, today) ?? undefined : undefined}
         />
       </div>
+
+      <Card title={`Appointments · ${appointments.length}`} action={<span className="text-xs text-[#6B6458]">The date each booking is for, and when it was made</span>}>
+        {appointments.length === 0 ? (
+          <Empty>No bookings yet.</Empty>
+        ) : (
+          <ScrollBox label="Appointments" size="sm">
+            <ul className="grid grid-cols-1">
+              {appointments.map((b) => (
+                <li key={b.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-[#EFEBE4] py-3 first:border-t-0 first:pt-0">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-[#1A1A1A]">
+                      {niceDate(b.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })} at {b.time}
+                      {b.upcoming ? <span className="ml-2 text-xs font-semibold text-[#8A641E]">{relativeDays(b.date, today)}</span> : null}
+                    </div>
+                    <div className="text-[13px] text-[#6B6458]">
+                      {b.serviceName} · booked on {niceDate(b.bookedOn, { day: "numeric", month: "short", year: "numeric" })}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Pill tone={STATUS_TONE[b.status] ?? "grey"}>{b.status.charAt(0).toUpperCase() + b.status.slice(1)}</Pill>
+                    <Pill tone={b.depositStatus === "paid" ? "live" : b.depositStatus === "refunded" ? "grey" : "wait"}>Deposit {b.depositStatus.replace("_", " ")}</Pill>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </ScrollBox>
+        )}
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Card title="Timeline">
