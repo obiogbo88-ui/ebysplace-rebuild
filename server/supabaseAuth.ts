@@ -22,6 +22,11 @@ function getConfiguredAdminEmails() {
 }
 
 const ADMIN_EMAILS = getConfiguredAdminEmails();
+
+/** The emails allowed to sign in to the admin (read-only; set in Vercel env vars). */
+export function listConfiguredAdminEmails() {
+  return [...ADMIN_EMAILS];
+}
 const PRIMARY_ADMIN_EMAIL = ADMIN_EMAILS[0] ?? "info@ebysplace.com";
 
 function isConfiguredAdminEmail(email: string | undefined) {

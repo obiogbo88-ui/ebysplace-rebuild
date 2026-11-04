@@ -6,6 +6,7 @@ import { SLOTS, SLOT_TIMES } from "../social/content";
 import type { SlotName } from "../social/store";
 import { AUTOMATIONS, automationStates, campaignEmail, campaignRecipients } from "./automations";
 import { sendBrandedEmail } from "../resendEmail";
+import { listConfiguredAdminEmails } from "../supabaseAuth";
 import { clientKeyFor, clientTimeline, filterClients, journeyCounts, type ClientFilter } from "./clients";
 import { loadClients, londonToday } from "./data";
 import { addTag, clientPrefs, crmDb, recentSends, removeTag, saveNote, sendsFor, setAutomationSetting, setClientPref } from "./store";
@@ -191,42 +192,142 @@ export const crmRouter = router({
       return { recipientCount: recipients.length, delivered, failed };
     }),
 
-  reports: adminProcedure.query(async () => {
-    const today = londonToday();
-    const { rows, clients } = await loadClients();
+  reports: adminProcedure
+    .input(z.object({ period: z.enum(["month", "3m", "12m"]).default("12m") }).optional())
+    .query(async ({ input }) => {
+      const period = input?.period ?? "12m";
+      const today = londonToday();
+      const { rows, clients } = await loadClients();
+      const db = await crmDb();
+      const monthsBack = (n: number) => {
+        const out: string[] = [];
+        for (let i = n - 1; i >= 0; i--) {
+          const d = new Date(`${today.slice(0, 7)}-15T12:00:00Z`);
+          d.setUTCMonth(d.getUTCMonth() - i);
+          out.push(d.toISOString().slice(0, 7));
+        }
+        return out;
+      };
+      const months = monthsBack(12);
+      const span = period === "month" ? 1 : period === "3m" ? 3 : 12;
+      const all = monthsBack(span * 2);
+      const current = new Set(all.slice(span));
+      const previous = new Set(all.slice(0, span));
+      const monthOf = (v: Date | string) => (v instanceof Date ? v.toISOString() : String(v)).slice(0, 7);
+      const live = rows.bookings.filter((b) => b.status !== "cancelled");
+      const money = (v: string | null) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+      const PAID_ORDER = new Set(["paid", "fulfilling", "shipped", "completed"]);
+      const payments = [
+        ...rows.bookings.filter((b) => b.depositStatus === "paid").map((b) => ({ month: monthOf(b.createdAt), amount: money(b.checkoutTotalCharged) })),
+        ...rows.orders.filter((o) => PAID_ORDER.has(o.status)).map((o) => ({ month: monthOf(o.createdAt), amount: money(o.checkoutTotalCharged) })),
+      ].filter((p) => p.amount > 0);
+      const sumIn = (set: Set<string>) => Math.round(payments.filter((p) => set.has(p.month)).reduce((s, p) => s + p.amount, 0) * 100) / 100;
+      const countIn = (set: Set<string>) => payments.filter((p) => set.has(p.month)).length;
+
+      const perMonth = months.map((m) => {
+        const inMonth = live.filter((b) => b.appointmentDate.slice(0, 7) === m);
+        const completed = inMonth.filter((b) => b.status === "completed").length;
+        return { month: m, bookings: inMonth.length, completed, upcoming: inMonth.length - completed };
+      });
+      const styles = new Map<string, number>();
+      for (const b of live) if (current.has(b.appointmentDate.slice(0, 7))) styles.set(b.serviceName, (styles.get(b.serviceName) ?? 0) + 1);
+      const visited = clients.filter((c) => c.visits >= 1);
+      const visits = await db
+        .execute(sql`SELECT to_char(date_trunc('month', "createdAt"), 'YYYY-MM') AS m, count(*)::int AS total,
+            count(*) FILTER (WHERE coalesce("metadata"::jsonb->>'referrer', '') ILIKE '%instagram%')::int AS instagram
+          FROM "analyticsEvents" WHERE "eventName" = 'page_visit' AND "createdAt" >= now() - interval '24 months' GROUP BY 1 ORDER BY 1`)
+        .then((r) => r.rows as Array<{ m: string; total: number; instagram: number }>)
+        .catch(() => []);
+      const visitMap = new Map<string, { m: string; total: number; instagram: number }>(visits.map((v) => [v.m, v] as const));
+      const visitsIn = (set: Set<string>, key: "total" | "instagram") => Array.from(set).reduce((s, m) => s + Number(visitMap.get(m)?.[key] ?? 0), 0);
+
+      // From visit to booking, this calendar month: distinct browsing sessions at each step, then deposits actually paid.
+      const funnelRow = await db
+        .execute(sql`SELECT count(DISTINCT "sessionId")::int AS visited,
+            count(DISTINCT "sessionId") FILTER (WHERE "pageUrl" LIKE '/services%')::int AS services,
+            count(DISTINCT "sessionId") FILTER (WHERE "pageUrl" LIKE '/book%')::int AS booking
+          FROM "activityLogs" WHERE "activityType" = 'website_visit' AND "sessionId" IS NOT NULL AND "createdAt" >= date_trunc('month', now())`)
+        .then((r) => (r.rows[0] ?? null) as { visited: number; services: number; booking: number } | null)
+        .catch(() => null);
+      const thisMonth = today.slice(0, 7);
+      const depositsThisMonth = rows.bookings.filter((b) => b.depositStatus === "paid" && monthOf(b.createdAt) === thisMonth).length;
+
+      const recentActivity = await db
+        .execute(sql`SELECT "id", "activityType", "activityCategory", "description", "status", "createdAt" FROM "activityLogs"
+          WHERE "activityType" <> 'website_visit' AND "activityType" NOT LIKE 'admin\_%' ORDER BY "createdAt" DESC LIMIT 6`)
+        .then((r) => r.rows as Array<{ id: number; activityType: string; activityCategory: string; description: string; status: string; createdAt: string }>)
+        .catch(() => []);
+
+      const gaps = clients.map((c) => c.averageGapDays).filter((g): g is number => g !== null);
+      return {
+        period,
+        kpis: {
+          appointments: { now: live.filter((b) => current.has(b.appointmentDate.slice(0, 7))).length, before: live.filter((b) => previous.has(b.appointmentDate.slice(0, 7))).length },
+          paidOnline: { now: sumIn(current), before: sumIn(previous) },
+          averagePayment: { now: countIn(current) ? Math.round((sumIn(current) / countIn(current)) * 100) / 100 : null, before: countIn(previous) ? Math.round((sumIn(previous) / countIn(previous)) * 100) / 100 : null },
+          visits: { now: visitsIn(current, "total"), before: visitsIn(previous, "total") },
+          instagramVisits: { now: visitsIn(current, "instagram"), before: visitsIn(previous, "instagram") },
+        },
+        months: perMonth.map((p) => ({ ...p, visits: visitMap.get(p.month)?.total ?? 0, instagramVisits: visitMap.get(p.month)?.instagram ?? 0 })),
+        topStyles: Array.from(styles.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, n]) => ({ name, bookings: n })),
+        rebookRate: visited.length ? Math.round((visited.filter((c) => c.visits >= 2).length / visited.length) * 100) : null,
+        averageGapDays: gaps.length ? Math.round(gaps.reduce((s, g) => s + g, 0) / gaps.length) : null,
+        clients: {
+          total: clients.length,
+          newThisMonth: clients.filter((c) => c.firstSeen.slice(0, 7) === thisMonth).length,
+          dueRebook: clients.filter((c) => c.dueRebook).length,
+        },
+        funnel: funnelRow
+          ? [
+              { step: "Visited the site", n: Number(funnelRow.visited) || 0 },
+              { step: "Looked at Services", n: Number(funnelRow.services) || 0 },
+              { step: "Opened the Booking page", n: Number(funnelRow.booking) || 0 },
+              { step: "Paid the deposit", n: depositsThisMonth },
+            ]
+          : null,
+        recentActivity,
+        clientsSince: rows.bookings.length ? rows.bookings.map((b) => String(b.createdAt).slice(0, 10)).sort()[0] : null,
+      };
+    }),
+
+  /** The Website & settings overview: health, emails, cookie choices and who can sign in. */
+  websiteOverview: adminProcedure.query(async () => {
     const db = await crmDb();
-    const months: string[] = [];
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(`${today.slice(0, 7)}-15T12:00:00Z`);
-      d.setUTCMonth(d.getUTCMonth() - i);
-      months.push(d.toISOString().slice(0, 7));
-    }
-    const perMonth = months.map((m) => ({
-      month: m,
-      bookings: rows.bookings.filter((b) => b.status !== "cancelled" && b.appointmentDate.slice(0, 7) === m).length,
-      completed: rows.bookings.filter((b) => b.status === "completed" && b.appointmentDate.slice(0, 7) === m).length,
-    }));
-    const styles = new Map<string, number>();
-    for (const b of rows.bookings) if (b.status !== "cancelled") styles.set(b.serviceName, (styles.get(b.serviceName) ?? 0) + 1);
-    const visited = clients.filter((c) => c.visits >= 1);
-    const visits = await db
-      .execute(sql`SELECT to_char(date_trunc('month', "createdAt"), 'YYYY-MM') AS m, count(*)::int AS total,
-          count(*) FILTER (WHERE coalesce("metadata"::jsonb->>'referrer', '') ILIKE '%instagram%')::int AS instagram
-        FROM "analyticsEvents" WHERE "eventName" = 'page_visit' AND "createdAt" >= now() - interval '12 months' GROUP BY 1 ORDER BY 1`)
-      .then((r) => r.rows as Array<{ m: string; total: number; instagram: number }>)
-      .catch(() => []);
-    const visitMap = new Map<string, { m: string; total: number; instagram: number }>(visits.map((v) => [v.m, v] as const));
+    const one = <T>(q: ReturnType<typeof sql>) => db.execute(q).then((r) => (r.rows[0] ?? null) as T | null).catch(() => null);
+    const many = <T>(q: ReturnType<typeof sql>) => db.execute(q).then((r) => r.rows as T[]).catch(() => [] as T[]);
+    const [emailStats, recentEmails, cookies, lastChange, adminUsers] = await Promise.all([
+      one<{ sent: number; failed: number; lastSent: string | null }>(sql`SELECT
+          count(*) FILTER (WHERE "status" = 'sent' AND "createdAt" >= now() - interval '7 days')::int AS sent,
+          count(*) FILTER (WHERE "status" = 'failed' AND "createdAt" >= now() - interval '7 days')::int AS failed,
+          max("createdAt") FILTER (WHERE "status" = 'sent') AS "lastSent"
+        FROM "emailNotificationLogs"`),
+      many<{ id: number; subject: string; audience: string; status: string; createdAt: string }>(sql`SELECT "id", "subject", "audience", "status", "createdAt" FROM "emailNotificationLogs" ORDER BY "createdAt" DESC LIMIT 4`),
+      one<{ total: number; analytics: number }>(sql`SELECT count(*)::int AS total, count(*) FILTER (WHERE "analytics" = 'true')::int AS analytics FROM "cookieConsents" WHERE "createdAt" >= now() - interval '30 days'`),
+      one<{ at: string | null }>(sql`SELECT max("createdAt") AS at FROM "activityLogs" WHERE "activityType" LIKE 'admin\_%'`),
+      many<{ email: string; name: string | null; lastSignedIn: string | null }>(sql`SELECT lower("email") AS email, "name", "lastSignedIn" FROM "users" WHERE "role" = 'admin' AND "email" IS NOT NULL`),
+    ]);
+    type AdminUser = { email: string; name: string | null; lastSignedIn: string | null };
+    const signIns = new Map<string, AdminUser>((adminUsers as AdminUser[]).map((u) => [u.email, u]));
     return {
-      months: perMonth.map((p) => ({ ...p, visits: visitMap.get(p.month)?.total ?? 0, instagramVisits: visitMap.get(p.month)?.instagram ?? 0 })),
-      topStyles: Array.from(styles.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, n]) => ({ name, bookings: n })),
-      rebookRate: visited.length ? Math.round((visited.filter((c) => c.visits >= 2).length / visited.length) * 100) : null,
-      averagePaidOnline: clients.length ? Math.round((clients.reduce((s, c) => s + c.paidOnline, 0) / Math.max(1, clients.filter((c) => c.paidOnline > 0).length)) * 100) / 100 : null,
-      averageGapDays: (() => {
-        const gaps = clients.map((c) => c.averageGapDays).filter((g): g is number => g !== null);
-        return gaps.length ? Math.round(gaps.reduce((s, g) => s + g, 0) / gaps.length) : null;
-      })(),
-      clientsSince: rows.bookings.length ? rows.bookings.map((b) => String(b.createdAt).slice(0, 10)).sort()[0] : null,
+      emails: {
+        sentThisWeek: Number(emailStats?.sent ?? 0),
+        failedThisWeek: Number(emailStats?.failed ?? 0),
+        lastSentAt: emailStats?.lastSent ?? null,
+        recent: recentEmails,
+      },
+      cookies30d: { total: Number(cookies?.total ?? 0), analytics: Number(cookies?.analytics ?? 0) },
+      lastChangeAt: lastChange?.at ?? null,
+      admins: listConfiguredAdminEmails().map((email) => ({ email, name: signIns.get(email)?.name ?? null, lastSignedIn: signIns.get(email)?.lastSignedIn ?? null })),
     };
+  }),
+
+  /** Saves the Gallery order: the first photo shows first on the Gallery page and homepage. */
+  reorderGallery: adminProcedure.input(z.object({ ids: z.array(z.number().int().positive()).min(1).max(500) })).mutation(async ({ input }) => {
+    const db = await crmDb();
+    for (let i = 0; i < input.ids.length; i++) {
+      await db.execute(sql`UPDATE "galleryImages" SET "sortOrder" = ${i} WHERE "id" = ${input.ids[i]}`);
+    }
+    return { saved: input.ids.length };
   }),
 });
 

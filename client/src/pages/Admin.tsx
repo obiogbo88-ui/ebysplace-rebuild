@@ -757,7 +757,9 @@ export default function Admin() {
   const visiblePanels = new Set(crmPanels);
   useEffect(() => {
     const panelId = crmLoc.panel ?? resolvePanelFromHash(window.location.hash || "");
-    setOpenPanels(new Set(panelId ? [panelId] : crmPanels));
+    // Website & settings and Reports lead with their own overview, so their full editors stay closed until asked for.
+    const startClosed = crmLoc.page === "website" || crmLoc.page === "reports";
+    setOpenPanels(new Set(panelId ? [panelId] : startClosed ? [] : crmPanels));
     if (panelId) window.setTimeout(() => smoothScrollToElement(panelId, 60), 60);
     else window.scrollTo({ top: 0 });
   }, [crmLoc.page, crmLoc.panel, crmLoc.clientKey]);

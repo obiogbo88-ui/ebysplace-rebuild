@@ -19,7 +19,7 @@ export function Card({ title, action, children, className = "", id }: { title?: 
     <section id={id} className={`${crm.card} min-w-0 p-4 sm:p-5 ${className}`}>
       {(title || action) && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          {title ? <h2 className="text-[15px] font-semibold text-[#1A1A1A]">{title}</h2> : <span />}
+          {title ? <h2 className="!text-[15px] !leading-snug font-semibold text-[#1A1A1A]">{title}</h2> : <span />}
           {action}
         </div>
       )}
