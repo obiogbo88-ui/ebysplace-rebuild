@@ -5,11 +5,13 @@ import { adminProcedure, router } from "../_core/trpc";
 import { SLOTS, SLOT_TIMES } from "../social/content";
 import type { SlotName } from "../social/store";
 import { AUTOMATIONS, automationStates, campaignEmail, campaignRecipients } from "./automations";
-import { sendBrandedEmail } from "../resendEmail";
-import { listConfiguredAdminEmails } from "../supabaseAuth";
+import { renderBrandedEmail, sendBrandedEmail } from "../resendEmail";
+import { ADMIN_INVITE_CTA, ADMIN_INVITE_SUBJECT, adminInviteParagraphs } from "../../shared/adminInvite";
+import { getPreferredProductionOrigin, isOwnerEmail, listConfiguredAdminEmails, sendAdminInvite } from "../supabaseAuth";
+import { addAdmin, listAddedAdmins, removeAdmin, markInvited } from "../adminAccess";
 import { clientBookings, clientKeyFor, clientTimeline, filterClients, journeyCounts, type ClientFilter } from "./clients";
 import { loadClients, londonToday } from "./data";
-import { getAvailabilitySettings } from "../db";
+import { getAvailabilitySettings, logActivity as logDbActivity } from "../db";
 import { addTag, clientPrefs, crmDb, recentSends, removeTag, saveNote, sendsFor, setAutomationSetting, setClientPref } from "./store";
 
 const clientKey = z.string().regex(/^[ep]:.{3,320}$/, "Not a client key");
@@ -356,7 +358,7 @@ export const crmRouter = router({
     }),
 
   /** The Website & settings overview: health, emails, cookie choices and who can sign in. */
-  websiteOverview: adminProcedure.query(async () => {
+  websiteOverview: adminProcedure.query(async ({ ctx }) => {
     const db = await crmDb();
     const one = <T>(q: ReturnType<typeof sql>) => db.execute(q).then((r) => (r.rows[0] ?? null) as T | null).catch(() => null);
     const many = <T>(q: ReturnType<typeof sql>) => db.execute(q).then((r) => r.rows as T[]).catch(() => [] as T[]);
@@ -382,9 +384,64 @@ export const crmRouter = router({
       },
       cookies30d: { total: Number(cookies?.total ?? 0), analytics: Number(cookies?.analytics ?? 0) },
       lastChangeAt: lastChange?.at ?? null,
-      admins: listConfiguredAdminEmails().map((email) => ({ email, name: signIns.get(email)?.name ?? null, lastSignedIn: signIns.get(email)?.lastSignedIn ?? null })),
+      admins: [
+        ...listConfiguredAdminEmails().map((email) => ({ email, name: signIns.get(email)?.name ?? null, lastSignedIn: signIns.get(email)?.lastSignedIn ?? null, owner: true, addedBy: null as string | null, invitedAt: null as string | null })),
+        ...(await listAddedAdmins().catch(() => []))
+          .filter((a) => !isOwnerEmail(a.email))
+          .map((a) => ({ email: a.email, name: a.name ?? signIns.get(a.email)?.name ?? null, lastSignedIn: signIns.get(a.email)?.lastSignedIn ?? null, owner: false, addedBy: a.addedBy, invitedAt: a.invitedAt })),
+      ],
+      canManageAdmins: isOwnerEmail(ctx.user?.email),
     };
   }),
+
+  /** Give someone access to the Command Centre (owners only). Nothing is emailed here. */
+  addAdmin: adminProcedure
+    .input(z.object({ email: z.string().trim().toLowerCase().email().max(320), name: z.string().trim().max(120).optional() }))
+    .mutation(async ({ input, ctx }) => {
+      if (!isOwnerEmail(ctx.user?.email)) throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner can give access." });
+      if (isOwnerEmail(input.email)) throw new TRPCError({ code: "BAD_REQUEST", message: "That email already has owner access." });
+      await addAdmin({ email: input.email, name: input.name || null, addedBy: ctx.user?.email ?? "owner" });
+      await logDbActivity({ activityType: "admin_access_added", activityCategory: "admin", description: `Gave Command Centre access to ${input.email}`, userEmail: ctx.user?.email ?? null }).catch(() => {});
+      return { ok: true as const };
+    }),
+
+  /** Take someone's access away (owners only). They're signed out on their next request. */
+  removeAdmin: adminProcedure
+    .input(z.object({ email: z.string().trim().toLowerCase().email() }))
+    .mutation(async ({ input, ctx }) => {
+      if (!isOwnerEmail(ctx.user?.email)) throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner can remove access." });
+      if (isOwnerEmail(input.email)) throw new TRPCError({ code: "BAD_REQUEST", message: "Owner access is set in the site settings and can’t be removed here." });
+      await removeAdmin(input.email);
+      await logDbActivity({ activityType: "admin_access_removed", activityCategory: "admin", description: `Removed Command Centre access for ${input.email}`, userEmail: ctx.user?.email ?? null }).catch(() => {});
+      return { ok: true as const };
+    }),
+
+  /** The invite exactly as it will arrive (branded shell, real logo), for the owner to check before sending. */
+  adminInvitePreview: adminProcedure
+    .input(z.object({ email: z.string().trim().toLowerCase().email() }))
+    .query(async ({ input, ctx }) => {
+      if (!isOwnerEmail(ctx.user?.email)) throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner can send invites." });
+      const added = (await listAddedAdmins()).find((a) => a.email === input.email);
+      const html = renderBrandedEmail({
+        subject: ADMIN_INVITE_SUBJECT,
+        paragraphs: adminInviteParagraphs({ name: added?.name, invitedBy: ctx.user?.name || "Eby’s Place" }),
+        cta: { label: ADMIN_INVITE_CTA, url: getPreferredProductionOrigin() + "/admin/reset-password" },
+      });
+      return { to: input.email, subject: ADMIN_INVITE_SUBJECT, html };
+    }),
+
+  /** Emails the new admin a link to choose their password. Only when the owner presses Send. */
+  sendAdminInvite: adminProcedure
+    .input(z.object({ email: z.string().trim().toLowerCase().email() }))
+    .mutation(async ({ input, ctx }) => {
+      if (!isOwnerEmail(ctx.user?.email)) throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner can send invites." });
+      const added = (await listAddedAdmins()).find((a) => a.email === input.email);
+      if (!added) throw new TRPCError({ code: "NOT_FOUND", message: "Add this person first." });
+      await sendAdminInvite({ email: input.email, name: added.name, invitedBy: ctx.user?.name || "Eby’s Place", origin: getPreferredProductionOrigin() });
+      await markInvited(input.email);
+      await logDbActivity({ activityType: "admin_access_invited", activityCategory: "admin", description: `Sent Command Centre invite to ${input.email}`, userEmail: ctx.user?.email ?? null }).catch(() => {});
+      return { ok: true as const };
+    }),
 
   /**
    * What the ready-made announcements fill themselves in with: days with no

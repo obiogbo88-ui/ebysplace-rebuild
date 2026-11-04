@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { goCrm } from "./nav";
+import { AdminAccessCard } from "./AdminAccess";
 import { Avatar, Card, Chip, Empty, ErrorNote, GhostButton, Loading, Pill, PrimaryButton, Toggle, gbp, niceDate, niceDateTime, type PillTone, ScrollBox } from "./ui";
 
 /**
@@ -419,23 +420,7 @@ export function WebsitePage() {
           </button>
         </Card>
 
-        <Card title="Who can sign in">
-          <ul className="grid grid-cols-1">
-            {(ov?.admins ?? []).map((a, i) => (
-              <li key={a.email} className="flex items-center gap-3 border-t border-[#EFEBE4] py-2.5 first:border-t-0">
-                <Avatar name={a.name || a.email} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold text-[#1A1A1A]">{a.name || a.email}</div>
-                  <div className="truncate text-xs text-[#6B6458]">
-                    {a.email} · {a.lastSignedIn ? `signed in ${niceDateTime(a.lastSignedIn)}` : "not signed in yet"}
-                  </div>
-                </div>
-                <Pill tone="gold">{i === 0 ? "Owner" : "Admin"}</Pill>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-[13px] text-[#6B6458]">Only these emails can open the admin. To add a helper, ask your developer to add their email to the admin sign-in list.</p>
-        </Card>
+        <AdminAccessCard admins={ov?.admins ?? []} canManage={Boolean(ov?.canManageAdmins)} />
       </div>
     </div>
   );
