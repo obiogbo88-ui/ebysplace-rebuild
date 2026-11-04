@@ -224,6 +224,9 @@ const defaultSeo = {
 
 const seoByPath: Record<string, { title: string; description: string }> = {
   "/": defaultSeo,
+  "/admin": { title: "Eby’s Place Command Centre", description: "Private admin for Eby’s Place." },
+  "/admin/login": { title: "Eby’s Place Command Centre", description: "Private admin for Eby’s Place." },
+  "/admin/reset-password": { title: "Eby’s Place Command Centre", description: "Private admin for Eby’s Place." },
   "/services": {
     title: "Knotless Braids, Box Braids & Cornrows in Bridgwater | Eby’s Place",
     description:

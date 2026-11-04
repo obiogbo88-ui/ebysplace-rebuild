@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { ArrowLeft, Mail, MessageCircle, Plus, X } from "lucide-react";
 import { goCrm } from "./nav";
-import { Avatar, Card, Empty, ErrorNote, GhostButton, Kpi, Loading, Pill, PrimaryButton, Row, STAGE_LABEL, STATUS_TONE, Toggle, gbp, niceDate, niceDateTime, relativeDays, whatsappLink } from "./ui";
+import { Avatar, Card, Empty, ErrorNote, GhostButton, Kpi, Loading, Pill, PrimaryButton, Row, STAGE_LABEL, STATUS_TONE, Toggle, gbp, niceDate, niceDateTime, relativeDays, whatsappLink, ScrollBox } from "./ui";
 
 const SWITCHES: Array<{ key: "reminders" | "review_ask" | "rebook_nudge" | "win_back" | "marketing"; label: string; detail: string }> = [
   { key: "reminders", label: "Appointment reminders", detail: "Day-before email and text" },
@@ -153,6 +153,7 @@ export function ClientProfilePage({ clientKey }: { clientKey: string }) {
           {timeline.length === 0 ? (
             <Empty>Nothing yet.</Empty>
           ) : (
+            <ScrollBox label="Timeline" size="lg">
             <ol>
               {timeline.map((t, i) => (
                 <li key={i}>
@@ -178,6 +179,7 @@ export function ClientProfilePage({ clientKey }: { clientKey: string }) {
                 </li>
               ))}
             </ol>
+            </ScrollBox>
           )}
         </Card>
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Search } from "lucide-react";
 import { clientHash, goCrm } from "./nav";
-import { Avatar, Card, Chip, Empty, ErrorNote, Loading, Pill, STAGE_LABEL, gbp, niceDate } from "./ui";
+import { Avatar, Card, Chip, Empty, ErrorNote, Loading, Pill, STAGE_LABEL, gbp, niceDate, ScrollBox } from "./ui";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -62,9 +62,9 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
       ) : (
         <Card>
           {/* Table on wider screens */}
-          <div className="hidden overflow-x-auto md:block">
+          <ScrollBox label="Clients list" size="lg" className="hidden md:block">
             <table className="w-full min-w-[720px] border-collapse text-[13px]">
-              <thead>
+              <thead className="sticky top-0 z-[1] bg-white">
                 <tr className="text-left text-[#6B6458]">
                   <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">Client</th>
                   <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">Last visit</th>
@@ -104,9 +104,10 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollBox>
           {/* Cards on phones */}
-          <ul className="grid gap-2 md:hidden">
+          <ScrollBox label="Clients list" size="lg" className="md:hidden">
+          <ul className="grid gap-2">
             {q.data.clients.map((c) => (
               <li key={c.key}>
                 <a href={clientHash(c.key)} className="flex min-w-0 items-center gap-3 rounded-xl border border-[#EFEBE4] p-3 text-[#1A1A1A] no-underline">
@@ -123,6 +124,7 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
               </li>
             ))}
           </ul>
+          </ScrollBox>
           <p className="mt-3 text-xs text-[#6B6458]">"Paid online" is deposits and shop orders paid through the website. Money taken in the studio isn't recorded here.</p>
         </Card>
       )}

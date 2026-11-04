@@ -266,13 +266,16 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(layoutSource).toContain('smoothScrollToElement(sectionId, 60)');
     expect(adminSource).toContain("Back to Homepage");
     expect(adminSource).toContain("adminOverviewActions");
-    expect(adminSource).toContain("Eby’s Place command centre");
-    expect(adminSource).toContain("Dense records stay hidden until clicked");
-    expect(adminSource).toContain("Protected overview");
+    // The old "Protected overview" box is gone: its jobs moved into the Command Centre pages.
+    expect(adminSource).toContain("Eby’s Place Command Centre");
+    expect(adminSource).not.toContain("Protected overview");
     expect(adminSource).toContain("openProtectedOverviewSection");
-    expect(adminSource).toContain("Refresh overview data");
-    expect(adminSource).toContain("overflow-hidden rounded-[2rem]");
     expect(adminSource).toContain("refresh();");
+    // Phone alerts for the owner survive the move into the signed-in card.
+    expect(adminSource).toContain("handleEnableOwnerNotifications");
+    expect(adminSource).toContain("Get alerts on this device");
+    // Every tool panel scrolls inside its own card.
+    expect(adminSource).toContain("max-h-[75vh] overflow-y-auto");
     expect(routerSource).toContain("summary: adminProcedure");
     expect(routerSource).toContain("lists: adminProcedure");
     expect(routerSource).toContain("insights: adminProcedure");

@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { goCrm } from "./nav";
-import { Avatar, Card, Chip, Empty, ErrorNote, GhostButton, Loading, Pill, PrimaryButton, Toggle, gbp, niceDate, niceDateTime, type PillTone } from "./ui";
+import { Avatar, Card, Chip, Empty, ErrorNote, GhostButton, Loading, Pill, PrimaryButton, Toggle, gbp, niceDate, niceDateTime, type PillTone, ScrollBox } from "./ui";
 
 /**
  * Website & settings overview: what visitors see on ebysplace.com, what needs
@@ -67,8 +67,6 @@ export function WebsitePage() {
   const season = trpc.public.seasonalTheme.useQuery(undefined, { refetchOnWindowFocus: false });
   const payment = trpc.public.paymentMode.useQuery(undefined, { retry: false });
   const [filter, setFilter] = useState<ServiceFilter>("all");
-  const [showAllServices, setShowAllServices] = useState(false);
-  const [showAllPhotos, setShowAllPhotos] = useState(false);
 
   const refreshLists = () => utils.admin.lists.invalidate();
   const updateService = trpc.admin.updateService.useMutation({ onSuccess: () => refreshLists(), onError: (e) => toast.error(e.message) });
@@ -113,8 +111,6 @@ export function WebsitePage() {
   const failedEmails = ov?.emails.failedThisWeek ?? 0;
   const seasonOn = season.data?.enabled ?? true;
   const shownServices = services.filter((s) => matchesFilter(s, filter));
-  const visibleServices = showAllServices ? shownServices : shownServices.slice(0, 8);
-  const visiblePhotos = showAllPhotos ? gallery : gallery.slice(0, 8);
   const cookieTotal = ov?.cookies30d.total ?? 0;
   const cookieYes = ov?.cookies30d.analytics ?? 0;
   const cookiePct = cookieTotal ? Math.round((cookieYes / cookieTotal) * 100) : 0;
@@ -192,7 +188,7 @@ export function WebsitePage() {
           </p>
           <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Filter services">
             {SERVICE_FILTERS.map((f) => (
-              <Chip key={f.id} active={filter === f.id} onClick={() => (setFilter(f.id), setShowAllServices(false))} count={f.id === "nophoto" ? noPhoto.length : undefined}>
+              <Chip key={f.id} active={filter === f.id} onClick={() => setFilter(f.id)} count={f.id === "nophoto" ? noPhoto.length : undefined}>
                 {f.label}
               </Chip>
             ))}
@@ -200,9 +196,9 @@ export function WebsitePage() {
           {shownServices.length === 0 ? (
             <Empty>{filter === "nophoto" ? "Every service has a photo." : "No services in this group."}</Empty>
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollBox label="Services list" size="lg">
               <table className="w-full min-w-[560px] border-collapse text-sm">
-                <thead>
+                <thead className="sticky top-0 z-[1] bg-white">
                   <tr className="text-left text-xs text-[#6B6458]">
                     <th className="py-2 pr-2 font-semibold">Service</th>
                     <th className="p-2 font-semibold">From</th>
@@ -215,7 +211,7 @@ export function WebsitePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleServices.map((s) => (
+                  {shownServices.map((s) => (
                     <tr key={s.id ?? s.slug} className="border-t border-[#EFEBE4]">
                       <td className="py-2.5 pr-2">
                         <div className="font-semibold text-[#1A1A1A]">{s.name}</div>
@@ -242,13 +238,8 @@ export function WebsitePage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollBox>
           )}
-          {shownServices.length > 8 ? (
-            <button type="button" onClick={() => setShowAllServices((v) => !v)} className="mt-3 text-sm font-semibold text-[#8A641E] hover:underline">
-              {showAllServices ? "Show fewer" : `Show all ${shownServices.length} services`}
-            </button>
-          ) : null}
         </Card>
 
         <div className="grid gap-5">
@@ -257,8 +248,9 @@ export function WebsitePage() {
             {pendingReviews.length === 0 ? (
               <Empty>No reviews waiting.</Empty>
             ) : (
+              <ScrollBox label="Reviews waiting" size="md">
               <div className="grid gap-3">
-                {pendingReviews.slice(0, 4).map((r) => (
+                {pendingReviews.map((r) => (
                   <div key={r.id} className="grid gap-2 rounded-xl border border-[#EFEBE4] bg-[#FBF8F2] p-3">
                     <div className="flex items-center justify-between gap-2 text-[13px]">
                       <strong className="min-w-0 truncate text-[#1A1A1A]">{r.customerName}</strong>
@@ -280,12 +272,8 @@ export function WebsitePage() {
                     </div>
                   </div>
                 ))}
-                {pendingReviews.length > 4 ? (
-                  <button type="button" onClick={() => openEditor("reviews")} className="text-left text-sm font-semibold text-[#8A641E] hover:underline">
-                    See all {pendingReviews.length} waiting
-                  </button>
-                ) : null}
               </div>
+              </ScrollBox>
             )}
           </Card>
 
@@ -297,8 +285,9 @@ export function WebsitePage() {
               <Empty>No photos yet. Add some so visitors can see your work.</Empty>
             ) : (
               <>
+                <ScrollBox label="Gallery photos" size="md">
                 <ol className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                  {visiblePhotos.map((g, i) => (
+                  {gallery.map((g, i) => (
                     <li key={g.id} className="group relative overflow-hidden rounded-xl bg-[#EFEBE4]">
                       <img src={g.imageUrl} alt={g.altText || g.title} loading="lazy" className="aspect-square w-full object-cover" />
                       <span className="absolute left-1.5 top-1.5 rounded-full bg-white/90 px-1.5 text-[11px] font-bold tabular-nums text-[#1A1A1A]">{i + 1}</span>
@@ -325,13 +314,9 @@ export function WebsitePage() {
                     </li>
                   ))}
                 </ol>
+                </ScrollBox>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[13px] text-[#6B6458]">
-                  <span>Use the arrows to change the order.</span>
-                  {gallery.length > 8 ? (
-                    <button type="button" onClick={() => setShowAllPhotos((v) => !v)} className="font-semibold text-[#8A641E] hover:underline">
-                      {showAllPhotos ? "Show fewer" : `Show all ${gallery.length}`}
-                    </button>
-                  ) : null}
+                  <span>Use the arrows to change the order. Scroll inside the box to see every photo.</span>
                 </div>
               </>
             )}
@@ -389,6 +374,7 @@ export function WebsitePage() {
           ) : !ov?.emails.recent.length ? (
             <Empty>No emails sent yet.</Empty>
           ) : (
+            <ScrollBox label="Emails the site sends" size="sm">
             <ul className="grid grid-cols-1">
               {ov.emails.recent.map((e) => (
                 <li key={e.id} className="flex items-center justify-between gap-2 border-t border-[#EFEBE4] py-2.5 first:border-t-0">
@@ -402,6 +388,7 @@ export function WebsitePage() {
                 </li>
               ))}
             </ul>
+            </ScrollBox>
           )}
           <button type="button" onClick={() => openEditor("email-notifications")} className="mt-2 text-sm font-semibold text-[#8A641E] hover:underline">
             See all emails

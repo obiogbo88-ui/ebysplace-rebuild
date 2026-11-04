@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { BRAND_HEADER_LOGO_SRC } from "@/lib/brand";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -83,10 +84,10 @@ export default function DashboardLayout({
         <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-3xl border border-[#d8b66b]/40 bg-white p-8 text-center shadow-[0_18px_45px_rgba(93,67,32,0.12)]">
           <div className="flex flex-col items-center gap-6">
             <h1 className="text-2xl font-semibold tracking-tight text-[#2f2418]">
-              Sign in to continue
+              Eby’s Place Command Centre
             </h1>
             <p className="max-w-sm text-sm leading-relaxed text-[#5f5142]">
-              Access to this dashboard requires the Eby’s Place Supabase admin email and password.
+              Sign in with the Eby’s Place admin email and password to continue.
             </p>
           </div>
           <Button
@@ -249,7 +250,7 @@ function DashboardLayoutContent({
           className="border-r-0"
           disableTransition={isResizing}
         >
-          <SidebarHeader className="h-16 justify-center">
+          <SidebarHeader className="h-20 justify-center">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
@@ -259,10 +260,21 @@ function DashboardLayoutContent({
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    Eby’s Place CRM
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <img
+                    src={BRAND_HEADER_LOGO_SRC}
+                    alt="Eby’s Place"
+                    width={834}
+                    height={448}
+                    className="h-12 w-auto shrink-0 object-contain mix-blend-multiply"
+                    decoding="async"
+                  />
+                  <span className="text-[11px] font-semibold uppercase leading-tight tracking-[0.12em] text-[#8A641E]">
+                    Command
+                    <br />
+                    Centre
                   </span>
+                  <span className="sr-only">Eby’s Place Command Centre</span>
                 </div>
               ) : null}
             </div>
@@ -365,6 +377,14 @@ function DashboardLayoutContent({
                 </div>
               </div>
             </div>
+            <img
+              src={BRAND_HEADER_LOGO_SRC}
+              alt="Eby’s Place Command Centre"
+              width={834}
+              height={448}
+              className="h-10 w-auto shrink-0 object-contain mix-blend-multiply"
+              decoding="async"
+            />
           </div>
         )}
         <main className="flex-1 p-4">{children}</main>

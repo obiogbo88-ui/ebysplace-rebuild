@@ -265,32 +265,37 @@ type AdminPanelProps = {
 };
 
 function AdminPanel({ id, title, eyebrow, description, icon: Icon, open, onToggle, badge, children }: AdminPanelProps) {
-  // Each CRM page shows only its own tools (see crm/nav.ts).
+  // Each page shows only its own tools (see crm/nav.ts). Same card look as the rest of the Command Centre;
+  // a long tool scrolls inside its own card so the page stays short.
   if (!usePanelVisible(id)) return null;
   return (
-    <section id={id} className="lux-card overflow-hidden border-primary/20 bg-card/95 !p-3 sm:!p-4">
+    <section id={id} className="min-w-0 scroll-mt-4 rounded-2xl border border-[#E6E1D8] bg-white p-4 text-[#1A1A1A] sm:p-5">
       <button
         type="button"
-        className="flex w-full items-center gap-3 text-left"
+        className="flex w-full items-center gap-3 rounded-xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]"
         aria-expanded={open}
         aria-controls={`${id}-content`}
         title={description}
         onClick={onToggle}
       >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F3EBDC] text-[#8A641E]">
           <Icon className="h-5 w-5" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white/45">{eyebrow}</span>
-          <span className="serif block truncate text-xl font-bold leading-tight text-primary">{title}</span>
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6B6458]">{eyebrow}</span>
+          <span className="block truncate text-[15px] font-semibold leading-snug text-[#1A1A1A]">{title}</span>
         </span>
         {badge ? (
-          <span className="shrink-0 rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-black" aria-label={`${badge} need attention`}>{badge}</span>
+          <span className="shrink-0 rounded-full bg-[#1A1A1A] px-2.5 py-0.5 text-xs font-bold text-white" aria-label={`${badge} need attention`}>{badge}</span>
         ) : null}
-        <ChevronDown className={`h-5 w-5 shrink-0 text-primary transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+        <ChevronDown className={`h-5 w-5 shrink-0 text-[#8A641E] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
         <span className="sr-only">{open ? "Hide section" : "Open section"}</span>
       </button>
-      {open && <div id={`${id}-content`} className="mt-4 border-t border-white/10 pt-4">{children}</div>}
+      {open && (
+        <div id={`${id}-content`} tabIndex={0} role="region" aria-label={title} className="mt-4 max-h-[75vh] overflow-y-auto overscroll-contain border-t border-[#EFEBE4] pr-1 pt-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]">
+          {children}
+        </div>
+      )}
     </section>
   );
 }
@@ -883,7 +888,7 @@ export default function Admin() {
       <div className="min-h-screen bg-[#F6F5F2] text-[#1A1A1A]">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A641E]">Eby’s Place CRM</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A641E]">Eby’s Place Command Centre</p>
             <div className="mt-1">
               <CrmPageHeader loc={crmLoc} />
             </div>
@@ -963,6 +968,17 @@ export default function Admin() {
               </DropdownMenu>
             </div>
             <button className="btn-dark py-2 text-sm" type="button" onClick={openPublicHomepage}>Back to Homepage</button>
+            {/* Phone alerts for new bookings, orders and visitors (moved here from the old overview box). */}
+            {ownerPushStatus.data?.deviceCount ? (
+              <p className="text-xs text-[#6B6458]">Alerts on {ownerPushStatus.data.deviceCount} device{ownerPushStatus.data.deviceCount === 1 ? "" : "s"}</p>
+            ) : (
+              <button className="text-xs font-semibold text-[#8A641E] underline underline-offset-4 hover:text-[#5E4512]" type="button" onClick={handleEnableOwnerNotifications} disabled={subscribeOwnerPush.isPending}>
+                {subscribeOwnerPush.isPending ? "Turning on…" : "Get alerts on this device"}
+              </button>
+            )}
+            {ownerNotifStatus === "unsupported" && <p className="text-xs text-[#6B6458]">This browser can't show alerts.</p>}
+            {ownerNotifStatus === "denied" && <p className="text-xs text-[#6B6458]">Blocked: allow notifications in your browser's site settings.</p>}
+            {ownerNotifStatus === "error" && <p className="text-xs text-[#B3261E]">Something went wrong. Please try again.</p>}
           </div>
         </div>
 
@@ -980,67 +996,6 @@ export default function Admin() {
           <CrmPageView loc={crmLoc} blockedSlots={(data.availability?.blockedSlots || []) as any[]} />
         </div>
 
-        {crmLoc.page === "website" && (
-        <section id="overview" className="mt-5 overflow-hidden rounded-[2rem] border border-primary/20 bg-card/95 p-4 shadow-[0_24px_80px_rgba(46,27,16,.12)] sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="pill w-fit">Protected overview</p>
-              <h2 className="serif mt-2 !text-2xl font-bold text-primary">Eby’s Place command centre</h2>
-              <p className="mt-1 text-sm text-white/65">Open one owner area at a time. Dense records stay hidden until clicked.</p>
-            </div>
-            <div className="flex flex-col items-start gap-2 sm:items-end">
-              <button className="btn-gold w-fit py-2 text-sm" type="button" onClick={refresh}>Refresh overview data</button>
-              {ownerPushStatus.data?.deviceCount ? (
-                <p className="text-xs text-white/55">Notifications enabled on {ownerPushStatus.data.deviceCount} device{ownerPushStatus.data.deviceCount === 1 ? "" : "s"}.</p>
-              ) : (
-                <button className="text-xs font-semibold text-white/70 underline decoration-white/30 underline-offset-4 hover:text-white" type="button" onClick={handleEnableOwnerNotifications} disabled={subscribeOwnerPush.isPending}>
-                  {subscribeOwnerPush.isPending ? "Enabling..." : "Enable notifications for this device"}
-                </button>
-              )}
-              {ownerNotifStatus === "unsupported" && <p className="text-xs text-white/45">Not supported in this browser.</p>}
-              {ownerNotifStatus === "denied" && <p className="text-xs text-white/45">Blocked — allow notifications in your browser's site settings.</p>}
-              {ownerNotifStatus === "error" && <p className="text-xs text-white/45">Something went wrong — please try again.</p>}
-            </div>
-          </div>
-          {attentionItems.length > 0 && (
-            <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Needs attention">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Needs attention</span>
-              {attentionItems.map((item) => (
-                <button className="rounded-full border border-primary/50 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" type="button" key={item.sectionId} onClick={() => openProtectedOverviewSection(item.sectionId, item.label)}>
-                  {item.count} {item.label.toLowerCase()} {item.noun}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="mt-4">
-            <label className="sr-only" htmlFor="admin-jump-to">Jump to a section</label>
-            <select
-              id="admin-jump-to"
-              className="w-full sm:w-72"
-              value=""
-              onChange={(event) => {
-                const action = adminOverviewActions.find((item) => item.sectionId === event.target.value);
-                if (action) openProtectedOverviewSection(action.sectionId, action.label);
-              }}
-            >
-              <option value="">Jump to a section…</option>
-              {adminOverviewActions.map((action) => (
-                <option key={action.sectionId} value={action.sectionId}>{action.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Stat label="Bookings" value={summary.data?.bookings ?? 0} icon={CalendarDays} />
-            <Stat label="Orders" value={summary.data?.orders ?? 0} icon={ShoppingBag} />
-            <Stat label="Pending reviews" value={summary.data?.pendingReviews ?? 0} icon={MessageSquare} />
-            <Stat label="Pending product reviews" value={summary.data?.pendingProductReviews ?? 0} icon={MessageSquare} />
-            <Stat label="Products" value={summary.data?.products ?? 0} icon={Package} />
-            <Stat label="Completed payments" value={formatMoney(transactionSummary.data?.completedTotal ?? 0)} icon={PoundSterling} />
-            <Stat label="AI try-ons" value={summary.data?.tryOns ?? 0} icon={Sparkles} />
-            <Stat label="Unread alerts" value={unreadAlertCount || (summary.data?.unreadActivities ?? 0)} icon={Activity} />
-          </div>
-        </section>
-        )}
 
         <div className="mt-3 grid gap-3">
           <AdminPanel id="activity-monitoring" badge={unreadAlertCount} eyebrow="Live intelligence" title="Analytics and activity monitoring" description="View visits, booking/payment/shop/AI actions, Braiders Near Me/Kouvia events, failures, and admin audit updates in one feed." icon={Activity} open={isPanelOpen("activity-monitoring")} onToggle={() => togglePanel("activity-monitoring")}>

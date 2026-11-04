@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Instagram } from "lucide-react";
-import { Card, Empty, ErrorNote, Loading, Pill, PrimaryButton, Row, STATUS_TONE, Toggle, niceDate, niceDateTime } from "./ui";
+import { Card, Empty, ErrorNote, Loading, Pill, PrimaryButton, Row, STATUS_TONE, Toggle, niceDate, niceDateTime, ScrollBox } from "./ui";
 
 const STATUS_LABEL: Record<string, string> = { posted: "Posted", ready: "Ready", publishing: "Posting…", partial: "Part posted", failed: "Failed" };
 
@@ -107,7 +107,8 @@ export function SocialPage() {
         {earlier.length === 0 ? (
           <Empty>No earlier posts yet.</Empty>
         ) : (
-          earlier.map((p) => (
+          <ScrollBox label="Last two weeks of posts" size="md">
+          {earlier.map((p) => (
             <Row key={p.id}>
               <span className="w-20 shrink-0 text-xs text-[#6B6458]">
                 {niceDate(p.slotDate, { weekday: "short", day: "numeric", month: "short" })}
@@ -124,7 +125,8 @@ export function SocialPage() {
               </div>
               <Pill tone={STATUS_TONE[p.status] ?? "grey"}>{STATUS_LABEL[p.status] ?? p.status}</Pill>
             </Row>
-          ))
+          ))}
+          </ScrollBox>
         )}
       </Card>
 
