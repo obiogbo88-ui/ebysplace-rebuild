@@ -39,6 +39,7 @@ const TryOn = lazy(() => import("./pages/TryOn"));
 const Braiders = lazy(() => import("./pages/Braiders"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const Blog = lazy(() => import("./pages/Blog"));
+const Rebook = lazy(() => import("./pages/Rebook"));
 const Reviews = lazy(() => import("./pages/Reviews"));
 const Newsletter = lazy(() => import("./pages/Newsletter"));
 const BookingSuccess = lazy(() => import("./pages/BookingSuccess"));
@@ -629,6 +630,7 @@ function Router() {
         <Route path="/book-now" component={Booking} />
         <Route path="/bookings" component={Booking} />
         <Route path="/booking/success" component={BookingSuccess} />
+        <Route path="/rebook/:id/:token" component={Rebook} />
         <Route path="/shop/:slug" component={Shop} />
         <Route path="/shop" component={Shop} />
         <Route path="/ai-try-on" component={TryOn} />

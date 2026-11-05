@@ -30,6 +30,8 @@ export type BrandedEmail = {
   paragraphs: string[];
   /** Optional gold call-to-action button below the paragraphs. */
   cta?: { label: string; url: string };
+  /** Plain-text paragraphs shown below the button. */
+  closing?: string[];
   replyTo?: string;
   /** Extra message headers, e.g. List-Unsubscribe on bulk mail. */
   headers?: Record<string, string>;
@@ -95,7 +97,7 @@ function loadShell() {
 
 const PARAGRAPH_STYLE = 'class="ink" style="margin:0 0 20px;color:#1A1A1A;"';
 
-export function renderBrandedEmail(email: Pick<BrandedEmail, "subject" | "paragraphs" | "cta">) {
+export function renderBrandedEmail(email: Pick<BrandedEmail, "subject" | "paragraphs" | "cta" | "closing">) {
   const [salutation, ...rest] = email.paragraphs;
   const blocks: string[] = [];
   if (salutation) {
@@ -112,14 +114,18 @@ export function renderBrandedEmail(email: Pick<BrandedEmail, "subject" | "paragr
         `            </td>\n          </tr>\n        </table>`,
     );
   }
+  for (const paragraph of email.closing ?? []) {
+    blocks.push(`        <p ${PARAGRAPH_STYLE}>${escapeHtml(paragraph)}</p>`);
+  }
   return loadShell()
     .replace("{{SUBJECT}}", escapeHtml(email.subject))
     .replace("{{BODY_HTML}}", blocks.join("\n"));
 }
 
-export function renderPlainText(email: Pick<BrandedEmail, "paragraphs" | "cta">) {
+export function renderPlainText(email: Pick<BrandedEmail, "paragraphs" | "cta" | "closing">) {
   const lines = [...email.paragraphs];
   if (email.cta) lines.push(`${email.cta.label}: ${email.cta.url}`);
+  lines.push(...(email.closing ?? []));
   lines.push("", "Eby's Place", "Founder & Service Lead", CONTACT_EMAIL);
   return lines.join("\n\n");
 }

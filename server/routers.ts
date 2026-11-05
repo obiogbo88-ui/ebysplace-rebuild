@@ -15,7 +15,7 @@ import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { collectTryOnPurchases } from "./tryOnPurchaseImport";
 import { syncMissingPaymentBreakdowns } from "./stripeBreakdown";
 import { notifyOwner } from "./_core/notification";
-import { getNotificationDiagnostics, sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely } from "./customerNotifications";
+import { getNotificationDiagnostics, sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely, sendRebookRequestEmailSafely, sendBookingMovedEmailSafely } from "./customerNotifications";
 import { resendEmailNotificationLog } from "./smtpEmailNotifications";
 import { isResendConfigured, sendBrandedEmail, sendBroadcastEmail } from "./resendEmail";
 import { isWebPushConfigured, sendPushToAllSubscribers, sendPushToOwner } from "./webPush";
@@ -24,6 +24,8 @@ import { requestAdminPasswordReset, signInAdminWithPassword, updateAdminPassword
 import * as db from "./db";
 import { getSeasonalTheme } from "./seasonalTheme";
 import { reviewRequestBlockReason } from "../shared/reviewRequest";
+import { REBOOK_WINDOW_DAYS, addDays, formatLongDate, londonToday, rebookSlotProblem } from "../shared/rebook";
+import { isValidRebookToken, rebookBlockReason, rebookUrl } from "./rebook";
 import { crmRouter } from "./crm/router";
 
 const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Weaves", "Crochet", "Kids Styles", "Men Styles", "Add-ons"]);
@@ -599,6 +601,61 @@ export const appRouter = router({
         ].join("\n")
       );
       return { ...review, customerNotification: "Thank you for your review. It has been received and is pending approval." };
+    }),
+    getRebook: publicProcedure.input(z.object({ bookingId: z.number().int().positive(), token: z.string().min(10).max(64) })).query(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.getRebook", 60, 60 * 60_000);
+      const booking = await db.getBookingById(input.bookingId);
+      if (!booking || !isValidRebookToken(booking, input.token)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "This link has already been used or isn\u2019t valid. If you need to change your booking, reply to our email." });
+      }
+      const blockReason = rebookBlockReason(booking);
+      if (blockReason) throw new TRPCError({ code: "PRECONDITION_FAILED", message: blockReason });
+      const today = londonToday();
+      const [settings, taken] = await Promise.all([
+        db.getAvailabilitySettings(),
+        db.listTakenBookingSlots(addDays(today, 1), addDays(today, REBOOK_WINDOW_DAYS), booking.id),
+      ]);
+      return {
+        firstName: (booking.clientName || "").trim().split(/\s+/)[0] || "there",
+        serviceName: booking.serviceName,
+        serviceLocation: booking.serviceLocation,
+        depositPaid: booking.depositStatus === "paid",
+        currentDate: booking.appointmentDate,
+        currentTime: booking.appointmentTime,
+        today,
+        blockedSlots: settings.blockedSlots.map((slot) => ({ date: slot.date, time: slot.time || "" })),
+        taken,
+      };
+    }),
+    rebook: publicProcedure.input(z.object({
+      bookingId: z.number().int().positive(),
+      token: z.string().min(10).max(64),
+      date: z.string(),
+      time: z.string(),
+    })).mutation(async ({ input, ctx }) => {
+      await enforceRateLimit(ctx.req, "public.rebook", 20, 60 * 60_000);
+      const booking = await db.getBookingById(input.bookingId);
+      if (!booking || !isValidRebookToken(booking, input.token)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "This link has already been used or isn\u2019t valid. If you need to change your booking, reply to our email." });
+      }
+      const blockReason = rebookBlockReason(booking);
+      if (blockReason) throw new TRPCError({ code: "PRECONDITION_FAILED", message: blockReason });
+      const today = londonToday();
+      const [settings, taken] = await Promise.all([
+        db.getAvailabilitySettings(),
+        db.listTakenBookingSlots(addDays(today, 1), addDays(today, REBOOK_WINDOW_DAYS), booking.id),
+      ]);
+      const problem = rebookSlotProblem({ date: input.date, time: input.time, blocked: settings.blockedSlots, taken });
+      if (problem) throw new TRPCError({ code: "BAD_REQUEST", message: problem });
+      const moved = await db.moveBookingDate(booking.id, input.date, input.time);
+      if (!moved) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "We couldn\u2019t move your booking just now. Please reply to our email and we\u2019ll do it for you." });
+      await notifyOwnerSafely(
+        "Booking moved by customer",
+        `${booking.clientName} moved ${booking.serviceName} from ${formatLongDate(moved.previousDate)} ${moved.previousTime} to ${formatLongDate(input.date)} ${input.time}.${booking.depositStatus === "paid" ? " Deposit paid." : ""}`,
+      );
+      const email = await sendBookingMovedEmailSafely({ booking: moved.booking });
+      if (!email.sent) console.warn("[Rebook] Confirmation email not sent", { bookingId: booking.id, reason: email.reason });
+      return { date: input.date, time: input.time, dateLabel: formatLongDate(input.date), emailSent: email.sent };
     }),
     createBooking: publicProcedure.input(bookingInput).mutation(async ({ input, ctx }) => {
       await enforceRateLimit(ctx.req, "public.createBooking", 10, 60 * 60_000);
@@ -1267,6 +1324,33 @@ export const appRouter = router({
         }
         return { webPush: webPushResult, email: emailResult, sms: smsResult, whatsapp: whatsappResult };
       }),
+    sendRebookLink: adminProcedure.input(z.object({ bookingId: z.number().int().positive() })).mutation(async ({ input, ctx }) => {
+      const booking = await db.getBookingById(input.bookingId);
+      if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });
+      const blockReason = rebookBlockReason(booking);
+      if (blockReason) throw new TRPCError({ code: "PRECONDITION_FAILED", message: blockReason });
+      const result = await sendRebookRequestEmailSafely({ booking, rebookUrl: rebookUrl(booking) });
+      if (!result.sent) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Rebooking email was not sent: ${result.reason}` });
+      await logAdminActivity(ctx, { activityType: "booking_rebook_link_sent", description: `Sent a "choose a new date" email to ${booking.clientName} for ${booking.appointmentDate} ${booking.appointmentTime}`, relatedEntityType: "booking", relatedEntityId: booking.id });
+      return { success: true };
+    }),
+    moveBooking: adminProcedure.input(z.object({
+      bookingId: z.number().int().positive(),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date."),
+      time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Choose a time."),
+      notifyCustomer: z.boolean().default(true),
+    })).mutation(async ({ input, ctx }) => {
+      const booking = await db.getBookingById(input.bookingId);
+      if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });
+      if (input.date < londonToday()) throw new TRPCError({ code: "BAD_REQUEST", message: "The new date is in the past." });
+      if (booking.appointmentDate === input.date && booking.appointmentTime === input.time) throw new TRPCError({ code: "BAD_REQUEST", message: "That is already the booking\u2019s date and time." });
+      const moved = await db.moveBookingDate(booking.id, input.date, input.time);
+      if (!moved) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The booking could not be moved." });
+      await logAdminActivity(ctx, { activityType: "booking_moved", description: `Moved ${booking.clientName}\u2019s booking from ${moved.previousDate} ${moved.previousTime} to ${input.date} ${input.time}`, relatedEntityType: "booking", relatedEntityId: booking.id });
+      if (!input.notifyCustomer) return { success: true, emailSent: false };
+      const email = await sendBookingMovedEmailSafely({ booking: moved.booking });
+      return { success: true, emailSent: email.sent, emailError: email.sent ? undefined : email.reason };
+    }),
     sendReviewRequest: adminProcedure.input(z.object({ bookingId: z.number(), sendAgain: z.boolean().optional() })).mutation(async ({ input }) => {
       const booking = await db.getBookingById(input.bookingId);
       if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });

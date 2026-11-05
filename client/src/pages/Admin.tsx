@@ -440,6 +440,18 @@ export default function Admin() {
   const blockAvailabilitySlot = trpc.admin.blockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot blocked"); } });
   const unblockAvailabilitySlot = trpc.admin.unblockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot unblocked"); } });
   const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("bookings"); toast.success("Review request sent"); }, onError: (error: any) => toast.error(error.message) });
+  const sendRebookLink = trpc.admin.sendRebookLink.useMutation({ onSuccess: () => { refresh(); toast.success("Rebooking email sent", { description: "You'll get a notification when they choose a new date." }); }, onError: (error: any) => toast.error(error.message) });
+  const moveBooking = trpc.admin.moveBooking.useMutation({
+    onSuccess: (result: any) => {
+      refresh();
+      setMoveForm(null);
+      if (result.emailSent) toast.success("Booking moved and the customer has been emailed");
+      else if (result.emailError) toast.warning("Booking moved, but the email didn't send", { description: String(result.emailError) });
+      else toast.success("Booking moved");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
+  const [moveForm, setMoveForm] = useState<{ bookingId: number; date: string; time: string; notifyCustomer: boolean } | null>(null);
   const resendEmail = trpc.admin.resendEmailNotification.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("email-notifications"); toast.success("Email notification resend attempted"); }, onError: (error: any) => toast.error(error.message) });
   const resendStatus = trpc.admin.resendStatus.useQuery(undefined, { retry: false });
   const sendCustomerReply = trpc.admin.sendCustomerReply.useMutation({
@@ -1339,6 +1351,33 @@ export default function Admin() {
                         </select>
                         {unpaidButConfirmed ? <small className="mt-2 block max-w-[14rem] text-amber-200">Confirmed but not paid. Cancel it if it was an abandoned checkout.</small> : null}
                         {needsCompleting ? <small className="mt-2 block max-w-[14rem] text-amber-200">Appointment date has passed. Mark as Completed if it went ahead.</small> : null}
+                        {booking.status === "pending" || booking.status === "confirmed" ? (
+                          <div className="mt-2 flex max-w-[16rem] flex-wrap gap-2">
+                            <button className="btn-dark py-2 text-xs" type="button" onClick={() => setMoveForm(moveForm?.bookingId === booking.id ? null : { bookingId: booking.id, date: booking.appointmentDate, time: booking.appointmentTime, notifyCustomer: true })}>Move booking</button>
+                            <button
+                              className="btn-dark py-2 text-xs"
+                              type="button"
+                              disabled={sendRebookLink.isPending}
+                              onClick={() => toast.warning(`Email ${booking.clientName} a "choose a new date" link?`, {
+                                description: `It says ${booking.appointmentDate} is fully booked, apologises, and lets them pick a new day and time${isPaid ? " (their deposit moves with them)" : ""}.`,
+                                action: { label: "Send", onClick: () => sendRebookLink.mutate({ bookingId: booking.id }) },
+                              })}
+                            >
+                              Send rebooking link
+                            </button>
+                          </div>
+                        ) : null}
+                        {moveForm?.bookingId === booking.id ? (
+                          <form
+                            className="mt-2 flex max-w-[16rem] flex-col gap-2 rounded-xl border border-white/15 p-3 text-xs"
+                            onSubmit={(event) => { event.preventDefault(); moveBooking.mutate(moveForm); }}
+                          >
+                            <label className="flex flex-col gap-1">New date<input type="date" required value={moveForm.date} onChange={(event) => setMoveForm({ ...moveForm, date: event.target.value })} /></label>
+                            <label className="flex flex-col gap-1">New time<input type="time" required value={moveForm.time} onChange={(event) => setMoveForm({ ...moveForm, time: event.target.value })} /></label>
+                            <label className="flex items-center gap-2"><input type="checkbox" checked={moveForm.notifyCustomer} onChange={(event) => setMoveForm({ ...moveForm, notifyCustomer: event.target.checked })} />Email {booking.clientName.split(" ")[0]} the new time</label>
+                            <button className="btn-gold py-2 text-xs" type="submit" disabled={moveBooking.isPending}>{moveBooking.isPending ? "Saving…" : "Save"}</button>
+                          </form>
+                        ) : null}
                         {booking.status === "completed" && !booking.reviewRequestSentAt ? <button className="btn-dark mt-2 py-2 text-xs" type="button" disabled={sendReviewRequest.isPending} onClick={() => sendReviewRequest.mutate({ bookingId: booking.id })}>Send review request</button> : null}
                         {booking.status === "completed" && booking.reviewRequestSentAt ? (
                           <div className="mt-2 max-w-[14rem]">
