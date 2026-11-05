@@ -3113,6 +3113,33 @@ export async function markReviewRequestSent(id: number, sentAt = new Date()) {
   await db.update(bookings).set({ reviewRequestSentAt: sentAt }).where(eq(bookings.id, id));
 }
 
+/** Date + time of every other live booking in a date range (no customer details), for the rebooking page. */
+export async function listTakenBookingSlots(fromDate: string, toDate: string, excludeBookingId?: number) {
+  const db = await getDb();
+  if (!db) return [] as { date: string; time: string }[];
+  const rows = await db
+    .select({ id: bookings.id, date: bookings.appointmentDate, time: bookings.appointmentTime, status: bookings.status })
+    .from(bookings)
+    .where(and(sql`${bookings.appointmentDate} >= ${fromDate}`, sql`${bookings.appointmentDate} <= ${toDate}`));
+  return rows
+    .filter((row) => row.status !== "cancelled" && row.id !== excludeBookingId)
+    .map((row) => ({ date: row.date, time: row.time }));
+}
+
+/**
+ * Moves a booking to a new date and time. A paid deposit stays with it, and a
+ * paid booking is confirmed so it still gets the day-before reminder.
+ */
+export async function moveBookingDate(id: number, appointmentDate: string, appointmentTime: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const current = await getBookingById(id);
+  if (!current) return null;
+  const status = current.depositStatus === "paid" && current.status === "pending" ? "confirmed" : current.status;
+  await db.update(bookings).set({ appointmentDate, appointmentTime, status, updatedAt: new Date() }).where(eq(bookings.id, id));
+  return { previousDate: current.appointmentDate, previousTime: current.appointmentTime, booking: { ...current, appointmentDate, appointmentTime, status } };
+}
+
 export async function updateBookingStatus(id: number, status: "pending" | "confirmed" | "completed" | "cancelled") {
   const db = await getDb();
   if (!db) return { success: true };

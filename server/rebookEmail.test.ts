@@ -1,0 +1,56 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const sendBrandedEmailMock = vi.hoisted(() => vi.fn());
+vi.mock("./resendEmail", () => ({ sendBrandedEmail: sendBrandedEmailMock }));
+
+import { sendBookingMovedEmailSafely, sendRebookRequestEmailSafely } from "./customerNotifications";
+
+const booking = {
+  clientName: "Fenton Richards",
+  clientEmail: " fenton@example.com ",
+  serviceName: "Cornrows",
+  appointmentDate: "2026-11-07",
+  appointmentTime: "10:00",
+  depositStatus: "paid",
+  serviceLocation: "studio",
+};
+
+describe("rebooking emails", () => {
+  beforeEach(() => {
+    sendBrandedEmailMock.mockReset().mockResolvedValue({ sent: true, messageId: "m1" });
+  });
+
+  it("apologises, keeps the deposit, offers a refund, and links to the customer's own page", async () => {
+    expect(await sendRebookRequestEmailSafely({ booking, rebookUrl: "https://www.ebysplace.com/rebook/64/abc" })).toEqual({ sent: true });
+    const email = sendBrandedEmailMock.mock.calls[0][0];
+    expect(email.to).toBe("fenton@example.com");
+    expect(email.subject).toBe("Your Saturday booking at Eby’s Place");
+    expect(email.paragraphs[0]).toBe("Hi Fenton,");
+    expect(email.paragraphs[1]).toContain("Saturday 7 November is now fully booked");
+    expect(email.paragraphs[2]).toContain("£20 deposit is safe");
+    expect(email.cta).toEqual({ label: "Choose a new date", url: "https://www.ebysplace.com/rebook/64/abc" });
+    const closing = email.closing.join("\n");
+    expect(closing).toContain("we’ll refund your deposit");
+    expect(closing).toContain("https://www.ebysplace.com/newsletter");
+    expect(closing).toContain("Add to Home Screen");
+  });
+
+  it("leaves out deposit and refund lines when no deposit was paid", async () => {
+    await sendRebookRequestEmailSafely({ booking: { ...booking, depositStatus: "unpaid" }, rebookUrl: "https://x.test" });
+    const email = sendBrandedEmailMock.mock.calls[0][0];
+    expect(JSON.stringify(email)).not.toContain("deposit");
+  });
+
+  it("confirms the new date", async () => {
+    await sendBookingMovedEmailSafely({ booking: { ...booking, appointmentDate: "2026-11-10" } });
+    const email = sendBrandedEmailMock.mock.calls[0][0];
+    expect(email.subject).toBe("You’re booked in: Tuesday 10 November at 10:00");
+    expect(email.paragraphs[1]).toContain("at the studio");
+    expect(email.paragraphs[1]).toContain("deposit has moved with it");
+  });
+
+  it("refuses invalid addresses", async () => {
+    expect(await sendRebookRequestEmailSafely({ booking: { ...booking, clientEmail: "nope" }, rebookUrl: "https://x.test" })).toEqual({ sent: false, reason: "invalid_address" });
+    expect(sendBrandedEmailMock).not.toHaveBeenCalled();
+  });
+});

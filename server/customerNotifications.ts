@@ -1,5 +1,6 @@
 import { normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
 import { sendBrandedEmail } from "./resendEmail";
+import { formatLongDate } from "../shared/rebook";
 
 const SITE_URL = "https://www.ebysplace.com";
 
@@ -316,4 +317,70 @@ export async function sendShopOrderPaidEmailSafely(input: { to?: string | null; 
       'Your payment receipt will be sent to the email used at checkout.'
     ].join('\n\n'),
   });
+}
+
+type RebookEmailBooking = {
+  clientName: string;
+  clientEmail: string;
+  serviceName: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  depositStatus?: string | null;
+  serviceLocation?: string | null;
+};
+
+const JOIN_LIST_LINE = `So you never miss a free slot or offer, we’d love you to join the Eby’s Place list. It’s one email now and then, and you can leave any time: ${SITE_URL}/newsletter`;
+const NOTIFICATIONS_LINE = "You can also turn on notifications to hear first when dates open up. On an iPhone, open ebysplace.com in Safari, tap Share, then Add to Home Screen, open Eby’s Place from your home screen and tap Allow. On Android, open ebysplace.com and tap Allow when it asks.";
+
+function firstName(name: string) {
+  return (name || "").trim().split(/\s+/)[0] || "there";
+}
+
+/**
+ * The apology + "Choose a new date" email, sent when a booked day is full or
+ * blocked. The link is the customer's own (see server/rebook.ts).
+ */
+export async function sendRebookRequestEmailSafely(input: { booking: RebookEmailBooking; rebookUrl: string }) {
+  const { booking } = input;
+  if (!isValidEmail(booking.clientEmail)) return { sent: false, reason: "invalid_address" } as const;
+  const day = formatLongDate(booking.appointmentDate);
+  const paid = booking.depositStatus === "paid";
+  const result = await sendBrandedEmail({
+    to: booking.clientEmail.trim(),
+    subject: `Your ${day.split(" ")[0]} booking at Eby’s Place`,
+    paragraphs: [
+      `Hi ${firstName(booking.clientName)},`,
+      `Thank you for booking your ${booking.serviceName.toLowerCase()} with us${paid ? ", and for paying your deposit" : ""}. I’m really sorry, but ${day} is now fully booked, so we can’t fit you in at ${booking.appointmentTime} as planned. Please accept our apologies.`,
+      paid
+        ? "Your £20 deposit is safe and moves with you to your new date. Please choose the day and time that suits you best. It only takes a moment and there’s nothing more to pay."
+        : "Please choose the day and time that suits you best. It only takes a moment.",
+    ],
+    cta: { label: "Choose a new date", url: input.rebookUrl },
+    closing: [
+      `Rather talk to us? Just reply to this email and we’ll move it for you.${paid ? " If none of our dates work for you, tell us and we’ll refund your deposit." : ""}`,
+      JOIN_LIST_LINE,
+      NOTIFICATIONS_LINE,
+      "Thank you for understanding, and we can’t wait to see you.",
+    ],
+  });
+  return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
+}
+
+/** Confirmation after a booking has moved to a new date (by the customer or by us). */
+export async function sendBookingMovedEmailSafely(input: { booking: RebookEmailBooking }) {
+  const { booking } = input;
+  if (!isValidEmail(booking.clientEmail)) return { sent: false, reason: "invalid_address" } as const;
+  const day = formatLongDate(booking.appointmentDate);
+  const result = await sendBrandedEmail({
+    to: booking.clientEmail.trim(),
+    subject: `You’re booked in: ${day} at ${booking.appointmentTime}`,
+    paragraphs: [
+      `Hi ${firstName(booking.clientName)},`,
+      `Your ${booking.serviceName.toLowerCase()} appointment is now on ${day} at ${booking.appointmentTime}${booking.serviceLocation === "home_service" ? ", at your home" : ", at the studio"}.${booking.depositStatus === "paid" ? " Your £20 deposit has moved with it, so there’s nothing more to pay before your visit." : ""}`,
+      "If you need to change anything, just reply to this email.",
+      NOTIFICATIONS_LINE,
+      "See you soon!",
+    ],
+  });
+  return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
 }
