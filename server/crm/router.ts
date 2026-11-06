@@ -135,7 +135,8 @@ export const crmRouter = router({
         ordersToSend: toSend.length,
       },
       social: SLOTS.map((slot) => ({ slot, time: hhmm(slot), post: posts[slot] ? summarisePost(posts[slot]) : null })),
-      recentSends: sends,
+      // Show the client's name, not their email address or an internal key.
+      recentSends: (sends as Array<{ automation: string; clientKey: string; channel: string; sentAt: string }>).map((s) => ({ ...s, clientName: clients.find((c) => c.key === s.clientKey)?.name ?? null })),
     };
   }),
 
@@ -203,7 +204,11 @@ export const crmRouter = router({
     };
   }),
 
-  automations: adminProcedure.query(async () => ({ automations: await automationStates(), recentSends: await recentSends(15).catch(() => []) })),
+  automations: adminProcedure.query(async () => {
+    const [automations, sends, { clients }] = await Promise.all([automationStates(), recentSends(15).catch(() => []), loadClients()]);
+    // The client's name, not their email address or an internal key.
+    return { automations, recentSends: sends.map((s) => ({ ...s, clientName: clients.find((c) => c.key === s.clientKey)?.name ?? null })) };
+  }),
   setAutomation: adminProcedure.input(z.object({ key: z.string(), enabled: z.boolean() })).mutation(async ({ input }) => {
     const info = AUTOMATIONS.find((a) => a.key === input.key);
     if (!info || !info.switchable) throw new TRPCError({ code: "BAD_REQUEST", message: "That automation can't be switched here." });

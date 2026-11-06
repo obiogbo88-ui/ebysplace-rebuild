@@ -209,7 +209,8 @@ describe("Eby’s Place landing page visual refinements", () => {
     expect(homeSource).not.toContain("A short Eby’s Place story note can be edited from the admin dashboard.");
     expect(homeSource.indexOf("Join the Eby’s Place list.")).toBeLessThan(homeSource.lastIndexOf("From Passion to Power"));
     expect(homeSource).toContain("review-marquee-track");
-    expect(adminSource).toContain("Eby’s Place Command Centre");
+    // The page header is the page title only; "Eby’s Place Command Centre" sits in the sidebar (2026-11-06 tidy-up).
+    expect(adminSource).toContain("<CrmPageHeader loc={crmLoc} />");
     expect(adminSource).toContain("About Us content");
     expect(adminSource).toContain("Upload About Us round image");
     expect(adminSource).toContain("Description beneath round image");

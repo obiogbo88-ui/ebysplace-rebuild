@@ -6,7 +6,7 @@ import { Avatar, Card, Empty, ErrorNote, GhostButton, Kpi, Loading, Pill, Primar
 import { useAccess } from "./access";
 
 const STAGES = ["enquiry", "booked", "deposit_paid", "done", "review_asked", "due_rebook"] as const;
-const AUTOMATION_NAME: Record<string, string> = { review_ask: "Review request", rebook_nudge: "Rebook reminder", win_back: "We-miss-you email" };
+const AUTOMATION_NAME: Record<string, string> = { review_ask: "Review request", rebook_nudge: "Rebook reminder", win_back: "We-miss-you email", list_invite: "List invite" };
 
 function greeting() {
   const h = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Europe/London" }).format(new Date()));
@@ -239,7 +239,7 @@ export function HomePage() {
             <Row key={i}>
               <Pill tone="new">Auto</Pill>
               <div className="min-w-0 flex-1 truncate text-sm">
-                {AUTOMATION_NAME[s.automation] ?? s.automation} · {s.clientKey.replace(/^[ep]:/, "")}
+                <span className="font-semibold">{AUTOMATION_NAME[s.automation] ?? "Automatic email"}</span> to {("clientName" in s && s.clientName) || s.clientKey.replace(/^[ep]:/, "")}
               </div>
               <span className="text-xs text-[#6B6458]">{niceDateTime(s.sentAt)}</span>
             </Row>
