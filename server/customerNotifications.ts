@@ -61,10 +61,42 @@ function getTwilioRequestTimeoutMs() {
   return Number.isFinite(parsed) && parsed >= 1500 ? Math.min(parsed, 15000) : 8000;
 }
 
+/**
+ * Extra numbers that get every owner alert (text + WhatsApp), alongside the
+ * number in EBYSPLACE_OWNER_PHONE_E164. Added 2026-11-06 at the user's request.
+ */
+export const EXTRA_OWNER_PHONES = ["+447849263765"];
+
+/**
+ * Every number that gets owner alerts: the configured owner number(s) (the
+ * env vars may hold a comma-separated list) plus EXTRA_OWNER_PHONES, with
+ * the same number in 07… and +447… form sent to only once.
+ */
+export function ownerPhones(env: Record<string, string | undefined> = process.env): string[] {
+  const configured = env.EBYSPLACE_OWNER_PHONE_E164 || env.OWNER_PHONE_E164 || env.TWILIO_OWNER_PHONE || "";
+  const byDigits = new Map<string, string>();
+  for (const raw of [...configured.split(/[,;\s]+/), ...EXTRA_OWNER_PHONES]) {
+    const phone = raw.trim();
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) continue;
+    const key = digits.slice(-10);
+    if (!byDigits.has(key)) byDigits.set(key, phone);
+  }
+  return Array.from(byDigits.values());
+}
+
+type ChannelResult = { sent: boolean; reason?: string; detail?: string };
+
+/** One result per channel: sent when at least one owner number got it. */
+function combine(results: ChannelResult[]): ChannelResult {
+  if (results.some((r) => r.sent)) return { sent: true };
+  return results[0] ?? { sent: false, reason: "no_owner_phone" };
+}
+
 export function getNotificationDiagnostics() {
   const sms = getTwilioConfig("sms");
   const whatsapp = getTwilioConfig("whatsapp");
-  const ownerPhone = normalisePhone(process.env.EBYSPLACE_OWNER_PHONE_E164 || process.env.OWNER_PHONE_E164 || process.env.TWILIO_OWNER_PHONE);
+  const ownerPhone = ownerPhones().map((p) => normalisePhone(p)).find(Boolean);
   return {
     twilio: {
       sms: {
@@ -83,6 +115,7 @@ export function getNotificationDiagnostics() {
         expectedSenderFormat: "whatsapp:+14155238886 or an approved whatsapp:+E164 Twilio sender",
       },
       ownerPhoneConfigured: Boolean(ownerPhone),
+      ownerPhoneCount: ownerPhones().length,
       requestTimeoutMs: getTwilioRequestTimeoutMs(),
     },
   };
@@ -172,15 +205,14 @@ export async function sendCustomerWhatsAppSafely(input: MessageInput) {
 
 export async function notifyOwnerByTwilioSafely(input: { title: string; content: string }) {
   const body = `${input.title}\n${input.content}`.slice(0, 1500);
-  const ownerPhone = process.env.EBYSPLACE_OWNER_PHONE_E164 || process.env.OWNER_PHONE_E164 || process.env.TWILIO_OWNER_PHONE;
-  const [sms, whatsapp] = await Promise.allSettled([
-    sendTwilioMessage({ to: ownerPhone, body, channel: "sms" }),
-    sendTwilioMessage({ to: ownerPhone, body, channel: "whatsapp" }),
+  const send = (to: string, channel: "sms" | "whatsapp") =>
+    sendTwilioMessage({ to, body, channel }).catch(() => ({ sent: false, reason: "exception" }) as ChannelResult);
+  const phones = ownerPhones();
+  const [sms, whatsapp] = await Promise.all([
+    Promise.all(phones.map((to) => send(to, "sms"))),
+    Promise.all(phones.map((to) => send(to, "whatsapp"))),
   ]);
-  return {
-    sms: sms.status === "fulfilled" ? sms.value : { sent: false, reason: "exception" as const },
-    whatsapp: whatsapp.status === "fulfilled" ? whatsapp.value : { sent: false, reason: "exception" as const },
-  };
+  return { sms: combine(sms), whatsapp: combine(whatsapp) };
 }
 
 
@@ -233,13 +265,15 @@ export async function sendCustomerEmailSafely(input: EmailInput) {
 }
 
 
+/** Text + WhatsApp to every owner number. Returns [sms, whatsapp], each sent when any number got it. */
 export async function sendOwnerSmsAndWhatsAppSafely(body: string) {
-  const ownerPhone = process.env.EBYSPLACE_OWNER_PHONE_E164 || process.env.OWNER_PHONE_E164 || process.env.TWILIO_OWNER_PHONE;
-  const results = await Promise.allSettled([
-    sendCustomerSmsSafely({ to: ownerPhone, body }),
-    sendCustomerWhatsAppSafely({ to: ownerPhone, body }),
+  const phones = ownerPhones();
+  const settle = (p: Promise<ChannelResult>) => p.catch(() => ({ sent: false, reason: "exception" }) as ChannelResult);
+  const [sms, whatsapp] = await Promise.all([
+    Promise.all(phones.map((to) => settle(sendCustomerSmsSafely({ to, body })))),
+    Promise.all(phones.map((to) => settle(sendCustomerWhatsAppSafely({ to, body })))),
   ]);
-  return results.map((result) => result.status === 'fulfilled' ? result.value : { sent: false, reason: 'exception' });
+  return [combine(sms), combine(whatsapp)];
 }
 
 // Review requests and newsletter welcomes go through Resend (branded, from
