@@ -25,6 +25,7 @@ import * as db from "./db";
 import { getSeasonalTheme } from "./seasonalTheme";
 import { reviewRequestBlockReason } from "../shared/reviewRequest";
 import { REBOOK_WINDOW_DAYS, addDays, formatLongDate, londonToday, rebookSlotProblem } from "../shared/rebook";
+import { rebookResendBlockReason } from "../shared/rebookStatus";
 import { isValidRebookToken, rebookBlockReason, rebookUrl } from "./rebook";
 import { crmRouter } from "./crm/router";
 
@@ -647,7 +648,7 @@ export const appRouter = router({
       ]);
       const problem = rebookSlotProblem({ date: input.date, time: input.time, blocked: settings.blockedSlots, taken });
       if (problem) throw new TRPCError({ code: "BAD_REQUEST", message: problem });
-      const moved = await db.moveBookingDate(booking.id, input.date, input.time);
+      const moved = await db.moveBookingDate(booking.id, input.date, input.time, "customer");
       if (!moved) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "We couldn\u2019t move your booking just now. Please reply to our email and we\u2019ll do it for you." });
       await notifyOwnerSafely(
         "Booking moved by customer",
@@ -1359,11 +1360,13 @@ export const appRouter = router({
         }
         return { webPush: webPushResult, email: emailResult, sms: smsResult, whatsapp: whatsappResult };
       }),
-    sendRebookLink: adminProcedure.input(z.object({ bookingId: z.number().int().positive() })).mutation(async ({ input, ctx }) => {
+    sendRebookLink: adminProcedure.input(z.object({ bookingId: z.number().int().positive(), sendAgain: z.boolean().optional() })).mutation(async ({ input, ctx }) => {
       const booking = await db.getBookingById(input.bookingId);
       if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });
       const blockReason = rebookBlockReason(booking);
       if (blockReason) throw new TRPCError({ code: "PRECONDITION_FAILED", message: blockReason });
+      const resendReason = rebookResendBlockReason(booking.rebookRequestedAt, input.sendAgain ?? false);
+      if (resendReason) throw new TRPCError({ code: "CONFLICT", message: resendReason });
       const result = await sendRebookRequestEmailSafely({ booking, rebookUrl: rebookUrl(booking) });
       if (!result.sent) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Rebooking email was not sent: ${result.reason}` });
       await db.markRebookRequested(booking.id);
