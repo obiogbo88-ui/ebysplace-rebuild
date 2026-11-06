@@ -122,10 +122,27 @@ export async function publishInstagramFeed(creds: InstagramCredentials, imageUrl
   return publishContainer(creds, carousel);
 }
 
-/** A Reel (video with sound), also shown in the main feed grid. Video processing takes longer than photos. */
-export async function publishInstagramReel(creds: InstagramCredentials, videoUrl: string, caption: string, aiGenerated: boolean): Promise<string> {
-  const container = await createContainer(creds, { media_type: "REELS", video_url: videoUrl, caption, share_to_feed: "true" }, aiGenerated);
-  return publishContainer(creds, container, 180_000);
+/** Where the cover is taken from when there's no cover image: 1.2s in, after the fade from black. */
+export const REEL_THUMB_OFFSET_MS = "1200";
+
+/**
+ * A Reel (video with sound), also shown in the main feed grid. Video processing takes longer than photos.
+ * Every Reel fades in from black, so without a cover Instagram uses that black first frame
+ * as the grid thumbnail. The first slide image is the cover; otherwise a frame after the fade.
+ */
+export async function publishInstagramReel(creds: InstagramCredentials, videoUrl: string, caption: string, aiGenerated: boolean, coverUrl?: string | null): Promise<string> {
+  const base = { media_type: "REELS", video_url: videoUrl, caption, share_to_feed: "true" };
+  const afterFade = { ...base, thumb_offset: REEL_THUMB_OFFSET_MS };
+  if (coverUrl) {
+    try {
+      return await publishContainer(creds, await createContainer(creds, { ...base, cover_url: coverUrl }, aiGenerated), 180_000);
+    } catch (err) {
+      // A cover Instagram won't take must never stop the post: fall back to a frame after the fade.
+      if (!/cover/i.test(err instanceof Error ? err.message : String(err))) throw err;
+      console.warn("[social] Instagram refused the Reel cover image; using a frame after the fade instead", err);
+    }
+  }
+  return publishContainer(creds, await createContainer(creds, afterFade, aiGenerated), 180_000);
 }
 
 export async function publishInstagramStory(creds: InstagramCredentials, imageUrl: string, aiGenerated: boolean): Promise<string> {
