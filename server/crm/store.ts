@@ -59,17 +59,19 @@ export async function crmDb() {
 
 export async function loadExtras() {
   const db = await crmDb();
-  const [tags, notes, prefs] = await Promise.all([
+  const [tags, notes, prefs, invites] = await Promise.all([
     db.execute(sql`SELECT "clientKey", "tag" FROM "crmClientTags" ORDER BY "createdAt"`),
     db.execute(sql`SELECT "clientKey", "body", "updatedAt" FROM "crmClientNotes"`),
     db.execute(sql`SELECT "clientKey" FROM "crmClientPrefs" WHERE "automation" = 'marketing' AND "enabled" = false`),
+    db.execute(sql`SELECT "clientKey", min("sentAt") AS "at" FROM "crmAutomationSends" WHERE "automation" = 'list_invite' GROUP BY "clientKey"`),
   ]);
   const tagMap = new Map<string, string[]>();
   for (const r of tags.rows as Array<{ clientKey: string; tag: string }>) tagMap.set(r.clientKey, [...(tagMap.get(r.clientKey) ?? []), r.tag]);
   const noteMap = new Map<string, { body: string; updatedAt: string }>();
   for (const r of notes.rows as Array<{ clientKey: string; body: string; updatedAt: string }>) noteMap.set(r.clientKey, { body: r.body, updatedAt: r.updatedAt });
   const optedOut = new Set((prefs.rows as Array<{ clientKey: string }>).map((r) => r.clientKey));
-  return { tags: tagMap, notes: noteMap, optedOut };
+  const invited = new Map((invites.rows as Array<{ clientKey: string; at: string }>).map((r) => [r.clientKey, r.at] as [string, string]));
+  return { tags: tagMap, notes: noteMap, optedOut, invited };
 }
 
 export async function saveNote(clientKey: string, body: string) {

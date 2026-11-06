@@ -232,7 +232,7 @@ export function ScrollBox({ children, label, size = "md", className = "" }: { ch
   );
 }
 
-type ListStanding = { status: "on" | "said_no" | "left" | "not_on"; via: "booking" | "website" | null; since: string | null };
+type ListStanding = { status: "on" | "said_no" | "left" | "not_on"; via: "booking" | "website" | "invite" | null; since: string | null; invitedOn?: string | null };
 
 /** Where a client stands with the Eby's Place list, as a pill plus how/when. */
 export function ListPill({ list, detail = true }: { list: ListStanding; detail?: boolean }) {
@@ -240,9 +240,10 @@ export function ListPill({ list, detail = true }: { list: ListStanding; detail?:
     list.status === "on" ? <Pill tone="live">On the list</Pill>
     : list.status === "left" ? <Pill tone="bad">Left the list</Pill>
     : list.status === "said_no" ? <Pill tone="grey">Said no at booking</Pill>
+    : list.invitedOn ? <Pill tone="gold">Invited {niceDate(list.invitedOn)}</Pill>
     : <Pill tone="grey">Not on the list</Pill>;
   if (!detail || list.status !== "on") return pill;
-  const how = list.via === "booking" ? "Joined at booking" : "Signed up on the website";
+  const how = list.via === "booking" ? "Joined at booking" : list.via === "invite" ? "Joined from the invite" : "Signed up on the website";
   return (
     <span className="inline-grid gap-0.5">
       {pill}

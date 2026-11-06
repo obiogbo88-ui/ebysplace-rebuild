@@ -12,6 +12,8 @@ import { addAdmin, listAddedAdmins, removeAdmin, markInvited, setAdminRole } fro
 import { ASSIGNABLE_ROLES, ROLE_INFO, allows, canSeeMoney, type AdminRole } from "../../shared/adminRoles";
 import { clientBookings, clientKeyFor, clientTimeline, filterClients, journeyCounts, type ClientFilter } from "./clients";
 import { loadClients, londonToday } from "./data";
+import { inviteCandidates, listInvitePreview, sendListInvites } from "./listInvite";
+import { leaveListUrl } from "../list";
 import { getAvailabilitySettings, logActivity as logDbActivity } from "../db";
 import { addTag, clientPrefs, crmDb, recentSends, removeTag, saveNote, sendsFor, setAutomationSetting, setClientPref } from "./store";
 
@@ -240,6 +242,34 @@ export const crmRouter = router({
     const outcome = result?.outcomes?.[0];
     return { slot, outcome };
   }),
+
+  /** Past paying customers who can be invited to join the list (Campaigns page). */
+  listInvite: adminProcedure.query(async () => {
+    const { clients } = await loadClients();
+    const candidates = inviteCandidates(clients);
+    const notOnList = clients.filter((c) => c.email && c.paidOnline > 0 && c.list.status !== "on").length;
+    return { candidates, notOnList, preview: listInvitePreview(candidates.find((c) => !c.waiting)?.name ?? "there") };
+  }),
+  sendListInvite: adminProcedure
+    .input(z.object({ keys: z.array(clientKey).min(1).max(200) }))
+    .mutation(async ({ input }) => {
+      const { clients } = await loadClients();
+      const allowed = new Set(inviteCandidates(clients).map((c) => c.key));
+      const wanted = new Set(input.keys);
+      // Only people still eligible right now: anyone who joined, left or was invited since the page loaded is skipped.
+      const people = clients.filter((c) => wanted.has(c.key) && allowed.has(c.key));
+      if (!people.length) throw new TRPCError({ code: "CONFLICT", message: "Nobody you ticked can be invited any more. Refresh the page." });
+      const result = await sendListInvites(people, leaveListUrl);
+      await logDbActivity({
+        activityType: "list_invite_sent",
+        activityCategory: "newsletter",
+        description: `List invite sent to ${result.sent.length} of ${people.length}`,
+        status: result.failed.length ? "failed" : "success",
+        pageUrl: "/admin",
+        metadata: { sent: result.sent, failed: result.failed.map((f) => f.name), skipped: result.skipped },
+      }).catch(() => undefined);
+      return { attempted: people.length, sent: result.sent.length, failed: result.failed, skipped: result.skipped.length + (input.keys.length - people.length) };
+    }),
 
   campaignAudience: adminProcedure.input(z.object({ filter: z.enum(FILTERS) })).query(async ({ input }) => {
     const { clients } = await loadClients();

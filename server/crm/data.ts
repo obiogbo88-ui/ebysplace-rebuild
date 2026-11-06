@@ -9,7 +9,7 @@ export async function loadRows(): Promise<CrmRows> {
   const db = await crmDb();
   const [bookings, orders, items, chats, subscribers, pushLinks] = await Promise.all([
     db.execute(sql`SELECT "id", "serviceName", "clientName", "clientEmail", "clientPhone", "city", "appointmentDate", "appointmentTime",
-      "status", "depositStatus", "checkoutTotalCharged", "reviewRequestSentAt", "joinList", "createdAt" FROM "bookings"`),
+      "status", "depositStatus", "checkoutTotalCharged", "reviewRequestSentAt", "joinList", "rebookRequestedAt", "createdAt" FROM "bookings"`),
     db.execute(sql`SELECT "id", "customerName", "customerEmail", "customerPhone", "city", "status", "checkoutTotalCharged", "createdAt" FROM "orders"
       WHERE "status" <> 'draft'`),
     db.execute(sql`SELECT "orderId", "productName", "variantName", "quantity" FROM "orderItems"`),

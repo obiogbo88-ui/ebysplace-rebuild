@@ -1339,11 +1339,11 @@ export async function removeNewsletterSubscriber(email: string) {
   await db.delete(newsletterSubscribers).where(sql`lower(${newsletterSubscribers.email}) = ${email.trim().toLowerCase()}`);
 }
 
-export async function subscribeNewsletter(email: string, productAlerts = false) {
+export async function subscribeNewsletter(email: string, productAlerts = false, source?: string) {
   const db = await getDb();
   if (!db) return { success: true };
   await ensureNewsletterSourceColumn();
-  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onConflictDoUpdate({ target: newsletterSubscribers.email, set: { productAlerts: productAlerts ? "true" : "false" } });
+  await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false", ...(source ? { source } : {}) }).onConflictDoUpdate({ target: newsletterSubscribers.email, set: { productAlerts: productAlerts ? "true" : "false" } });
   return { success: true };
 }
 
