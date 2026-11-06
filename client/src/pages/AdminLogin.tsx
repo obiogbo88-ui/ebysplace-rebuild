@@ -5,10 +5,14 @@ import { Label } from "@/components/ui/label";
 import { getStoredAuthToken, setStoredAuthSession } from "@/const";
 import { CANONICAL_SITE_ORIGIN } from "@/lib/canonicalUrl";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Eye, EyeOff, LockKeyhole } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+
+// The gold logo used at the top of the website.
+const LOGO_SRC =
+  "https://jcyoipbiplzrocrrhwkp.supabase.co/storage/v1/object/public/ebysplace-media/ebysplace-logo-gold-cropped_721223da-1f2b66b044.png";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
 
@@ -91,13 +95,11 @@ export default function AdminLogin() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(216,182,107,0.18),transparent_36%),linear-gradient(135deg,#140f0b_0%,#2f2418_52%,#fff7df_220%)] px-4 py-10 text-white">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center justify-center">
-        <div className="grid w-full">
+        <div className="grid w-full justify-items-center gap-6">
+          <img src={LOGO_SRC} alt="Eby’s Place, Beauty in every strand" width={647} height={904} className="h-auto w-[104px] sm:w-[124px]" />
           <Card className="mx-auto w-full max-w-md border-primary/25 bg-[#fffaf0] text-[#2f2418] shadow-[0_28px_80px_rgba(0,0,0,0.32)]">
             <CardHeader className="space-y-3 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-                <LockKeyhole className="h-7 w-7" />
-              </div>
-              <CardTitle className="font-serif text-3xl">Eby’s Place Command Centre</CardTitle>
+              <CardTitle className="font-serif text-3xl">Command Centre</CardTitle>
               <CardDescription className="text-[#5f5142]">
                 Sign in to continue.
               </CardDescription>
