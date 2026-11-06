@@ -39,6 +39,7 @@ const SEES_MONEY: AdminRole[] = ["owner", "manager"];
 const AREA: Record<string, Area> = {
   // Bookings and clients
   "admin.updateBookingStatus": "bookings", "admin.blockAvailabilitySlot": "bookings", "admin.unblockAvailabilitySlot": "bookings",
+  "admin.bookingsOnDate": "bookings", "admin.sendRebookLink": "bookings", "admin.moveBooking": "bookings",
   "admin.updateChatConversationStatus": "bookings", "admin.sendCustomerReply": "bookings", "admin.sendReviewRequest": "bookings",
   "admin.moderateReview": "bookings", "admin.moderateProductReview": "bookings", "admin.resendEmailNotification": "bookings",
   "admin.updateOrderStatus": "shop",

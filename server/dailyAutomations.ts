@@ -5,6 +5,7 @@ import { runDayBeforeAppointmentReminders } from "./appointmentReminders";
 import { cleanupOldRateLimitBuckets } from "./db";
 import { runStaleUnpaidCheckoutCleanup } from "./staleCheckoutCleanup";
 import { ifOn, runAutoReviewAsks, runRebookNudges, runWinBack } from "./crm/automations";
+import { runRebookFollowUps } from "./rebookFollowUps";
 
 const CRON_PATH = "/api/cron/daily-reminders";
 
@@ -39,18 +40,19 @@ export function registerDailyAutomationsCron(app: Application) {
       ifOn("review_ask", () => runAutoReviewAsks()),
       ifOn("rebook_nudge", () => runRebookNudges()),
       ifOn("win_back", () => runWinBack()),
+      ifOn("rebook_follow_up", () => runRebookFollowUps()),
     ]);
 
-    const [bookingReminders, orderReminders, appointmentReminders, , staleCheckoutCleanup, reviewAsks, rebookNudges, winBack] = results.map((result) =>
+    const [bookingReminders, orderReminders, appointmentReminders, , staleCheckoutCleanup, reviewAsks, rebookNudges, winBack, rebookFollowUps] = results.map((result) =>
       result.status === "fulfilled" ? result.value : { error: result.reason instanceof Error ? result.reason.message : String(result.reason) }
     );
 
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        console.error("[DailyAutomations] Check failed", ["bookingReminders", "orderReminders", "appointmentReminders", "rateLimitCleanup", "staleCheckoutCleanup", "reviewAsks", "rebookNudges", "winBack"][index], result.reason);
+        console.error("[DailyAutomations] Check failed", ["bookingReminders", "orderReminders", "appointmentReminders", "rateLimitCleanup", "staleCheckoutCleanup", "reviewAsks", "rebookNudges", "winBack", "rebookFollowUps"][index], result.reason);
       }
     });
 
-    res.json({ success: true, bookingReminders, orderReminders, appointmentReminders, staleCheckoutCleanup, reviewAsks, rebookNudges, winBack });
+    res.json({ success: true, bookingReminders, orderReminders, appointmentReminders, staleCheckoutCleanup, reviewAsks, rebookNudges, winBack, rebookFollowUps });
   });
 }

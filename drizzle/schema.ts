@@ -101,6 +101,10 @@ export const bookings = pgTable("bookings", {
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
   stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
   reviewRequestSentAt: timestamp("reviewRequestSentAt"),
+  /** When a "Choose a new date" email went out; cleared once the booking moves. */
+  rebookRequestedAt: timestamp("rebookRequestedAt"),
+  rebookReminderSentAt: timestamp("rebookReminderSentAt"),
+  rebookOwnerAlertedAt: timestamp("rebookOwnerAlertedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

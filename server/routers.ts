@@ -1173,7 +1173,42 @@ export const appRouter = router({
       });
       return result;
     }),
-    blockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional(), reason: z.string().optional() })).mutation(({ input }) => db.blockBookingSlot(input)),
+    bookingsOnDate: adminProcedure.input(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().optional() })).query(async ({ input }) => {
+      const rows = await db.listLiveBookingsOnDate(input.date);
+      return rows
+        .filter((row) => !input.time || row.appointmentTime === input.time)
+        .map((row) => ({ id: row.id, clientName: row.clientName, serviceName: row.serviceName, appointmentTime: row.appointmentTime, depositPaid: row.depositStatus === "paid", hasEmail: Boolean(row.clientEmail) }));
+    }),
+    blockAvailabilitySlot: adminProcedure.input(z.object({
+      date: z.string().min(4),
+      time: z.string().optional(),
+      reason: z.string().optional(),
+      /** Email every paid/confirmed customer in the blocked slot a "Choose a new date" link. */
+      emailAffected: z.boolean().default(false),
+    })).mutation(async ({ input, ctx }) => {
+      const { emailAffected, ...slot } = input;
+      await db.blockBookingSlot(slot);
+      if (!emailAffected) return { success: true, emailed: [] as string[], failed: [] as string[] };
+      const affected = (await db.listLiveBookingsOnDate(input.date)).filter((row) => !input.time || row.appointmentTime === input.time);
+      const emailed: string[] = [];
+      const failed: string[] = [];
+      for (const booking of affected) {
+        try {
+          const result = await sendRebookRequestEmailSafely({ booking, rebookUrl: rebookUrl(booking) });
+          if (result.sent) {
+            await db.markRebookRequested(booking.id);
+            emailed.push(booking.clientName);
+          } else {
+            failed.push(`${booking.clientName} (${result.reason})`);
+          }
+        } catch (error) {
+          console.error("[Rebook] Block-day email failed", booking.id, error);
+          failed.push(booking.clientName);
+        }
+      }
+      await logAdminActivity(ctx, { activityType: "availability_blocked_with_rebook", description: `Blocked ${input.date}${input.time ? ` ${input.time}` : ""} and emailed ${emailed.length} customer(s) a "choose a new date" link`, relatedEntityType: "availability", metadata: { emailed, failed }, status: failed.length ? "failed" : "success" });
+      return { success: true, emailed, failed };
+    }),
     unblockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional() })).mutation(({ input }) => db.unblockBookingSlot(input)),
     updateSeasonalEffects: adminProcedure.input(z.object({ enabled: z.boolean() })).mutation(({ input }) => db.updateSeasonalSettings({ enabled: input.enabled })),
     updateInstagramSettings: adminProcedure.input(z.object({ handle: z.string().min(2), feedUrl: z.string().url(), enabled: z.boolean(), note: z.string().optional() })).mutation(({ input }) => db.updateInstagramSettings(input)),
@@ -1331,6 +1366,7 @@ export const appRouter = router({
       if (blockReason) throw new TRPCError({ code: "PRECONDITION_FAILED", message: blockReason });
       const result = await sendRebookRequestEmailSafely({ booking, rebookUrl: rebookUrl(booking) });
       if (!result.sent) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Rebooking email was not sent: ${result.reason}` });
+      await db.markRebookRequested(booking.id);
       await logAdminActivity(ctx, { activityType: "booking_rebook_link_sent", description: `Sent a "choose a new date" email to ${booking.clientName} for ${booking.appointmentDate} ${booking.appointmentTime}`, relatedEntityType: "booking", relatedEntityId: booking.id });
       return { success: true };
     }),
