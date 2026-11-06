@@ -37,7 +37,7 @@ export const CRM_PAGES: CrmPage[] = [
   { id: "inbox", label: "Inbox", group: "Run the studio", title: "Inbox", description: "Website chats and one-off replies to clients, from info@ebysplace.com.", panels: ["chats", "customer-replies"], inMenu: true },
   { id: "shop", label: "Shop & orders", group: "Sell", title: "Shop & orders", description: "Orders to send, products and stock, and product reviews.", panels: ["orders", "products", "product-reviews"], inMenu: true },
   { id: "money", label: "Money", group: "Sell", title: "Money", description: "What came in, what Stripe kept, and what reached the bank.", panels: ["transactions"], inMenu: true },
-  { id: "social", label: "Social autopilot", group: "Grow", title: "Social autopilot", description: "Instagram posts itself three times a day. Every post is a Reel with its own tune.", panels: ["instagram"], inMenu: true },
+  { id: "social", label: "Social autopilot", group: "Grow", title: "Social autopilot", description: "Posts itself three times a day to every connected channel. Every post is a Reel with its own tune.", panels: ["instagram"], inMenu: true },
   { id: "campaigns", label: "Campaigns", group: "Grow", title: "Campaigns", description: "Send one message to your list, or email a group of clients.", panels: ["announcements", "newsletter-subscribers"], inMenu: true },
   { id: "automations", label: "Automations", group: "Grow", title: "Automations", description: "Everything that runs by itself. Switch any of them off here.", panels: [], inMenu: true },
   { id: "reports", label: "Reports", group: "Grow", title: "Reports", description: "How the studio is doing month to month, and what visitors do on the website.", panels: ["activity-monitoring"], inMenu: true },
