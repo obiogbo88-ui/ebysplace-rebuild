@@ -6,6 +6,7 @@ import { getActivitySessionId, getBrowserInfo, getCurrentPageUrl } from "@/lib/a
 import { getServiceImageFallback, getServiceImageSrc } from "@/lib/serviceImageFallback";
 import { SiteFooter, SiteHeader } from "./Home";
 import { ChevronLeft } from "lucide-react";
+import { DayTimePicker } from "@/components/booking/DayTimePicker";
 
 type ServiceLocation = "studio" | "home_service";
 
@@ -191,6 +192,7 @@ export default function Booking() {
   const logActivity = trpc.public.logActivity.useMutation();
   const availability = trpc.public.availability.useQuery();
   const paymentMode = trpc.public.paymentMode.useQuery();
+  const calendar = trpc.public.bookingCalendar.useQuery();
   const bookingBlockedSlots = availability.data?.blockedSlots || [];
   const homeServiceSurcharge = Number(availability.data?.homeServiceSurcharge || 0);
   const checkoutReturn = useMemo(() => {
@@ -479,27 +481,29 @@ export default function Booking() {
                 <p className="mt-2 text-[#4a3014]">Pick your preferred date and time, choose the studio or a home visit, then continue.</p>
                 {form.serviceName ? <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-bold text-primary">{form.serviceName}</div> : null}
               </div>
-              <div className="input-grid">
-                <label className="font-semibold text-[#24170d]">
-                  Appointment Date
-                  <input
-                    type="date"
-                    required
-                    value={form.appointmentDate}
-                    min={new Date().toISOString().slice(0, 10)}
-                    onChange={event => set("appointmentDate", event.target.value)}
-                  />
-                </label>
-                <label className="font-semibold text-[#24170d]">
-                  Appointment Time
-                  <input
-                    type="time"
-                    required
-                    value={form.appointmentTime}
-                    onChange={event => set("appointmentTime", event.target.value)}
-                  />
-                </label>
-              </div>
+              {calendar.data ? (
+                <DayTimePicker
+                  today={calendar.data.today}
+                  blockedSlots={calendar.data.blockedSlots}
+                  taken={calendar.data.taken}
+                  date={form.appointmentDate}
+                  time={form.appointmentTime}
+                  onChange={(next) => setForm((current) => ({ ...current, appointmentDate: next.date, appointmentTime: next.time }))}
+                />
+              ) : calendar.isError ? (
+                <div className="input-grid">
+                  <label className="font-semibold text-[#24170d]">
+                    Appointment Date
+                    <input type="date" required value={form.appointmentDate} min={new Date().toISOString().slice(0, 10)} onChange={event => set("appointmentDate", event.target.value)} />
+                  </label>
+                  <label className="font-semibold text-[#24170d]">
+                    Appointment Time
+                    <input type="time" required value={form.appointmentTime} onChange={event => set("appointmentTime", event.target.value)} />
+                  </label>
+                </div>
+              ) : (
+                <p className="text-sm text-[#4a3014]">Loading available days…</p>
+              )}
               {selectedSlotBlocked ? (
                 <div className="rounded-2xl border border-red-400/40 bg-red-50 p-4 text-sm font-semibold text-red-800">
                   This slot has been blocked by Eby's Place. Please choose a different date or time.

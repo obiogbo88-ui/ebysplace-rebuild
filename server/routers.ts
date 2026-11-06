@@ -441,6 +441,15 @@ export const appRouter = router({
     featuredServices: publicProcedure.query(() => db.listFeaturedServices()),
     products: publicProcedure.query(() => db.listProducts()),
     availability: publicProcedure.query(() => db.getAvailabilitySettings()),
+    /** Closed days and already-booked times for the booking calendar. Dates and times only. */
+    bookingCalendar: publicProcedure.query(async () => {
+      const today = londonToday();
+      const [settings, taken] = await Promise.all([
+        db.getAvailabilitySettings(),
+        db.listLiveTakenSlots(today, addDays(today, 60)),
+      ]);
+      return { today, blockedSlots: settings.blockedSlots, taken };
+    }),
     paymentMode: publicProcedure.query(() => getLivePaymentMode()),
     instagramSettings: publicProcedure.query(() => db.getInstagramSettings()),
     seasonalTheme: publicProcedure.query(() => getSeasonalTheme()),
@@ -682,6 +691,10 @@ export const appRouter = router({
       const bookingNote = buildBookingNote({ ...input, serviceLocation, homeServiceSurcharge });
       if (await db.isBookingSlotBlocked(input.appointmentDate, input.appointmentTime)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "That date or time has been blocked by Eby’s Place. Please choose another slot." });
+      }
+      const takenThatDay = await db.listLiveTakenSlots(input.appointmentDate, input.appointmentDate);
+      if (takenThatDay.some((slot) => slot.time === input.appointmentTime)) {
+        throw new TRPCError({ code: "CONFLICT", message: "Sorry, that time has just been booked by someone else. Please choose another time." });
       }
       // Regression anchor for the original contract: db.createBooking({ ...input, status: "pending", depositStatus: "unpaid" })
       const booking = await db.createBooking({ ...sanitizedBookingFields, deliveryNote: bookingNote, status: "pending", depositStatus: "unpaid" });
