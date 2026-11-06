@@ -1386,7 +1386,12 @@ export default function Admin() {
                                     description: `It was sent ${formatRebookMoment((rebook as any).sentAt)}. Only send another if they asked for it, or can't find the first one.`,
                                     action: { label: "Send again", onClick: () => sendRebookLink.mutate({ bookingId: booking.id, sendAgain: true }) },
                                   })
-                                : toast.warning(`Email ${booking.clientName} a "choose a new date" link?`, {
+                                : rebook?.kind === "moved" && rebook.by === "customer"
+                                  ? toast.warning(`${booking.clientName.split(" ")[0]} has already moved this booking once`, {
+                                      description: `Send our "sorry, we need to move your booking once more" email (with Eby's number) and a fresh link to pick a new day and time${isPaid ? ". Their deposit moves with them" : ""}.`,
+                                      action: { label: "Send sorry email", onClick: () => sendRebookLink.mutate({ bookingId: booking.id, onceMore: true }) },
+                                    })
+                                  : toast.warning(`Email ${booking.clientName} a "choose a new date" link?`, {
                                     description: `It says ${booking.appointmentDate} is fully booked, apologises, and lets them pick a new day and time${isPaid ? " (their deposit moves with them)" : ""}.`,
                                     action: { label: "Send", onClick: () => sendRebookLink.mutate({ bookingId: booking.id }) },
                                   })}
