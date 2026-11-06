@@ -2461,9 +2461,11 @@ export async function createEmailNotificationLog(input: {
   subject: string;
   bodyPreview?: string | null;
   status?: "pending" | "sent" | "failed" | "retried";
+  provider?: string;
   smtpHost?: string | null;
   messageId?: string | null;
   errorMessage?: string | null;
+  sentAtMs?: number | null;
 }) {
   const db = await getDb();
   if (!db) return { id: Date.now(), ...input, status: input.status ?? "pending" };
@@ -2476,11 +2478,13 @@ export async function createEmailNotificationLog(input: {
     subject: input.subject,
     bodyPreview: input.bodyPreview ?? null,
     status: input.status ?? "pending",
+    ...(input.provider ? { provider: input.provider } : {}),
     smtpHost: input.smtpHost ?? null,
     messageId: input.messageId ?? null,
     errorMessage: input.errorMessage ?? null,
-    attempts: 0,
+    attempts: input.status === "sent" || input.status === "failed" ? 1 : 0,
     lastAttemptAtMs: Date.now(),
+    sentAtMs: input.sentAtMs ?? null,
   }).returning({ id: emailNotificationLogs.id });
   return { id: inserted[0]?.id ?? 0 };
 }

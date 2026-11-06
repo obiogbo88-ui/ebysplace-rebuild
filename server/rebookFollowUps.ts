@@ -8,9 +8,8 @@
  * that's been rebooked is never chased.
  */
 import { notifyOwner } from "./_core/notification";
-import { sendRebookRequestEmailSafely } from "./customerNotifications";
 import * as db from "./db";
-import { rebookUrl } from "./rebook";
+import { sendRecordedRebookEmail } from "./rebookSend";
 import { addDays, formatLongDate, londonToday } from "../shared/rebook";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -28,7 +27,7 @@ export async function runRebookFollowUps(now: Date = new Date()) {
     const dueForReminder = !booking.rebookReminderSentAt && now.getTime() - requestedAt.getTime() >= DAY_MS && booking.appointmentDate > today;
     if (dueForReminder) {
       try {
-        const sent = await sendRebookRequestEmailSafely({ booking, rebookUrl: rebookUrl(booking), reminder: true });
+        const sent = await sendRecordedRebookEmail(booking, { reminder: true });
         if (sent.sent) {
           await db.markRebookReminderSent(booking.id, now);
           result.reminded += 1;
