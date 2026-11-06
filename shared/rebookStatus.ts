@@ -70,3 +70,14 @@ export function rebookResendBlockReason(sentAt: Date | string | null | undefined
   if (!sentAt || sendAgain) return null;
   return `A rebooking link was already sent ${formatRebookMoment(sentAt, now)}.`;
 }
+
+/**
+ * True when the last rebooking email was the "sorry, once more" one: the
+ * customer had already moved the booking themselves, and the link went out
+ * after that move. "Send again" then resends the same sorry email.
+ */
+export function lastRebookEmailWasOnceMore(booking: Pick<RebookStatusInput, "rebookRequestedAt" | "rebookMovedAt" | "rebookMovedBy">): boolean {
+  const sentAt = toDate(booking.rebookRequestedAt);
+  const movedAt = toDate(booking.rebookMovedAt);
+  return booking.rebookMovedBy === "customer" && !!sentAt && !!movedAt && sentAt.getTime() > movedAt.getTime();
+}

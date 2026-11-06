@@ -29,7 +29,7 @@ import {
 import { toast } from "sonner";
 import { bookingDepositLabel, isPastAppointment } from "@/lib/bookingDisplay";
 import { formatReviewRequestDate } from "@shared/reviewRequest";
-import { REBOOK_EMAIL_PROVIDER, formatRebookMoment, formatShortSlot, rebookStatus } from "@shared/rebookStatus";
+import { REBOOK_EMAIL_PROVIDER, formatRebookMoment, formatShortSlot, lastRebookEmailWasOnceMore, rebookStatus } from "@shared/rebookStatus";
 import { BlockDaysPicker } from "@/components/admin/BlockDaysPicker";
 import { CrmPageHeader, CrmPageView, VisiblePanelsContext, useCrmLocation, usePanelVisible } from "./crm/CrmPageView";
 import { crmPage } from "./crm/nav";
@@ -1383,7 +1383,7 @@ export default function Admin() {
                               disabled={sendRebookLink.isPending}
                               onClick={() => linkAlreadySent
                                 ? toast.warning(`${booking.clientName} already has a rebooking link`, {
-                                    description: `It was sent ${formatRebookMoment((rebook as any).sentAt)}. Only send another if they asked for it, or can't find the first one.`,
+                                    description: `${lastRebookEmailWasOnceMore(booking) ? `Our "sorry, we need to move your booking once more" email` : "It"} was sent ${formatRebookMoment((rebook as any).sentAt)}. Send again resends that same email with a fresh link. Only send another if they asked for it, or can't find the first one.`,
                                     action: { label: "Send again", onClick: () => sendRebookLink.mutate({ bookingId: booking.id, sendAgain: true }) },
                                   })
                                 : rebook?.kind === "moved" && rebook.by === "customer"
