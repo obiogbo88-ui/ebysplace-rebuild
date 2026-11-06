@@ -104,7 +104,7 @@ export async function publishPost(post: SocialPost, ig: InstagramCredentials | n
   if (ig) {
     result.igMediaId = await step("Instagram post", result.igMediaId, () =>
       post.reelUrl
-        ? publishInstagramReel(ig, post.reelUrl, captionFor("instagram", post.caption), post.isAiGenerated)
+        ? publishInstagramReel(ig, post.reelUrl, captionFor("instagram", post.caption), post.isAiGenerated, post.imageUrls[0] ?? null)
         : publishInstagramFeed(ig, post.imageUrls, captionFor("instagram", post.caption), post.isAiGenerated),
     );
     if (post.storyUrl) result.igStoryId = await step("Instagram story", result.igStoryId, () => publishInstagramStory(ig, post.storyUrl!, post.isAiGenerated));

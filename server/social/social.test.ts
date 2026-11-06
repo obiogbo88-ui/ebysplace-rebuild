@@ -16,7 +16,7 @@ vi.mock("./store", () => ({
 import jpegJs from "jpeg-js";
 import { addDays, captionFor, captionProblem, clip, slotDue, ensureBookingToken, ensureFollowLine, formatPrice, kindFor, londonDate, styleSourceFor, weekdayIndex } from "./content";
 import { splitAccent, renderSlide } from "./renderer";
-import { publishFacebookFeed, publishInstagramFeed } from "./graph";
+import { publishFacebookFeed, publishInstagramFeed, publishInstagramReel } from "./graph";
 import { publishPost } from "./cron";
 import type { SocialPost } from "./store";
 
@@ -171,6 +171,24 @@ describe("Instagram client", () => {
     await publishInstagramFeed({ userId: "42", accessToken: "t" }, ["https://a/1.jpg"], "Hi", true);
     expect(calls[0].body).toContain("is_ai_generated=true");
     expect(calls[1].body).not.toContain("is_ai_generated");
+  });
+
+  it("gives every Reel a cover so the grid never shows the black first frame", async () => {
+    let calls = graphStub([{ id: "r1" }, { status_code: "FINISHED" }, { id: "m" }]);
+    await publishInstagramReel({ userId: "42", accessToken: "t" }, "https://v/reel.mp4", "Hi", false, "https://a/slide1.jpg");
+    expect(calls[0].body).toContain("cover_url=https%3A%2F%2Fa%2Fslide1.jpg");
+    vi.unstubAllGlobals();
+    calls = graphStub([{ id: "r1" }, { status_code: "FINISHED" }, { id: "m" }]);
+    await publishInstagramReel({ userId: "42", accessToken: "t" }, "https://v/reel.mp4", "Hi", false, null);
+    expect(calls[0].body).toContain("thumb_offset=1200");
+  });
+
+  it("falls back to a frame after the fade if Instagram refuses the cover image", async () => {
+    const calls = graphStub([{ error: { message: "Invalid cover_url", code: 100 } }, { id: "r2" }, { status_code: "FINISHED" }, { id: "m" }]);
+    const id = await publishInstagramReel({ userId: "42", accessToken: "t" }, "https://v/reel.mp4", "Hi", false, "https://a/bad.jpg");
+    expect(id).toBe("m");
+    expect(calls[1].body).toContain("thumb_offset=1200");
+    expect(calls[1].body).not.toContain("cover_url");
   });
 });
 
