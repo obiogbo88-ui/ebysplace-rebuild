@@ -23,6 +23,8 @@ export type BookingRow = {
   reviewRequestSentAt: Date | string | null;
   /** The booking form's list choice; null on bookings made before it existed. */
   joinList?: boolean | null;
+  /** Set while a "choose a new date" link is waiting for the customer. */
+  rebookRequestedAt?: Date | string | null;
   createdAt: Date | string;
 };
 
@@ -61,14 +63,18 @@ export type PushLinkRow = { bookingId: number | null };
 export type ClientList = {
   status: "on" | "said_no" | "left" | "not_on";
   /** How they joined, when on the list. */
-  via: "booking" | "website" | null;
+  via: "booking" | "website" | "invite" | null;
   since: string | null; // YYYY-MM-DD
+  /** When they were sent the "join the list?" invite (YYYY-MM-DD), if they were. */
+  invitedOn?: string | null;
 };
 
 export type CrmExtras = {
   tags: Map<string, string[]>;
   notes: Map<string, { body: string; updatedAt: Date | string }>;
   optedOut: Set<string>;
+  /** When each client was sent the one-off "join the list?" invite. */
+  invited?: Map<string, Date | string>;
 };
 
 export type ClientStage = "enquiry" | "booked" | "deposit_paid" | "done" | "review_asked" | "due_rebook";
@@ -99,6 +105,8 @@ export type Client = {
   list: ClientList;
   /** True only when turned on from the booking confirmed screen; other browsers can't be tied to a person. */
   notifications: boolean;
+  /** A live booking is waiting for them to pick a new date. */
+  rebookPending: boolean;
 };
 
 const PAID_ORDER = new Set(["paid", "fulfilling", "shipped", "completed"]);
@@ -239,7 +247,7 @@ export function buildClients(
 export function listStanding(a: Pick<Acc, "subs" | "bookings">, optedOut: boolean): ClientList {
   if (optedOut) return { status: "left", via: null, since: null };
   const first = [...a.subs].sort((x, y) => iso(x.createdAt).localeCompare(iso(y.createdAt)))[0];
-  if (first) return { status: "on", via: first.source === "booking" ? "booking" : "website", since: day(first.createdAt) };
+  if (first) return { status: "on", via: first.source === "booking" ? "booking" : first.source === "invite" ? "invite" : "website", since: day(first.createdAt) };
   const choices = a.bookings.filter((b) => b.joinList != null).sort((x, y) => iso(x.createdAt).localeCompare(iso(y.createdAt)));
   if (choices.at(-1)?.joinList === false) return { status: "said_no", via: null, since: null };
   return { status: "not_on", via: null, since: null };
@@ -315,7 +323,8 @@ function toClient(a: Acc, extras: CrmExtras, today: string, pushBookings: Set<nu
     ownTags,
     note: extras.notes.get(key)?.body ?? null,
     marketingOptOut: extras.optedOut.has(key),
-    list: listStanding(a, extras.optedOut.has(key)),
+    list: { ...listStanding(a, extras.optedOut.has(key)), invitedOn: extras.invited?.get(key) ? day(extras.invited.get(key)!) : null },
+    rebookPending: live.some((b) => b.status !== "completed" && !!b.rebookRequestedAt),
     notifications: a.bookings.some((b) => pushBookings.has(b.id)),
     lastActivity: activity.at(-1) ?? a.firstSeen,
   };

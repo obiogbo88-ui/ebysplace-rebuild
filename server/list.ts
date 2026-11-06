@@ -73,9 +73,10 @@ export async function leaveList(key: string) {
   if (key.startsWith("e:")) await db.removeNewsletterSubscriber(key.slice(2));
 }
 
-export async function joinListAgain(key: string) {
+/** "Join again" after leaving, or "Join the list" from the past-customer invite (source "invite"). */
+export async function joinListAgain(key: string, source?: "invite") {
   await setClientPref(key, "marketing", true);
-  if (key.startsWith("e:")) await db.subscribeNewsletter(key.slice(2));
+  if (key.startsWith("e:")) await db.subscribeNewsletter(key.slice(2), false, source);
 }
 
 /** Signing up on the website is a fresh yes, so it clears an earlier "leave". */

@@ -63,6 +63,36 @@ export function registerCrmRoutes(app: Application) {
 <form method="post" action="/api/crm/rejoin?${esc(qs)}"><button type="submit" style="${BUTTON};background:#fff;color:#4A3014">Changed your mind? Join again</button></form><p>${HOME}</p>`));
   });
 
+  // "Join the list" in the past-customer invite: one tap, same scanner-safe pattern as leaving.
+  app.get("/api/crm/join", (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "no-store");
+    const { key, qs } = signed(req);
+    if (!key) {
+      res.status(400).type("html").send(page("That link didn't work", `<p>It may have been copied only partly. You can join any time at <a href="https://www.ebysplace.com/newsletter">ebysplace.com/newsletter</a>.</p><p>${HOME}</p>`));
+      return;
+    }
+    res.type("html").send(page("Joining the list…", `<form id="join" method="post" action="/api/crm/join?${esc(qs)}"><p>Adding you to the Eby's Place list.</p>
+<noscript><button type="submit" style="${BUTTON};background:#111;color:#F1D98C">Join the list</button></noscript></form>
+<script>document.getElementById("join").submit()</script>`));
+  });
+
+  app.post("/api/crm/join", async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "no-store");
+    const { key } = signed(req);
+    if (!key) {
+      res.status(400).type("html").send(BAD_LINK);
+      return;
+    }
+    try {
+      await joinListAgain(key, "invite");
+    } catch (err) {
+      console.error("[List] Join from invite failed", err);
+      res.status(500).type("html").send(page("Something went wrong", `<p>We couldn't save that just now. You can join any time at <a href="https://www.ebysplace.com/newsletter">ebysplace.com/newsletter</a>.</p>`));
+      return;
+    }
+    res.type("html").send(page("You're on the list", `<p>Thank you! You'll hear first about free slots and offers from Eby's Place. You can leave any time with the link at the bottom of our emails.</p><p>${HOME}</p>`));
+  });
+
   app.post("/api/crm/rejoin", async (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "no-store");
     const { key } = signed(req);
