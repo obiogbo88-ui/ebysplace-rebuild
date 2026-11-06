@@ -105,6 +105,10 @@ export const bookings = pgTable("bookings", {
   rebookRequestedAt: timestamp("rebookRequestedAt"),
   rebookReminderSentAt: timestamp("rebookReminderSentAt"),
   rebookOwnerAlertedAt: timestamp("rebookOwnerAlertedAt"),
+  rebookMovedAt: timestamp("rebookMovedAt"),
+  rebookMovedBy: varchar("rebookMovedBy", { length: 16 }),
+  rebookPreviousDate: varchar("rebookPreviousDate", { length: 10 }),
+  rebookPreviousTime: varchar("rebookPreviousTime", { length: 5 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

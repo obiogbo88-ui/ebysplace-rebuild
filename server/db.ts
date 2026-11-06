@@ -1386,6 +1386,10 @@ async function ensureBookingLocationColumns() {
   await addPgColumnIfMissing("bookings", "rebookRequestedAt", "TIMESTAMP");
   await addPgColumnIfMissing("bookings", "rebookReminderSentAt", "TIMESTAMP");
   await addPgColumnIfMissing("bookings", "rebookOwnerAlertedAt", "TIMESTAMP");
+  await addPgColumnIfMissing("bookings", "rebookMovedAt", "TIMESTAMP");
+  await addPgColumnIfMissing("bookings", "rebookMovedBy", "VARCHAR(16)");
+  await addPgColumnIfMissing("bookings", "rebookPreviousDate", "VARCHAR(10)");
+  await addPgColumnIfMissing("bookings", "rebookPreviousTime", "VARCHAR(5)");
   await makePgColumnNullable("bookings", "addressLine1");
   await makePgColumnNullable("bookings", "city");
   await makePgColumnNullable("bookings", "postcode");
@@ -3133,14 +3137,24 @@ export async function listTakenBookingSlots(fromDate: string, toDate: string, ex
  * Moves a booking to a new date and time. A paid deposit stays with it, and a
  * paid booking is confirmed so it still gets the day-before reminder.
  */
-export async function moveBookingDate(id: number, appointmentDate: string, appointmentTime: string) {
+export async function moveBookingDate(id: number, appointmentDate: string, appointmentTime: string, movedBy: "customer" | "admin" = "admin") {
   const db = await getDb();
   if (!db) return null;
   const current = await getBookingById(id);
   if (!current) return null;
   const status = current.depositStatus === "paid" && current.status === "pending" ? "confirmed" : current.status;
-  await db.update(bookings).set({ appointmentDate, appointmentTime, status, rebookRequestedAt: null, rebookReminderSentAt: null, rebookOwnerAlertedAt: null, updatedAt: new Date() }).where(eq(bookings.id, id));
-  return { previousDate: current.appointmentDate, previousTime: current.appointmentTime, booking: { ...current, appointmentDate, appointmentTime, status } };
+  const movedAt = new Date();
+  const moveRecord = {
+    rebookRequestedAt: null,
+    rebookReminderSentAt: null,
+    rebookOwnerAlertedAt: null,
+    rebookMovedAt: movedAt,
+    rebookMovedBy: movedBy,
+    rebookPreviousDate: current.appointmentDate,
+    rebookPreviousTime: current.appointmentTime,
+  };
+  await db.update(bookings).set({ appointmentDate, appointmentTime, status, ...moveRecord, updatedAt: movedAt }).where(eq(bookings.id, id));
+  return { previousDate: current.appointmentDate, previousTime: current.appointmentTime, booking: { ...current, appointmentDate, appointmentTime, status, ...moveRecord } };
 }
 
 /** A booking holds its slot once it's paid or confirmed; an unpaid request may be an abandoned checkout. */

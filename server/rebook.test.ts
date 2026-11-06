@@ -114,7 +114,7 @@ describe("rebook routes", () => {
     const time = startTimesFor(day)[1];
     const move = vi.spyOn(db, "moveBookingDate").mockResolvedValue({ previousDate: booking.appointmentDate, previousTime: "10:00", booking: { ...booking, appointmentDate: day, appointmentTime: time, status: "confirmed" } } as any);
     const result = await appRouter.createCaller(ctx()).public.rebook({ bookingId: 64, token: rebookToken(booking), date: day, time });
-    expect(move).toHaveBeenCalledWith(64, day, time);
+    expect(move).toHaveBeenCalledWith(64, day, time, "customer");
     expect(result.emailSent).toBe(true);
     expect(sendBookingMovedEmailSafelyMock).toHaveBeenCalledTimes(1);
     expect(notifyOwnerMock.mock.calls[0][0].content).toContain("Fenton Richards moved Cornrows");
