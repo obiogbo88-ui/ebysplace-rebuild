@@ -26,7 +26,7 @@ import * as db from "./db";
 import { getSeasonalTheme } from "./seasonalTheme";
 import { reviewRequestBlockReason } from "../shared/reviewRequest";
 import { REBOOK_WINDOW_DAYS, addDays, formatLongDate, londonToday, rebookSlotProblem } from "../shared/rebook";
-import { rebookResendBlockReason } from "../shared/rebookStatus";
+import { lastRebookEmailWasOnceMore, rebookResendBlockReason } from "../shared/rebookStatus";
 import { isValidRebookToken, rebookBlockReason } from "./rebook";
 import { sendRecordedRebookEmail } from "./rebookSend";
 import { crmRouter } from "./crm/router";
@@ -1441,7 +1441,9 @@ export const appRouter = router({
       if (blockReason) throw new TRPCError({ code: "PRECONDITION_FAILED", message: blockReason });
       const resendReason = rebookResendBlockReason(booking.rebookRequestedAt, input.sendAgain ?? false);
       if (resendReason) throw new TRPCError({ code: "CONFLICT", message: resendReason });
-      const result = await sendRecordedRebookEmail(booking, { onceMore: input.onceMore });
+      // "Send again" resends whichever email went last, so a customer who got the sorry email gets it again.
+      const onceMore = input.onceMore || (input.sendAgain === true && lastRebookEmailWasOnceMore(booking));
+      const result = await sendRecordedRebookEmail(booking, { onceMore });
       if (!result.sent) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Rebooking email was not sent: ${result.reason}` });
       await db.markRebookRequested(booking.id);
       await logRebookLinkSent(ctx, booking);
