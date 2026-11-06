@@ -35,7 +35,16 @@ export type BrandedEmail = {
   replyTo?: string;
   /** Extra message headers, e.g. List-Unsubscribe on bulk mail. */
   headers?: Record<string, string>;
+  /** List emails: a small "Leave the list" line at the very bottom, with this person's own link. */
+  leaveListUrl?: string;
 };
+
+export const LEAVE_LIST_TEXT = "You're getting this because you're on the Eby's Place list.";
+
+/** Adds the leave line and the one-click headers mail apps use for their own Unsubscribe button. */
+export function withLeaveLink<T extends Omit<BrandedEmail, "to"> | BrandedEmail>(email: T, url: string): T {
+  return { ...email, leaveListUrl: url, headers: { ...(email.headers ?? {}), "List-Unsubscribe": `<${url}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } };
+}
 
 export type ResendResult = {
   sent: boolean;
@@ -97,7 +106,7 @@ function loadShell() {
 
 const PARAGRAPH_STYLE = 'class="ink" style="margin:0 0 20px;color:#1A1A1A;"';
 
-export function renderBrandedEmail(email: Pick<BrandedEmail, "subject" | "paragraphs" | "cta" | "closing">) {
+export function renderBrandedEmail(email: Pick<BrandedEmail, "subject" | "paragraphs" | "cta" | "closing" | "leaveListUrl">) {
   const [salutation, ...rest] = email.paragraphs;
   const blocks: string[] = [];
   if (salutation) {
@@ -117,15 +126,19 @@ export function renderBrandedEmail(email: Pick<BrandedEmail, "subject" | "paragr
   for (const paragraph of email.closing ?? []) {
     blocks.push(`        <p ${PARAGRAPH_STYLE}>${escapeHtml(paragraph)}</p>`);
   }
+  if (email.leaveListUrl) {
+    blocks.push(`        <p class="ink" style="margin:28px 0 0;font-size:12.5px;color:#6B5A45;">${escapeHtml(LEAVE_LIST_TEXT)} <a href="${escapeHtml(email.leaveListUrl)}" style="color:#8A641E;font-weight:bold;">Leave the list</a></p>`);
+  }
   return loadShell()
     .replace("{{SUBJECT}}", escapeHtml(email.subject))
     .replace("{{BODY_HTML}}", blocks.join("\n"));
 }
 
-export function renderPlainText(email: Pick<BrandedEmail, "paragraphs" | "cta" | "closing">) {
+export function renderPlainText(email: Pick<BrandedEmail, "paragraphs" | "cta" | "closing" | "leaveListUrl">) {
   const lines = [...email.paragraphs];
   if (email.cta) lines.push(`${email.cta.label}: ${email.cta.url}`);
   lines.push(...(email.closing ?? []));
+  if (email.leaveListUrl) lines.push(`${LEAVE_LIST_TEXT} Leave the list: ${email.leaveListUrl}`);
   lines.push("", "Eby's Place", "Founder & Service Lead", CONTACT_EMAIL);
   return lines.join("\n\n");
 }
@@ -203,6 +216,8 @@ export async function sendBroadcastEmail(
   recipients: string[],
   content: Pick<BrandedEmail, "subject" | "paragraphs" | "cta">,
   fetchImpl: typeof fetch = fetch,
+  /** Each recipient's own one-click leave link. Without it the old mailto header is used. */
+  leaveUrlFor?: (to: string) => string,
 ): Promise<BroadcastResult> {
   const config = getResendConfig();
   if (!config.usable) {
@@ -221,7 +236,9 @@ export async function sendBroadcastEmail(
   for (let index = 0; index < recipients.length; index += 1) {
     const to = recipients[index];
     if (index > 0) await wait(BROADCAST_SEND_GAP_MS);
-    const email = { to, ...content, headers: { "List-Unsubscribe": `<mailto:${CONTACT_EMAIL}?subject=Unsubscribe>` } };
+    const email: BrandedEmail = leaveUrlFor
+      ? withLeaveLink({ to, ...content }, leaveUrlFor(to))
+      : { to, ...content, headers: { "List-Unsubscribe": `<mailto:${CONTACT_EMAIL}?subject=Unsubscribe>` } };
     let result = await sendBrandedEmail(email, fetchImpl);
     if (!result.sent && /too many requests|429/i.test(result.errorMessage ?? "")) {
       await wait(BROADCAST_RETRY_DELAY_MS);

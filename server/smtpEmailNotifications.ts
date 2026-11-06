@@ -180,7 +180,23 @@ function orderDeliveryText(order: any) {
   return order?.serviceLocation === "studio" ? "Collection/visit option: Eby’s Place studio" : "Delivery/collection information: provided during checkout";
 }
 
-export function buildBookingEmailPayloads(booking: any, session: any): EmailPayload[] {
+/** What the confirmation says about the list: on it (with their leave link) or not. */
+export type BookingListNote = { onList: boolean; leaveUrl: string | null };
+
+export const CONFIRMATION_NOTIFICATIONS_LINE =
+  "Turn on notifications to hear the moment dates open up: open ebysplace.com and tap Allow when it asks. On an iPhone, open it in Safari, tap Share, then Add to Home Screen, and allow notifications from there.";
+
+export function bookingListLines(list?: BookingListNote) {
+  if (!list) return [];
+  const lines: string[] = [];
+  if (list.onList && list.leaveUrl) {
+    lines.push(`You're now on the Eby's Place list, so you'll hear first about free slots and offers. Don't want them? Leave the list: ${list.leaveUrl}`);
+  }
+  lines.push(CONFIRMATION_NOTIFICATIONS_LINE);
+  return lines;
+}
+
+export function buildBookingEmailPayloads(booking: any, session: any, list?: BookingListNote): EmailPayload[] {
   const config = getSmtpConfig();
   const reference = bookingReference(booking);
   const amountPaid = session?.amount_total != null ? money(Number(session.amount_total) / 100) : "£20.00 deposit";
@@ -223,6 +239,7 @@ export function buildBookingEmailPayloads(booking: any, session: any): EmailPayl
     Number.isFinite(checkoutTotalPaid) ? `Stripe total paid: ${money(checkoutTotalPaid)}` : undefined,
     bookingLocationText(booking),
     "If you need to update your appointment, please contact Eby’s Place as soon as possible.",
+    ...bookingListLines(list),
     `Contact: ${CONTACT_EMAIL} | WhatsApp/phone: ${CONTACT_PHONE}`,
   ].join("\n\n");
 
@@ -273,8 +290,8 @@ export function buildOrderEmailPayloads(order: any, items: any[], session: any):
   ];
 }
 
-export async function sendBookingPaymentEmailsSafely(booking: any, session: any) {
-  const payloads = buildBookingEmailPayloads(booking, session);
+export async function sendBookingPaymentEmailsSafely(booking: any, session: any, list?: BookingListNote) {
+  const payloads = buildBookingEmailPayloads(booking, session, list);
   return Promise.all(payloads.map((payload) => sendAndLogEmail(payload).catch((error) => ({ status: "failed" as const, errorMessage: error instanceof Error ? error.message : String(error) }))));
 }
 

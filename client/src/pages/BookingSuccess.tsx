@@ -1,8 +1,56 @@
 import { Link } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { BellRing } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { getExistingPushSubscription, isPushSupported, pushSubscriptionToInput, subscribeToPush } from "@/lib/webPush";
 import { getActivitySessionId, getCurrentPageUrl } from "@/lib/activityTracking";
 import { SiteFooter, SiteHeader } from "./Home";
+
+const isIphoneBrowserTab = () =>
+  typeof navigator !== "undefined" && /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window.matchMedia?.("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone);
+
+/** "Turn on notifications" after paying. Linked to the booking so the Command Centre can show it on that client. */
+function NotificationsOptIn({ bookingId }: { bookingId: number | null }) {
+  const subscribePush = trpc.public.subscribePush.useMutation();
+  const [state, setState] = useState<"idle" | "on" | "unsupported" | "denied">("idle");
+  const turnOn = async () => {
+    if (!isPushSupported()) {
+      setState("unsupported");
+      return;
+    }
+    try {
+      const subscription = (await getExistingPushSubscription()) || (await subscribeToPush());
+      if (!subscription) {
+        setState(typeof Notification !== "undefined" && Notification.permission === "denied" ? "denied" : "unsupported");
+        return;
+      }
+      await subscribePush.mutateAsync({ ...pushSubscriptionToInput(subscription), ...(bookingId ? { bookingId } : {}) });
+      setState("on");
+    } catch {
+      setState("unsupported");
+    }
+  };
+  const iphoneTab = isIphoneBrowserTab();
+  return (
+    <section className="mt-8 grid gap-3 rounded-3xl border border-primary/50 bg-primary/10 p-6" aria-labelledby="notify-heading">
+      <h2 id="notify-heading" className="serif text-2xl font-bold text-white">Hear first when dates open up</h2>
+      <p className="max-w-2xl text-white/75">Turn on notifications and we&rsquo;ll tell you the moment a free slot or offer comes up. You can turn them off any time.</p>
+      {state === "on" ? (
+        <p className="font-semibold text-emerald-300" role="status">Notifications are on. Thank you!</p>
+      ) : state === "denied" ? (
+        <p className="text-white/75" role="status">Notifications are switched off for this site in your browser settings. You can turn them back on there.</p>
+      ) : state === "unsupported" || iphoneTab ? (
+        <p className="text-white/75" role="status">On an iPhone: tap Share, then Add to Home Screen. Open Eby&rsquo;s Place from your home screen and tap Allow when it asks.</p>
+      ) : (
+        <div>
+          <button type="button" className="btn-gold inline-flex items-center gap-2" onClick={turnOn} disabled={subscribePush.isPending}>
+            <BellRing className="h-4 w-4" aria-hidden="true" /> {subscribePush.isPending ? "Turning on…" : "Turn on notifications"}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
 
 export default function BookingSuccess() {
   const searchParams = new URLSearchParams(window.location.search);
@@ -49,6 +97,8 @@ export default function BookingSuccess() {
               <p className="mt-3 text-base font-semibold text-white">Salon confirmation follow-up</p>
             </div>
           </div>
+
+          <NotificationsOptIn bookingId={bookingId && /^\d+$/.test(bookingId) ? Number(bookingId) : null} />
 
           <blockquote className="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-white/75">
             Please keep this page or your payment receipt for reference. If you closed checkout before paying, return to the booking page and start the deposit step again.

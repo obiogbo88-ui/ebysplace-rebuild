@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { TRPCError } from "@trpc/server";
+import { clearLeftList, leaveListUrl, withoutPeopleWhoLeft } from "./list";
 import type { Request } from "express";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -75,6 +76,8 @@ const bookingInput = z.object({
   appointmentTime: z.string().min(4),
   addOns: z.array(bookingAddOnInput).default([]),
   bookingProducts: z.array(bookingProductInput).default([]),
+  /** The list notice on the last step: false when they ticked "Don't add me to the list". */
+  joinList: z.boolean().optional(),
 });
 
 const orderInput = z.object({
@@ -541,6 +544,7 @@ export const appRouter = router({
     newsletter: publicProcedure.input(z.object({ email: z.string().email(), productAlerts: z.boolean().default(false) })).mutation(async ({ input, ctx }) => {
       await enforceRateLimit(ctx.req, "public.newsletter", 10, 60 * 60_000);
       const result = await db.subscribeNewsletter(input.email, input.productAlerts);
+      await clearLeftList(input.email);
       await db.logActivity({
         activityType: "newsletter_signup",
         activityCategory: "newsletter",
@@ -551,7 +555,7 @@ export const appRouter = router({
         metadata: { productAlerts: input.productAlerts },
       });
       await Promise.allSettled([
-        sendNewsletterWelcomeEmailSafely({ to: input.email, productAlerts: input.productAlerts }),
+        sendNewsletterWelcomeEmailSafely({ to: input.email, productAlerts: input.productAlerts, leaveUrl: leaveListUrl(input.email) }),
         notifyOwnerSafely(
           "New Eby’s Place newsletter signup",
           `${input.email} joined Eby’s Place updates${input.productAlerts ? " with product alerts" : ""}.`
@@ -563,8 +567,10 @@ export const appRouter = router({
       endpoint: z.string().url(),
       keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
       userAgent: z.string().max(512).optional(),
+      /** Turned on from the booking confirmed screen: links it to that booking for the CRM. */
+      bookingId: z.number().int().positive().optional(),
     })).mutation(async ({ input }) => {
-      await db.savePushSubscription({ endpoint: input.endpoint, p256dh: input.keys.p256dh, auth: input.keys.auth, userAgent: input.userAgent });
+      await db.savePushSubscription({ endpoint: input.endpoint, p256dh: input.keys.p256dh, auth: input.keys.auth, userAgent: input.userAgent, bookingId: input.bookingId });
       return { subscribed: true } as const;
     }),
     unsubscribePush: publicProcedure.input(z.object({ endpoint: z.string().url() })).mutation(async ({ input }) => {
@@ -1344,7 +1350,7 @@ export const appRouter = router({
         db.listPushSubscriptions().then((rows) => rows.length),
         db.listNewsletterSubscribers().then((rows) => rows.length),
         db.listSmsSubscriptions().then((rows) => rows.length),
-        db.listAllClientEmails().then((rows) => rows.length),
+        db.listAllClientEmails().then((rows) => withoutPeopleWhoLeft(rows).catch(() => rows)).then((rows) => rows.length),
         db.listAllClientPhones().then((rows) => rows.length),
       ]);
       return {
@@ -1374,12 +1380,14 @@ export const appRouter = router({
         if (isSelected && input.channels.email && !input.selectedEmails?.length) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Add at least one email address for a specific-people announcement." });
         }
+        // Everyone who used "Leave the list" is dropped, whichever audience is chosen.
         const emailRecipients = () =>
-          isSelected
+          (isSelected
             ? Promise.resolve(Array.from(new Set(input.selectedEmails!.map((email) => email.trim().toLowerCase()))))
             : input.audience === "all_clients"
               ? db.listAllClientEmails()
-              : db.listNewsletterSubscribers().then((subscribers) => subscribers.map((s) => s.email));
+              : db.listNewsletterSubscribers().then((subscribers) => subscribers.map((s) => s.email))
+          ).then(withoutPeopleWhoLeft);
         const phoneRecipients = (subscriberPhones: () => Promise<string[]>) =>
           isSelected ? Promise.resolve([] as string[]) : input.audience === "all_clients" ? db.listAllClientPhones() : subscriberPhones();
         const [webPushResult, emailResult, smsResult, whatsappResult] = await Promise.all([
@@ -1390,7 +1398,7 @@ export const appRouter = router({
                   subject: input.title,
                   paragraphs: [input.body],
                   cta: input.url ? { label: input.ctaLabel ?? "View more", url: input.url } : undefined,
-                }),
+                }, fetch, (to) => leaveListUrl(to) ?? `https://www.ebysplace.com/newsletter`),
               )
             : Promise.resolve(null),
           input.channels.sms

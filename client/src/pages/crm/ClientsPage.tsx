@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Search } from "lucide-react";
 import { clientHash, goCrm } from "./nav";
-import { Avatar, Card, Chip, Empty, ErrorNote, Loading, Pill, STAGE_LABEL, gbp, niceDate, ScrollBox } from "./ui";
+import { Avatar, Card, Chip, Empty, ErrorNote, ListPill, Loading, Pill, STAGE_LABEL, gbp, niceDate, ScrollBox } from "./ui";
 import { useAccess } from "./access";
 
 const FILTERS = [
@@ -56,6 +56,22 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
         ))}
       </div>
 
+      {q.data?.list ? (
+        <div className="flex flex-wrap gap-2 text-[13px] text-[#4A4337]" aria-label="The Eby's Place list">
+          {[
+            [q.data.list.on, "on the list"],
+            [q.data.list.joinedAtBooking, "joined at booking"],
+            [q.data.list.left, "left the list"],
+            [q.data.list.notifications, "notifications on"],
+          ].map(([n, label]) => (
+            <span key={label} className="rounded-xl border border-[#E6E1D8] bg-white px-3 py-1.5">
+              <b className="mr-1 text-base tabular-nums text-[#1A1A1A]">{n}</b>
+              {label}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
       <ErrorNote error={q.error} />
       {q.isLoading ? (
         <Loading />
@@ -65,13 +81,15 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
         <Card>
           {/* Table on wider screens */}
           <ScrollBox label="Clients list" size="lg" className="hidden md:block">
-            <table className="w-full min-w-[720px] border-collapse text-[13px]">
+            <table className="w-full min-w-[900px] border-collapse text-[13px]">
               <thead className="sticky top-0 z-[1] bg-white">
                 <tr className="text-left text-[#6B6458]">
                   <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">Client</th>
                   <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">Last visit</th>
                   <th className="border-b border-[#E6E1D8] px-2 py-2 text-right font-semibold">Visits</th>
                   <th className="border-b border-[#E6E1D8] px-2 py-2 text-right font-semibold">Paid online</th>
+                  <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">List</th>
+                  <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">Notifications</th>
                   <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">Tags</th>
                   <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">Next step</th>
                 </tr>
@@ -91,6 +109,8 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5">{c.nextAppointment ? <span>Booked {niceDate(c.nextAppointment.date)}</span> : niceDate(c.lastVisit)}</td>
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5 text-right tabular-nums">{c.visits}</td>
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5 text-right tabular-nums">{access.money(c.paidOnline)}</td>
+                    <td className="border-b border-[#EFEBE4] px-2 py-2.5"><ListPill list={c.list} /></td>
+                    <td className="border-b border-[#EFEBE4] px-2 py-2.5">{c.notifications ? <Pill tone="gold">On</Pill> : <span className="text-[#9A9183]" title="Only known when turned on from the booking confirmed screen">—</span>}</td>
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5">
                       <div className="flex flex-wrap gap-1">
                         {c.tags.slice(0, 3).map((t) => (
@@ -120,6 +140,10 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
                       {c.visits} visit{c.visits === 1 ? "" : "s"} · {STAGE_LABEL[c.stage]}
                       {c.nextAppointment ? ` · booked ${niceDate(c.nextAppointment.date)}` : ""}
                     </span>
+                    <span className="mt-1 flex flex-wrap gap-1">
+                      <ListPill list={c.list} detail={false} />
+                      {c.notifications ? <Pill tone="gold">Notifications on</Pill> : null}
+                    </span>
                   </span>
                   <span className="text-sm tabular-nums">{access.money(c.paidOnline)}</span>
                 </a>
@@ -128,6 +152,7 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
           </ul>
           </ScrollBox>
           <p className="mt-3 text-xs text-[#6B6458]">"Paid online" is deposits and shop orders paid through the website. Money taken in the studio isn't recorded here.</p>
+          <p className="mt-1 text-xs text-[#6B6458]">Notifications show only when turned on from the booking confirmed screen. Anyone who left the list never gets list emails, even if they book again.</p>
         </Card>
       )}
     </div>

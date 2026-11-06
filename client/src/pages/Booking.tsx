@@ -162,6 +162,8 @@ export default function Booking() {
   const [form, setForm] = useState(initial);
   const [step, setStep] = useState(0);
   const [smsOptIn, setSmsOptIn] = useState(true);
+  // The list notice on the last step: unticked means they join once the deposit is paid.
+  const [dontAddToList, setDontAddToList] = useState(false);
   const [selectedAddOns, setSelectedAddOns] = useState<AddOnOption[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<BookingProductSelection[]>([]);
   const { data: services = [], isLoading: servicesLoading } = trpc.public.services.useQuery({});
@@ -324,6 +326,7 @@ export default function Booking() {
         ...form,
         addOns: selectedAddOns.map(({ id, name, price }) => ({ id, name, price })),
         bookingProducts: checkoutProducts,
+        joinList: !dontAddToList,
       });
       if (smsOptIn && form.clientPhone) {
         subscribeSms.mutateAsync({ phone: form.clientPhone }).catch((error) => {
@@ -713,6 +716,19 @@ export default function Booking() {
                 ) : null}
                 <p className="font-bold text-primary sm:col-span-2">Total due now: £{formatMoney(bookingCheckoutTotal)}</p>
                 <p className="text-sm font-semibold text-[#4a3014] sm:col-span-2">Includes the £20.00 booking deposit{selectedAddOns.length > 0 ? ", selected add-ons" : ""}{selectedProducts.length > 0 ? ", selected shop products" : ""}{homeServiceSurcharge > 0 && form.serviceLocation === "home_service" ? ", and home-service travel" : ""}.</p>
+              </div>
+              <div className="grid gap-3 rounded-2xl border border-primary/40 bg-white p-4 text-sm text-[#3a2615]">
+                <p>You&rsquo;ll join the Eby&rsquo;s Place list, so you hear first about free slots and offers. It&rsquo;s one email now and then, and you can leave any time with one click.</p>
+                <label htmlFor="booking-dont-add-to-list" className="flex cursor-pointer items-start gap-2 font-semibold text-[#24170d]">
+                  <input
+                    id="booking-dont-add-to-list"
+                    type="checkbox"
+                    className="mt-0.5 h-auto w-auto"
+                    checked={dontAddToList}
+                    onChange={event => setDontAddToList(event.target.checked)}
+                  />
+                  Don&rsquo;t add me to the list
+                </label>
               </div>
               <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm text-primary">
                 After successful payment you will receive a confirmation email, WhatsApp, and SMS.

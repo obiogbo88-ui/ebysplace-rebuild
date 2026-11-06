@@ -143,7 +143,13 @@ export const crmRouter = router({
       const today = londonToday();
       const { clients } = await loadClients();
       const counts = Object.fromEntries(FILTERS.map((f) => [f, filterClients(clients, f as ClientFilter, "", today).length]));
-      return { clients: filterClients(clients, input.filter, input.search, today), counts };
+      const list = {
+        on: clients.filter((c) => c.list.status === "on").length,
+        joinedAtBooking: clients.filter((c) => c.list.via === "booking").length,
+        left: clients.filter((c) => c.list.status === "left").length,
+        notifications: clients.filter((c) => c.notifications).length,
+      };
+      return { clients: filterClients(clients, input.filter, input.search, today), counts, list };
     }),
 
   client: adminProcedure.input(z.object({ key: clientKey })).query(async ({ input }) => {
