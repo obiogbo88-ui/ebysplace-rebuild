@@ -29,7 +29,7 @@ import {
 import { toast } from "sonner";
 import { bookingDepositLabel, isPastAppointment } from "@/lib/bookingDisplay";
 import { formatReviewRequestDate } from "@shared/reviewRequest";
-import { formatRebookMoment, formatShortSlot, rebookStatus } from "@shared/rebookStatus";
+import { REBOOK_EMAIL_PROVIDER, formatRebookMoment, formatShortSlot, rebookStatus } from "@shared/rebookStatus";
 import { BlockDaysPicker } from "@/components/admin/BlockDaysPicker";
 import { CrmPageHeader, CrmPageView, VisiblePanelsContext, useCrmLocation, usePanelVisible } from "./crm/CrmPageView";
 import { crmPage } from "./crm/nav";
@@ -1417,6 +1417,17 @@ export default function Admin() {
                             {rebook.previousDate ? <> Was {formatShortSlot(rebook.previousDate, rebook.previousTime)}.</> : null}
                           </div>
                         ) : null}
+                        {emailNotificationRows.filter((log: any) => log.provider === REBOOK_EMAIL_PROVIDER && log.entityType === "booking" && log.entityId === booking.id).map((log: any) => (
+                          <details key={log.id} className="mt-2 max-w-[17rem] text-xs">
+                            <summary className={`w-fit cursor-pointer rounded-full px-3 py-1 font-bold ${log.status === "sent" ? "bg-[#DDF1E4] text-[#1F5E3B]" : "bg-[#FDE1DF] text-[#9B1C1C]"}`}>
+                              {log.status === "sent" ? "Email sent" : "Email failed"} {formatRebookMoment(log.createdAt)}
+                            </summary>
+                            <div className="mt-2 rounded-xl border border-white/15 bg-black/20 p-3 leading-relaxed text-white/80">
+                              <b className="block">{log.subject}</b>
+                              <p className="mt-2 whitespace-pre-line">{log.bodyPreview || "The wording wasn\u2019t saved for this email."}</p>
+                            </div>
+                          </details>
+                        ))}
                         {moveForm?.bookingId === booking.id ? (
                           <form
                             className="mt-2 flex max-w-[16rem] flex-col gap-2 rounded-xl border border-white/15 p-3 text-xs"
@@ -1557,7 +1568,8 @@ export default function Admin() {
               {emailNotificationRows.length ? emailNotificationRows.map((log: any) => {
                 const statusClass = log.status === "sent" ? "bg-emerald-500/15 text-emerald-100 border-emerald-300/30" : log.status === "failed" ? "bg-red-500/15 text-red-100 border-red-300/30" : "bg-primary/15 text-primary border-primary/30";
                 const lastAttempt = log.lastAttemptAtMs ? new Date(Number(log.lastAttemptAtMs)).toLocaleString() : log.sentAtMs ? new Date(Number(log.sentAtMs)).toLocaleString() : log.createdAt ? new Date(log.createdAt).toLocaleString() : "Not attempted yet";
-                const canResend = log.status !== "sent";
+                const isRebookEmail = log.provider === REBOOK_EMAIL_PROVIDER;
+                const canResend = log.status !== "sent" && !isRebookEmail;
                 return (
                   <div className="rounded-2xl border border-white/10 bg-black/20 p-4" key={log.id}>
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -1574,7 +1586,7 @@ export default function Admin() {
                         {log.errorMessage ? <p className="mt-2 rounded-xl border border-red-300/20 bg-red-500/10 p-3 text-xs text-red-100">{log.errorMessage}</p> : null}
                         {log.bodyPreview ? <p className="mt-2 text-xs text-white/45">Preview: {log.bodyPreview}</p> : null}
                       </div>
-                      {canResend ? <button className="btn-gold shrink-0 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60" type="button" disabled={resendEmail.isPending} onClick={() => resendEmail.mutate({ logId: log.id })}>{resendEmail.isPending ? "Resending..." : "Resend email"}</button> : <span className="rounded-full border border-emerald-300/25 px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-100">Delivered</span>}
+                      {canResend ? <button className="btn-gold shrink-0 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60" type="button" disabled={resendEmail.isPending} onClick={() => resendEmail.mutate({ logId: log.id })}>{resendEmail.isPending ? "Resending..." : "Resend email"}</button> : <span className="rounded-full border border-emerald-300/25 px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-100">{isRebookEmail ? (log.status === "sent" ? "Sent" : "Use the booking to retry") : "Delivered"}</span>}
                     </div>
                   </div>
                 );

@@ -1,5 +1,5 @@
 import { normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
-import { sendBrandedEmail } from "./resendEmail";
+import { sendBrandedEmail, type BrandedEmail } from "./resendEmail";
 import { formatLongDate } from "../shared/rebook";
 
 const SITE_URL = "https://www.ebysplace.com";
@@ -336,6 +336,17 @@ function firstName(name: string) {
   return (name || "").trim().split(/\s+/)[0] || "there";
 }
 
+/** The email as the customer reads it, for the Command Centre. The button's private link is left out. */
+export function rebookEmailText(email: Pick<BrandedEmail, "paragraphs" | "cta" | "closing">) {
+  return [...email.paragraphs, ...(email.cta ? [`[${email.cta.label} button]`] : []), ...(email.closing ?? [])].join("\n\n");
+}
+
+async function sendRebookEmail(email: BrandedEmail) {
+  const result = await sendBrandedEmail(email);
+  const sentEmail = { subject: email.subject, text: rebookEmailText(email) };
+  return result.sent ? ({ sent: true, ...sentEmail, messageId: result.messageId } as const) : ({ sent: false, ...sentEmail, reason: result.errorMessage || "email_provider_error" } as const);
+}
+
 /**
  * The apology + "Choose a new date" email, sent when a booked day is full or
  * blocked. The link is the customer's own (see server/rebook.ts).
@@ -347,9 +358,10 @@ export async function sendRebookRequestEmailSafely(input: { booking: RebookEmail
   if (!isValidEmail(booking.clientEmail)) return { sent: false, reason: "invalid_address" } as const;
   const day = formatLongDate(booking.appointmentDate);
   const paid = booking.depositStatus === "paid";
-  const result = await sendBrandedEmail({
+  const subject = `Your ${day.split(" ")[0]} booking at Eby’s Place`;
+  return sendRebookEmail({
     to: booking.clientEmail.trim(),
-    subject: `Your ${day.split(" ")[0]} booking at Eby’s Place`,
+    subject,
     paragraphs: [
       `Hi ${firstName(booking.clientName)},`,
       `Thank you for booking your ${booking.serviceName.toLowerCase()} with us${paid ? ", and for paying your deposit" : ""}. I’m really sorry, but ${day} is now fully booked, so we can’t fit you in at ${booking.appointmentTime} as planned. Please accept our apologies.`,
@@ -365,7 +377,6 @@ export async function sendRebookRequestEmailSafely(input: { booking: RebookEmail
       "Thank you for understanding, and we can’t wait to see you.",
     ],
   });
-  return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
 }
 
 /**
@@ -377,9 +388,10 @@ async function sendRebookOnceMoreEmail(booking: RebookEmailBooking, rebookUrl: s
   const day = formatLongDate(booking.appointmentDate);
   const paid = booking.depositStatus === "paid";
   const name = firstName(booking.clientName);
-  const result = await sendBrandedEmail({
+  const subject = `Sorry, ${name}: we need to move your booking once more`;
+  return sendRebookEmail({
     to: booking.clientEmail.trim(),
-    subject: `Sorry, ${name}: we need to move your booking once more`,
+    subject,
     paragraphs: [
       `Hi ${name},`,
       `Thank you for choosing a new date so quickly. I\u2019m really sorry to come back to you, but we can\u2019t keep your ${booking.serviceName.toLowerCase()} appointment on ${day} at ${booking.appointmentTime} either.`,
@@ -394,7 +406,6 @@ async function sendRebookOnceMoreEmail(booking: RebookEmailBooking, rebookUrl: s
       "Thank you for your patience, and sorry again for the trouble. We can\u2019t wait to see you.",
     ],
   });
-  return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
 }
 
 /** The one follow-up, 24 hours after the first "Choose a new date" email. */
@@ -402,9 +413,10 @@ async function sendRebookReminderEmail(booking: RebookEmailBooking, rebookUrl: s
   if (!isValidEmail(booking.clientEmail)) return { sent: false, reason: "invalid_address" } as const;
   const day = formatLongDate(booking.appointmentDate);
   const paid = booking.depositStatus === "paid";
-  const result = await sendBrandedEmail({
+  const subject = "A quick reminder to choose your new date";
+  return sendRebookEmail({
     to: booking.clientEmail.trim(),
-    subject: "A quick reminder to choose your new date",
+    subject,
     paragraphs: [
       `Hi ${firstName(booking.clientName)},`,
       `Just a quick reminder: we couldn\u2019t keep your ${booking.serviceName.toLowerCase()} appointment on ${day}, so please choose a new day and time that suits you.${paid ? " Your \u00a320 deposit moves with you." : ""}`,
@@ -415,7 +427,6 @@ async function sendRebookReminderEmail(booking: RebookEmailBooking, rebookUrl: s
       "Thank you, and sorry again for the change.",
     ],
   });
-  return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
 }
 
 /** Confirmation after a booking has moved to a new date (by the customer or by us). */

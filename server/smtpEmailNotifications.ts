@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import * as db from "./db";
+import { REBOOK_EMAIL_PROVIDER } from "../shared/rebookStatus";
 
 const STUDIO_CONFIRMATION_ADDRESS = "1 Bawden Close, Woolavington, Bridgwater, Somerset, TA7 8HD, England, United Kingdom";
 const CONTACT_PHONE = "+447864585110";
@@ -344,6 +345,8 @@ export async function sendOrderAbandonedReminderEmailSafely(order: any) {
 export async function resendEmailNotificationLog(logId: number) {
   const log = await db.getEmailNotificationLogById(logId);
   if (!log) throw new Error("Email notification log not found.");
+  // Rebuilding from the booking would send the booking confirmation instead of this email.
+  if (log.provider === REBOOK_EMAIL_PROVIDER) throw new Error("Use \u201cSend rebooking link\u201d on the booking to send this one again.");
   if (log.entityType === "booking") {
     const booking = await db.getBookingById(log.entityId);
     if (!booking) throw new Error("Booking for email resend was not found.");

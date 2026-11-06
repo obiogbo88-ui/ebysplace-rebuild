@@ -21,7 +21,7 @@ describe("rebooking emails", () => {
   });
 
   it("apologises, keeps the deposit, offers a refund, and links to the customer's own page", async () => {
-    expect(await sendRebookRequestEmailSafely({ booking, rebookUrl: "https://www.ebysplace.com/rebook/64/abc" })).toEqual({ sent: true });
+    expect(await sendRebookRequestEmailSafely({ booking, rebookUrl: "https://www.ebysplace.com/rebook/64/abc" })).toMatchObject({ sent: true, subject: "Your Saturday booking at Eby’s Place", messageId: "m1" });
     const email = sendBrandedEmailMock.mock.calls[0][0];
     expect(email.to).toBe("fenton@example.com");
     expect(email.subject).toBe("Your Saturday booking at Eby’s Place");
@@ -71,7 +71,7 @@ describe("sorry, once more (approved for Fenton 2026-11-06)", () => {
 
   it("apologises for a second move, blames our system, gives Eby's number and never mentions a refund", async () => {
     const moved = { ...booking, appointmentDate: "2026-11-08", appointmentTime: "16:00" };
-    expect(await sendRebookRequestEmailSafely({ booking: moved, rebookUrl: "https://www.ebysplace.com/rebook/64/new", onceMore: true })).toEqual({ sent: true });
+    expect(await sendRebookRequestEmailSafely({ booking: moved, rebookUrl: "https://www.ebysplace.com/rebook/64/new", onceMore: true })).toMatchObject({ sent: true });
     const email = sendBrandedEmailMock.mock.calls[0][0];
     expect(email.subject).toBe("Sorry, Fenton: we need to move your booking once more");
     const text = [...email.paragraphs, ...email.closing].join("\n");
@@ -87,5 +87,13 @@ describe("sorry, once more (approved for Fenton 2026-11-06)", () => {
     await sendRebookRequestEmailSafely({ booking, rebookUrl: "https://x.test" });
     const email = sendBrandedEmailMock.mock.calls[0][0];
     expect([...email.paragraphs, ...email.closing].join("\n")).not.toContain("07864");
+  });
+
+  it("keeps the wording for the Command Centre, without the private link", async () => {
+    const result = await sendRebookRequestEmailSafely({ booking, rebookUrl: "https://www.ebysplace.com/rebook/64/abc" });
+    const text = (result as { text: string }).text;
+    expect(text).toContain("Saturday 7 November is now fully booked");
+    expect(text).toContain("[Choose a new date button]");
+    expect(text).not.toContain("/rebook/64/abc");
   });
 });

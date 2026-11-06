@@ -15,7 +15,7 @@ import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { collectTryOnPurchases } from "./tryOnPurchaseImport";
 import { syncMissingPaymentBreakdowns } from "./stripeBreakdown";
 import { notifyOwner } from "./_core/notification";
-import { getNotificationDiagnostics, sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely, sendRebookRequestEmailSafely, sendBookingMovedEmailSafely } from "./customerNotifications";
+import { getNotificationDiagnostics, sendCustomerEmailSafely, sendCustomerSmsSafely, sendOwnerSmsAndWhatsAppSafely, sendReviewRequestEmailSafely, sendNewsletterWelcomeEmailSafely, sendBookingMovedEmailSafely } from "./customerNotifications";
 import { resendEmailNotificationLog } from "./smtpEmailNotifications";
 import { isResendConfigured, sendBrandedEmail, sendBroadcastEmail } from "./resendEmail";
 import { isWebPushConfigured, sendPushToAllSubscribers, sendPushToOwner } from "./webPush";
@@ -26,7 +26,8 @@ import { getSeasonalTheme } from "./seasonalTheme";
 import { reviewRequestBlockReason } from "../shared/reviewRequest";
 import { REBOOK_WINDOW_DAYS, addDays, formatLongDate, londonToday, rebookSlotProblem } from "../shared/rebook";
 import { rebookResendBlockReason } from "../shared/rebookStatus";
-import { isValidRebookToken, rebookBlockReason, rebookUrl } from "./rebook";
+import { isValidRebookToken, rebookBlockReason } from "./rebook";
+import { sendRecordedRebookEmail } from "./rebookSend";
 import { crmRouter } from "./crm/router";
 
 const serviceCategory = z.enum(["Braids", "Twists", "Locs", "Weaves", "Crochet", "Kids Styles", "Men Styles", "Add-ons"]);
@@ -267,6 +268,10 @@ async function logAdminActivity(ctx: { req: Request; user?: { id?: number; name?
     metadata: input.metadata,
     sourceApp: "ebysplace",
   });
+}
+
+function logRebookLinkSent(ctx: Parameters<typeof logAdminActivity>[0], booking: { id: number; clientName: string; appointmentDate: string; appointmentTime: string }) {
+  return logAdminActivity(ctx, { activityType: "booking_rebook_link_sent", description: `Sent a "choose a new date" email to ${booking.clientName} for ${booking.appointmentDate} ${booking.appointmentTime}`, relatedEntityType: "booking", relatedEntityId: booking.id });
 }
 
 function formatBookingExtras(input: { addOns?: Array<{ name: string; price: string }>; bookingProducts?: Array<{ productName: string; quantity: number; unitPrice: string }> }) {
@@ -1208,9 +1213,10 @@ export const appRouter = router({
       const failed: string[] = [];
       for (const booking of affected) {
         try {
-          const result = await sendRebookRequestEmailSafely({ booking, rebookUrl: rebookUrl(booking) });
+          const result = await sendRecordedRebookEmail(booking);
           if (result.sent) {
             await db.markRebookRequested(booking.id);
+            await logRebookLinkSent(ctx, booking);
             emailed.push(booking.clientName);
           } else {
             failed.push(`${booking.clientName} (${result.reason})`);
@@ -1247,9 +1253,10 @@ export const appRouter = router({
           .filter((row) => !input.time || row.appointmentTime === input.time);
         for (const booking of affected) {
           try {
-            const result = await sendRebookRequestEmailSafely({ booking, rebookUrl: rebookUrl(booking) });
+            const result = await sendRecordedRebookEmail(booking);
             if (result.sent) {
               await db.markRebookRequested(booking.id);
+              await logRebookLinkSent(ctx, booking);
               emailed.push(booking.clientName);
             } else {
               failed.push(`${booking.clientName} (${result.reason})`);
@@ -1426,10 +1433,10 @@ export const appRouter = router({
       if (blockReason) throw new TRPCError({ code: "PRECONDITION_FAILED", message: blockReason });
       const resendReason = rebookResendBlockReason(booking.rebookRequestedAt, input.sendAgain ?? false);
       if (resendReason) throw new TRPCError({ code: "CONFLICT", message: resendReason });
-      const result = await sendRebookRequestEmailSafely({ booking, rebookUrl: rebookUrl(booking), onceMore: input.onceMore });
+      const result = await sendRecordedRebookEmail(booking, { onceMore: input.onceMore });
       if (!result.sent) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Rebooking email was not sent: ${result.reason}` });
       await db.markRebookRequested(booking.id);
-      await logAdminActivity(ctx, { activityType: "booking_rebook_link_sent", description: `Sent a "choose a new date" email to ${booking.clientName} for ${booking.appointmentDate} ${booking.appointmentTime}`, relatedEntityType: "booking", relatedEntityId: booking.id });
+      await logRebookLinkSent(ctx, booking);
       return { success: true };
     }),
     moveBooking: adminProcedure.input(z.object({

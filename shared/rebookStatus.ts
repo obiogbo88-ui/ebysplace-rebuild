@@ -1,6 +1,9 @@
 // What the Command Centre shows on a booking after a "choose a new date" link:
 // waiting for the customer, time to call them, or already moved.
 
+/** Marks rebooking emails in the email log: they go through Resend, not Zoho. */
+export const REBOOK_EMAIL_PROVIDER = "resend";
+
 export type RebookStatusInput = {
   status: string;
   rebookRequestedAt?: Date | string | null;
