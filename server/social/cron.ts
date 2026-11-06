@@ -82,11 +82,15 @@ async function keepInstagramTokenFresh() {
   }
 }
 
-/** Threads: THREADS_USER_ID + THREADS_ACCESS_TOKEN, with the refreshed copy kept like Instagram's. */
+/**
+ * Threads: THREADS_ACCESS_TOKEN (THREADS_USER_ID optional: the Threads API
+ * accepts "me" for the token's own profile), with the refreshed copy kept
+ * like Instagram's.
+ */
 export async function threadsCredentials(): Promise<ThreadsCredentials | null> {
-  const userId = env("THREADS_USER_ID");
+  const userId = env("THREADS_USER_ID") || "me";
   const envToken = env("THREADS_ACCESS_TOKEN");
-  if (!userId || !envToken) return null;
+  if (!envToken) return null;
   const stored = await getToken(threadsTokenKey(envToken));
   return { userId, accessToken: stored?.token || envToken };
 }
