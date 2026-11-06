@@ -437,7 +437,36 @@ export default function Admin() {
 
   const moderate = trpc.admin.moderateReview.useMutation(opts);
   const moderateProductReview = trpc.admin.moderateProductReview.useMutation(opts);
-  const blockAvailabilitySlot = trpc.admin.blockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot blocked"); } });
+  const blockAvailabilitySlot = trpc.admin.blockAvailabilitySlot.useMutation({
+    onSuccess: (result: any) => {
+      refresh();
+      setBlockPreview(null);
+      scrollAdminFeedback("availability");
+      const emailed: string[] = result?.emailed || [];
+      const failed: string[] = result?.failed || [];
+      if (failed.length) toast.warning(`Blocked. ${emailed.length} emailed, ${failed.length} not sent`, { description: `Not sent: ${failed.join(", ")}. Use "Send rebooking link" on their booking, or contact them.` });
+      else if (emailed.length) toast.success(`Blocked and emailed ${emailed.length === 1 ? emailed[0] : `${emailed.length} customers`}`, { description: "They can choose a new date from the email. You'll get a notification when they do." });
+      else toast.success("Availability slot blocked");
+    },
+    onError: (error: any) => toast.error(error.message),
+  });
+  const [blockPreview, setBlockPreview] = useState<{ date: string; time: string; reason: string; bookings: { id: number; clientName: string; serviceName: string; appointmentTime: string; depositPaid: boolean }[]; emailAffected: boolean } | null>(null);
+  const [checkingBlock, setCheckingBlock] = useState(false);
+  const startBlock = async (slot: { date: string; time: string; reason: string }) => {
+    setCheckingBlock(true);
+    try {
+      const affected = await utils.admin.bookingsOnDate.fetch({ date: slot.date, time: slot.time || undefined });
+      if (!affected.length) {
+        blockAvailabilitySlot.mutate({ ...slot, emailAffected: false });
+        return;
+      }
+      setBlockPreview({ ...slot, bookings: affected, emailAffected: true });
+    } catch (error: any) {
+      toast.error(error?.message || "Couldn't check that day's bookings.");
+    } finally {
+      setCheckingBlock(false);
+    }
+  };
   const unblockAvailabilitySlot = trpc.admin.unblockAvailabilitySlot.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("availability"); toast.success("Availability slot unblocked"); } });
   const sendReviewRequest = trpc.admin.sendReviewRequest.useMutation({ onSuccess: () => { refresh(); scrollAdminFeedback("bookings"); toast.success("Review request sent"); }, onError: (error: any) => toast.error(error.message) });
   const sendRebookLink = trpc.admin.sendRebookLink.useMutation({ onSuccess: () => { refresh(); toast.success("Rebooking email sent", { description: "You'll get a notification when they choose a new date." }); }, onError: (error: any) => toast.error(error.message) });
@@ -1410,12 +1439,31 @@ export default function Admin() {
               <label className="grid gap-2 text-sm text-white/70">Home service surcharge (£)<input id="home-service-surcharge" defaultValue={data.availability?.homeServiceSurcharge || "0.00"} inputMode="decimal" /></label>
               <button className="btn-gold self-end py-2" type="submit">Save surcharge</button>
             </form>
-            <form className="mt-5 grid gap-3 rounded-2xl border border-primary/20 bg-black/20 p-4 md:grid-cols-4" onSubmit={(event) => { event.preventDefault(); blockAvailabilitySlot.mutate(availabilitySlot); }}>
+            <form className="mt-5 grid gap-3 rounded-2xl border border-primary/20 bg-black/20 p-4 md:grid-cols-4" onSubmit={(event) => { event.preventDefault(); void startBlock(availabilitySlot); }}>
               <input required type="date" value={availabilitySlot.date} onChange={(event) => setAvailabilitySlot({ ...availabilitySlot, date: event.target.value })} />
               <input type="time" value={availabilitySlot.time} onChange={(event) => setAvailabilitySlot({ ...availabilitySlot, time: event.target.value })} />
               <input placeholder="Reason" value={availabilitySlot.reason} onChange={(event) => setAvailabilitySlot({ ...availabilitySlot, reason: event.target.value })} />
-              <button className="btn-gold py-2" type="submit">Block slot</button>
+              <button className="btn-gold py-2" type="submit" disabled={checkingBlock || blockAvailabilitySlot.isPending}>{checkingBlock ? "Checking…" : "Block slot"}</button>
             </form>
+            {blockPreview ? (
+              <div className="mt-3 rounded-2xl border border-amber-300/40 bg-amber-500/10 p-4 text-sm" role="dialog" aria-label="Confirm blocking">
+                <b className="text-amber-100">Block {blockPreview.date}{blockPreview.time ? ` at ${blockPreview.time}` : ""}?</b>
+                <p className="mt-1 text-white/70">{blockPreview.bookings.length === 1 ? "1 customer is" : `${blockPreview.bookings.length} customers are`} booked {blockPreview.time ? "at this time" : "on this day"}:</p>
+                <ul className="mt-2 grid gap-1">
+                  {blockPreview.bookings.map((b) => <li key={b.id} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">{b.clientName} · {b.serviceName} · {b.appointmentTime}{b.depositPaid ? " · £20 paid" : ""}</li>)}
+                </ul>
+                <label className="mt-3 flex items-start gap-2">
+                  <input type="checkbox" checked={blockPreview.emailAffected} onChange={(event) => setBlockPreview({ ...blockPreview, emailAffected: event.target.checked })} />
+                  <span>Email them our apology with a &ldquo;Choose a new date&rdquo; link (a paid deposit moves with them). If they haven&rsquo;t chosen after 24 hours they get one reminder, and you get an alert the day before to call them.</span>
+                </label>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button className="btn-gold py-2 text-sm" type="button" disabled={blockAvailabilitySlot.isPending} onClick={() => blockAvailabilitySlot.mutate({ date: blockPreview.date, time: blockPreview.time, reason: blockPreview.reason, emailAffected: blockPreview.emailAffected })}>
+                    {blockAvailabilitySlot.isPending ? "Working…" : blockPreview.emailAffected ? `Block and email ${blockPreview.bookings.length === 1 ? "1 customer" : `${blockPreview.bookings.length} customers`}` : "Block without emailing"}
+                  </button>
+                  <button className="btn-dark py-2 text-sm" type="button" onClick={() => setBlockPreview(null)}>Cancel</button>
+                </div>
+              </div>
+            ) : null}
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {(data.availability?.blockedSlots || []).length ? (data.availability?.blockedSlots || []).map((slot: any) => <div className="rounded-2xl border border-white/10 p-4" key={`${slot.date}-${slot.time || 'day'}`}><b className="text-primary">{slot.date} {slot.time || 'All day'}</b><p className="text-sm text-white/55">{slot.reason || 'Unavailable'}</p><button className="btn-dark mt-3 py-2 text-sm" type="button" onClick={() => unblockAvailabilitySlot.mutate({ date: slot.date, time: slot.time || undefined })}>Unblock</button></div>) : <p className="text-sm text-white/55">No blocked slots yet.</p>}
             </div>

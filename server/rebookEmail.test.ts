@@ -41,6 +41,15 @@ describe("rebooking emails", () => {
     expect(JSON.stringify(email)).not.toContain("deposit");
   });
 
+  it("sends a shorter reminder with the same link", async () => {
+    await sendRebookRequestEmailSafely({ booking, rebookUrl: "https://www.ebysplace.com/rebook/64/abc", reminder: true });
+    const email = sendBrandedEmailMock.mock.calls[0][0];
+    expect(email.subject).toBe("A quick reminder to choose your new date");
+    expect(email.paragraphs[1]).toContain("Saturday 7 November");
+    expect(email.cta.url).toBe("https://www.ebysplace.com/rebook/64/abc");
+    expect(email.closing.join(" ")).toContain("refund your deposit");
+  });
+
   it("confirms the new date", async () => {
     await sendBookingMovedEmailSafely({ booking: { ...booking, appointmentDate: "2026-11-10" } });
     const email = sendBrandedEmailMock.mock.calls[0][0];

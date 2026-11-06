@@ -22,7 +22,8 @@ export type AutomationKey =
   | "social_autopilot"
   | "review_ask"
   | "rebook_nudge"
-  | "win_back";
+  | "win_back"
+  | "rebook_follow_up";
 
 export type AutomationInfo = {
   key: AutomationKey | "owner_alerts" | "shop_interest";
@@ -43,6 +44,7 @@ export const AUTOMATIONS: AutomationInfo[] = [
   { key: "owner_alerts", title: "Instant alerts to your phone", detail: "New booking, new chat asking for you, low stock. Always on so you never miss one.", audience: "Eby", when: "As it happens", defaultOn: true, switchable: false, status: "live" },
   { key: "social_autopilot", title: "Social autopilot", detail: "Three Instagram Reels a day, each with its own tune, from your gallery and services.", audience: "Followers", when: "08:00 · 12:30 · 20:00", defaultOn: true, switchable: true, status: "live" },
   { key: "review_ask", title: "Ask for a review the day after", detail: "Sends the review request for you once a booking is marked Completed. Never twice for one booking.", audience: "Clients", when: "Daily, 9am", defaultOn: false, switchable: true, status: "new" },
+  { key: "rebook_follow_up", title: "Follow up rebooking emails", detail: "When you block a day, customers booked on it get a \u201cChoose a new date\u201d email. If they haven\u2019t chosen after 24 hours, one reminder; if they still haven\u2019t the day before, an alert to you to call them.", audience: "Clients", when: "Daily, 9am", defaultOn: true, switchable: true, status: "new" },
   { key: "rebook_nudge", title: "Rebook reminder", detail: "Five to eight weeks after a braid, if nothing is booked: one friendly email with your booking link.", audience: "Clients", when: "Daily, 9am", defaultOn: false, switchable: true, status: "new" },
   { key: "win_back", title: "We miss you", detail: "One email to clients who haven't been back for three months.", audience: "Clients", when: "Daily, 9am", defaultOn: false, switchable: true, status: "new" },
   { key: "shop_interest", title: "Tag shop interest from Instagram answers", detail: "Reads answers to the accessory question posts and tags who wants what. Needs the Instagram comments permission in Meta.", audience: "Followers", when: "When someone answers", defaultOn: false, switchable: false, status: "needs_meta" },

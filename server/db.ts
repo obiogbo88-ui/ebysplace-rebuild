@@ -1383,6 +1383,9 @@ async function ensureBookingLocationColumns() {
   await addPgColumnIfMissing("bookings", "checkoutSurchargeCharged", "NUMERIC(10,2) NOT NULL DEFAULT 0.00");
   await addPgColumnIfMissing("bookings", "checkoutTotalCharged", "NUMERIC(10,2)");
   await addPgColumnIfMissing("bookings", "reviewRequestSentAt", "TIMESTAMP");
+  await addPgColumnIfMissing("bookings", "rebookRequestedAt", "TIMESTAMP");
+  await addPgColumnIfMissing("bookings", "rebookReminderSentAt", "TIMESTAMP");
+  await addPgColumnIfMissing("bookings", "rebookOwnerAlertedAt", "TIMESTAMP");
   await makePgColumnNullable("bookings", "addressLine1");
   await makePgColumnNullable("bookings", "city");
   await makePgColumnNullable("bookings", "postcode");
@@ -3136,8 +3139,53 @@ export async function moveBookingDate(id: number, appointmentDate: string, appoi
   const current = await getBookingById(id);
   if (!current) return null;
   const status = current.depositStatus === "paid" && current.status === "pending" ? "confirmed" : current.status;
-  await db.update(bookings).set({ appointmentDate, appointmentTime, status, updatedAt: new Date() }).where(eq(bookings.id, id));
+  await db.update(bookings).set({ appointmentDate, appointmentTime, status, rebookRequestedAt: null, rebookReminderSentAt: null, rebookOwnerAlertedAt: null, updatedAt: new Date() }).where(eq(bookings.id, id));
   return { previousDate: current.appointmentDate, previousTime: current.appointmentTime, booking: { ...current, appointmentDate, appointmentTime, status } };
+}
+
+/** A booking holds its slot once it's paid or confirmed; an unpaid request may be an abandoned checkout. */
+export function isLiveBooking(row: { status: string; depositStatus: string }) {
+  if (row.status === "cancelled" || row.status === "completed") return false;
+  return row.status === "confirmed" || row.depositStatus === "paid";
+}
+
+/** Paid or confirmed website bookings on a date, for "Block this day?". */
+export async function listLiveBookingsOnDate(date: string) {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureBookingLocationColumns();
+  const rows = await db.select().from(bookings).where(eq(bookings.appointmentDate, date)).orderBy(asc(bookings.appointmentTime));
+  return rows.filter(isLiveBooking);
+}
+
+export async function markRebookRequested(id: number, at = new Date()) {
+  const db = await getDb();
+  if (!db) return;
+  await ensureBookingLocationColumns();
+  await db.update(bookings).set({ rebookRequestedAt: at, rebookReminderSentAt: null, rebookOwnerAlertedAt: null }).where(eq(bookings.id, id));
+}
+
+export async function markRebookReminderSent(id: number, at = new Date()) {
+  const db = await getDb();
+  if (!db) return;
+  await ensureBookingLocationColumns();
+  await db.update(bookings).set({ rebookReminderSentAt: at }).where(eq(bookings.id, id));
+}
+
+export async function markRebookOwnerAlerted(id: number, at = new Date()) {
+  const db = await getDb();
+  if (!db) return;
+  await ensureBookingLocationColumns();
+  await db.update(bookings).set({ rebookOwnerAlertedAt: at }).where(eq(bookings.id, id));
+}
+
+/** Bookings sent a "Choose a new date" email that haven't moved yet. */
+export async function listPendingRebooks() {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureBookingLocationColumns();
+  const rows = await db.select().from(bookings).where(sql`${bookings.rebookRequestedAt} IS NOT NULL`);
+  return rows.filter((row) => row.status !== "cancelled" && row.status !== "completed");
 }
 
 export async function updateBookingStatus(id: number, status: "pending" | "confirmed" | "completed" | "cancelled") {

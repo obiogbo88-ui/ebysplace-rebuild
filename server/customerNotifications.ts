@@ -340,8 +340,9 @@ function firstName(name: string) {
  * The apology + "Choose a new date" email, sent when a booked day is full or
  * blocked. The link is the customer's own (see server/rebook.ts).
  */
-export async function sendRebookRequestEmailSafely(input: { booking: RebookEmailBooking; rebookUrl: string }) {
+export async function sendRebookRequestEmailSafely(input: { booking: RebookEmailBooking; rebookUrl: string; reminder?: boolean }) {
   const { booking } = input;
+  if (input.reminder) return sendRebookReminderEmail(booking, input.rebookUrl);
   if (!isValidEmail(booking.clientEmail)) return { sent: false, reason: "invalid_address" } as const;
   const day = formatLongDate(booking.appointmentDate);
   const paid = booking.depositStatus === "paid";
@@ -361,6 +362,27 @@ export async function sendRebookRequestEmailSafely(input: { booking: RebookEmail
       JOIN_LIST_LINE,
       NOTIFICATIONS_LINE,
       "Thank you for understanding, and we can’t wait to see you.",
+    ],
+  });
+  return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
+}
+
+/** The one follow-up, 24 hours after the first "Choose a new date" email. */
+async function sendRebookReminderEmail(booking: RebookEmailBooking, rebookUrl: string) {
+  if (!isValidEmail(booking.clientEmail)) return { sent: false, reason: "invalid_address" } as const;
+  const day = formatLongDate(booking.appointmentDate);
+  const paid = booking.depositStatus === "paid";
+  const result = await sendBrandedEmail({
+    to: booking.clientEmail.trim(),
+    subject: "A quick reminder to choose your new date",
+    paragraphs: [
+      `Hi ${firstName(booking.clientName)},`,
+      `Just a quick reminder: we couldn\u2019t keep your ${booking.serviceName.toLowerCase()} appointment on ${day}, so please choose a new day and time that suits you.${paid ? " Your \u00a320 deposit moves with you." : ""}`,
+    ],
+    cta: { label: "Choose a new date", url: rebookUrl },
+    closing: [
+      `Rather talk to us? Just reply to this email and we\u2019ll sort it for you.${paid ? " If none of our dates work, we\u2019ll refund your deposit." : ""}`,
+      "Thank you, and sorry again for the change.",
     ],
   });
   return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
