@@ -55,8 +55,8 @@ export function DayTimePicker({ today, blockedSlots, taken, date, time, onChange
   const times = date ? timesFor(date) : [];
 
   return (
-    <div className="grid gap-4">
-      <div>
+    <div className="grid min-w-0 gap-4">
+      <div className="min-w-0">
         <h3 className="text-xs font-bold uppercase tracking-[.16em] text-[#8a641e]">Pick a day</h3>
         <div className="mt-2 flex gap-2 overflow-x-auto pb-2" role="listbox" aria-label="Days">
           {days.map((day) => {
@@ -81,7 +81,7 @@ export function DayTimePicker({ today, blockedSlots, taken, date, time, onChange
         </div>
       </div>
       {date ? (
-        <div>
+        <div className="min-w-0">
           <h3 className="text-xs font-bold uppercase tracking-[.16em] text-[#8a641e]">Pick a time · {formatLongDate(date)}</h3>
           <div className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6">
             {times.map((t) => {
