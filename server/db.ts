@@ -1230,6 +1230,18 @@ export async function blockBookingSlot(input: BlockedBookingSlot) {
   return setWebsiteJsonSection('availability_settings', { ...settings, blockedSlots });
 }
 
+/** Blocks several slots with one read and one write, so nothing is lost between saves. */
+export function mergeBlockedSlots(existing: BlockedBookingSlot[], inputs: BlockedBookingSlot[]) {
+  const next = inputs.map((input) => ({ date: input.date, time: input.time || '', reason: input.reason || 'Unavailable' }));
+  const keys = new Set(next.map((slot) => `${slot.date}|${slot.time}`));
+  return [...existing.filter((slot) => !keys.has(`${slot.date}|${slot.time || ''}`)), ...next];
+}
+
+export async function blockBookingSlots(inputs: BlockedBookingSlot[]) {
+  const settings = await getAvailabilitySettings();
+  return setWebsiteJsonSection('availability_settings', { ...settings, blockedSlots: mergeBlockedSlots(settings.blockedSlots, inputs) });
+}
+
 export async function unblockBookingSlot(input: { date: string; time?: string }) {
   const settings = await getAvailabilitySettings();
   const blockedSlots = settings.blockedSlots.filter((slot) => !(slot.date === input.date && (slot.time || '') === (input.time || '')));
