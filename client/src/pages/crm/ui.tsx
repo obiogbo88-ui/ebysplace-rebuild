@@ -231,3 +231,23 @@ export function ScrollBox({ children, label, size = "md", className = "" }: { ch
     </div>
   );
 }
+
+type ListStanding = { status: "on" | "said_no" | "left" | "not_on"; via: "booking" | "website" | null; since: string | null };
+
+/** Where a client stands with the Eby's Place list, as a pill plus how/when. */
+export function ListPill({ list, detail = true }: { list: ListStanding; detail?: boolean }) {
+  const pill =
+    list.status === "on" ? <Pill tone="live">On the list</Pill>
+    : list.status === "left" ? <Pill tone="bad">Left the list</Pill>
+    : list.status === "said_no" ? <Pill tone="grey">Said no at booking</Pill>
+    : <Pill tone="grey">Not on the list</Pill>;
+  if (!detail || list.status !== "on") return pill;
+  const how = list.via === "booking" ? "Joined at booking" : "Signed up on the website";
+  return (
+    <span className="inline-grid gap-0.5">
+      {pill}
+      <span className="text-[11px] text-[#6B6458]">{how}{list.since ? `, ${niceDate(list.since)}` : ""}</span>
+    </span>
+  );
+}
+

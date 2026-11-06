@@ -1,15 +1,15 @@
 import { sql } from "drizzle-orm";
 import { crmDb, loadExtras } from "./store";
-import { buildClients, type BookingRow, type ChatRow, type Client, type OrderRow, type SubscriberRow } from "./clients";
+import { buildClients, type BookingRow, type ChatRow, type Client, type OrderRow, type PushLinkRow, type SubscriberRow } from "./clients";
 
-export type CrmRows = { bookings: BookingRow[]; orders: OrderRow[]; chats: ChatRow[]; subscribers: SubscriberRow[] };
+export type CrmRows = { bookings: BookingRow[]; orders: OrderRow[]; chats: ChatRow[]; subscribers: SubscriberRow[]; pushLinks: PushLinkRow[] };
 
 /** Every row the CRM reads, straight from the website's own tables. Eby's Place is small enough to load whole. */
 export async function loadRows(): Promise<CrmRows> {
   const db = await crmDb();
-  const [bookings, orders, items, chats, subscribers] = await Promise.all([
+  const [bookings, orders, items, chats, subscribers, pushLinks] = await Promise.all([
     db.execute(sql`SELECT "id", "serviceName", "clientName", "clientEmail", "clientPhone", "city", "appointmentDate", "appointmentTime",
-      "status", "depositStatus", "checkoutTotalCharged", "reviewRequestSentAt", "createdAt" FROM "bookings"`),
+      "status", "depositStatus", "checkoutTotalCharged", "reviewRequestSentAt", "joinList", "createdAt" FROM "bookings"`),
     db.execute(sql`SELECT "id", "customerName", "customerEmail", "customerPhone", "city", "status", "checkoutTotalCharged", "createdAt" FROM "orders"
       WHERE "status" <> 'draft'`),
     db.execute(sql`SELECT "orderId", "productName", "variantName", "quantity" FROM "orderItems"`),
@@ -18,7 +18,8 @@ export async function loadRows(): Promise<CrmRows> {
          FROM jsonb_array_elements(CASE WHEN jsonb_typeof("transcript"::jsonb) = 'array' THEN "transcript"::jsonb ELSE '[]'::jsonb END) WITH ORDINALITY AS e(val, ord)
          WHERE e.val->>'role' = 'user' ORDER BY e.ord DESC LIMIT 1) AS "lastMessage"
       FROM "chatConversations"`),
-    db.execute(sql`SELECT "id", "email", "productAlerts", "createdAt" FROM "newsletterSubscribers"`),
+    db.execute(sql`SELECT "id", "email", "productAlerts", "source", "createdAt" FROM "newsletterSubscribers"`),
+    db.execute(sql`SELECT "bookingId" FROM "pushSubscriptions" WHERE "bookingId" IS NOT NULL`).catch(() => ({ rows: [] })),
   ]);
   const itemsByOrder = new Map<number, string[]>();
   for (const r of items.rows as Array<{ orderId: number; productName: string; variantName: string | null; quantity: number }>) {
@@ -30,6 +31,7 @@ export async function loadRows(): Promise<CrmRows> {
     orders: (orders.rows as OrderRow[]).map((o) => ({ ...o, items: itemsByOrder.get(o.id) ?? [] })),
     chats: chats.rows as ChatRow[],
     subscribers: subscribers.rows as SubscriberRow[],
+    pushLinks: pushLinks.rows as PushLinkRow[],
   };
 }
 

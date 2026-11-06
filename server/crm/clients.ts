@@ -21,6 +21,8 @@ export type BookingRow = {
   depositStatus: string;
   checkoutTotalCharged: string | null;
   reviewRequestSentAt: Date | string | null;
+  /** The booking form's list choice; null on bookings made before it existed. */
+  joinList?: boolean | null;
   createdAt: Date | string;
 };
 
@@ -50,7 +52,18 @@ export type ChatRow = {
   updatedAt: Date | string;
 };
 
-export type SubscriberRow = { id: number; email: string; productAlerts: string; createdAt: Date | string };
+export type SubscriberRow = { id: number; email: string; productAlerts: string; source?: string | null; createdAt: Date | string };
+
+/** A push subscription turned on from the booking confirmed screen. */
+export type PushLinkRow = { bookingId: number | null };
+
+/** Where this client stands with the Eby's Place list. */
+export type ClientList = {
+  status: "on" | "said_no" | "left" | "not_on";
+  /** How they joined, when on the list. */
+  via: "booking" | "website" | null;
+  since: string | null; // YYYY-MM-DD
+};
 
 export type CrmExtras = {
   tags: Map<string, string[]>;
@@ -83,6 +96,9 @@ export type Client = {
   ownTags: string[];
   note: string | null;
   marketingOptOut: boolean;
+  list: ClientList;
+  /** True only when turned on from the booking confirmed screen; other browsers can't be tied to a person. */
+  notifications: boolean;
 };
 
 const PAID_ORDER = new Set(["paid", "fulfilling", "shipped", "completed"]);
@@ -131,6 +147,7 @@ type Acc = {
   orders: OrderRow[];
   chats: ChatRow[];
   subscriber: boolean;
+  subs: SubscriberRow[];
 };
 
 /**
@@ -138,7 +155,7 @@ type Acc = {
  * who booked with their email and chatted with only their phone is one client.
  */
 export function buildClients(
-  input: { bookings: BookingRow[]; orders: OrderRow[]; chats: ChatRow[]; subscribers: SubscriberRow[] },
+  input: { bookings: BookingRow[]; orders: OrderRow[]; chats: ChatRow[]; subscribers: SubscriberRow[]; pushLinks?: PushLinkRow[] },
   extras: CrmExtras = { tags: new Map(), notes: new Map(), optedOut: new Set() },
   today: string = new Date().toISOString().slice(0, 10),
 ): Client[] {
@@ -158,6 +175,7 @@ export function buildClients(
       ea.chats.push(...pa.chats);
       ea.names.push(...pa.names);
       ea.subscriber ||= pa.subscriber;
+      ea.subs.push(...pa.subs);
       ea.city ||= pa.city;
       if (pa.firstSeen < ea.firstSeen) ea.firstSeen = pa.firstSeen;
       ea.phone ||= pa.phone;
@@ -175,7 +193,7 @@ export function buildClients(
       return a;
     }
     if (!e && !p) return null;
-    const fresh: Acc = { names: [], email: e, phone: p, city: null, firstSeen: "9999-12-31", bookings: [], orders: [], chats: [], subscriber: false };
+    const fresh: Acc = { names: [], email: e, phone: p, city: null, firstSeen: "9999-12-31", bookings: [], orders: [], chats: [], subscriber: false, subs: [] };
     if (e) byEmail.set(e, fresh);
     if (p) byPhone.set(p, fresh);
     all.push(fresh);
@@ -210,13 +228,24 @@ export function buildClients(
     const a = find(s.email, null);
     if (!a) continue;
     a.subscriber = true;
+    a.subs.push(s);
     seen(a, s.createdAt);
   }
 
-  return all.map((a) => toClient(a, extras, today)).sort((x, y) => (y.lastActivity > x.lastActivity ? 1 : y.lastActivity < x.lastActivity ? -1 : x.name.localeCompare(y.name))).map(({ lastActivity, ...c }) => c);
+  const pushBookings = new Set((input.pushLinks ?? []).map((r) => r.bookingId).filter((id): id is number => typeof id === "number"));
+  return all.map((a) => toClient(a, extras, today, pushBookings)).sort((x, y) => (y.lastActivity > x.lastActivity ? 1 : y.lastActivity < x.lastActivity ? -1 : x.name.localeCompare(y.name))).map(({ lastActivity, ...c }) => c);
 }
 
-function toClient(a: Acc, extras: CrmExtras, today: string): Client & { lastActivity: string } {
+export function listStanding(a: Pick<Acc, "subs" | "bookings">, optedOut: boolean): ClientList {
+  if (optedOut) return { status: "left", via: null, since: null };
+  const first = [...a.subs].sort((x, y) => iso(x.createdAt).localeCompare(iso(y.createdAt)))[0];
+  if (first) return { status: "on", via: first.source === "booking" ? "booking" : "website", since: day(first.createdAt) };
+  const choices = a.bookings.filter((b) => b.joinList != null).sort((x, y) => iso(x.createdAt).localeCompare(iso(y.createdAt)));
+  if (choices.at(-1)?.joinList === false) return { status: "said_no", via: null, since: null };
+  return { status: "not_on", via: null, since: null };
+}
+
+function toClient(a: Acc, extras: CrmExtras, today: string, pushBookings: Set<number> = new Set()): Client & { lastActivity: string } {
   const name = a.names.sort((x, y) => (x[0] < y[0] ? 1 : -1))[0]?.[1] ?? (a.email ? a.email.split("@")[0] : "Unknown");
   const live = a.bookings.filter((b) => b.status !== "cancelled");
   const completed = live.filter((b) => b.status === "completed").sort((x, y) => x.appointmentDate.localeCompare(y.appointmentDate));
@@ -286,6 +315,8 @@ function toClient(a: Acc, extras: CrmExtras, today: string): Client & { lastActi
     ownTags,
     note: extras.notes.get(key)?.body ?? null,
     marketingOptOut: extras.optedOut.has(key),
+    list: listStanding(a, extras.optedOut.has(key)),
+    notifications: a.bookings.some((b) => pushBookings.has(b.id)),
     lastActivity: activity.at(-1) ?? a.firstSeen,
   };
 }

@@ -1,5 +1,6 @@
 // @ts-nocheck
 import express, { type Application, type Request, type Response } from "express";
+import { confirmationSaysOnList, joinListAfterPayment, leaveListUrl } from "./list";
 import Stripe from "stripe";
 import * as db from "./db";
 import { notifyOwner } from "./_core/notification";
@@ -90,7 +91,9 @@ export function registerStripeWebhook(app: Application) {
             totalPaid: Number.isFinite(bookingTotalPaid) ? bookingTotalPaid.toFixed(2) : "unknown",
           });
           if (booking) {
-            void sendBookingPaymentEmailsSafely(booking, session).catch((error) => console.warn("[StripeWebhook] SMTP booking email workflow failed", error));
+            const listOutcome = await joinListAfterPayment(booking);
+            const list = { onList: confirmationSaysOnList(listOutcome), leaveUrl: booking.clientEmail ? leaveListUrl(booking.clientEmail) : null };
+            void sendBookingPaymentEmailsSafely(booking, session, list).catch((error) => console.warn("[StripeWebhook] SMTP booking email workflow failed", error));
           }
           const remainingBalance = booking?.estimatedPrice != null ? Math.max(Number(booking.estimatedPrice || 0) + Number(booking.homeServiceSurcharge || 0) - 20, 0).toFixed(2) : null;
           const customerConfirmation = `Your Eby’s Place £20 booking deposit has been confirmed. Your appointment for ${booking?.serviceName ?? "your selected service"}${booking?.appointmentDate ? ` on ${booking.appointmentDate}` : ""}${booking?.appointmentTime ? ` at ${booking.appointmentTime}` : ""} is now secured. Your payment receipt will also be emailed to the checkout email address.`;

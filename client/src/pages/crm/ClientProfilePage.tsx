@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { ArrowLeft, Mail, MessageCircle, Plus, X } from "lucide-react";
 import { goCrm } from "./nav";
-import { Avatar, Card, Empty, ErrorNote, GhostButton, Kpi, Loading, Pill, PrimaryButton, Row, STAGE_LABEL, STATUS_TONE, Toggle, gbp, niceDate, niceDateTime, relativeDays, whatsappLink, ScrollBox } from "./ui";
+import { Avatar, Card, Empty, ErrorNote, GhostButton, Kpi, ListPill, Loading, Pill, PrimaryButton, Row, STAGE_LABEL, STATUS_TONE, Toggle, gbp, niceDate, niceDateTime, relativeDays, whatsappLink, ScrollBox } from "./ui";
 import { useAccess } from "./access";
 
 const SWITCHES: Array<{ key: "reminders" | "review_ask" | "rebook_nudge" | "win_back" | "marketing"; label: string; detail: string }> = [
@@ -125,7 +125,8 @@ export function ClientProfilePage({ clientKey }: { clientKey: string }) {
               ) : null}
             </span>
           ))}
-          {c.marketingOptOut ? <Pill tone="bad">Unsubscribed from offers</Pill> : null}
+          <ListPill list={c.list} detail={false} />
+          {c.notifications ? <Pill tone="gold">Notifications on</Pill> : null}
           <form
             className="inline-flex items-center gap-1"
             onSubmit={(e) => {

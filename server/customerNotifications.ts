@@ -1,5 +1,5 @@
 import { normalizeSecretKey, trimEnvValue } from "./_core/envSecrets";
-import { sendBrandedEmail, type BrandedEmail } from "./resendEmail";
+import { sendBrandedEmail, withLeaveLink, type BrandedEmail } from "./resendEmail";
 import { formatLongDate } from "../shared/rebook";
 
 const SITE_URL = "https://www.ebysplace.com";
@@ -263,9 +263,10 @@ export async function sendReviewRequestEmailSafely(input: { to?: string | null; 
   return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
 }
 
-export async function sendNewsletterWelcomeEmailSafely(input: { to?: string | null; productAlerts?: boolean }) {
+/** `leaveUrl` is this person's one-click "Leave the list" link (server/list.ts). */
+export async function sendNewsletterWelcomeEmailSafely(input: { to?: string | null; productAlerts?: boolean; leaveUrl?: string | null }) {
   if (!isValidEmail(input.to)) return { sent: false, reason: "invalid_address" } as const;
-  const result = await sendBrandedEmail({
+  const email: BrandedEmail = {
     to: input.to!.trim(),
     subject: "Welcome to Eby’s Place updates",
     paragraphs: [
@@ -273,10 +274,13 @@ export async function sendNewsletterWelcomeEmailSafely(input: { to?: string | nu
       "Thank you for joining the Eby’s Place list. You will receive style openings, braid-care guidance, and selected product updates from the Eby’s Place team.",
       input.productAlerts ? "You are also subscribed to product and stock alerts for Eby’s Place braid-care essentials." : "You can opt into product alerts whenever you want updates on braid-care essentials.",
       `Ready for your next style? Book online with a £20 deposit: ${SITE_URL}/booking`,
-      "To unsubscribe, reply to this email with “Unsubscribe”. If you did not sign up, you can ignore this email.",
+      input.leaveUrl
+        ? "If you did not sign up, you can ignore this email, or leave the list with the link below."
+        : "To unsubscribe, reply to this email with “Unsubscribe”. If you did not sign up, you can ignore this email.",
     ],
     headers: { "List-Unsubscribe": "<mailto:info@ebysplace.com?subject=Unsubscribe>" },
-  });
+  };
+  const result = await sendBrandedEmail(input.leaveUrl ? withLeaveLink(email, input.leaveUrl) : email);
   return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
 }
 

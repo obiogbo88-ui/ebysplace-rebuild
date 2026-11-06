@@ -1,5 +1,6 @@
 import {
   bigint,
+  boolean,
   integer,
   json,
   numeric,
@@ -109,6 +110,8 @@ export const bookings = pgTable("bookings", {
   rebookMovedBy: varchar("rebookMovedBy", { length: 16 }),
   rebookPreviousDate: varchar("rebookPreviousDate", { length: 10 }),
   rebookPreviousTime: varchar("rebookPreviousTime", { length: 5 }),
+  /** The booking form's list choice: true = join the list once paid, false = ticked "Don't add me". Null on older bookings. */
+  joinList: boolean("joinList"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -211,6 +214,8 @@ export const newsletterSubscribers = pgTable("newsletterSubscribers", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 320 }).notNull().unique(),
   productAlerts: trueFalseEnum("productAlerts").default("false").notNull(),
+  /** How they joined: "booking" (paid a deposit and left the box unticked); null = the website sign-up form. */
+  source: varchar("source", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -257,6 +262,8 @@ export const pushSubscriptions = pgTable("pushSubscriptions", {
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
   userAgent: text("userAgent"),
+  /** Set when turned on from the booking confirmed screen, so the CRM can show it on that client. */
+  bookingId: integer("bookingId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

@@ -1312,9 +1312,37 @@ export async function getUnconfirmedBookingsNeedingReminder(hoursThreshold: numb
   return staleBookings.filter((booking) => !remindedIds.has(booking.id));
 }
 
+async function ensureNewsletterSourceColumn() {
+  await addPgColumnIfMissing("newsletterSubscribers", "source", "VARCHAR(20)");
+}
+
+/**
+ * A paying customer who left "Don't add me" unticked joins the list. Someone
+ * already on it keeps their row as it is (and their product-alert choice).
+ */
+export async function joinListFromBooking(email: string) {
+  const db = await getDb();
+  if (!db) return { joined: false };
+  await ensureNewsletterSourceColumn();
+  const rows = await db
+    .insert(newsletterSubscribers)
+    .values({ email: email.trim().toLowerCase(), productAlerts: "false", source: "booking" })
+    .onConflictDoNothing({ target: newsletterSubscribers.email })
+    .returning({ id: newsletterSubscribers.id });
+  return { joined: rows.length > 0 };
+}
+
+/** "Leave the list": removes every sign-up row for this address, whatever its case. */
+export async function removeNewsletterSubscriber(email: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(newsletterSubscribers).where(sql`lower(${newsletterSubscribers.email}) = ${email.trim().toLowerCase()}`);
+}
+
 export async function subscribeNewsletter(email: string, productAlerts = false) {
   const db = await getDb();
   if (!db) return { success: true };
+  await ensureNewsletterSourceColumn();
   await db.insert(newsletterSubscribers).values({ email, productAlerts: productAlerts ? "true" : "false" }).onConflictDoUpdate({ target: newsletterSubscribers.email, set: { productAlerts: productAlerts ? "true" : "false" } });
   return { success: true };
 }
@@ -1402,6 +1430,7 @@ async function ensureBookingLocationColumns() {
   await addPgColumnIfMissing("bookings", "rebookMovedBy", "VARCHAR(16)");
   await addPgColumnIfMissing("bookings", "rebookPreviousDate", "VARCHAR(10)");
   await addPgColumnIfMissing("bookings", "rebookPreviousTime", "VARCHAR(5)");
+  await addPgColumnIfMissing("bookings", "joinList", "BOOLEAN");
   await makePgColumnNullable("bookings", "addressLine1");
   await makePgColumnNullable("bookings", "city");
   await makePgColumnNullable("bookings", "postcode");
@@ -2322,6 +2351,7 @@ async function ensurePushSubscriptionsTable() {
       "userAgent" TEXT,
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
     )`);
+    await _pool.query(`ALTER TABLE "pushSubscriptions" ADD COLUMN IF NOT EXISTS "bookingId" INTEGER`);
   } catch (err) {
     console.warn("[Database] Could not ensure pushSubscriptions table", err);
   }
@@ -2596,14 +2626,15 @@ export async function listNewsletterSubscribers(limit = 500) {
   return db.select().from(newsletterSubscribers).orderBy(desc(newsletterSubscribers.createdAt)).limit(limit);
 }
 
-export async function savePushSubscription(input: { endpoint: string; p256dh: string; auth: string; userAgent?: string }) {
+export async function savePushSubscription(input: { endpoint: string; p256dh: string; auth: string; userAgent?: string; bookingId?: number }) {
   const db = await getDb();
   if (!db) return null;
   await ensurePushSubscriptionsTable();
+  const linked = input.bookingId ? { bookingId: input.bookingId } : {};
   const [row] = await db
     .insert(pushSubscriptions)
-    .values({ endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent })
-    .onConflictDoUpdate({ target: pushSubscriptions.endpoint, set: { p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent } })
+    .values({ endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent, ...linked })
+    .onConflictDoUpdate({ target: pushSubscriptions.endpoint, set: { p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent, ...linked } })
     .returning();
   return row ?? null;
 }
