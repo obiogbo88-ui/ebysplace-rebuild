@@ -1344,8 +1344,8 @@ export default function Admin() {
             });
             if (!waiting.length) return null;
             return (
-              <div className="mt-5 rounded-xl border border-amber-300/30 bg-amber-400/[0.08] px-4 py-3 text-sm text-amber-100" role="status">
-                <b className="text-white">{waiting.length === 1 ? "1 customer" : `${waiting.length} customers`} still to choose a new date:</b>{" "}
+              <div className="mt-5 rounded-xl border border-[#E7C873] bg-[#FFF6DD] px-4 py-3 text-sm text-[#5E4512]" role="status">
+                <b className="text-[#1A1A1A]">{waiting.length === 1 ? "1 customer" : `${waiting.length} customers`} still to choose a new date:</b>{" "}
                 {waiting.map((booking: any) => {
                   const state = rebookStatus(booking)!;
                   return `${booking.clientName} (link sent ${formatRebookMoment((state as any).sentAt)}, was booked for ${formatShortSlot(booking.appointmentDate, booking.appointmentTime)}${state.kind === "call" ? ", call them" : ""})`;
@@ -1373,9 +1373,9 @@ export default function Admin() {
                       <td className="py-3">{booking.serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}<small className="block text-white/45">{booking.serviceLocation === "home_service" ? [booking.addressLine1, booking.addressLine2, booking.city, booking.county, booking.postcode].filter(Boolean).join(", ") : "Studio address hidden until paid confirmation"}</small></td>
                       <td className="whitespace-nowrap py-3">
                         {booking.appointmentDate} {booking.appointmentTime}
-                        {rebook?.kind === "waiting" ? <span className="mt-1.5 block w-fit rounded-full bg-amber-400/15 px-3 py-1 text-xs font-bold text-amber-200">Needs new date</span> : null}
-                        {rebook?.kind === "call" ? <span className="mt-1.5 block w-fit rounded-full bg-red-400/15 px-3 py-1 text-xs font-bold text-red-300">Call customer</span> : null}
-                        {rebook?.kind === "moved" ? <span className="mt-1.5 block w-fit rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300">Rebooked</span> : null}
+                        {rebook?.kind === "waiting" ? <span className="mt-1.5 block w-fit rounded-full bg-[#FCE7B2] px-3 py-1 text-xs font-bold text-[#6B4100]">Needs new date</span> : null}
+                        {rebook?.kind === "call" ? <span className="mt-1.5 block w-fit rounded-full bg-[#FDE1DF] px-3 py-1 text-xs font-bold text-[#9B1C1C]">Call customer</span> : null}
+                        {rebook?.kind === "moved" ? <span className="mt-1.5 block w-fit rounded-full bg-[#DDF1E4] px-3 py-1 text-xs font-bold text-[#1F5E3B]">Rebooked</span> : null}
                       </td>
                       <td className="py-3">
                         <span className={`inline-block whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${deposit.tone === "paid" ? "bg-emerald-500/15 text-emerald-300" : deposit.tone === "warn" ? "bg-amber-400/15 text-amber-200" : "bg-white/10 text-white/60"}`}>{deposit.label}</span>
@@ -1426,19 +1426,19 @@ export default function Admin() {
                           </div>
                         ) : null}
                         {rebook?.kind === "waiting" ? (
-                          <div className="mt-2 max-w-[17rem] rounded-xl border border-amber-300/35 bg-amber-400/10 px-3 py-2 text-xs leading-relaxed text-amber-100">
-                            <b className="text-white">Rebooking link sent</b> {formatRebookMoment(rebook.sentAt)}.
-                            {rebook.reminderAt ? <> <b className="text-white">Reminder sent</b> {formatRebookMoment(rebook.reminderAt)}. Still waiting for {booking.clientName.split(" ")[0]}.</> : <> Waiting for {booking.clientName.split(" ")[0]} to choose a date. If they haven&rsquo;t by {formatRebookMoment(rebook.reminderDueAt)}, one reminder goes out automatically.</>}
+                          <div className="mt-2 max-w-[17rem] rounded-xl border border-[#E7C873] bg-[#FFF6DD] px-3 py-2 text-xs leading-relaxed text-[#5E4512]">
+                            <b className="text-[#1A1A1A]">Rebooking link sent</b> {formatRebookMoment(rebook.sentAt)}.
+                            {rebook.reminderAt ? <> <b className="text-[#1A1A1A]">Reminder sent</b> {formatRebookMoment(rebook.reminderAt)}. Still waiting for {booking.clientName.split(" ")[0]}.</> : <> Waiting for {booking.clientName.split(" ")[0]} to choose a date. If they haven&rsquo;t by {formatRebookMoment(rebook.reminderDueAt)}, one reminder goes out automatically.</>}
                           </div>
                         ) : null}
                         {rebook?.kind === "call" ? (
-                          <div className="mt-2 max-w-[17rem] rounded-xl border border-red-400/40 bg-red-400/10 px-3 py-2 text-xs leading-relaxed text-red-100">
-                            <b className="text-white">No new date yet.</b> Link sent {formatRebookMoment(rebook.sentAt)}{rebook.reminderAt ? `, reminder ${formatRebookMoment(rebook.reminderAt)}` : ""}. Call {booking.clientName.split(" ")[0]}{booking.clientPhone ? <> on <b className="text-white">{booking.clientPhone}</b></> : null}, then use &ldquo;Move booking&rdquo;.
+                          <div className="mt-2 max-w-[17rem] rounded-xl border border-[#F3B4AE] bg-[#FDEDEC] px-3 py-2 text-xs leading-relaxed text-[#7F1D1D]">
+                            <b className="text-[#1A1A1A]">No new date yet.</b> Link sent {formatRebookMoment(rebook.sentAt)}{rebook.reminderAt ? `, reminder ${formatRebookMoment(rebook.reminderAt)}` : ""}. Call {booking.clientName.split(" ")[0]}{booking.clientPhone ? <> on <b className="text-[#1A1A1A]">{booking.clientPhone}</b></> : null}, then use &ldquo;Move booking&rdquo;.
                           </div>
                         ) : null}
                         {rebook?.kind === "moved" ? (
-                          <div className="mt-2 max-w-[17rem] rounded-xl border border-emerald-400/35 bg-emerald-500/10 px-3 py-2 text-xs leading-relaxed text-emerald-100">
-                            <b className="text-white">Moved by {rebook.by === "customer" ? booking.clientName.split(" ")[0] : "you"}</b> {formatRebookMoment(rebook.movedAt)}.
+                          <div className="mt-2 max-w-[17rem] rounded-xl border border-[#A9D8BB] bg-[#EAF6EE] px-3 py-2 text-xs leading-relaxed text-[#1F5E3B]">
+                            <b className="text-[#1A1A1A]">Moved by {rebook.by === "customer" ? booking.clientName.split(" ")[0] : "you"}</b> {formatRebookMoment(rebook.movedAt)}.
                             {rebook.previousDate ? <> Was {formatShortSlot(rebook.previousDate, rebook.previousTime)}.</> : null}
                           </div>
                         ) : null}
