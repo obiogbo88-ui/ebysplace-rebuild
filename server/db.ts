@@ -3145,6 +3145,17 @@ export async function listTakenBookingSlots(fromDate: string, toDate: string, ex
     .map((row) => ({ date: row.date, time: row.time }));
 }
 
+/** Date + time of paid or confirmed bookings (no customer details), for the public booking calendar. */
+export async function listLiveTakenSlots(fromDate: string, toDate: string) {
+  const db = await getDb();
+  if (!db) return [] as { date: string; time: string }[];
+  const rows = await db
+    .select({ date: bookings.appointmentDate, time: bookings.appointmentTime, status: bookings.status, depositStatus: bookings.depositStatus })
+    .from(bookings)
+    .where(and(sql`${bookings.appointmentDate} >= ${fromDate}`, sql`${bookings.appointmentDate} <= ${toDate}`));
+  return rows.filter((row) => isLiveBooking(row)).map((row) => ({ date: row.date, time: row.time }));
+}
+
 /**
  * Moves a booking to a new date and time. A paid deposit stays with it, and a
  * paid booking is confirmed so it still gets the day-before reminder.
