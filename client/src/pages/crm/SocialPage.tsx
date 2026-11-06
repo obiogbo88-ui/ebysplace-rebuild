@@ -52,6 +52,7 @@ export function SocialPage() {
             <span className="text-[13px] text-[#6B6458]">
               {d.instagramConfigured ? "Posting to @ebysplace1" : "Instagram isn't connected"} · {d.schedule.map((s) => s.time).join(" · ")} UK time
               {d.facebookConfigured ? " · Facebook too" : " · Facebook waits for Page access"}
+              {d.threadsConfigured ? " · Threads too" : " · Threads not connected yet"}
             </span>
           </div>
           <Toggle id="crm-autopilot" label="Social autopilot" checked={d.autopilot && !d.envPaused} disabled={d.envPaused || setAutomation.isPending} onChange={(enabled) => setAutomation.mutate({ key: "social_autopilot", enabled })} />

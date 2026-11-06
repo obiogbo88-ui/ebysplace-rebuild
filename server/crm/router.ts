@@ -230,6 +230,7 @@ export const crmRouter = router({
       envPaused: /^(1|true|yes)$/i.test(String(process.env.SOCIAL_AUTOPOST_PAUSED || "").trim()),
       instagramConfigured: Boolean(String(process.env.INSTAGRAM_ACCESS_TOKEN || "").trim()),
       facebookConfigured: Boolean(String(process.env.FACEBOOK_PAGE_ID || "").trim()),
+      threadsConfigured: Boolean(String(process.env.THREADS_USER_ID || "").trim() && String(process.env.THREADS_ACCESS_TOKEN || "").trim()),
       schedule: SLOTS.map((slot) => ({ slot, time: hhmm(slot) })),
       posts: (res.rows as any[]).map((r) => ({ ...summarisePost(r), id: r.id, slotDate: r.slotDate, slot: r.slot, caption: r.caption, reelUrl: r.reelUrl, imageUrl: (r.imageUrls ?? [])[0] ?? null, igMediaId: r.igMediaId, isAiGenerated: r.isAiGenerated, createdAt: r.createdAt })),
     };

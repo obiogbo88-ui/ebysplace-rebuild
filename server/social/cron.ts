@@ -13,6 +13,7 @@ import {
   type FacebookCredentials,
   type InstagramCredentials,
 } from "./graph";
+import { publishThreadsPost, refreshThreadsToken, type ThreadsCredentials } from "./threads";
 import { claimPost, getPost, getToken, requireDb, savePublishResult, saveToken, type SlotName, type SocialPost } from "./store";
 import { sql } from "drizzle-orm";
 import { isAutomationOn } from "../crm/automations";
@@ -81,6 +82,36 @@ async function keepInstagramTokenFresh() {
   }
 }
 
+/** Threads: THREADS_USER_ID + THREADS_ACCESS_TOKEN, with the refreshed copy kept like Instagram's. */
+export async function threadsCredentials(): Promise<ThreadsCredentials | null> {
+  const userId = env("THREADS_USER_ID");
+  const envToken = env("THREADS_ACCESS_TOKEN");
+  if (!userId || !envToken) return null;
+  const stored = await getToken(threadsTokenKey(envToken));
+  return { userId, accessToken: stored?.token || envToken };
+}
+
+function threadsTokenKey(envToken: string) {
+  return `threads:${createHash("sha256").update(envToken).digest("hex").slice(0, 12)}`;
+}
+
+/** Refreshes the Threads token once a week so it never reaches its 60-day expiry. Best-effort. */
+async function keepThreadsTokenFresh() {
+  const envToken = env("THREADS_ACCESS_TOKEN");
+  if (!envToken) return "not configured";
+  const key = threadsTokenKey(envToken);
+  const stored = await getToken(key);
+  if (stored && Date.now() - stored.refreshedAt.getTime() < 7 * 86400000) return "fresh";
+  try {
+    const refreshed = await refreshThreadsToken(stored?.token || envToken);
+    await saveToken(key, refreshed.accessToken, refreshed.expiresInSeconds);
+    return "refreshed";
+  } catch (err) {
+    console.warn("[social] Threads token refresh failed", err instanceof Error ? err.message : err);
+    return "refresh failed";
+  }
+}
+
 async function facebookCredentials(): Promise<FacebookCredentials | null> {
   const pageId = env("FACEBOOK_PAGE_ID");
   const pageAccessToken = env("FACEBOOK_PAGE_ACCESS_TOKEN");
@@ -89,8 +120,8 @@ async function facebookCredentials(): Promise<FacebookCredentials | null> {
 }
 
 /** Posts one queued row to every connected platform, saving each id as soon as it exists. */
-export async function publishPost(post: SocialPost, ig: InstagramCredentials | null, fb: FacebookCredentials | null) {
-  const result = { status: post.status, igMediaId: post.igMediaId, igStoryId: post.igStoryId, fbPostId: post.fbPostId, fbStoryId: post.fbStoryId, error: null as string | null };
+export async function publishPost(post: SocialPost, ig: InstagramCredentials | null, fb: FacebookCredentials | null, th: ThreadsCredentials | null = null) {
+  const result = { status: post.status, igMediaId: post.igMediaId, igStoryId: post.igStoryId, fbPostId: post.fbPostId, fbStoryId: post.fbStoryId, threadsPostId: post.threadsPostId ?? null, error: null as string | null };
   const errors: string[] = [];
   const step = async (label: string, done: string | null, run: () => Promise<string>) => {
     if (done) return done;
@@ -113,8 +144,13 @@ export async function publishPost(post: SocialPost, ig: InstagramCredentials | n
     result.fbPostId = await step("Facebook post", result.fbPostId, () => publishFacebookFeed(fb, post.imageUrls, captionFor("facebook", post.caption)));
     if (post.storyUrl) result.fbStoryId = await step("Facebook story", result.fbStoryId, () => publishFacebookStory(fb, post.storyUrl!));
   }
-  const feedDone = (!ig || result.igMediaId) && (!fb || result.fbPostId);
-  result.status = errors.length === 0 ? "posted" : feedDone || result.igMediaId || result.fbPostId ? "partial" : post.attempts >= 3 ? "failed" : "ready";
+  if (th) {
+    result.threadsPostId = await step("Threads post", result.threadsPostId, () =>
+      publishThreadsPost(th, { videoUrl: post.reelUrl, imageUrls: post.imageUrls, caption: captionFor("threads", post.caption) }),
+    );
+  }
+  const anyDone = result.igMediaId || result.fbPostId || result.threadsPostId;
+  result.status = errors.length === 0 ? "posted" : anyDone ? "partial" : post.attempts >= 3 ? "failed" : "ready";
   result.error = errors.length ? errors.join(" | ").slice(0, 2000) : null;
   await savePublishResult(post.id, result);
   return result;
@@ -127,7 +163,8 @@ export async function runPublish(slot: SlotName, force = false) {
   if (!force && !slotDue(slot)) return { skipped: `not ${slot}'s London hour (the other clock-change twin of this cron)` };
   const ig = await instagramCredentials();
   const fb = await facebookCredentials();
-  if (!ig && !fb) return { skipped: "no Instagram or Facebook credentials configured yet" };
+  const th = await threadsCredentials();
+  if (!ig && !fb && !th) return { skipped: "no Instagram, Facebook or Threads credentials configured yet" };
 
   const today = londonDate();
   let post = await getPost(today, slot);
@@ -139,14 +176,14 @@ export async function runPublish(slot: SlotName, force = false) {
   const outcomes: unknown[] = [];
   if (post) {
     const claimed = await claimPost(post.id);
-    outcomes.push(claimed ? { id: post.id, kind: post.kind, ...(await publishPost(claimed, ig, fb)) } : { id: post.id, skipped: `status ${post.status}` });
+    outcomes.push(claimed ? { id: post.id, kind: post.kind, ...(await publishPost(claimed, ig, fb, th)) } : { id: post.id, skipped: `status ${post.status}` });
   }
   // Retry anything from the last two days that only half went out.
   const db = await requireDb();
   const partials = await db.execute(sql`SELECT "id" FROM "socialPosts" WHERE "status" = 'partial' AND "slotDate" >= ${addDays(today, -2)} AND "id" <> ${post?.id ?? 0}`);
   for (const row of partials.rows as Array<{ id: number }>) {
     const claimed = await claimPost(row.id);
-    if (claimed) outcomes.push({ id: row.id, retry: true, ...(await publishPost(claimed, ig, fb)) });
+    if (claimed) outcomes.push({ id: row.id, retry: true, ...(await publishPost(claimed, ig, fb, th)) });
   }
   return { today, slot, outcomes };
 }
@@ -154,7 +191,7 @@ export async function runPublish(slot: SlotName, force = false) {
 async function runPrepare(startedAt: number) {
   if (paused() || !(await isAutomationOn("social_autopilot"))) {
     // Switched off: keep the Instagram token alive but don't write posts nobody will publish.
-    return { made: [], errors: [], skipped: "social autopilot is off", instagramToken: await keepInstagramTokenFresh() };
+    return { made: [], errors: [], skipped: "social autopilot is off", instagramToken: await keepInstagramTokenFresh(), threadsToken: await keepThreadsTokenFresh() };
   }
   const today = londonDate();
   const hour = londonHour();
@@ -175,7 +212,7 @@ async function runPrepare(startedAt: number) {
     }
   }
   const token = await keepInstagramTokenFresh();
-  return { made, errors, instagramToken: token };
+  return { made, errors, instagramToken: token, threadsToken: await keepThreadsTokenFresh() };
 }
 
 function guard(handler: (req: Request) => Promise<unknown>) {

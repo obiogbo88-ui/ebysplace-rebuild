@@ -38,6 +38,8 @@ export type SocialPost = {
   igStoryId: string | null;
   fbPostId: string | null;
   fbStoryId: string | null;
+  /** Threads post id (added 2026-11-06). */
+  threadsPostId: string | null;
   error: string | null;
   attempts: number;
 };
@@ -87,6 +89,7 @@ export async function requireDb(ensureTables = true) {
     await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "reelUrl" TEXT`);
     await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "musicSeed" BIGINT`);
     await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "musicFingerprint" VARCHAR(64)`);
+    await db.execute(sql`ALTER TABLE "socialPosts" ADD COLUMN IF NOT EXISTS "threadsPostId" VARCHAR(64)`);
     // the database itself refuses a tune that has been used before
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "socialPosts_musicFingerprint_key" ON "socialPosts" ("musicFingerprint")`);
     await db.execute(sql`ALTER TABLE "socialPosts" ENABLE ROW LEVEL SECURITY`);
@@ -106,7 +109,7 @@ export async function getPost(slotDate: string, slot: SlotName): Promise<SocialP
   return res.rows[0] ? rowToPost(res.rows[0]) : null;
 }
 
-export async function insertPost(post: Omit<SocialPost, "id" | "status" | "igMediaId" | "igStoryId" | "fbPostId" | "fbStoryId" | "error" | "attempts">): Promise<SocialPost | null> {
+export async function insertPost(post: Omit<SocialPost, "id" | "status" | "igMediaId" | "igStoryId" | "fbPostId" | "fbStoryId" | "threadsPostId" | "error" | "attempts">): Promise<SocialPost | null> {
   const db = await requireDb();
   const res = await db.execute(sql`INSERT INTO "socialPosts"
     ("slotDate", "slot", "kind", "sourceRef", "isAiGenerated", "slides", "caption", "imageUrls", "storyUrl", "reelUrl", "musicSeed", "musicFingerprint")
@@ -130,11 +133,11 @@ export async function claimPost(id: number): Promise<SocialPost | null> {
   return res.rows[0] ? rowToPost(res.rows[0]) : null;
 }
 
-export async function savePublishResult(id: number, fields: Pick<SocialPost, "status" | "igMediaId" | "igStoryId" | "fbPostId" | "fbStoryId" | "error">) {
+export async function savePublishResult(id: number, fields: Pick<SocialPost, "status" | "igMediaId" | "igStoryId" | "fbPostId" | "fbStoryId" | "threadsPostId" | "error">) {
   const db = await requireDb();
   await db.execute(sql`UPDATE "socialPosts" SET
     "status" = ${fields.status}, "igMediaId" = ${fields.igMediaId}, "igStoryId" = ${fields.igStoryId},
-    "fbPostId" = ${fields.fbPostId}, "fbStoryId" = ${fields.fbStoryId}, "error" = ${fields.error},
+    "fbPostId" = ${fields.fbPostId}, "fbStoryId" = ${fields.fbStoryId}, "threadsPostId" = ${fields.threadsPostId}, "error" = ${fields.error},
     "updatedAt" = now(), "postedAt" = CASE WHEN ${fields.status} = 'posted' THEN now() ELSE "postedAt" END
     WHERE "id" = ${id}`);
 }

@@ -284,10 +284,10 @@ function finishCaption(caption: string) {
  * {BOOKING} becomes "ebysplace.com (link in bio)" on Instagram, where captions can't hold links, and the real link on Facebook.
  * {FOLLOW} becomes "Follow @ebysplace1" on Instagram and "Follow Eby's Place" on Facebook.
  */
-export function captionFor(platform: "instagram" | "facebook", caption: string) {
+export function captionFor(platform: "instagram" | "facebook" | "threads", caption: string) {
   return caption
     .replaceAll("{BOOKING}", platform === "instagram" ? "ebysplace.com (link in bio)" : "https://www.ebysplace.com/booking")
-    .replaceAll("{FOLLOW}", platform === "instagram" ? `Follow ${BRAND.instagramHandle}` : "Follow Eby's Place");
+    .replaceAll("{FOLLOW}", platform === "facebook" ? "Follow Eby's Place" : `Follow ${BRAND.instagramHandle}`);
 }
 
 // ------------------------------------------------------------------ builders
