@@ -1419,14 +1419,14 @@ export const appRouter = router({
         }
         return { webPush: webPushResult, email: emailResult, sms: smsResult, whatsapp: whatsappResult };
       }),
-    sendRebookLink: adminProcedure.input(z.object({ bookingId: z.number().int().positive(), sendAgain: z.boolean().optional() })).mutation(async ({ input, ctx }) => {
+    sendRebookLink: adminProcedure.input(z.object({ bookingId: z.number().int().positive(), sendAgain: z.boolean().optional(), onceMore: z.boolean().optional() })).mutation(async ({ input, ctx }) => {
       const booking = await db.getBookingById(input.bookingId);
       if (!booking) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found." });
       const blockReason = rebookBlockReason(booking);
       if (blockReason) throw new TRPCError({ code: "PRECONDITION_FAILED", message: blockReason });
       const resendReason = rebookResendBlockReason(booking.rebookRequestedAt, input.sendAgain ?? false);
       if (resendReason) throw new TRPCError({ code: "CONFLICT", message: resendReason });
-      const result = await sendRebookRequestEmailSafely({ booking, rebookUrl: rebookUrl(booking) });
+      const result = await sendRebookRequestEmailSafely({ booking, rebookUrl: rebookUrl(booking), onceMore: input.onceMore });
       if (!result.sent) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Rebooking email was not sent: ${result.reason}` });
       await db.markRebookRequested(booking.id);
       await logAdminActivity(ctx, { activityType: "booking_rebook_link_sent", description: `Sent a "choose a new date" email to ${booking.clientName} for ${booking.appointmentDate} ${booking.appointmentTime}`, relatedEntityType: "booking", relatedEntityId: booking.id });

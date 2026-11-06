@@ -63,3 +63,29 @@ describe("rebooking emails", () => {
     expect(sendBrandedEmailMock).not.toHaveBeenCalled();
   });
 });
+
+describe("sorry, once more (approved for Fenton 2026-11-06)", () => {
+  beforeEach(() => {
+    sendBrandedEmailMock.mockReset().mockResolvedValue({ sent: true, messageId: "m2" });
+  });
+
+  it("apologises for a second move, blames our system, gives Eby's number and never mentions a refund", async () => {
+    const moved = { ...booking, appointmentDate: "2026-11-08", appointmentTime: "16:00" };
+    expect(await sendRebookRequestEmailSafely({ booking: moved, rebookUrl: "https://www.ebysplace.com/rebook/64/new", onceMore: true })).toEqual({ sent: true });
+    const email = sendBrandedEmailMock.mock.calls[0][0];
+    expect(email.subject).toBe("Sorry, Fenton: we need to move your booking once more");
+    const text = [...email.paragraphs, ...email.closing].join("\n");
+    expect(text).toContain("Sunday 8 November at 16:00");
+    expect(text).toContain("Our technical team has now fixed it");
+    expect(text).toContain("07864 585110");
+    expect(text).toContain("£20 deposit is safe");
+    expect(text.toLowerCase()).not.toContain("refund");
+    expect(email.cta).toEqual({ label: "Choose a new date", url: "https://www.ebysplace.com/rebook/64/new" });
+  });
+
+  it("the ordinary rebooking email still has no phone number", async () => {
+    await sendRebookRequestEmailSafely({ booking, rebookUrl: "https://x.test" });
+    const email = sendBrandedEmailMock.mock.calls[0][0];
+    expect([...email.paragraphs, ...email.closing].join("\n")).not.toContain("07864");
+  });
+});

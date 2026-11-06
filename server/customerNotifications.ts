@@ -340,9 +340,10 @@ function firstName(name: string) {
  * The apology + "Choose a new date" email, sent when a booked day is full or
  * blocked. The link is the customer's own (see server/rebook.ts).
  */
-export async function sendRebookRequestEmailSafely(input: { booking: RebookEmailBooking; rebookUrl: string; reminder?: boolean }) {
+export async function sendRebookRequestEmailSafely(input: { booking: RebookEmailBooking; rebookUrl: string; reminder?: boolean; onceMore?: boolean }) {
   const { booking } = input;
   if (input.reminder) return sendRebookReminderEmail(booking, input.rebookUrl);
+  if (input.onceMore) return sendRebookOnceMoreEmail(booking, input.rebookUrl);
   if (!isValidEmail(booking.clientEmail)) return { sent: false, reason: "invalid_address" } as const;
   const day = formatLongDate(booking.appointmentDate);
   const paid = booking.depositStatus === "paid";
@@ -362,6 +363,35 @@ export async function sendRebookRequestEmailSafely(input: { booking: RebookEmail
       JOIN_LIST_LINE,
       NOTIFICATIONS_LINE,
       "Thank you for understanding, and we can’t wait to see you.",
+    ],
+  });
+  return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
+}
+
+/**
+ * A one-off apology when a customer's chosen new date can't be kept either
+ * (approved for Fenton, 2026-11-06). The owner's number is in this email only.
+ */
+async function sendRebookOnceMoreEmail(booking: RebookEmailBooking, rebookUrl: string) {
+  if (!isValidEmail(booking.clientEmail)) return { sent: false, reason: "invalid_address" } as const;
+  const day = formatLongDate(booking.appointmentDate);
+  const paid = booking.depositStatus === "paid";
+  const name = firstName(booking.clientName);
+  const result = await sendBrandedEmail({
+    to: booking.clientEmail.trim(),
+    subject: `Sorry, ${name}: we need to move your booking once more`,
+    paragraphs: [
+      `Hi ${name},`,
+      `Thank you for choosing a new date so quickly. I\u2019m really sorry to come back to you, but we can\u2019t keep your ${booking.serviceName.toLowerCase()} appointment on ${day} at ${booking.appointmentTime} either.`,
+      "This one is our fault, not yours. A fault on our booking system let that time show as free when it wasn\u2019t. Our technical team has now fixed it, and every unavailable day and time is clearly marked on the website, so whatever you choose now is really yours.",
+      paid
+        ? "Your \u00a320 deposit is safe and moves with you, and there\u2019s nothing more to pay. Please pick a new day and time below."
+        : "Please pick a new day and time below.",
+    ],
+    cta: { label: "Choose a new date", url: rebookUrl },
+    closing: [
+      "Would you rather speak to Eby herself? Call or WhatsApp her on 07864 585110. Or just reply to this email and we\u2019ll sort it for you.",
+      "Thank you for your patience, and sorry again for the trouble. We can\u2019t wait to see you.",
     ],
   });
   return result.sent ? ({ sent: true } as const) : ({ sent: false, reason: result.errorMessage || "email_provider_error" } as const);
