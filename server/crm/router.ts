@@ -220,7 +220,7 @@ export const crmRouter = router({
     const db = await crmDb();
     const today = londonToday();
     const res = await db
-      .execute(sql`SELECT "id", "slotDate", "slot", "kind", "status", "slides", "caption", "reelUrl", "imageUrls", "igMediaId", "isAiGenerated", "error", "postedAt", "createdAt"
+      .execute(sql`SELECT "id", "slotDate", "slot", "kind", "status", "slides", "caption", "reelUrl", "imageUrls", "igMediaId", "fbPostId", "threadsPostId", "isAiGenerated", "error", "postedAt", "createdAt"
         FROM "socialPosts" WHERE "slotDate" >= ${addDaysIso(today, -14)} ORDER BY "slotDate" DESC, "slot" DESC`)
       .catch(() => ({ rows: [] }));
     const states = await automationStates();
@@ -232,7 +232,7 @@ export const crmRouter = router({
       facebookConfigured: Boolean(String(process.env.FACEBOOK_PAGE_ID || "").trim()),
       threadsConfigured: Boolean(String(process.env.THREADS_ACCESS_TOKEN || "").trim()),
       schedule: SLOTS.map((slot) => ({ slot, time: hhmm(slot) })),
-      posts: (res.rows as any[]).map((r) => ({ ...summarisePost(r), id: r.id, slotDate: r.slotDate, slot: r.slot, caption: r.caption, reelUrl: r.reelUrl, imageUrl: (r.imageUrls ?? [])[0] ?? null, igMediaId: r.igMediaId, isAiGenerated: r.isAiGenerated, createdAt: r.createdAt })),
+      posts: (res.rows as any[]).map((r) => ({ ...summarisePost(r), id: r.id, slotDate: r.slotDate, slot: r.slot, caption: r.caption, reelUrl: r.reelUrl, imageUrl: (r.imageUrls ?? [])[0] ?? null, igMediaId: r.igMediaId, fbPostId: r.fbPostId ?? null, threadsPostId: r.threadsPostId ?? null, isAiGenerated: r.isAiGenerated, createdAt: r.createdAt })),
     };
   }),
   postNow: adminProcedure.mutation(async () => {
