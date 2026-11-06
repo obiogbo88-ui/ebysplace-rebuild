@@ -25,6 +25,10 @@ const NEXT_STEP: Record<string, string> = {
   due_rebook: "Rebook reminder due",
 };
 
+/** Tags the table shows: "Subscriber" and "Due a rebook" are left out because the List and Next step columns already say them. */
+const REPEATED_IN_COLUMNS = new Set(["Subscriber", "Due a rebook"]);
+const tableTags = (tags: string[]) => tags.filter((t) => !REPEATED_IN_COLUMNS.has(t));
+
 export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
   const access = useAccess();
   const [filter, setFilter] = useState<FilterId>(() => (FILTERS.some((f) => f.id === initialFilter) ? (initialFilter as FilterId) : "all"));
@@ -81,7 +85,16 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
         <Card>
           {/* Table on wider screens */}
           <ScrollBox label="Clients list" size="lg" className="hidden md:block">
-            <table className="w-full min-w-[900px] border-collapse text-[13px]">
+            <table className="w-full min-w-[760px] table-fixed border-collapse text-[13px]">
+              <colgroup>
+                <col className="w-[24%]" />
+                <col className="w-[11%]" />
+                <col className="w-[7%]" />
+                <col className="w-[10%]" />
+                <col className="w-[19%]" />
+                <col className="w-[13%]" />
+                <col className="w-[16%]" />
+              </colgroup>
               <thead className="sticky top-0 z-[1] bg-white">
                 <tr className="text-left text-[#6B6458]">
                   <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">Client</th>
@@ -89,7 +102,6 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
                   <th className="border-b border-[#E6E1D8] px-2 py-2 text-right font-semibold">Visits</th>
                   <th className="border-b border-[#E6E1D8] px-2 py-2 text-right font-semibold">Paid online</th>
                   <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">List</th>
-                  <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">Notifications</th>
                   <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">Tags</th>
                   <th className="border-b border-[#E6E1D8] px-2 py-2 font-semibold">Next step</th>
                 </tr>
@@ -109,14 +121,17 @@ export function ClientsPage({ initialFilter }: { initialFilter?: string }) {
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5">{c.nextAppointment ? <span>Booked {niceDate(c.nextAppointment.date)}</span> : niceDate(c.lastVisit)}</td>
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5 text-right tabular-nums">{c.visits}</td>
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5 text-right tabular-nums">{access.money(c.paidOnline)}</td>
-                    <td className="border-b border-[#EFEBE4] px-2 py-2.5"><ListPill list={c.list} /></td>
-                    <td className="border-b border-[#EFEBE4] px-2 py-2.5">{c.notifications ? <Pill tone="gold">On</Pill> : <span className="text-[#9A9183]" title="Only known when turned on from the booking confirmed screen">—</span>}</td>
+                    <td className="border-b border-[#EFEBE4] px-2 py-2.5">
+                      <ListPill list={c.list} />
+                      {c.notifications ? <span className="mt-0.5 block text-[11px] text-[#6B6458]">🔔 Notifications on</span> : null}
+                    </td>
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5">
                       <div className="flex flex-wrap gap-1">
-                        {c.tags.slice(0, 3).map((t) => (
+                        {tableTags(c.tags).length ? null : <span className="text-[#9A9183]">—</span>}
+                        {tableTags(c.tags).slice(0, 2).map((t) => (
                           <Pill key={t}>{t}</Pill>
                         ))}
-                        {c.tags.length > 3 ? <Pill tone="grey">+{c.tags.length - 3}</Pill> : null}
+                        {tableTags(c.tags).length > 2 ? <Pill tone="grey">+{tableTags(c.tags).length - 2}</Pill> : null}
                       </div>
                     </td>
                     <td className="border-b border-[#EFEBE4] px-2 py-2.5">

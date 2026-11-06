@@ -1326,7 +1326,7 @@ export default function Admin() {
           <div className="mt-5 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-primary">
-                <tr><th>Client</th><th>Service</th><th>Location</th><th>Date</th><th>Deposit</th><th>Surcharge</th><th>Amount paid</th><th>Status</th></tr>
+                <tr><th>Client</th><th>Service</th><th>Where</th><th>Date</th><th>Deposit</th><th>Amount paid</th><th>Status</th></tr>
               </thead>
               <tbody>
                 {(data.bookings || []).map((booking: any) => {
@@ -1340,9 +1340,9 @@ export default function Admin() {
                     <tr className="border-t border-white/10 align-top" key={booking.id}>
                       <td className="py-3">{booking.clientName}<small className="block text-white/45">{booking.clientEmail}</small></td>
                       <td className="py-3">{booking.serviceName}</td>
-                      <td className="py-3">{booking.serviceLocation === "home_service" ? "Home Service" : "Visit the Studio"}<small className="block text-white/45">{booking.serviceLocation === "home_service" ? [booking.addressLine1, booking.addressLine2, booking.city, booking.county, booking.postcode].filter(Boolean).join(", ") : "Studio address hidden until paid confirmation"}</small></td>
+                      <td className="py-3 pr-3">{booking.serviceLocation === "home_service" ? <>Home service<small className="block text-white/45">{[booking.addressLine1, booking.addressLine2, booking.city, booking.county, booking.postcode].filter(Boolean).join(", ")}</small></> : "Studio"}</td>
                       <td className="whitespace-nowrap py-3">
-                        {booking.appointmentDate} {booking.appointmentTime}
+                        {formatShortSlot(booking.appointmentDate, booking.appointmentTime)}
                         {rebook?.kind === "waiting" ? <span className="mt-1.5 block w-fit rounded-full bg-[#FCE7B2] px-3 py-1 text-xs font-bold text-[#6B4100]">Needs new date</span> : null}
                         {rebook?.kind === "call" ? <span className="mt-1.5 block w-fit rounded-full bg-[#FDE1DF] px-3 py-1 text-xs font-bold text-[#9B1C1C]">Call customer</span> : null}
                         {rebook?.kind === "moved" ? <span className="mt-1.5 block w-fit rounded-full bg-[#DDF1E4] px-3 py-1 text-xs font-bold text-[#1F5E3B]">Rebooked</span> : null}
@@ -1350,8 +1350,10 @@ export default function Admin() {
                       <td className="py-3">
                         <span className={`inline-block whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${deposit.tone === "paid" ? "bg-emerald-500/15 text-emerald-300" : deposit.tone === "warn" ? "bg-amber-400/15 text-amber-200" : "bg-white/10 text-white/60"}`}>{deposit.label}</span>
                       </td>
-                      <td className="whitespace-nowrap py-3 pr-3">£{Number(booking.checkoutSurchargeCharged ?? booking.homeServiceSurcharge ?? 0).toFixed(2)}</td>
-                      <td className="whitespace-nowrap py-3 pr-3">{isPaid && booking.checkoutTotalCharged != null ? `£${Number(booking.checkoutTotalCharged).toFixed(2)}` : "—"}</td>
+                      <td className="whitespace-nowrap py-3 pr-3">
+                        {isPaid && booking.checkoutTotalCharged != null ? `£${Number(booking.checkoutTotalCharged).toFixed(2)}` : "—"}
+                        {Number(booking.checkoutSurchargeCharged ?? booking.homeServiceSurcharge ?? 0) > 0 ? <small className="block text-white/45">incl. £{Number(booking.checkoutSurchargeCharged ?? booking.homeServiceSurcharge).toFixed(2)} travel</small> : null}
+                      </td>
                       <td className="py-3">
                         <select
                           aria-label={`Status for ${booking.clientName}'s booking`}
@@ -1711,7 +1713,7 @@ export default function Admin() {
             </div>
           </AdminPanel>
 
-          <AdminPanel id="newsletter-subscribers" eyebrow="Join the list" title="Newsletter subscribers" description="Everyone who has joined the Eby's Place list from the website, newest first." icon={Users} open={isPanelOpen("newsletter-subscribers")} onToggle={() => togglePanel("newsletter-subscribers")}>
+          <AdminPanel id="newsletter-subscribers" eyebrow="Join the list" title="Newsletter subscribers" description="Everyone on the Eby's Place list, newest first: website sign-ups, paying customers who joined at booking, and people who joined from the invite." icon={Users} open={isPanelOpen("newsletter-subscribers")} onToggle={() => togglePanel("newsletter-subscribers")}>
             <div className="mt-5">
               {newsletterSubscribers.isLoading ? <p className="text-sm text-white/55">Loading subscribers...</p> : null}
               {newsletterSubscribers.error ? <p className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">Could not load subscribers: {newsletterSubscribers.error.message}</p> : null}
@@ -1724,6 +1726,7 @@ export default function Admin() {
                         <thead>
                           <tr className="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-white/45">
                             <th className="px-4 py-3">Email</th>
+                            <th className="px-4 py-3">How they joined</th>
                             <th className="px-4 py-3">Product alerts</th>
                             <th className="px-4 py-3">Joined</th>
                           </tr>
@@ -1732,8 +1735,9 @@ export default function Admin() {
                           {newsletterSubscriberRows.map((subscriber: any) => (
                             <tr className="border-b border-white/5 last:border-0" key={subscriber.id}>
                               <td className="break-all px-4 py-3 text-white/85">{subscriber.email}</td>
+                              <td className="whitespace-nowrap px-4 py-3 text-xs text-white/70">{subscriber.source === "booking" ? "At booking" : subscriber.source === "invite" ? "From the invite" : "Website"}</td>
                               <td className="px-4 py-3">{subscriber.productAlerts === "true" ? <span className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-primary">Yes</span> : <span className="text-xs text-white/45">No</span>}</td>
-                              <td className="px-4 py-3 text-xs text-white/55">{subscriber.createdAt ? new Date(subscriber.createdAt).toLocaleString() : "—"}</td>
+                              <td className="px-4 py-3 text-xs text-white/55">{subscriber.createdAt ? new Date(subscriber.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}</td>
                             </tr>
                           ))}
                         </tbody>
