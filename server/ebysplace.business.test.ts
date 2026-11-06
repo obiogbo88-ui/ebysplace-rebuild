@@ -480,11 +480,14 @@ describe("Eby’s Place platform business rules", () => {
         body: expect.stringContaining("Studio visit address"),
       }));
       expect(sendCustomerEmailSafelyMock.mock.calls[0][0].body).toContain("Estimated remaining balance due at appointment: £160.00.");
-      expect(sendOwnerSmsAndWhatsAppSafelyMock).toHaveBeenCalledWith(expect.stringContaining("Booking deposit paid"));
+      // One owner alert per booking: no separate short text any more.
+      expect(sendOwnerSmsAndWhatsAppSafelyMock).not.toHaveBeenCalled();
+      expect(notifyOwnerMock).toHaveBeenCalledTimes(1);
       expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
         title: "Eby’s Place deposit paid",
-        content: expect.stringContaining("Goddess Braids"),
+        content: expect.stringMatching(/Goddess Braids on \d{4}-\d{2}-\d{2} at /),
       }));
+      expect(notifyOwnerMock.mock.calls[0][0].content).not.toMatch(/Stripe session|Payment intent/);
       expect(JSON.stringify(notifyOwnerMock.mock.calls)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     } finally {
       markPaidSpy.mockRestore();
@@ -551,10 +554,11 @@ describe("Eby’s Place platform business rules", () => {
         itemsSummary: expect.stringContaining("2 × X-Pression Braiding Hair — Colour 30 (£17.00)"),
       }));
       expect(sendShopOrderPaidEmailSafelyMock.mock.calls[0][0].itemsSummary).toContain("Total paid: £17.00");
-      expect(sendOwnerSmsAndWhatsAppSafelyMock).toHaveBeenCalledWith(expect.stringContaining("New Eby's Place shop order paid"));
+      // One owner alert per shop order, with the delivery address.
+      expect(sendOwnerSmsAndWhatsAppSafelyMock).not.toHaveBeenCalled();
       expect(notifyOwnerMock).toHaveBeenCalledWith(expect.objectContaining({
         title: "Eby’s Place shop order paid",
-        content: expect.stringContaining("Order ID: 88"),
+        content: expect.stringContaining("Deliver to: 1 Gold Street, London, Greater London"),
       }));
       expect(JSON.stringify(notifyOwnerMock.mock.calls)).not.toMatch(new RegExp(["Man", "us"].join(""), "i"));
     } finally {

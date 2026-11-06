@@ -131,20 +131,15 @@ export function registerStripeWebhook(app: Application) {
               ].filter(Boolean).join("\n\n"),
             }),
           ]);
-          await sendOwnerSmsAndWhatsAppSafely(`Booking deposit paid: ${booking?.clientName ?? session.metadata?.customer_name ?? "Customer"} booked ${booking?.serviceName ?? session.metadata?.service_name ?? "a service"} on ${booking?.appointmentDate ?? "date TBC"} at ${booking?.appointmentTime ?? "time TBC"}. Email: ${booking?.clientEmail ?? session.customer_email ?? "not provided"}`);
+          // One owner alert per paid booking (text, WhatsApp and phone notification), chosen by the user 2026-11-06.
           await notifyOwner({
             title: "Eby’s Place deposit paid",
             content: [
-              `A £20 booking deposit has been confirmed through Stripe.`,
-              `Booking ID: ${session.metadata?.booking_id ?? "Not provided"}`,
-              `Service: ${session.metadata?.service_name ?? "Not provided"}`,
-              `Customer: ${session.metadata?.customer_name ?? "Not provided"}`,
-              `Email: ${session.metadata?.customer_email ?? session.customer_email ?? "Not provided"}`,
-              `Stripe session: ${session.id}`,
-              Number.isFinite(bookingSurcharge) && bookingSurcharge > 0 ? `Home service surcharge: £${bookingSurcharge.toFixed(2)}` : undefined,
-              Number.isFinite(bookingTotalPaid) ? `Stripe total paid: £${bookingTotalPaid.toFixed(2)}` : undefined,
-              paymentIntentId ? `Payment intent: ${paymentIntentId}` : undefined,
-            ].filter(Boolean).join("\n"),
+              `${booking?.clientName ?? session.metadata?.customer_name ?? "Customer"} booked ${booking?.serviceName ?? session.metadata?.service_name ?? "a service"} on ${booking?.appointmentDate ?? "date TBC"} at ${booking?.appointmentTime ?? "time TBC"}.`,
+              `Booking #${booking?.id ?? session.metadata?.booking_id ?? "?"}${Number.isFinite(bookingTotalPaid) ? ` · £${bookingTotalPaid.toFixed(2)} paid` : ""}${Number.isFinite(bookingSurcharge) && bookingSurcharge > 0 ? ` (includes £${bookingSurcharge.toFixed(2)} home service)` : ""}`,
+              `Email: ${booking?.clientEmail ?? session.metadata?.customer_email ?? session.customer_email ?? "not provided"}`,
+              `Phone: ${booking?.clientPhone ?? "not provided"}`,
+            ].join("\n"),
           }).catch((error) => console.warn("[StripeWebhook] Owner payment notification failed", error));
         }
         if (session.metadata?.order_type === "shop_products" && session.id) {
@@ -204,18 +199,16 @@ export function registerStripeWebhook(app: Application) {
               deliveryAddress: deliveryAddress || "provided during checkout",
               itemsSummary: `${itemsSummary}\n\n${orderItems.length ? `Total paid: £${totalPaid}` : "Total paid: confirmed in your payment receipt."}\nEstimated delivery: 3-5 working days after dispatch.`,
             }),
-            sendOwnerSmsAndWhatsAppSafely(`New Eby's Place shop order paid: ${order?.customerName ?? session.metadata?.customer_name ?? "Customer"}, order #${orderReference}, deliver to ${deliveryAddress || "address on order"}.`),
           ]);
+          // One owner alert per paid shop order, chosen by the user 2026-11-06.
           await notifyOwner({
             title: "Eby’s Place shop order paid",
             content: [
-              `A shop product payment has been confirmed through Stripe.`,
-              `Order ID: ${session.metadata?.order_id ?? "Not provided"}`,
-              `Customer: ${session.metadata?.customer_name ?? "Not provided"}`,
-              `Email: ${session.metadata?.customer_email ?? session.customer_email ?? "Not provided"}`,
-              `Stripe session: ${session.id}`,
-              paymentIntentId ? `Payment intent: ${paymentIntentId}` : undefined,
-            ].filter(Boolean).join("\n"),
+              `${order?.customerName ?? session.metadata?.customer_name ?? "Customer"}, order #${orderReference}${orderItems.length ? ` · £${totalPaid} paid` : ""}.`,
+              `Deliver to: ${deliveryAddress || "address on order"}`,
+              `Email: ${order?.customerEmail ?? session.metadata?.customer_email ?? session.customer_email ?? "not provided"}`,
+              `Phone: ${order?.customerPhone ?? "not provided"}`,
+            ].join("\n"),
           }).catch((error) => console.warn("[StripeWebhook] Owner order notification failed", error));
         }
         if (session.metadata?.purchase_type === "tryon_credits" && session.id) {
