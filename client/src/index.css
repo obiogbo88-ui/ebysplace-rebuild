@@ -424,3 +424,24 @@ input::placeholder, textarea::placeholder { color: #5F5F5F !important; opacity: 
 @keyframes seasonal-sway { from { transform: translateX(-14px) rotate(-40deg) rotateX(0deg); } to { transform: translateX(14px) rotate(var(--spin, 120deg)) rotateX(60deg); } }
 @keyframes seasonal-swing { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
 @media (prefers-reduced-motion: reduce) { .seasonal-particle, .seasonal-sway, .seasonal-lantern { animation-play-state: paused; } }
+
+/* Command Centre: readable text on the cream background (approved 2026-11-06).
+   Pale colours left over from the old dark admin become deep ink; gold
+   buttons and accents keep the bright brand gold. Scoped to the admin only. */
+.cc-readable .text-primary { color: #8A641E !important; }
+.cc-readable .btn-gold .text-primary,
+.cc-readable .btn-dark .text-primary,
+.cc-readable .bg-\[\#1A1A1A\] .text-primary { color: #C9A84C !important; }
+.cc-readable .text-amber-100,
+.cc-readable .text-amber-200,
+.cc-readable .text-amber-200\/80,
+.cc-readable .text-amber-300 { color: #6B4100 !important; }
+.cc-readable .text-emerald-200,
+.cc-readable .text-emerald-300 { color: #1F5E3B !important; }
+.cc-readable .text-red-200,
+.cc-readable .text-red-300 { color: #9B1C1C !important; }
+.cc-readable .text-white\/35 { color: #6B6458 !important; }
+.cc-readable .bg-emerald-500\/15,
+.cc-readable .bg-emerald-900\/40 { background-color: #DDF1E4 !important; }
+.cc-readable .bg-red-900\/40 { background-color: #FDE1DF !important; }
+.cc-readable .bg-amber-400\/15 { background-color: #FCE7B2 !important; }

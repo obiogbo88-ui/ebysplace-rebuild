@@ -1210,6 +1210,52 @@ export const appRouter = router({
       await logAdminActivity(ctx, { activityType: "availability_blocked_with_rebook", description: `Blocked ${input.date}${input.time ? ` ${input.time}` : ""} and emailed ${emailed.length} customer(s) a "choose a new date" link`, relatedEntityType: "availability", metadata: { emailed, failed }, status: failed.length ? "failed" : "success" });
       return { success: true, emailed, failed };
     }),
+    /** Customers booked on any of several days (no emails or phone numbers), for the confirm step. */
+    bookingsOnDates: adminProcedure.input(z.object({ dates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1).max(62), time: z.string().optional() })).query(async ({ input }) => {
+      const dates = Array.from(new Set(input.dates)).sort();
+      const perDay = await Promise.all(dates.map((date) => db.listLiveBookingsOnDate(date)));
+      return perDay.flat()
+        .filter((row) => !input.time || row.appointmentTime === input.time)
+        .map((row) => ({ id: row.id, date: row.appointmentDate, clientName: row.clientName, serviceName: row.serviceName, appointmentTime: row.appointmentTime, depositPaid: row.depositStatus === "paid" }));
+    }),
+    /** Blocks several days (or one time on each) in one go, optionally emailing everyone booked on them. */
+    blockAvailabilityDays: adminProcedure.input(z.object({
+      dates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date.")).min(1, "Choose at least one day.").max(62, "Choose up to 62 days at a time."),
+      time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+      reason: z.string().max(120).optional(),
+      emailAffected: z.boolean().default(false),
+    })).mutation(async ({ input, ctx }) => {
+      const dates = Array.from(new Set(input.dates)).sort();
+      await db.blockBookingSlots(dates.map((date) => ({ date, time: input.time, reason: input.reason })));
+      const emailed: string[] = [];
+      const failed: string[] = [];
+      if (input.emailAffected) {
+        const affected = (await Promise.all(dates.map((date) => db.listLiveBookingsOnDate(date)))).flat()
+          .filter((row) => !input.time || row.appointmentTime === input.time);
+        for (const booking of affected) {
+          try {
+            const result = await sendRebookRequestEmailSafely({ booking, rebookUrl: rebookUrl(booking) });
+            if (result.sent) {
+              await db.markRebookRequested(booking.id);
+              emailed.push(booking.clientName);
+            } else {
+              failed.push(`${booking.clientName} (${result.reason})`);
+            }
+          } catch (error) {
+            console.error("[Rebook] Block-days email failed", booking.id, error);
+            failed.push(booking.clientName);
+          }
+        }
+      }
+      await logAdminActivity(ctx, {
+        activityType: "availability_blocked_days",
+        description: `Blocked ${dates.length} day(s)${input.time ? ` at ${input.time}` : ""}: ${dates.join(", ")}${input.emailAffected ? `; emailed ${emailed.length} customer(s) a "choose a new date" link` : ""}`,
+        relatedEntityType: "availability",
+        metadata: { dates, emailed, failed },
+        status: failed.length ? "failed" : "success",
+      });
+      return { success: true, blocked: dates.length, emailed, failed };
+    }),
     unblockAvailabilitySlot: adminProcedure.input(z.object({ date: z.string().min(4), time: z.string().optional() })).mutation(({ input }) => db.unblockBookingSlot(input)),
     updateSeasonalEffects: adminProcedure.input(z.object({ enabled: z.boolean() })).mutation(({ input }) => db.updateSeasonalSettings({ enabled: input.enabled })),
     updateInstagramSettings: adminProcedure.input(z.object({ handle: z.string().min(2), feedUrl: z.string().url(), enabled: z.boolean(), note: z.string().optional() })).mutation(({ input }) => db.updateInstagramSettings(input)),
