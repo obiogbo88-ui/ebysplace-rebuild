@@ -155,7 +155,7 @@ function DashboardLayoutContent({
     if (id === "inbox") return d.needsYou.chatCount;
     if (id === "shop") return d.needsYou.ordersToSend;
     if (id === "website") return d.needsYou.reviewsPending;
-    if (id === "reports") return unreadActivityCount.data ?? 0;
+    // Reports has no badge: the unread activity count lives on the bell, where it can be read and cleared.
     return 0;
   };
   const isMobile = useIsMobile();

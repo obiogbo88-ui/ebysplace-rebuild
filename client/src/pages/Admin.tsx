@@ -901,7 +901,7 @@ export default function Admin() {
       <div className="cc-readable min-h-screen bg-[#F6F5F2] text-[#1A1A1A]">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            {crmLoc.page !== "home" ? (
+            {crmLoc.page === "client" ? (
               <button
                 type="button"
                 onClick={() => {
@@ -914,18 +914,22 @@ export default function Admin() {
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back
               </button>
             ) : null}
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8A641E]">Eby’s Place Command Centre</p>
-            <div className="mt-1">
-              <CrmPageHeader loc={crmLoc} />
-            </div>
+            <CrmPageHeader loc={crmLoc} />
           </div>
-          <div className="lux-card grid gap-3 py-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm text-white/55">Signed in as</p>
-                <b>{user?.name || user?.email || "Admin"}</b>
-                <p className="text-xs text-primary">{user?.role}</p>
-              </div>
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
+            <div className="grid justify-items-end gap-0.5 text-right">
+              {/* Phone alerts for new bookings, orders and chats. */}
+              {ownerPushStatus.data?.deviceCount ? (
+                <p className="text-xs text-[#6B6458]">Alerts on {ownerPushStatus.data.deviceCount} device{ownerPushStatus.data.deviceCount === 1 ? "" : "s"}</p>
+              ) : (
+                <button className="text-xs font-semibold text-[#8A641E] underline underline-offset-4 hover:text-[#5E4512]" type="button" onClick={handleEnableOwnerNotifications} disabled={subscribeOwnerPush.isPending}>
+                  {subscribeOwnerPush.isPending ? "Turning on…" : "Get alerts on this device"}
+                </button>
+              )}
+              {ownerNotifStatus === "unsupported" && <p className="text-xs text-[#6B6458]">This browser can't show alerts.</p>}
+              {ownerNotifStatus === "denied" && <p className="text-xs text-[#6B6458]">Blocked: allow notifications in your browser's site settings.</p>}
+              {ownerNotifStatus === "error" && <p className="text-xs text-[#B3261E]">Something went wrong. Please try again.</p>}
+            </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -936,7 +940,7 @@ export default function Admin() {
                     <Bell className="h-5 w-5" />
                     {(unreadActivityCount.data ?? 0) > 0 ? (
                       <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#C9A84C] px-1.5 text-[10px] font-bold leading-none !text-[#111111] ring-2 ring-[#fffaf0]">
-                        {unreadActivityCount.data}
+                        {(unreadActivityCount.data ?? 0) > 99 ? "99+" : unreadActivityCount.data}
                       </span>
                     ) : null}
                   </button>
@@ -992,19 +996,6 @@ export default function Admin() {
                   </button>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
-            <button className="btn-dark py-2 text-sm" type="button" onClick={openPublicHomepage}>Back to Homepage</button>
-            {/* Phone alerts for new bookings, orders and visitors (moved here from the old overview box). */}
-            {ownerPushStatus.data?.deviceCount ? (
-              <p className="text-xs text-[#6B6458]">Alerts on {ownerPushStatus.data.deviceCount} device{ownerPushStatus.data.deviceCount === 1 ? "" : "s"}</p>
-            ) : (
-              <button className="text-xs font-semibold text-[#8A641E] underline underline-offset-4 hover:text-[#5E4512]" type="button" onClick={handleEnableOwnerNotifications} disabled={subscribeOwnerPush.isPending}>
-                {subscribeOwnerPush.isPending ? "Turning on…" : "Get alerts on this device"}
-              </button>
-            )}
-            {ownerNotifStatus === "unsupported" && <p className="text-xs text-[#6B6458]">This browser can't show alerts.</p>}
-            {ownerNotifStatus === "denied" && <p className="text-xs text-[#6B6458]">Blocked: allow notifications in your browser's site settings.</p>}
-            {ownerNotifStatus === "error" && <p className="text-xs text-[#B3261E]">Something went wrong. Please try again.</p>}
           </div>
         </div>
 
@@ -1189,7 +1180,7 @@ export default function Admin() {
                         {syncTransactionBreakdowns.isPending ? "Syncing…" : "Sync fees from Stripe"}
                       </button>
                       <button className="text-sm font-semibold text-white/70 underline decoration-white/30 underline-offset-4 hover:text-white" type="button" disabled={clearIncompleteTransactions.isPending} onClick={handleClearIncompleteTransactions}>
-                        {clearIncompleteTransactions.isPending ? "Checking…" : "Clear abandoned checkouts…"}
+                        {clearIncompleteTransactions.isPending ? "Checking…" : "Clear unpaid checkouts"}
                       </button>
                     </div>
                   </div>
@@ -1203,7 +1194,7 @@ export default function Admin() {
                           <p className="serif mt-1 text-2xl text-primary">{formatMoney(card.totals.gross)}</p>
                           <small className="block text-white/50">{card.totals.count} payment{card.totals.count === 1 ? "" : "s"}</small>
                           <dl className="mt-3 space-y-1 border-t border-white/10 pt-2 text-xs text-white/60">
-                            <div className="flex justify-between"><dt>Stripe fees</dt><dd>−{formatMoney(card.totals.fees)}</dd></div>
+                            <div className="flex justify-between"><dt>Stripe fees</dt><dd>{card.totals.fees > 0 ? "−" : ""}{formatMoney(card.totals.fees)}</dd></div>
                             {card.totals.refunded > 0 && <div className="flex justify-between"><dt>Refunded</dt><dd>−{formatMoney(card.totals.refunded)}</dd></div>}
                             <div className="flex justify-between font-semibold text-white/85"><dt>Net received</dt><dd>{formatMoney(card.totals.net)}</dd></div>
                           </dl>
@@ -1229,7 +1220,7 @@ export default function Admin() {
                             <td className="px-3 py-2 text-white/80">{formatMonth(item.month)}</td>
                             {TRANSACTION_TYPE_ORDER.map((type) => <td className="px-3 py-2 text-right text-white/70" key={type}>{formatMoney(item.byType[type].gross)}</td>)}
                             <td className="px-3 py-2 text-right font-semibold text-primary">{formatMoney(item.total.gross)}</td>
-                            <td className="px-3 py-2 text-right text-white/60">−{formatMoney(item.total.fees)}</td>
+                            <td className="px-3 py-2 text-right text-white/60">{item.total.fees > 0 ? "−" : ""}{formatMoney(item.total.fees)}</td>
                             <td className="px-3 py-2 text-right font-semibold text-white/85">{formatMoney(item.total.net)}</td>
                           </tr>
                         ))}
@@ -1324,7 +1315,7 @@ export default function Admin() {
             );
           })()}
           <div className="mt-5 overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[880px] text-left text-sm [&_td]:pr-4 [&_th]:pb-2 [&_th]:pr-4 [&_th]:font-semibold">
               <thead className="text-primary">
                 <tr><th>Client</th><th>Service</th><th>Where</th><th>Date</th><th>Deposit</th><th>Amount paid</th><th>Status</th></tr>
               </thead>
@@ -1378,9 +1369,9 @@ export default function Admin() {
                         {needsCompleting ? <small className="mt-2 block max-w-[14rem] text-amber-200">Appointment date has passed. Mark as Completed if it went ahead.</small> : null}
                         {booking.status === "pending" || booking.status === "confirmed" ? (
                           <div className="mt-2 flex max-w-[16rem] flex-wrap gap-2">
-                            <button className="btn-dark py-2 text-xs" type="button" onClick={() => setMoveForm(moveForm?.bookingId === booking.id ? null : { bookingId: booking.id, date: booking.appointmentDate, time: booking.appointmentTime, notifyCustomer: true })}>Move booking</button>
+                            <button className="rounded-full border border-[#E6E1D8] bg-white px-3 py-1.5 text-xs font-semibold text-[#1A1A1A] hover:border-[#C9A84C]" type="button" onClick={() => setMoveForm(moveForm?.bookingId === booking.id ? null : { bookingId: booking.id, date: booking.appointmentDate, time: booking.appointmentTime, notifyCustomer: true })}>Move booking</button>
                             <button
-                              className="btn-dark py-2 text-xs"
+                              className="rounded-full border border-[#E6E1D8] bg-white px-3 py-1.5 text-xs font-semibold text-[#1A1A1A] hover:border-[#C9A84C] disabled:opacity-50"
                               type="button"
                               disabled={sendRebookLink.isPending}
                               onClick={() => linkAlreadySent
@@ -1469,8 +1460,8 @@ export default function Admin() {
 
 
           <AdminPanel id="availability" eyebrow="Calendar controls" title="Availability calendar" description="Block and unblock specific appointment dates or individual time slots. Customers cannot book blocked slots." icon={CalendarDays} open={isPanelOpen("availability")} onToggle={() => togglePanel("availability")}>
-            <form className="mt-5 grid gap-3 rounded-2xl border border-primary/20 bg-black/20 p-4 md:grid-cols-[1fr_auto]" onSubmit={(event) => { event.preventDefault(); const value = readAdminPrice("home-service-surcharge", "Home service surcharge"); if (value) updateHomeServiceSurcharge.mutate({ homeServiceSurcharge: value }); }}>
-              <label className="grid gap-2 text-sm text-white/70">Home service surcharge (£)<input id="home-service-surcharge" defaultValue={data.availability?.homeServiceSurcharge || "0.00"} inputMode="decimal" /></label>
+            <form className="mt-5 grid gap-3 rounded-2xl border border-primary/20 bg-black/20 p-4 md:grid-cols-[minmax(0,16rem)_auto] md:justify-start" onSubmit={(event) => { event.preventDefault(); const value = readAdminPrice("home-service-surcharge", "Home service surcharge"); if (value) updateHomeServiceSurcharge.mutate({ homeServiceSurcharge: value }); }}>
+              <label className="grid gap-2 text-sm text-white/70">Home service travel charge (£)<input id="home-service-surcharge" defaultValue={data.availability?.homeServiceSurcharge || "0.00"} inputMode="decimal" /></label>
               <button className="btn-gold self-end py-2" type="submit">Save surcharge</button>
             </form>
             <BlockDaysPicker
@@ -1492,7 +1483,7 @@ export default function Admin() {
             {(data.orders || []).length ? data.orders!.map((order: any) => (
               <div className="rounded-2xl border border-white/10 p-4" key={order.id}>
                 <div className="flex flex-wrap justify-between gap-3">
-                  <div><b>{order.customerName}</b><p className="text-sm text-white/55">{order.customerEmail} · {order.addressLine1}, {order.city}, {order.postcode}</p><p className="text-xs text-white/45">Stripe total: {order.checkoutTotalCharged != null ? `£${Number(order.checkoutTotalCharged).toFixed(2)}` : "Pending"}</p></div>
+                  <div><b>{order.customerName}</b><p className="text-sm text-white/55">{order.customerEmail} · {order.addressLine1}, {order.city}, {order.postcode}</p><p className="text-xs text-white/45">{order.checkoutTotalCharged != null ? `Paid £${Number(order.checkoutTotalCharged).toFixed(2)}` : order.status === "cancelled" ? "Not paid" : "Payment not confirmed yet"}</p></div>
                   <select value={order.status} onChange={(event) => updateOrder.mutate({ id: order.id, status: event.target.value as any })}>
                     <option value="draft">Draft</option><option value="pending_payment">Pending payment</option><option value="paid">Paid</option><option value="fulfilling">Fulfilling</option><option value="shipped">Shipped</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
                   </select>
@@ -1502,7 +1493,7 @@ export default function Admin() {
           </div>
           </AdminPanel>
 
-          <AdminPanel id="customer-replies" eyebrow="Resend · ebysplace.com" title="Reply to a customer" description="Send a branded one-off reply to a customer enquiry. Delivered through Resend from info@ebysplace.com and recorded in the activity log." icon={Mail} open={isPanelOpen("customer-replies")} onToggle={() => togglePanel("customer-replies")}>
+          <AdminPanel id="customer-replies" eyebrow="From info@ebysplace.com" title="Reply to a customer" description="Send a one-off reply to a customer in the Eby's Place email style. It's sent from info@ebysplace.com and saved in the activity log." icon={Mail} open={isPanelOpen("customer-replies")} onToggle={() => togglePanel("customer-replies")}>
             {resendStatus.data && !resendStatus.data.configured ? (
               <p className="mt-4 rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-sm text-amber-100">
                 RESEND_API_KEY is not available in this environment, so sending is disabled here. It is configured for Production only.

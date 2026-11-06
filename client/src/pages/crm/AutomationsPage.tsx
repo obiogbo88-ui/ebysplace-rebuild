@@ -7,7 +7,7 @@ const STATUS: Record<string, { tone: "live" | "new" | "wait"; label: string }> =
   new: { tone: "new", label: "New" },
   needs_meta: { tone: "wait", label: "Needs Meta permission" },
 };
-const SENT_NAME: Record<string, string> = { review_ask: "Review request", rebook_nudge: "Rebook reminder", win_back: "We-miss-you email" };
+const SENT_NAME: Record<string, string> = { review_ask: "Review request", rebook_nudge: "Rebook reminder", win_back: "We-miss-you email", list_invite: "List invite" };
 
 export function AutomationsPage() {
   const utils = trpc.useUtils();
@@ -70,8 +70,8 @@ export function AutomationsPage() {
           <ScrollBox label="Sent automatically, lately" size="sm">
           {q.data!.recentSends.map((s, i) => (
             <Row key={i}>
-              <Pill tone="new">{SENT_NAME[s.automation] ?? s.automation}</Pill>
-              <span className="min-w-0 flex-1 truncate text-sm">{s.clientKey.replace(/^[ep]:/, "")}</span>
+              <Pill tone="new">{SENT_NAME[s.automation] ?? "Automatic email"}</Pill>
+              <span className="min-w-0 flex-1 truncate text-sm">{s.clientName || s.clientKey.replace(/^[ep]:/, "")}</span>
               <span className="text-xs text-[#6B6458]">{niceDateTime(s.sentAt)}</span>
             </Row>
           ))}

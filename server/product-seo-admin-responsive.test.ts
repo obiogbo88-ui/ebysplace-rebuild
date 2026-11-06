@@ -264,10 +264,12 @@ describe("product SEO administration and responsive page safeguards", () => {
     expect(layoutSource).toContain('navigateWithSmoothScroll("/", setLocation)');
     expect(layoutSource).toContain("navigateAdminMenu");
     expect(layoutSource).toContain('smoothScrollToElement(sectionId, 60)');
-    expect(adminSource).toContain("Back to Homepage");
+    // The exit back to the website lives in the sidebar, not a second button in the page header.
+    expect(layoutSource).toContain("Back to Website");
+    expect(adminSource).not.toContain("Back to Homepage");
     expect(adminSource).toContain("adminOverviewActions");
     // The old "Protected overview" box is gone: its jobs moved into the Command Centre pages.
-    expect(adminSource).toContain("Eby’s Place Command Centre");
+    expect(adminSource).toContain("<CrmPageHeader loc={crmLoc} />");
     expect(adminSource).not.toContain("Protected overview");
     expect(adminSource).toContain("openProtectedOverviewSection");
     expect(adminSource).toContain("refresh();");
