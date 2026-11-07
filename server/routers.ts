@@ -1333,10 +1333,16 @@ export const appRouter = router({
         }
         return { success: true, messageId: result.messageId };
       }),
-    ownerPushStatus: adminProcedure.query(async () => ({
-      configured: isWebPushConfigured(),
-      deviceCount: (await db.listOwnerPushSubscriptions()).length,
-    })),
+    // `endpoint` is this browser's push address, so each admin sees whether THEIR device gets alerts,
+    // not just how many devices do in total (2026-11-07).
+    ownerPushStatus: adminProcedure.input(z.object({ endpoint: z.string().url().optional() }).optional()).query(async ({ input }) => {
+      const subs = await db.listOwnerPushSubscriptions();
+      return {
+        configured: isWebPushConfigured(),
+        deviceCount: subs.length,
+        thisDevice: Boolean(input?.endpoint && subs.some((s: any) => s.endpoint === input.endpoint)),
+      };
+    }),
     subscribeOwnerPush: adminProcedure.input(z.object({
       endpoint: z.string().url(),
       keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
