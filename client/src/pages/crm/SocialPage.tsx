@@ -3,16 +3,17 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Card, Empty, ErrorNote, Loading, Pill, PrimaryButton, Row, STATUS_TONE, Toggle, niceDate, niceDateTime, ScrollBox } from "./ui";
 
+import { SocialIcon } from "@/components/SocialIcon";
 const STATUS_LABEL: Record<string, string> = { posted: "Posted", ready: "Ready", publishing: "Posting…", partial: "Part posted", failed: "Failed" };
 
 type ChannelKey = "instagram" | "threads" | "facebook";
 type PostRow = { status: string; igMediaId: string | null; threadsPostId: string | null; fbPostId: string | null; threadsDue?: boolean };
 
 /** The channels a post can go to, in the order they're shown. TikTok is a card only until it's built. */
-const CHANNELS: Array<{ key: ChannelKey; short: string; name: string; logo: string; logoClass: string; idOf: (p: PostRow) => string | null }> = [
-  { key: "instagram", short: "IG", name: "Instagram", logo: "IG", logoClass: "bg-[linear-gradient(135deg,#f58529,#dd2a7b,#8134af)]", idOf: (p) => p.igMediaId },
-  { key: "threads", short: "Threads", name: "Threads", logo: "@", logoClass: "bg-[#111111]", idOf: (p) => p.threadsPostId },
-  { key: "facebook", short: "FB", name: "Facebook", logo: "f", logoClass: "bg-[#1877F2]", idOf: (p) => p.fbPostId },
+const CHANNELS: Array<{ key: ChannelKey; short: string; name: string; idOf: (p: PostRow) => string | null }> = [
+  { key: "instagram", short: "IG", name: "Instagram", idOf: (p) => p.igMediaId },
+  { key: "threads", short: "Threads", name: "Threads", idOf: (p) => p.threadsPostId },
+  { key: "facebook", short: "FB", name: "Facebook", idOf: (p) => p.fbPostId },
 ];
 
 type ChipState = "posted" | "due" | "missed" | "off";
@@ -48,7 +49,7 @@ function ChannelChips({ post, connected }: { post: PostRow; connected: Record<Ch
         const state = chipState(post, c.idOf(post), connected[c.key], c.key === "threads" && !!post.threadsDue);
         return (
           <span key={c.key} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${CHIP_CLASS[state]}`} title={`${c.name}: ${state === "off" ? "not connected at the time" : state === "posted" ? "posted" : state === "due" ? "goes out with the next run" : "didn't post"}`}>
-            {c.short} {CHIP_TEXT[state]}
+            <SocialIcon brand={c.key} size={11} tone={state === "off" ? "current" : "brand"} /> {c.short} {CHIP_TEXT[state]}
           </span>
         );
       })}
@@ -93,11 +94,11 @@ export function SocialPage() {
   const anyConnected = connected.instagram || connected.threads || connected.facebook;
   const times = d.schedule.map((s) => s.time).join(" · ");
 
-  const channelCards: Array<{ key: string; name: string; logo: string; logoClass: string; line: string; pill: { tone: "live" | "wait" | "grey"; text: string } }> = [
-    { key: "instagram", name: "Instagram", logo: "IG", logoClass: CHANNELS[0].logoClass, line: "@ebysplace1 · Reels with music", pill: connected.instagram ? { tone: "live", text: "Connected" } : { tone: "grey", text: "Not set up" } },
-    { key: "threads", name: "Threads", logo: "@", logoClass: CHANNELS[1].logoClass, line: `@ebysplace1 · ${d.threadsSchedule.map((s) => s.time).join(" · ")} (Threads' own peak times)`, pill: connected.threads ? { tone: "live", text: "Connected" } : { tone: "grey", text: "Not set up" } },
-    { key: "facebook", name: "Facebook", logo: "f", logoClass: CHANNELS[2].logoClass, line: connected.facebook ? "facebook.com/EbysPlace" : "facebook.com/EbysPlace · needs Eby to give Page access", pill: connected.facebook ? { tone: "live", text: "Connected" } : { tone: "wait", text: "Needs Page access" } },
-    { key: "tiktok", name: "TikTok", logo: "♪", logoClass: "bg-[#000000]", line: "Not set up yet. Needs a TikTok developer app.", pill: { tone: "grey", text: "Not set up" } },
+  const channelCards: Array<{ key: "instagram" | "threads" | "facebook" | "tiktok"; name: string; line: string; pill: { tone: "live" | "wait" | "grey"; text: string } }> = [
+    { key: "instagram", name: "Instagram", line: "@ebysplace1 · Reels with music", pill: connected.instagram ? { tone: "live", text: "Connected" } : { tone: "grey", text: "Not set up" } },
+    { key: "threads", name: "Threads", line: `@ebysplace1 · ${d.threadsSchedule.map((s) => s.time).join(" · ")} (Threads' own peak times)`, pill: connected.threads ? { tone: "live", text: "Connected" } : { tone: "grey", text: "Not set up" } },
+    { key: "facebook", name: "Facebook", line: connected.facebook ? "facebook.com/EbysPlace" : "facebook.com/EbysPlace · needs Eby to give Page access", pill: connected.facebook ? { tone: "live", text: "Connected" } : { tone: "wait", text: "Needs Page access" } },
+    { key: "tiktok", name: "TikTok", line: "Not set up yet. Needs a TikTok developer app.", pill: { tone: "grey", text: "Not set up" } },
   ];
 
   return (
@@ -139,7 +140,7 @@ export function SocialPage() {
           {channelCards.map((c) => (
             <div key={c.key} className="grid content-start gap-1.5 rounded-xl border border-[#EFEBE4] bg-[#FBF8F2] p-3">
               <div className="flex items-center gap-2">
-                <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-extrabold text-white ${c.logoClass}`} aria-hidden="true">{c.logo}</span>
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[#EFEBE4] bg-white" aria-hidden="true"><SocialIcon brand={c.key} size={18} /></span>
                 <b className="text-[13.5px]">{c.name}</b>
               </div>
               <span className="text-xs leading-snug text-[#6B6458]">{c.line}</span>

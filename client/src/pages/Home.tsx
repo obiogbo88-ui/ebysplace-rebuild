@@ -28,8 +28,6 @@ import {
   ArrowRight,
   CalendarDays,
   Heart,
-  AtSign,
-  Facebook,
   Instagram,
   Menu,
   Search,
@@ -42,13 +40,14 @@ import {
 
 /** Eby's Place on social media (2026-11-07): shown in the footer and the "Follow along" section. */
 const SOCIAL_PROFILES = [
-  { name: "Instagram", url: "https://www.instagram.com/ebysplace1/", Icon: Instagram },
-  { name: "Threads", url: "https://www.threads.com/@ebysplace1", Icon: AtSign },
-  { name: "Facebook", url: "https://www.facebook.com/EbysPlace", Icon: Facebook },
+  { name: "Instagram", url: "https://www.instagram.com/ebysplace1/", brand: "instagram" },
+  { name: "Threads", url: "https://www.threads.com/@ebysplace1", brand: "threads" },
+  { name: "Facebook", url: "https://www.facebook.com/EbysPlace", brand: "facebook" },
 ] as const;
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { openCookieSettings } from "@/lib/cookieConsent";
 import { ShareLinkButton } from "@/components/ShareLinkButton";
+import { SocialIcon } from "@/components/SocialIcon";
 import {
   SEASONAL_PILL_CLASSES,
   SeasonalFall,
@@ -452,7 +451,7 @@ export function SiteFooter() {
                 rel="noopener noreferrer"
                 aria-label={`Eby's Place on ${s.name}`}
               >
-                <s.Icon className="h-4 w-4" aria-hidden="true" />
+                <SocialIcon brand={s.brand} size={18} />
               </a>
             ))}
             <span className="ml-1">@ebysplace1</span>
@@ -1436,7 +1435,7 @@ export default function Home() {
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 {SOCIAL_PROFILES.filter((s) => s.name !== "Facebook").map((s) => (
                   <a key={s.name} href={s.url} target="_blank" rel="noopener noreferrer" className="btn-dark inline-flex items-center gap-2">
-                    <s.Icon className="h-4 w-4" aria-hidden="true" /> {s.name}
+                    <SocialIcon brand={s.brand} size={16} tone={s.brand === "threads" ? "white" : "brand"} /> {s.name}
                   </a>
                 ))}
               </div>
