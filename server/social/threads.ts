@@ -26,16 +26,16 @@ async function threadsPost<T>(url: string, params: Record<string, string>): Prom
  * at most one topic tag and the rest just look like spam), and cut at a
  * sentence or line break so it fits in 500 characters.
  */
-export function threadsText(caption: string): string {
+export function threadsText(caption: string, limit = THREADS_TEXT_LIMIT): string {
   const lines = caption
     .split(/\r?\n/)
     .map((l) => l.replace(/(^|\s)#[A-Za-z0-9_]+/g, "").replace(/\s{2,}/g, " ").trimEnd())
     .filter((l, i, all) => l.trim() || (i > 0 && all[i - 1].trim()));
   let text = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
-  if (text.length <= THREADS_TEXT_LIMIT) return text;
-  const cut = text.slice(0, THREADS_TEXT_LIMIT - 1);
+  if (text.length <= limit) return text;
+  const cut = text.slice(0, limit - 1);
   const stop = Math.max(cut.lastIndexOf("\n"), cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
-  text = stop > THREADS_TEXT_LIMIT * 0.5 ? cut.slice(0, stop + 1) : `${cut.slice(0, cut.lastIndexOf(" "))}…`;
+  text = stop > limit * 0.5 ? cut.slice(0, stop + 1) : `${cut.slice(0, cut.lastIndexOf(" "))}…`;
   return text.trim();
 }
 

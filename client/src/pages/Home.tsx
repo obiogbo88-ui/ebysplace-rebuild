@@ -28,6 +28,8 @@ import {
   ArrowRight,
   CalendarDays,
   Heart,
+  AtSign,
+  Facebook,
   Instagram,
   Menu,
   Search,
@@ -37,6 +39,13 @@ import {
   Wand2,
   X,
 } from "lucide-react";
+
+/** Eby's Place on social media (2026-11-07): shown in the footer and the "Follow along" section. */
+const SOCIAL_PROFILES = [
+  { name: "Instagram", url: "https://www.instagram.com/ebysplace1/", Icon: Instagram },
+  { name: "Threads", url: "https://www.threads.com/@ebysplace1", Icon: AtSign },
+  { name: "Facebook", url: "https://www.facebook.com/EbysPlace", Icon: Facebook },
+] as const;
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { openCookieSettings } from "@/lib/cookieConsent";
 import { ShareLinkButton } from "@/components/ShareLinkButton";
@@ -432,18 +441,22 @@ export function SiteFooter() {
           <p className="mt-3 text-sm leading-relaxed text-[#4f3720]">
             Studio in Bridgwater, Somerset. Clients welcome from Taunton, Burnham-on-Sea, Weston-super-Mare, Wells, Yeovil and nearby.
           </p>
-          {instagram?.enabled && instagram.handle && instagram.feedUrl ? (
-            <p className="mt-3 text-sm font-semibold">
+          {/* Social profiles (2026-11-07): Instagram, Threads and Facebook, as icons. */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm font-semibold">
+            {SOCIAL_PROFILES.map((s) => (
               <a
-                className="inline-flex items-center gap-1.5 transition hover:text-[#8a641e]"
-                href={instagram.feedUrl}
+                key={s.name}
+                className="grid h-9 w-9 place-items-center rounded-full border border-[#c9a84c]/40 bg-white/70 text-[#2a1a0b] transition hover:border-[#8a641e] hover:text-[#8a641e]"
+                href={s.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label={`Eby's Place on ${s.name}`}
               >
-                <Instagram className="h-4 w-4" /> {instagram.handle}
+                <s.Icon className="h-4 w-4" aria-hidden="true" />
               </a>
-            </p>
-          ) : null}
+            ))}
+            <span className="ml-1">@ebysplace1</span>
+          </div>
           <h4 className="mt-6 text-xs font-bold uppercase tracking-[.16em] text-primary">
             Luxury Care Promise
           </h4>
@@ -1420,16 +1433,13 @@ export default function Home() {
               <h2 className="serif mt-5 text-3xl font-bold md:text-4xl">
                 Follow the Eby’s Place experience.
               </h2>
-              {instagram?.enabled && instagram.handle && instagram.feedUrl ? (
-                <a
-                  href={instagram.feedUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-dark mt-6 inline-flex items-center gap-2"
-                >
-                  <Instagram className="h-4 w-4" /> {instagram.handle}
-                </a>
-              ) : null}
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                {SOCIAL_PROFILES.filter((s) => s.name !== "Facebook").map((s) => (
+                  <a key={s.name} href={s.url} target="_blank" rel="noopener noreferrer" className="btn-dark inline-flex items-center gap-2">
+                    <s.Icon className="h-4 w-4" aria-hidden="true" /> {s.name}
+                  </a>
+                ))}
+              </div>
             </Reveal>
           </div>
         </section>
