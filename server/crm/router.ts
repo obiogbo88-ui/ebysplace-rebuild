@@ -12,6 +12,7 @@ import { addAdmin, listAddedAdmins, removeAdmin, markInvited, setAdminRole } fro
 import { ASSIGNABLE_ROLES, ROLE_INFO, allows, canSeeMoney, type AdminRole } from "../../shared/adminRoles";
 import { clientBookings, clientKeyFor, clientTimeline, filterClients, journeyCounts, type ClientFilter } from "./clients";
 import { loadClients, londonToday } from "./data";
+import { londonMinutes, threadsTimeFor, threadsWindow } from "../social/threadsSchedule";
 import { inviteCandidates, listInvitePreview, sendListInvites } from "./listInvite";
 import { leaveListUrl } from "../list";
 import { getAvailabilitySettings, logActivity as logDbActivity } from "../db";
@@ -232,7 +233,11 @@ export const crmRouter = router({
       facebookConfigured: Boolean(String(process.env.FACEBOOK_PAGE_ID || "").trim()),
       threadsConfigured: Boolean(String(process.env.THREADS_ACCESS_TOKEN || "").trim()),
       schedule: SLOTS.map((slot) => ({ slot, time: hhmm(slot) })),
-      posts: (res.rows as any[]).map((r) => ({ ...summarisePost(r), id: r.id, slotDate: r.slotDate, slot: r.slot, caption: r.caption, reelUrl: r.reelUrl, imageUrl: (r.imageUrls ?? [])[0] ?? null, igMediaId: r.igMediaId, fbPostId: r.fbPostId ?? null, threadsPostId: r.threadsPostId ?? null, isAiGenerated: r.isAiGenerated, createdAt: r.createdAt })),
+      // Threads posts at its own peak times (server/social/threadsSchedule.ts).
+      threadsSchedule: SLOTS.map((slot) => ({ slot, time: threadsTimeFor(today, slot) })),
+      posts: (res.rows as any[]).map((r) => ({ ...summarisePost(r), id: r.id, slotDate: r.slotDate, slot: r.slot, caption: r.caption, reelUrl: r.reelUrl, imageUrl: (r.imageUrls ?? [])[0] ?? null, igMediaId: r.igMediaId, fbPostId: r.fbPostId ?? null, threadsPostId: r.threadsPostId && !String(r.threadsPostId).startsWith("claiming:") ? r.threadsPostId : null,
+        threadsDue: r.slotDate === today && !(r.threadsPostId && !String(r.threadsPostId).startsWith("claiming:")) && threadsWindow(today, r.slot, londonMinutes()) !== "late",
+        threadsTime: threadsTimeFor(r.slotDate, r.slot), isAiGenerated: r.isAiGenerated, createdAt: r.createdAt })),
     };
   }),
   postNow: adminProcedure.mutation(async () => {

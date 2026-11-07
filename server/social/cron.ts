@@ -14,6 +14,7 @@ import {
   type InstagramCredentials,
 } from "./graph";
 import { publishThreadsPost, refreshThreadsToken, type ThreadsCredentials } from "./threads";
+import { londonMinutes, threadsHook, threadsWindow } from "./threadsSchedule";
 import { claimPost, getPost, getToken, requireDb, savePublishResult, saveToken, type SlotName, type SocialPost } from "./store";
 import { sql } from "drizzle-orm";
 import { isAutomationOn } from "../crm/automations";
@@ -167,8 +168,7 @@ export async function runPublish(slot: SlotName, force = false) {
   if (!force && !slotDue(slot)) return { skipped: `not ${slot}'s London hour (the other clock-change twin of this cron)` };
   const ig = await instagramCredentials();
   const fb = await facebookCredentials();
-  const th = await threadsCredentials();
-  if (!ig && !fb && !th) return { skipped: "no Instagram, Facebook or Threads credentials configured yet" };
+  if (!ig && !fb) return { skipped: "no Instagram or Facebook credentials configured yet" };
 
   const today = londonDate();
   let post = await getPost(today, slot);
@@ -180,16 +180,55 @@ export async function runPublish(slot: SlotName, force = false) {
   const outcomes: unknown[] = [];
   if (post) {
     const claimed = await claimPost(post.id);
-    outcomes.push(claimed ? { id: post.id, kind: post.kind, ...(await publishPost(claimed, ig, fb, th)) } : { id: post.id, skipped: `status ${post.status}` });
+    outcomes.push(claimed ? { id: post.id, kind: post.kind, ...(await publishPost(claimed, ig, fb)) } : { id: post.id, skipped: `status ${post.status}` });
   }
   // Retry anything from the last two days that only half went out.
   const db = await requireDb();
   const partials = await db.execute(sql`SELECT "id" FROM "socialPosts" WHERE "status" = 'partial' AND "slotDate" >= ${addDays(today, -2)} AND "id" <> ${post?.id ?? 0}`);
   for (const row of partials.rows as Array<{ id: number }>) {
     const claimed = await claimPost(row.id);
-    if (claimed) outcomes.push({ id: row.id, retry: true, ...(await publishPost(claimed, ig, fb, th)) });
+    if (claimed) outcomes.push({ id: row.id, retry: true, ...(await publishPost(claimed, ig, fb)) });
   }
   return { today, slot, outcomes };
+}
+
+/**
+ * Threads runs on its own clock (every 15 minutes): each of today's posts goes
+ * to Threads once its Threads peak time arrives (threadsSchedule.ts), within
+ * a 3-hour window. A claim on "threadsPostId" stops two runs posting twice;
+ * a claim older than 10 minutes (a crashed run) is taken over.
+ */
+export async function runThreads(at: Date = new Date()) {
+  if (paused()) return { skipped: "paused (SOCIAL_AUTOPOST_PAUSED)" };
+  if (!(await isAutomationOn("social_autopilot"))) return { skipped: "social autopilot is switched off in the CRM" };
+  const th = await threadsCredentials();
+  if (!th) return { skipped: "Threads is not connected" };
+  const today = londonDate(at);
+  const now = londonMinutes(at);
+  const db = await requireDb();
+  const outcomes: unknown[] = [];
+  for (const slot of SLOTS) {
+    if (threadsWindow(today, slot, now) !== "now") continue;
+    const post = await getPost(today, slot);
+    if (!post || post.status === "failed" || (!post.reelUrl && post.imageUrls.length === 0)) continue;
+    const stale = `claiming:${Date.now() - 10 * 60_000}`;
+    const claim = await db.execute(sql`UPDATE "socialPosts" SET "threadsPostId" = ${`claiming:${Date.now()}`}, "updatedAt" = now()
+      WHERE "id" = ${post.id} AND ("threadsPostId" IS NULL OR ("threadsPostId" LIKE 'claiming:%' AND "threadsPostId" < ${stale}))
+      RETURNING "id"`);
+    if (!claim.rows.length) continue;
+    try {
+      const headline = (post.slides?.[0] as any)?.headline || (post.slides?.[0] as any)?.title || (post.slides?.[0] as any)?.hook || null;
+      const text = threadsHook(captionFor("threads", post.caption), { headline, kind: post.kind, id: post.id });
+      const id = await publishThreadsPost(th, { videoUrl: post.reelUrl, imageUrls: post.imageUrls, caption: text });
+      await db.execute(sql`UPDATE "socialPosts" SET "threadsPostId" = ${id}, "updatedAt" = now() WHERE "id" = ${post.id}`);
+      outcomes.push({ id: post.id, slot, threadsPostId: id });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await db.execute(sql`UPDATE "socialPosts" SET "threadsPostId" = NULL, "error" = ${`Threads: ${message}`.slice(0, 2000)}, "updatedAt" = now() WHERE "id" = ${post.id}`);
+      outcomes.push({ id: post.id, slot, error: message });
+    }
+  }
+  return { today, outcomes };
 }
 
 async function runPrepare(startedAt: number) {
@@ -238,6 +277,7 @@ function guard(handler: (req: Request) => Promise<unknown>) {
 export function registerSocialCrons(app: Application) {
   app.get("/api/cron/social-prepare", guard(async () => runPrepare(Date.now())));
   for (const slot of SLOTS) app.get(`/api/cron/social-publish-${slot}`, guard(async (req) => runPublish(slot, req.query.force === "1")));
+  app.get("/api/cron/social-threads", guard(async () => runThreads()));
   app.get(
     "/api/cron/social-preview",
     guard(async (req) => {

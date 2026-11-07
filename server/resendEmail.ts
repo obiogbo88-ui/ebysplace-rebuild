@@ -39,6 +39,21 @@ export type BrandedEmail = {
   leaveListUrl?: string;
 };
 
+/** Eby's Place social profiles, shown as a small icon row at the bottom of every branded email (2026-11-07). */
+export const EMAIL_SOCIALS = [
+  { name: "Instagram", url: "https://www.instagram.com/ebysplace1/", icon: "https://www.ebysplace.com/email-icons/instagram.png" },
+  { name: "Threads", url: "https://www.threads.com/@ebysplace1", icon: "https://www.ebysplace.com/email-icons/threads.png" },
+] as const;
+export const EMAIL_SOCIAL_TEXT = "Follow @ebysplace1 on Instagram and Threads";
+
+function socialRowHtml() {
+  const icons = EMAIL_SOCIALS.map(
+    (s) => `<a href="${s.url}" style="display:inline-block;margin:0 5px;text-decoration:none;"><img src="${s.icon}" alt="Eby's Place on ${s.name}" width="28" height="28" style="width:28px;height:28px;border:0;display:inline-block;" /></a>`,
+  ).join("");
+  return `        <p style="margin:28px 0 4px;text-align:center;">${icons}</p>
+        <p class="ink" style="margin:0;text-align:center;font-size:12px;color:#6B5A45;">${EMAIL_SOCIAL_TEXT}</p>`;
+}
+
 export const LEAVE_LIST_TEXT = "You're getting this because you're on the Eby's Place list.";
 
 /** Adds the leave line and the one-click headers mail apps use for their own Unsubscribe button. */
@@ -126,8 +141,9 @@ export function renderBrandedEmail(email: Pick<BrandedEmail, "subject" | "paragr
   for (const paragraph of email.closing ?? []) {
     blocks.push(`        <p ${PARAGRAPH_STYLE}>${escapeHtml(paragraph)}</p>`);
   }
+  blocks.push(socialRowHtml());
   if (email.leaveListUrl) {
-    blocks.push(`        <p class="ink" style="margin:28px 0 0;font-size:12.5px;color:#6B5A45;">${escapeHtml(LEAVE_LIST_TEXT)} <a href="${escapeHtml(email.leaveListUrl)}" style="color:#8A641E;font-weight:bold;">Leave the list</a></p>`);
+    blocks.push(`        <p class="ink" style="margin:20px 0 0;font-size:12.5px;color:#6B5A45;">${escapeHtml(LEAVE_LIST_TEXT)} <a href="${escapeHtml(email.leaveListUrl)}" style="color:#8A641E;font-weight:bold;">Leave the list</a></p>`);
   }
   return loadShell()
     .replace("{{SUBJECT}}", escapeHtml(email.subject))
@@ -138,6 +154,7 @@ export function renderPlainText(email: Pick<BrandedEmail, "paragraphs" | "cta" |
   const lines = [...email.paragraphs];
   if (email.cta) lines.push(`${email.cta.label}: ${email.cta.url}`);
   lines.push(...(email.closing ?? []));
+  lines.push(`${EMAIL_SOCIAL_TEXT}: ${EMAIL_SOCIALS.map((s) => s.url).join(" · ")}`);
   if (email.leaveListUrl) lines.push(`${LEAVE_LIST_TEXT} Leave the list: ${email.leaveListUrl}`);
   lines.push("", "Eby's Place", "Founder & Service Lead", CONTACT_EMAIL);
   return lines.join("\n\n");

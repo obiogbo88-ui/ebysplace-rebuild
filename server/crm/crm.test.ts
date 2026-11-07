@@ -212,7 +212,7 @@ describe("automations", () => {
     const daily = readFileSync("server/dailyAutomations.ts", "utf8");
     for (const k of ["unconfirmed_reminder", "abandoned_order", "day_before_reminder", "stale_checkout_cleanup", "review_ask", "rebook_nudge", "win_back"]) expect(daily).toContain(`ifOn("${k}"`);
     const social = readFileSync("server/social/cron.ts", "utf8");
-    expect(social.match(/isAutomationOn\("social_autopilot"\)/g)?.length).toBe(2);
+    expect(social.match(/isAutomationOn\("social_autopilot"\)/g)?.length).toBe(3); // publish, prepare and the Threads run (2026-11-07)
   });
 });
 
