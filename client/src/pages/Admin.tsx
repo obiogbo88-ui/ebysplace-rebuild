@@ -338,9 +338,16 @@ export default function Admin() {
   const cookieConsents = trpc.admin.listCookieConsents.useQuery(undefined, { retry: false });
   const cookieConsentSummary = trpc.admin.cookieConsentSummary.useQuery(undefined, { retry: false });
   const visitorCookieStats = trpc.admin.visitorCookieStats.useQuery(undefined, { retry: false });
-  const ownerPushStatus = trpc.admin.ownerPushStatus.useQuery(undefined, { retry: false });
+  // This browser's push address, so the header can say whether alerts are on for THIS device.
+  const [thisEndpoint, setThisEndpoint] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    getExistingPushSubscription()
+      .then((sub) => setThisEndpoint(sub?.endpoint || undefined))
+      .catch(() => undefined);
+  }, []);
+  const ownerPushStatus = trpc.admin.ownerPushStatus.useQuery({ endpoint: thisEndpoint }, { retry: false });
   const subscribeOwnerPush = trpc.admin.subscribeOwnerPush.useMutation({
-    onSuccess: () => { ownerPushStatus.refetch(); toast.success("Notifications enabled on this device."); },
+    onSuccess: (_r: unknown, v: any) => { if (v?.endpoint) setThisEndpoint(v.endpoint); ownerPushStatus.refetch(); setOwnerNotifStatus("idle"); toast.success("Alerts are on for this device."); },
   });
   const [ownerNotifStatus, setOwnerNotifStatus] = useState<"idle" | "denied" | "unsupported" | "error">("idle");
   const handleEnableOwnerNotifications = async () => {
@@ -919,13 +926,19 @@ export default function Admin() {
           <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
             <div className="grid justify-items-end gap-0.5 text-right">
               {/* Phone alerts for new bookings, orders and chats. */}
-              {ownerPushStatus.data?.deviceCount ? (
-                <p className="text-xs text-[#6B6458]">Alerts on {ownerPushStatus.data.deviceCount} device{ownerPushStatus.data.deviceCount === 1 ? "" : "s"}</p>
+              {ownerPushStatus.data?.thisDevice ? (
+                <p className="text-xs font-semibold text-[#1E7A46]" role="status">
+                  ✓ Alerts on for this device
+                  {ownerPushStatus.data.deviceCount > 1 ? <span className="font-normal text-[#6B6458]"> · {ownerPushStatus.data.deviceCount} devices in total</span> : null}
+                </p>
               ) : (
                 <button className="text-xs font-semibold text-[#8A641E] underline underline-offset-4 hover:text-[#5E4512]" type="button" onClick={handleEnableOwnerNotifications} disabled={subscribeOwnerPush.isPending}>
                   {subscribeOwnerPush.isPending ? "Turning on…" : "Get alerts on this device"}
                 </button>
               )}
+              {!ownerPushStatus.data?.thisDevice && (ownerPushStatus.data?.deviceCount ?? 0) > 0 ? (
+                <p className="text-[11px] text-[#6B6458]">Already on for {ownerPushStatus.data!.deviceCount} other device{ownerPushStatus.data!.deviceCount === 1 ? "" : "s"}</p>
+              ) : null}
               {ownerNotifStatus === "unsupported" && <p className="text-xs text-[#6B6458]">This browser can't show alerts.</p>}
               {ownerNotifStatus === "denied" && <p className="text-xs text-[#6B6458]">Blocked: allow notifications in your browser's site settings.</p>}
               {ownerNotifStatus === "error" && <p className="text-xs text-[#B3261E]">Something went wrong. Please try again.</p>}
