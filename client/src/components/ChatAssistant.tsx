@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { navigateWithSmoothScroll } from "@/lib/smoothScroll";
 
+import { SocialIcon } from "@/components/SocialIcon";
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
@@ -289,9 +290,9 @@ export default function ChatAssistant() {
                       href={WHATSAPP_URL}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-gold block w-full py-2 text-center text-xs"
+                      className="btn-gold flex w-full items-center justify-center gap-1.5 py-2 text-center text-xs"
                     >
-                      Message us on WhatsApp
+                      <SocialIcon brand="whatsapp" size={14} /> Message us on WhatsApp
                     </a>
                   )}
                 </div>

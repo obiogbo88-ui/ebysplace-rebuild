@@ -6,6 +6,7 @@ import { CheckCircle2, Copy, Facebook, MessageCircle, Star } from "lucide-react"
 import { type FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { SocialIcon } from "@/components/SocialIcon";
 export default function Reviews() {
   const submitReview = trpc.public.submitReview.useMutation();
   const [customerName, setCustomerName] = useState("");
@@ -108,10 +109,10 @@ export default function Reviews() {
                 <h2 className="serif text-2xl font-bold">Share this review page</h2>
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <a className="btn-dark justify-center px-4 py-3 text-sm" href={`https://wa.me/?text=${encodeURIComponent(`${shareText} ${reviewUrl}`)}`} target="_blank" rel="noopener noreferrer">
-                    <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp
+                    <SocialIcon brand="whatsapp" size={16} className="mr-2" /> WhatsApp
                   </a>
                   <a className="btn-dark justify-center px-4 py-3 text-sm" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(reviewUrl)}`} target="_blank" rel="noopener noreferrer">
-                    <Facebook className="mr-2 h-4 w-4" /> Facebook
+                    <SocialIcon brand="facebook" size={16} className="mr-2" /> Facebook
                   </a>
                   <button className="btn-dark justify-center px-4 py-3 text-sm" type="button" onClick={copyLink}>
                     <Copy className="mr-2 h-4 w-4" /> {copied ? "Copied" : "Copy link"}

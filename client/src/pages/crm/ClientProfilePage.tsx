@@ -6,6 +6,7 @@ import { goCrm } from "./nav";
 import { Avatar, Card, Empty, ErrorNote, GhostButton, Kpi, ListPill, Loading, Pill, PrimaryButton, Row, STAGE_LABEL, STATUS_TONE, Toggle, gbp, niceDate, niceDateTime, relativeDays, whatsappLink, ScrollBox } from "./ui";
 import { useAccess } from "./access";
 
+import { SocialIcon } from "@/components/SocialIcon";
 const SWITCHES: Array<{ key: "reminders" | "review_ask" | "rebook_nudge" | "win_back" | "marketing"; label: string; detail: string }> = [
   { key: "reminders", label: "Appointment reminders", detail: "Day-before email and text" },
   { key: "review_ask", label: "Review request", detail: "The day after a completed visit" },
@@ -103,7 +104,7 @@ export function ClientProfilePage({ clientKey }: { clientKey: string }) {
             <GhostButton onClick={bookAgain}>Book again</GhostButton>
             {wa ? (
               <GhostButton href={wa}>
-                <MessageCircle className="h-4 w-4" aria-hidden="true" /> WhatsApp
+                <SocialIcon brand="whatsapp" size={16} /> WhatsApp
               </GhostButton>
             ) : null}
             {c.email ? (
